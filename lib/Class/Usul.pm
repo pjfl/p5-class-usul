@@ -47,7 +47,7 @@ has 'tempdir'         => is => 'ro', isa => 'F_DC_Directory',
 
 __PACKAGE__->mk_log_methods();
 
-sub BUILDARGS {
+around BUILDARGS => sub {
    my ($orig, $class, $attrs, $app, @rest) = @_;
 
    $attrs or return {};
@@ -56,8 +56,8 @@ sub BUILDARGS {
 
    my $ac = $app->config || {};
 
-   $attrs->{debug          } ||= $cdr[0]->debug;
-   $attrs->{log            } ||= $cdr[0]->log;
+   $attrs->{debug          } ||= $app->debug;
+   $attrs->{log            } ||= $app->log;
    $attrs->{encoding       } ||= $ac->{encoding       };
    $attrs->{lock_attributes} ||= $ac->{lock_attributes};
    $attrs->{log_attributes } ||= $ac->{log_attributes };
@@ -67,7 +67,7 @@ sub BUILDARGS {
    $attrs->{tempdir        } ||= $ac->{tempdir        };
 
    return $attrs;
-}
+};
 
 sub build_subcomponents {
    # Voodo by mst. Finds and loads component subclasses

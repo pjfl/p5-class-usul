@@ -194,7 +194,7 @@ sub cli {
 
    $self->{_command_line_interface}
       or $self->{_command_line_interface} = Class::Usul::Programs->new
-            ( { appclass => $self->module_name, n => TRUE } );
+            ( { appclass => $self->module_name, args => { n => TRUE } } );
 
    return $self->{_command_line_interface};
 }
@@ -854,13 +854,13 @@ sub _consolidate {
    $self->cli->ensure_class_loaded( q(CPAN) );
 
    for my $used_key (keys %{ $used }) {
-      my ($curr_dist, $module, $prev_dist); my $try_module = $used_key;
+      my ($curr_dist, $module, $used_dist); my $try_module = $used_key;
 
       while ($curr_dist = __dist_from_module( $try_module )
-             and (not $prev_dist
-                  or  $curr_dist->base_id eq $prev_dist->base_id)) {
+             and (not $used_dist
+                  or  $curr_dist->base_id eq $used_dist->base_id)) {
          $module = $try_module;
-         $prev_dist or $prev_dist = $curr_dist;
+         $used_dist or $used_dist = $curr_dist;
          $try_module =~ m{ :: }mx or last;
          $try_module =~ s{ :: [^:]+ \z }{}mx;
       }
@@ -1078,9 +1078,7 @@ sub _rebuild_build {
 sub _source_paths {
    my $self = shift; my $cli = $self->cli;
 
-   return [ grep { m{ (?: \.pm | \.t | \.pl ) \z }imx
-                   || $cli->io( $_ )->getline
-                         =~ m{ \A \#! (?: .* ) perl (?: \s | \z ) }mx }
+   return [ grep { __is_perl_script( $cli, $_ ) }
             map  { s{ \s+ }{ }gmx; (split SPC, $_)[0] }
             $cli->io( $MANIFEST_FILE )->chomp->getlines ];
 }
@@ -1125,6 +1123,16 @@ sub __dist_from_module {
    my $module = CPAN::Shell->expand( q(Module), $_[ 0 ] );
 
    return $module ? $module->distribution : undef;
+}
+
+sub __is_perl_script {
+   my ($cli, $path) = @_;
+
+   $path =~ m{ (?: \.pm | \.t | \.pl ) \z }imx and return TRUE;
+
+   my $line = $cli->io( $path )->getline;
+
+   return $line =~ m{ \A \#! (?: .* ) perl (?: \s | \z ) }mx ? TRUE : FALSE;
 }
 
 sub __looks_like_version {

@@ -3,69 +3,101 @@
 package Class::Usul::Programs;
 
 use strict;
-use warnings;
-use version; our $VERSION = qv( sprintf '0.4.%d', q$Rev$ =~ /\d+/gmx );
+use namespace::autoclean;
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
-use Class::Usul::InflateSymbols;
 use Class::Usul::I18N;
-use Class::Null;
-use Config;
-use Cwd             qw(abs_path);
-use English         qw(-no_match_vars);
-use File::Spec;
-use Getopt::Mixed   qw(nextOption);
-use IO::Interactive qw(is_interactive);
-use IPC::SRLock;
-use List::Util      qw(first);
-use Log::Handler;
 use Moose;
+use Config;
 use Pod::Man;
+use TryCatch;
+use File::Spec;
 use Pod::Usage;
-use Scalar::Util    qw(blessed);
-use Sys::Hostname;
+use XML::Simple;
 use Term::ReadKey;
 use Text::Autoformat;
-use TryCatch;
-use XML::Simple;
-
-extends qw(Class::Usul);
-with    qw(Class::Usul::IPC);
+use Cwd             qw(abs_path);
+use English         qw(-no_match_vars);
+use Getopt::Mixed   qw(nextOption);
+use IO::Interactive qw(is_interactive);
+use List::Util      qw(first);
+use Sys::Hostname     ();
 
 my @EXTNS  = qw(.pl .pm .t);
 my $NO     = q(n);
-my $PREFIX = q(/opt);
+my $PREFIX = [ NUL, q(opt) ];
 my $QUIT   = q(q);
 my $WIDTH  = 80;
 my $YES    = q(y);
 
-__PACKAGE__->mk_accessors( qw(config debug log) );
+extends qw(Class::Usul);
+with    qw(Class::Usul::IPC);
 
-sub new {
-   my ($self, @rest) = @_;
+has 'appclass' => is => 'ro', isa => 'ClassName',      required => TRUE;
+has 'arglist'  => is => 'ro', isa => 'Str',            default  => NUL;
+has 'args'     => is => 'ro', isa => 'HashRef',        default  => sub { {} };
+has 'config'   => is => 'ro', isa => 'HashRef',        default  => sub { {} };
+has 'home'     => is => 'ro', isa => 'F_DC_Directory', required => TRUE;
+has 'language' => is => 'ro', isa => 'Str',            default  => NUL;
+has 'logname'  => is => 'ro', isa => 'Str',
+   default     => $ENV{USER} || $ENV{LOGNAME};
+has 'messages' => is => 'ro', isa => 'HashRef',        default  => sub { {} };
+has 'method'   => is => 'ro', isa => 'Str',            default  => NUL;
+has 'name'     => is => 'ro', isa => 'Str',            required => TRUE;
+has 'os'       => is => 'ro', isa => 'HashRef',        default  => sub { {} };
+has 'parms'    => is => 'ro', isa => 'HashRef',        default  => sub { {} };
+has 'prefix'   => is => 'ro', isa => 'Str',            required => TRUE;
+has 'silent'   => is => 'ro', isa => 'Bool',           default  => FALSE;
+has 'vars'     => is => 'ro', isa => 'HashRef',        default  => sub { {} };
+
+around BUILDARGS => sub {
+   my ($orig, $class, @rest) = @_;
+
+   my $attr = $class->$orig( @rest );
+
+   $attr->{script} = $class->basename( $attr->{script} || $PROGRAM_NAME );
+
+   my $prog = $class->basename( lc $attr->{script}, @EXTNS );
+
+   $attr->{prefix  } ||= $class->split_on__( $prog, 0 );
+   $attr->{name    } ||= $class->split_on__( $prog, 1 ) || $prog;
+   $attr->{appclass} ||= ucfirst $attr->{prefix};
+   $attr->{home    } ||= $class->_get_homedir( $attr );
+
+   $class->_load_config( $attr );
+
+   my $ac = $attr->{config};
+
+   $attr->{os} = $class->_load_os_depends( $ac->{ctrldir} );
+
+   my @attrs = qw(debug encoding lock_attributes log_attributes secret
+                  suid tempdir);
+
+   $attr->{ $_ } ||= $ac->{ $_ } for (@attrs);
+
+   return $attr;
+};
+
+sub BUILD {
+   my $self = shift;
 
    autoflush STDOUT 1; autoflush STDERR 1;
 
-   my $class = blessed $self || $self;
-   my $strap = $class->_bootstrap( $class->arg_list( @rest ) );
-   my $new   = $class->next::method( $strap->{attributes}, $strap );
+   Getopt::Mixed::init( q(c=s D H h L=s n o=s S ).$self->arglist );
 
-   Getopt::Mixed::init( $new->arglist );
-
-   $new->_load_args_ref; $new->_load_vars_ref;
+   $self->_load_args_ref; $self->_load_vars_ref;
 
    Getopt::Mixed::cleanup();
 
-   $new->_set_attr  ( q(c), q(method)        );
-   $new->_set_attr  ( q(L), q(language)      );
-   $new->_set_attr  ( q(S), q(silent)        );
-   $new->config     ( $strap->config         );
-   $new->debug      ( $new->get_debug_option );
-   $new->lock->debug( $new->debug            );
-   $new->lock->log  ( $new->log              );
-   $new->messages   ( $new->_load_messages   );
+   $self->_set_attr  ( q(c), q(method)         );
+   $self->_set_attr  ( q(L), q(language)       );
+   $self->_set_attr  ( q(S), q(silent)         );
+   $self->debug      ( $self->get_debug_option );
+   $self->lock->debug( $self->debug            );
+   $self->messages   ( $self->_load_messages   );
 
-   return $new;
+   return;
 }
 
 sub add_leader {
@@ -98,10 +130,11 @@ sub dispatch {
    exists $self->args->{h} and $self->usage(1);
    exists $self->args->{H} and $self->usage(2);
 
-   my $method = $self->method || $self->usage(0); umask $self->mode;
+   my $method = $self->method || $self->usage(0);
 
+   umask oct ($self->config->{mode} || MODE);
    $parms = exists $self->parms->{ $method } ? $self->parms->{ $method } : [];
-   $text  = 'Started by '.$self->logname.' Version '.$self->version.SPC;
+   $text  = 'Started by '.$self->logname.' Version '.$VERSION.SPC;
    $text .= 'Pid '.(abs $PID);
    $self->output( $text );
 
@@ -176,7 +209,7 @@ sub get_line {
    my $left_prompt;
 
    if (defined $width) {
-      my $total    = $width || $self->pwidth || 40;
+      my $total    = $width || $self->config->{pwidth} || 40;
       my $right_x  = length $right_prompt;
       my $left_x   = $total - $right_x;
 
@@ -314,20 +347,20 @@ sub usage {
    my ($self, $verbose) = @_;
 
    if ($verbose < 2) {
-      pod2usage( { -input   => $self->pathname,
+      pod2usage( { -input   => $self->config->{pathname},
                    -message => SPC, -verbose => $verbose } );
       exit 0; # Never reached
    }
 
-   my $name     = $self->basename( $self->script, @EXTNS );
-   my $parser   = Pod::Man->new( center  => $self->doc_title,
-                                 name    => $name,
-                                 release => 'Version '.$main::VERSION,
-                                 section => q(3m) );
+   my $doc_title = $self->config->{doc_title} || NUL;
+   my $parser    = Pod::Man->new( center  => $doc_title,
+                                  name    => $self->appclass,
+                                  release => 'Version '.$main::VERSION,
+                                  section => q(3m) );
    my $tempfile = $self->tempfile;
    my $cmd      = q(cat ).$tempfile->pathname.q( | nroff -man);
 
-   $parser->parse_from_file( $self->pathname, $tempfile->pathname );
+   $parser->parse_from_file( $self->config->{pathname}, $tempfile->pathname );
    system $cmd;
    exit 0;
 }
@@ -354,7 +387,7 @@ sub yorn {
    my $left_prompt  = $question;
 
    if (defined $width) {
-      my $total    = $width || $self->pwidth || 40;
+      my $total    = $width || $self->config->{pwidth} || 40;
       my $right_x  = length $right_prompt;
       my $left_x   = $total - $right_x;
 
@@ -377,111 +410,6 @@ sub yorn {
 
 # Private methods
 
-sub _bootstrap {
-   my ($class, $args) = @_;
-
-   my $strap = bless { attributes => {}, config => {} }, $class;
-   my $attr  = $strap->{attributes};
-   my $conf  = $strap->{config};
-
-   $attr->{arglist  }  = q(c=s D H h L=s n o=s S );
-   $attr->{arglist  } .= $args->{arglist } if ($args->{arglist});
-   $attr->{args     }  = exists $args->{n}      ? { n => TRUE } : {};
-   $attr->{silent   }  = exists $args->{silent} ? TRUE : FALSE;
-   $attr->{script   }  = $class->basename( $args->{script} || $PROGRAM_NAME );
-
-   my $prog  = $class->basename( lc $attr->{script}, @EXTNS );
-
-   $conf->{prefix   }  = $args->{prefix  } || (split m{ _ }mx, $prog)[0];
-   $attr->{appclass }  = $args->{appclass} || ucfirst $conf->{prefix};
-   $conf->{home     }  = $strap->_get_homedir( $attr->{appclass}, $args );
-
-   # Now we know where the config file should be we can try parsing it
-   my $file  = $class->app_prefix( $attr->{appclass} );
-   my $path  = $class->catfile   ( $conf->{home    }, $file.q(.xml) );
-   my $cfg   = {};
-
-   if (-f $path) {
-      try { $cfg = XML::Simple->new( SuppressEmpty => TRUE )->xml_in( $path ) }
-      catch ($e) { $class->throw( $e ) }
-   }
-
-   $conf->{appldir  } = $cfg->{appldir};
-   $conf->{binsdir  } = $cfg->{binsdir};
-   $conf->{phase    } = $cfg->{phase  };
-
-   my $inflator = Class::Usul::InflateSymbols->new( $strap );
-
-   $conf->{appldir  } = $inflator->appldir;
-   $conf->{binsdir  } = $inflator->binsdir;
-   $conf->{phase    } = $inflator->phase;
-
-   my $dir = '__appldir('.$class->catdir( qw(var etc) ).')__';
-
-   $conf->{ctrldir  } = $strap->_inflate( $cfg->{ctrldir}  || $dir );
-   $dir               = '__appldir('.$class->catdir( qw(var db) ).')__';
-   $conf->{dbasedir } = $strap->_inflate( $cfg->{dbasedir} || $dir );
-   $conf->{encoding } = $cfg->{encoding};
-   $conf->{lock     } = $cfg->{lock};
-   $dir               = '__appldir('.$class->catdir( qw(var logs) ).')__';
-   $conf->{logsdir  } = $strap->_inflate( $cfg->{logsdir}  || $dir );
-   $dir               = '__appldir('.$class->catdir( qw(var root) ).')__';
-   $conf->{root     } = $strap->_inflate( $cfg->{root}     || $dir );
-   $dir               = '__appldir('.$class->catdir( qw(var run) ).')__';
-   $conf->{rundir   } = $strap->_inflate( $cfg->{rundir}   || $dir );
-   $conf->{secret   } = $cfg->{secret};
-   $path              = '__binsdir('.$conf->{prefix}.'_admin)__';
-   $conf->{suid     } = $strap->_inflate( $cfg->{suid}     || $path );
-   $dir               = '__appldir('.$class->catdir( q(var tmp) ).')__';
-   $dir               = $strap->_inflate( $cfg->{tempdir}  || $dir );
-   $dir               = -d $dir ? $dir : File::Spec->tmpdir;
-   $conf->{tempdir  } = $class->untaint_path( $dir );
-   $dir               = '__appldir(var)__';
-   $conf->{vardir   } = $strap->_inflate( $cfg->{vardir}   || $dir );
-
-   $conf->{logsdir  } = $conf->{tempdir} unless (-d $conf->{logsdir});
-
-   # TODO: Move this
-   $path = $class->catfile( $conf->{ctrldir}, q(aliases) );
-   $conf->{aliases_path } = $strap->_inflate( $cfg->{aliases_path } || $path );
-   $path = $class->catfile( $conf->{ctrldir}, q(user_profiles.xml) );
-   $conf->{profiles_path} = $strap->_inflate( $cfg->{profiles_path} || $path );
-
-   $attr->{hostname } = hostname;
-   $attr->{language } = NUL;
-   $attr->{messages } = {};
-   $attr->{method   } = NUL;
-   $attr->{parms    } = {};
-   $attr->{vars     } = {};
-   $attr->{version  } = $VERSION;
-
-   $attr->{doc_title} = $cfg->{doc_title}          || NUL;
-   $attr->{log_level} = $cfg->{log_level}          || 6;
-   $attr->{logname  } = $ENV{USER}                 || $ENV{LOGNAME};
-   $attr->{mode     } = oct ($cfg->{mode}          || q(027) );
-   $attr->{name     } = (split m{ _ }mx, $prog)[1] || $prog;
-   $attr->{no_thrash} = $cfg->{no_thrash}          || 3;
-   $attr->{owner    } = $conf->{prefix}            || q(root);
-   $attr->{pwidth   } = $cfg->{pwidth}             || 60;
-   $attr->{shell    } = $cfg->{shell}              || q(/bin/ksh);
-
-   $path              = $class->catfile( $conf->{ctrldir},
-                                         $attr->{name}.q(.xml) );
-   $attr->{ctlfile  } = $class->untaint_path( $path );
-   $path              = $class->catfile( $conf->{logsdir},
-                                         $attr->{name}.q(.log) );
-   $attr->{logfile  } = $class->untaint_path( $path );
-   $attr->{os       } = $class->_load_os_depends( $conf->{ctrldir} );
-   $attr->{pathname } = $class->catfile( $conf->{binsdir}, $attr->{script} );
-
-   $class->mk_accessors( keys %{ $attr } );
-
-   $strap->debug( $cfg->{debug} || 0 );
-   $strap->log  ( $strap->_new_log_object( $attr ) );
-
-   return $strap;
-}
-
 sub _get_control_chars {
    my ($self, $handle) = @_; my %cntl = GetControlChars $handle;
 
@@ -489,9 +417,10 @@ sub _get_control_chars {
 }
 
 sub _get_homedir {
-   my ($self, $class, $args) = @_;
+   my ($self, $attr) = @_;
 
-   my $path = $ENV{ $args->{evar} || $self->env_prefix( $class ).q(_HOME) };
+   my $class = $attr->{appclass};
+   my $path  = $ENV{ $attr->{evar} || $self->env_prefix( $class ).q(_HOME) };
 
    $path and -d $path and return $path;
 
@@ -499,15 +428,15 @@ sub _get_homedir {
 
    $path = $self->catfile( NUL, qw(etc default), $app_prefix );
 
-   my $well_known = $args->{install} || $path; $path = undef;
+   my $well_known = $attr->{install} || $path; $path = undef;
 
    -f $well_known and $path = first { length }
                               grep  { not m{ \A \# }mx }
                               $self->io( $well_known )->chomp->getlines;
    $path and -d $path and return $path;
-   $path = $self->catdir( $PREFIX, $self->class2appdir( $class ) );
+   $path = $self->catdir( @{ $PREFIX }, $self->class2appdir( $class ) );
 
-   my $prefix   = $args->{prefix} || $path;
+   my $prefix   = $attr->{prefix} || $path;
    my $dir_path = $self->catdir( split m{ :: }mx, $class );
 
    $path = $self->catdir( $prefix, qw(default lib), $dir_path );
@@ -522,25 +451,56 @@ sub _get_homedir {
 }
 
 sub _inflate {
-   my ($self, $v) = @_; defined $v or return;
+   my ($class, $attr, $defaults, $cfg, $key) = @_;
+
+   my $v = $cfg->{ $key } || $defaults->{ $key }; defined $v or return;
 
 TRY: {
-   if ($v =~ m{ __binsdir\((.*)\)__  }mx) {
-      $v = $self->catdir( $self->{config}->{binsdir}, $1 ); last TRY;
+   if ($v =~ m{ __APPLDIR__ }mx) {
+      $v = $class->dirname( $Config{sitelibexp} );
+
+      if ($attr->{home} =~ m{ \A $v }mx) {
+         $v = $class->class2appdir( $attr->{name} );
+         $v = $class->catdir( NUL, qw(var www), $v, q(default) );
+      }
+      else { $v = $class->home2appl( $attr->{home} ) }
+
+      last TRY;
    }
 
-   if ($v =~ m{ __appldir\((.*)\)__ }mx) {
-      $v = $self->catdir( $self->{config}->{appldir}, $1 ); last TRY;
+   if ($v =~ m{ __appldir\( (.*) \)__ }mx) {
+      $v = $class->catdir( $attr->{config}->{appldir}, $1 ); last TRY;
    }
 
-   if ($v =~ m{ __path_to\((.*)\)__  }mx) {
-      $v = $self->catdir( $self->{config}->{home}, $1 );
+   if ($v =~ m{ __BINSDIR__ }mx) {
+      $v = $class->dirname( $Config{sitelibexp} );
+
+      if ($attr->{home} =~ m{ \A $v }mx) { $v = $Config{scriptdir} }
+      else { $v = $class->catdir( $attr->{config}->{appldir}, q(bin) ) }
+
+      last TRY;
+   }
+
+   if ($v =~ m{ __binsdir\( (.*) \)__ }mx) {
+      $v = $class->catdir( $attr->{config}->{binsdir}, $1 ); last TRY;
+   }
+
+   if ($v =~ m{ __PHASE__ }mx) {
+      ($v) = $attr->{config}->{appldir} =~ m{ \A v \d+ \. \d+ p (\d+) \z }msx;
+
+      return defined $v ? $v : PHASE;
+   }
+
+   if ($v =~ m{ __path_to\( (.*) \)__ }mx) {
+      $v = $class->catdir( $attr->{home}, $1 ); last TRY;
+   }
+
+   if ($v =~ m{ __vardir\( (.*) \)__ }mx) {
+      $v = $class->catdir( $attr->{config}->{vardir}, $1 ); last TRY;
    }
    } # TRY
 
-   -e $v and $v = abs_path( $v );
-
-   return $v;
+   return abs_path( $class->untaint_path( $v ) );
 }
 
 sub _load_args_ref {
@@ -553,6 +513,74 @@ sub _load_args_ref {
       }
       else { $args->{ $k } = $v }
    }
+
+   return;
+}
+
+sub _load_config {
+   my ($class, $attr) = @_; my $ac = $attr->{config}; my $cfg = {};
+
+   # Now we know where the config file should be we can try parsing it
+   my $file = $class->app_prefix( $attr->{appclass} );
+   my $path = $class->catfile   ( $attr->{home    }, $file.q(.xml) );
+
+   if (-f $path) {
+      try { $cfg = XML::Simple->new( SuppressEmpty => TRUE )->xml_in( $path ) }
+      catch ($e) { $class->throw( $e ) }
+   }
+
+   my @paths = ( qw(debug encoding lock_attributes no_thrash pwidth
+                    owner secret) );
+
+   $ac->{ $_ } = $cfg->{ $_ } for (@paths);
+
+   my $defaults = {
+      ctrldir  => '__vardir(etc)__',
+      dbasedir => '__vardir(db)__',
+      logsdir  => '__vardir(logs)__',
+      root     => '__vardir(root)__',
+      rundir   => '__vardir(run)__',
+      shell    => $class->catfile( NUL, qw(bin ksh) ),
+      suid     => '__binsdir('.$attr->{prefix}.'_admin)__',
+      tempdir  => '__vardir(tmp)__',
+      vardir   => '__appldir(var)__',
+   };
+
+   @paths = ( qw(appldir binsdir phase vardir ctrldir dbasedir
+                 logsdir root rundir shell suid tempdir) );
+
+   $ac->{ $_ } = $class->_inflate( $attr, $defaults, $cfg, $_ ) for (@paths);
+
+   -d $ac->{tempdir}
+      or $ac->{tempdir} = $class->untaint_path( File::Spec->tmpdir );
+   -d $ac->{logsdir}
+      or $ac->{logsdir} = $ac->{tempdir};
+
+   $defaults = {
+      ctlfile  => $class->catfile( $ac->{ctrldir}, $attr->{name}.q(.xml) ),
+      logfile  => $class->catfile( $ac->{logsdir}, $attr->{name}.q(.log) ),
+      pathname => $class->catfile( $ac->{binsdir}, $attr->{script} ),
+   };
+
+   @paths = ( qw(ctlfile logfile pathname) );
+
+   $ac->{ $_ } = $class->_inflate( $attr, $defaults, $cfg, $_ ) for (@paths);
+
+   $ac->{hostname      }   = Sys::Hostname::hostname();
+   $ac->{log_attributes} ||= { log_file => $ac->{logfile}, log_level => 6 };
+   $ac->{no_thrash     } ||= 3;
+   $ac->{owner         } ||= $attr->{prefix} || q(root);
+   $ac->{pwidth        } ||= 60;
+
+   # TODO: Move this
+   my $key; $defaults = {};
+
+   $defaults->{ $key = q(aliases_path) }
+      = $class->catfile( $ac->{ctrldir}, q(aliases) );
+   $ac->{ $key } = $class->_inflate( $attr, $defaults, $cfg, $key );
+   $defaults->{ $key = q(profiles_path) }
+      = $class->catfile( $ac->{ctrldir}, q(user_profiles.xml) );
+   $ac->{ $key } = $class->_inflate( $attr, $defaults, $cfg, $key );
 
    return;
 }
@@ -627,22 +655,6 @@ sub _map_prompt_args {
    return $args;
 }
 
-sub _new_log_object {
-   my ($self, $attr) = @_; $attr ||= {};
-
-   $attr->{logfile} or return Class::Null->new;
-
-   my $dir = $self->dirname( $attr->{logfile} );
-
-   -d $dir or return Class::Null->new;
-
-   return Log::Handler->new
-      ( file      => {
-         filename => $attr->{logfile},
-         maxlevel => $self->debug ? 7 : $attr->{log_level} || 6,
-         mode     => q(append), } );
-}
-
 sub _print_fh {
    my ($self, $handle, $text) = @_;
 
@@ -665,8 +677,7 @@ sub _set_attr {
    exists $self->args->{ $opt } or return;
 
    if ($self->arglist =~ m{ $opt =s }mx) {
-      $v = $self->args->{ $opt }
-         and $self->$attr( $self->untaint_path( $v ) );
+      $v = $self->args->{ $opt } and $self->$attr( $self->untaint_path( $v ) );
    }
    else { $self->$attr( TRUE ) }
 
@@ -679,26 +690,9 @@ sub __dont_ask {
    return exists $_[0]->{n} or exists $_[0]->{h} or exists $_[0]->{H};
 }
 
-# Response classes
-
-package # Hide from indexer
-   Class::Usul::Programs::Meta;
-
-use parent qw(Class::Usul::Base);
-
-use YAML::Syck;
-
-__PACKAGE__->mk_accessors( qw(abstract author license name provides version) );
-
-sub load_file {
-   my ($self, $path) = @_; my $class = ref $self || $self; my $data;
-
-   $path and -f $path and $data = LoadFile( $path );
-
-   return bless $data || {}, $class;
-}
-
 __PACKAGE__->meta->make_immutable;
+
+no Moose;
 
 1;
 
@@ -712,7 +706,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes Class::Usul::Programs version 0.4.$Revision$
+This document describes Class::Usul::Programs version 0.1.$Revision$
 
 =head1 Synopsis
 
@@ -1039,15 +1033,9 @@ Turning debug on produces some more output
 
 =item L<Class::Usul::InflateSymbols>
 
-=item L<Class::Null>
-
 =item L<Getopt::Mixed>
 
 =item L<IO::Interactive>
-
-=item L<IPC::SRLock>
-
-=item L<Log::Handler>
 
 =item L<Term::ReadKey>
 
