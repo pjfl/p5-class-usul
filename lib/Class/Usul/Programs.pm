@@ -24,13 +24,6 @@ use IO::Interactive qw(is_interactive);
 use List::Util      qw(first);
 use Sys::Hostname     ();
 
-my @EXTNS  = qw(.pl .pm .t);
-my $NO     = q(n);
-my $PREFIX = [ NUL, q(opt) ];
-my $QUIT   = q(q);
-my $WIDTH  = 80;
-my $YES    = q(y);
-
 extends qw(Class::Usul);
 with    qw(Class::Usul::IPC);
 
@@ -58,7 +51,7 @@ around BUILDARGS => sub {
 
    $attr->{script} = $class->basename( $attr->{script} || $PROGRAM_NAME );
 
-   my $prog = $class->basename( lc $attr->{script}, @EXTNS );
+   my $prog = $class->basename( lc $attr->{script}, EXTNS );
 
    $attr->{prefix  } ||= $class->split_on__( $prog, 0 );
    $attr->{name    } ||= $class->split_on__( $prog, 1 ) || $prog;
@@ -109,7 +102,7 @@ sub add_leader {
               ? NUL : (ucfirst $self->name).BRK;
 
    if ($args->{fill}) {
-      my $width = $args->{width} || $WIDTH;
+      my $width = $args->{width} || WIDTH;
 
       $text = autoformat $text, { right => $width - 1 - length $leader };
    }
@@ -204,7 +197,7 @@ sub get_line {
    $question ||= 'Enter your answer';
    $default    = defined $default ? $default : NUL;
 
-   my $advice       = $quit ? "($QUIT to quit) " : NUL;
+   my $advice       = $quit ? '('.QUIT.' to quit) ' : NUL;
    my $right_prompt = $advice.(defined $default ? q([).$default.q(]) : NUL);
    my $left_prompt;
 
@@ -222,7 +215,7 @@ sub get_line {
               ? $self->prompt( -d => $default, -p => $prompt, -e => q(*) )
               : $self->prompt( -d => $default, -p => $prompt );
 
-   $quit and defined $result and lc $result eq $QUIT and exit 1;
+   $quit and defined $result and lc $result eq QUIT and exit 1;
 
    return NUL.$result;
 }
@@ -378,11 +371,13 @@ sub warning {
 
 sub yorn {
    # General yes or no input routine
-   my ($self, $question, $default, $quit, $width, $newline) = @_; my $result;
+   my ($self, $question, $default, $quit, $width, $newline) = @_;
 
-   $default = $default ? $YES : $NO; $quit = $quit ? $QUIT : NUL;
+   my $no = NO; my $yes = YES; my $result;
 
-   my $advice       = $quit ? "($YES/$NO, $quit) " : "($YES/$NO) ";
+   $default = $default ? $yes : $no; $quit = $quit ? QUIT : NUL;
+
+   my $advice       = $quit ? "($yes/$no, $quit) " : "($yes/$no) ";
    my $right_prompt = $advice.q([).$default.q(]);
    my $left_prompt  = $question;
 
@@ -401,8 +396,8 @@ sub yorn {
    while ($result = $self->prompt( -d => $default, -p => $prompt )) {
       exit   1     unless (defined $result);
       exit   1     if     ($quit and $result =~ m{ \A (?: $quit | [\e] ) }imx);
-      return TRUE  if     ($result =~ m{ \A $YES }imx);
-      return FALSE if     ($result =~ m{ \A $NO  }imx);
+      return TRUE  if     ($result =~ m{ \A $yes }imx);
+      return FALSE if     ($result =~ m{ \A $no  }imx);
    }
 
    return;
@@ -434,7 +429,7 @@ sub _get_homedir {
                               grep  { not m{ \A \# }mx }
                               $self->io( $well_known )->chomp->getlines;
    $path and -d $path and return $path;
-   $path = $self->catdir( @{ $PREFIX }, $self->class2appdir( $class ) );
+   $path = $self->catdir( @{ PREFIX }, $self->class2appdir( $class ) );
 
    my $prefix   = $attr->{prefix} || $path;
    my $dir_path = $self->catdir( split m{ :: }mx, $class );
