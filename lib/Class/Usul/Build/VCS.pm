@@ -16,9 +16,7 @@ has 'type' => is => 'rw', isa => 'Str';
 has 'vcs'  => is => 'rw', isa => 'Object';
 
 sub BUILDARGS {
-   my ($orig, $class, $project_dir) = @_;
-
-   my $attrs = {};
+   my ($orig, $class, $project_dir) = @_; my $attrs = {};
 
    if (-d $class->catfile( $project_dir, q(.git) )) {
       can_run( q(git) ) or return; # Be nice to CPAN testing
@@ -40,7 +38,7 @@ sub BUILDARGS {
       return $attrs;
    }
 
-   return {};
+   return $attrs;
 }
 
 sub commit {

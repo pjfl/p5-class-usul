@@ -8,17 +8,17 @@ use version; our $VERSION = qv( sprintf '0.4.%d', q$Rev$ =~ /\d+/gmx );
 
 use Moose;
 
-has 'align'    => is => 'rw', isa => 'HashRef',   default => sub { {} };
+has 'align'    => is => 'rw', isa => 'HashRef',  default => sub { {} };
 has 'class'    => is => 'rw', isa => 'Maybe[Str]';
-has 'count'    => is => 'rw', isa => 'Int',       default => 0;
-has 'flds'     => is => 'rw', isa => 'ArrayRef',  default => sub { [] };
-has 'hclass'   => is => 'rw', isa => 'HashRef',   default => sub { {} };
-has 'labels'   => is => 'rw', isa => 'HashRef',   default => sub { {} };
-has 'sizes'    => is => 'rw', isa => 'HashRef',   default => sub { {} };
-has 'typelist' => is => 'rw', isa => 'HashRef',   default => sub { {} };
-has 'values'   => is => 'rw', isa => 'ArrayRef',  default => sub { [] };
-has 'widths'   => is => 'rw', isa => 'HashRef',   default => sub { {} };
-has 'wrap'     => is => 'rw', isa => 'HashRef',   default => sub { {} };
+has 'count'    => is => 'rw', isa => 'Int',      default => 0;
+has 'flds'     => is => 'rw', isa => 'ArrayRef', default => sub { [] };
+has 'hclass'   => is => 'rw', isa => 'HashRef',  default => sub { {} };
+has 'labels'   => is => 'rw', isa => 'HashRef',  default => sub { {} };
+has 'sizes'    => is => 'rw', isa => 'HashRef',  default => sub { {} };
+has 'typelist' => is => 'rw', isa => 'HashRef',  default => sub { {} };
+has 'values'   => is => 'rw', isa => 'ArrayRef', default => sub { [] };
+has 'widths'   => is => 'rw', isa => 'HashRef',  default => sub { {} };
+has 'wrap'     => is => 'rw', isa => 'HashRef',  default => sub { {} };
 
 __PACKAGE__->meta->make_immutable;
 
