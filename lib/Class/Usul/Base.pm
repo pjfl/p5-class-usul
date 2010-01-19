@@ -65,7 +65,7 @@ sub create_token {
 
    unless ($digest_name = __PACKAGE__->get_inherited( q(digest) )) {
       for $candidate (qw(SHA-256 SHA-1 MD5)) {
-         last if ($digest = eval { Digest->new( $candidate ) });
+         $digest = eval { Digest->new( $candidate ) } and last;
       }
 
       $digest or $self->throw( 'No digest algorithm' );
