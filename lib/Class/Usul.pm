@@ -14,18 +14,24 @@ use IPC::SRLock;
 use Log::Handler;
 use Module::Pluggable::Object;
 use Moose;
+use Moose::Util::TypeConstraints;
 use MooseX::ClassAttribute;
 
-with qw(Class::Usul::Base Class::Usul::Encoding File::DataClass::Util);
+with qw(File::DataClass::Constraints);
+
+subtype 'C_U_Log' => as 'Object' =>
+   where   { $_->isa( q(Class::Null) )
+                or ($_->can( q(warn) ) and $_->can( q(error) ) ) } =>
+   message { 'Object '.(blessed $_ || $_).' is missing warn or error methods'};
 
 class_has 'Exception_Class' => is => 'rw', isa => 'F_DC_Exception',
    default                  => q(File::DataClass::Exception);
 class_has 'Lock'            => is => 'rw', isa => 'Maybe[F_DC_Lock]';
-class_has 'Log'             => is => 'rw', isa => 'Maybe[F_DC_Log]';
+class_has 'Log'             => is => 'rw', isa => 'Maybe[C_U_Log]';
 
 has 'debug'           => is => 'rw', isa => 'Bool',
    default            => FALSE;
-has 'encoding'        => is => 'rw', isa => 'C_U_Encoding',
+has 'encoding'        => is => 'rw', isa => 'C_U_Encoding', lazy => TRUE,
    default            => q(UTF-8);
 has 'lock'            => is => 'ro', isa => 'F_DC_Lock',
    lazy_build         => TRUE;
@@ -45,28 +51,22 @@ has 'tempdir'         => is => 'ro', isa => 'F_DC_Directory',
    default            => sub { __PACKAGE__->io( File::Spec->tmpdir ) },
    coerce             => TRUE;
 
+with qw(Class::Usul::Base Class::Usul::Encoding);
+
 __PACKAGE__->mk_log_methods();
 
 around BUILDARGS => sub {
-   my ($orig, $class, $attrs, $app, @rest) = @_;
+   my ($orig, $class, $config, @args) = @_;
 
-   $attrs or return {};
-   ref $attrs ne HASH and return $class->$orig( $attrs, $app, @rest );
-   ($app and blessed $app) or return $attrs;
+   my $attr = $class->$orig( @args );
 
-   my $ac = $app->config || {};
+   return $attr unless ($config and keys %{ $config });
 
-   $attrs->{debug          } ||= $app->debug;
-   $attrs->{log            } ||= $app->log;
-   $attrs->{encoding       } ||= $ac->{encoding       };
-   $attrs->{lock_attributes} ||= $ac->{lock_attributes};
-   $attrs->{log_attributes } ||= $ac->{log_attributes };
-   $attrs->{prefix         } ||= $ac->{prefix         };
-   $attrs->{secret         } ||= $ac->{secret         };
-   $attrs->{suid           } ||= $ac->{suid           };
-   $attrs->{tempdir        } ||= $ac->{tempdir        };
+   for (grep { defined $config->{ $_ } } $class->meta->get_attribute_list) {
+      $attr->{ $_ } ||= $config->{ $_ };
+   }
 
-   return $attrs;
+   return $attr;
 };
 
 sub build_subcomponents {
@@ -167,6 +167,7 @@ sub _build_secret {
 __PACKAGE__->meta->make_immutable;
 
 no MooseX::ClassAttribute;
+no Moose::Util::TypeConstraints;
 no Moose;
 
 1;
@@ -257,7 +258,7 @@ The constructor applies these roles:
 
 =item L<Class::Usul::Encoding>
 
-=item L<File::DataClass::Util>
+=item L<File::DataClass::Constraints>
 
 =back
 

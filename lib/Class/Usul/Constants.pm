@@ -10,7 +10,7 @@ my @constants;
 
 BEGIN {
    @constants = ( qw(ARRAY BRK CODE EXTNS FAILED FALSE HASH LANG
-                     LOCALIZE LSB NO NUL OK PHASE PREFIX QUIT RSB SEP
+                     LOCALIZE LSB NO NUL OK PERMS PHASE PREFIX QUIT RSB SEP
                      SPC TRUE UNTAINT_PATH_REGEX WIDTH YES) );
 }
 
@@ -31,6 +31,7 @@ sub LSB      () { return q([)                }
 sub NO       () { return q(n)                }
 sub NUL      () { return q()                 }
 sub OK       () { return 0                   }
+sub PERMS    () { return oct q(0660)         }
 sub PHASE    () { return 2                   }
 sub PREFIX   () { return [ NUL, q(opt) ]     }
 sub QUIT     () { return q(q)                }
@@ -123,6 +124,10 @@ Empty string
 =head2 OK
 
 Returns good program exit code, zero
+
+=head2 PERMS
+
+Default file creation permissions
 
 =head2 PHASE
 

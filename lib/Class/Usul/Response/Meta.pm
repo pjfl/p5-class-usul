@@ -12,17 +12,17 @@ use YAML::Syck;
 has 'abstract' => is => 'ro', isa => 'Maybe[Str]';
 has 'author'   => is => 'ro', isa => 'Maybe[ArrayRef]';
 has 'license'  => is => 'ro', isa => 'Maybe[Str]';
-has 'name '    => is => 'ro', isa => 'Maybe[Str]';
+has 'name'     => is => 'ro', isa => 'Maybe[Str]';
 has 'provides' => is => 'ro', isa => 'Maybe[HashRef]';
 has 'version'  => is => 'ro', isa => 'Maybe[Str]';
 
-sub BUILDARGS {
+around BUILDARGS => sub {
    my ($orig, $class, $path) = @_;
 
    $path and -f $path and return LoadFile( $path );
 
    return {};
-}
+};
 
 __PACKAGE__->meta->make_immutable;
 

@@ -509,8 +509,6 @@ sub __read_all_from {
    my $fh = shift; local $RS = undef; return <$fh>;
 }
 
-__PACKAGE__->meta->make_immutable;
-
 no Moose::Role;
 
 1;

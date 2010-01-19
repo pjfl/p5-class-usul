@@ -6,12 +6,12 @@ use strict;
 use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
+use Class::Usul::Constants;
 use Class::Usul::Time;
 use Class::MOP;
 use Class::Null;
 use Digest qw();
 use English qw(-no_match_vars);
-use File::DataClass::Constants;
 use File::DataClass::IO ();
 use File::Spec;
 use List::Util qw(first);
@@ -288,8 +288,6 @@ sub untaint_string {
 sub uuid {
    return shift->io( q(/proc/sys/kernel/random/uuid) )->lock->chomp->getline;
 }
-
-__PACKAGE__->meta->make_immutable;
 
 no Moose::Role;
 

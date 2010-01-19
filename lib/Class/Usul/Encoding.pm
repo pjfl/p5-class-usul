@@ -12,9 +12,11 @@ use Encode::Guess;
 use Moose::Role;
 use Moose::Util::TypeConstraints;
 
+our ($ENCODINGS, $LEVELS);
+
 BEGIN {
-   our $ENCODINGS = [ qw(ascii iso-8859-1 UTF-8 guess) ];
-   our $LEVELS    = [ qw(alert debug error fatal info warn) ];
+   $ENCODINGS = [ qw(ascii iso-8859-1 UTF-8 guess) ];
+   $LEVELS    = [ qw(alert debug error fatal info warn) ];
 }
 
 enum 'C_U_Encoding' => @{ $ENCODINGS };
@@ -109,8 +111,6 @@ sub _guess_encoding {
 sub _method_name {
    (my $enc = lc shift) =~ s{ [-] }{_}gmx; return q(_).$enc.q(_encoding)
 }
-
-__PACKAGE__->meta->make_immutable;
 
 no Moose::Util::TypeConstraints;
 no Moose::Role;
