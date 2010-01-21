@@ -30,7 +30,6 @@ extends qw(Class::Usul);
 has 'appclass' => is => 'ro', isa => 'Str',            required => TRUE;
 has 'arglist'  => is => 'ro', isa => 'Str',            default  => NUL;
 has 'args'     => is => 'ro', isa => 'HashRef',        default  => sub { {} };
-has 'config'   => is => 'ro', isa => 'HashRef',        default  => sub { {} };
 has 'home'     => is => 'ro', isa => 'F_DC_Directory', coerce   => TRUE;
 has 'language' => is => 'ro', isa => 'Str',            default  => NUL;
 has 'logname'  => is => 'ro', isa => 'Str',
@@ -49,7 +48,7 @@ with qw(Class::Usul::IPC);
 around BUILDARGS => sub {
    my ($orig, $class, @args) = @_;
 
-   my $attr = $class->$orig( {}, @args );
+   my $attr = $class->arg_list( @args );
 
    $attr->{script  } ||= $class->basename( $attr->{script} || $PROGRAM_NAME );
 
@@ -65,7 +64,7 @@ around BUILDARGS => sub {
 
    exists $attr->{n} and $attr->{args}->{n} = TRUE;
 
-   return $class->$orig( $attr->{config}, $attr );
+   return $class->$orig( $attr );
 };
 
 sub BUILD {
@@ -511,7 +510,7 @@ sub _inflate_config {
       appldir => '__APPLDIR__', binsdir => '__BINSDIR__', phase => PHASE,
    };
 
-   my @keys = ( qw(appldir binsdir phase) );
+   my @keys = ( keys %{ $defaults } );
 
    $conf->{ $_ } = $class->_inflate( $args, $defaults, $conf, $_ ) for (@keys);
 
@@ -554,8 +553,6 @@ sub _inflate_config {
    $conf->{ $_ } = $class->_inflate( $args, $defaults, $conf, $_ ) for (@keys);
 
    $conf->{hostname      }   = Sys::Hostname::hostname();
-   $conf->{log_attributes} ||= { log_file  => $conf->{logfile},
-                                 log_level => 6 };
    $conf->{no_thrash     } ||= 3;
    $conf->{owner         } ||= $args->{prefix} || q(root);
    $conf->{pwidth        } ||= 60;

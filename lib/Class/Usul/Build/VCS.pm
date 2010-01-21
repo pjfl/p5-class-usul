@@ -19,7 +19,7 @@ sub BUILDARGS {
    my ($orig, $class, $project_dir) = @_; my $attrs = {};
 
    if (-d $class->catfile( $project_dir, q(.git) )) {
-      can_run( q(git) ) or return; # Be nice to CPAN testing
+      can_run( q(git) ) or return $attrs; # Be nice to CPAN testing
 
       require Git::Class::Worktree;
 
@@ -29,7 +29,7 @@ sub BUILDARGS {
    }
 
    if (-d $class->catfile( $project_dir, q(.svn) )) {
-      can_run( q(svn) ) or return; # Be nice to CPAN testing
+      can_run( q(svn) ) or return $attrs; # Be nice to CPAN testing
 
       require SVN::Class;
 
@@ -51,10 +51,12 @@ sub commit {
 }
 
 sub error {
+   # TODO: Git implementation
    my $self = shift; return $self->vcs->error;
 }
 
 sub repository {
+   # TODO: Git implementation
    my $self = shift; my $info = $self->vcs->info or return; return $info->root;
 }
 

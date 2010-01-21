@@ -14,38 +14,36 @@ use IPC::SRLock;
 use Log::Handler;
 use Module::Pluggable::Object;
 use Moose;
-use Moose::Util::TypeConstraints;
 use MooseX::ClassAttribute;
+use Scalar::Util qw(blessed);
 
-with qw(File::DataClass::Constraints);
+with qw(Class::Usul::Constraints File::DataClass::Constraints);
 
-subtype 'C_U_Log' => as 'Object' =>
-   where   { $_->isa( q(Class::Null) )
-                or ($_->can( q(warn) ) and $_->can( q(error) ) ) } =>
-   message { 'Object '.(blessed $_ || $_).' is missing warn or error methods'};
-
+class_has 'Digest'          => is => 'rw', isa => 'Str', default => NUL;
 class_has 'Exception_Class' => is => 'rw', isa => 'F_DC_Exception',
    default                  => q(File::DataClass::Exception);
-class_has 'Lock'            => is => 'rw', isa => 'Maybe[F_DC_Lock]';
-class_has 'Log'             => is => 'rw', isa => 'Maybe[C_U_Log]';
+class_has 'Lock'            => is => 'rw', isa => 'F_DC_Lock';
+class_has 'Log'             => is => 'rw', isa => 'C_U_Log';
 
+has 'config'          => is => 'ro', isa => 'HashRef',
+   default            => sub { {} };
 has 'debug'           => is => 'rw', isa => 'Bool',
    default            => FALSE;
-has 'encoding'        => is => 'rw', isa => 'C_U_Encoding', lazy => TRUE,
+has 'encoding'        => is => 'rw', isa => 'C_U_Encoding',
    default            => q(UTF-8);
 has 'lock'            => is => 'ro', isa => 'F_DC_Lock',
    lazy_build         => TRUE;
 has 'lock_attributes' => is => 'ro', isa => 'HashRef',
-   default            => sub { return {} };
+   default            => sub { {} };
 has 'log'             => is => 'ro', isa => 'C_U_Log',
    lazy_build         => TRUE;
 has 'log_attributes'  => is => 'ro', isa => 'HashRef',
-   default            => sub { return { log_level => 6 } };
+   default            => sub { { log_level => 6 } };
 has 'prefix '         => is => 'ro', isa => 'Str',
    lazy_build         => TRUE;
 has 'secret'          => is => 'ro', isa => 'Str',
    lazy_build         => TRUE;
-has 'suid'            => is => 'ro', isa => 'Maybe[F_DC_File]',
+has 'suid'            => is => 'ro', isa => 'F_DC_Path',
    coerce             => TRUE;
 has 'tempdir'         => is => 'ro', isa => 'F_DC_Directory',
    default            => sub { __PACKAGE__->io( File::Spec->tmpdir ) },
@@ -56,13 +54,10 @@ with qw(Class::Usul::Base Class::Usul::Encoding);
 __PACKAGE__->mk_log_methods();
 
 around BUILDARGS => sub {
-   my ($orig, $class, $config, @args) = @_;
+   my ($orig, $class, $attr) = @_; my $config = $attr->{config} ||= {};
 
-   my $attr = $class->$orig( @args );
-
-   return $attr unless ($config and keys %{ $config });
-
-   for (grep { defined $config->{ $_ } } $class->meta->get_attribute_list) {
+   for (grep { defined $config->{ $_ } }
+        __PACKAGE__->meta->get_attribute_list) {
       $attr->{ $_ } ||= $config->{ $_ };
    }
 
@@ -139,17 +134,15 @@ sub _build_log {
 
    $self->Log and return $self->Log;
 
-   my $attrs = $self->log_attributes;
+   my $attrs   = $self->log_attributes;
+   my $logfile = $attrs->{logfile} || $self->config->{logfile} || NUL;
+   my $dir     = $self->dirname( $logfile );
 
-   $attrs->{log_file} or return Class::Null->new;
-
-   my $dir = $self->dirname( $attrs->{log_file} || NUL );
-
-   -d $dir or return Class::Null->new;
+   ($logfile and -d $dir) or return Class::Null->new;
 
    return $self->Log( Log::Handler->new
                       ( file      => {
-                         filename => $attrs->{log_file},
+                         filename => $logfile,
                          maxlevel => $self->debug ? 7 : $attrs->{log_level},
                          mode     => q(append), } ) );
 }
@@ -167,7 +160,6 @@ sub _build_secret {
 __PACKAGE__->meta->make_immutable;
 
 no MooseX::ClassAttribute;
-no Moose::Util::TypeConstraints;
 no Moose;
 
 1;

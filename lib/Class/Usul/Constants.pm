@@ -9,42 +9,43 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 my @constants;
 
 BEGIN {
-   @constants = ( qw(ARRAY BRK CODE EXTNS FAILED FALSE HASH LANG
-                     LOCALIZE LSB NO NUL OK PERMS PHASE PREFIX QUIT RSB SEP
-                     SPC TRUE UNTAINT_PATH_REGEX WIDTH YES) );
+   @constants = ( qw(ARRAY BRK CODE ENCODINGS EXTNS FAILED FALSE HASH
+                     LANG LOCALIZE LOG_LEVELS LSB NO NUL OK PERMS
+                     PHASE PREFIX QUIT RSB SEP SPC TRUE
+                     UNTAINT_PATH_REGEX WIDTH YES) );
 }
 
 use Sub::Exporter -setup => {
    exports => [ @constants ], groups => { default => [ @constants ], },
 };
 
-sub ARRAY    () { return q(ARRAY)            }
-sub BRK      () { return q(: )               }
-sub CODE     () { return q(CODE)             }
-sub EXTNS    () { return  ( qw(.pl .pm .t) ) }
-sub FAILED   () { return 1                   }
-sub FALSE    () { return 0                   }
-sub HASH     () { return q(HASH)             }
-sub LANG     () { return q(en)               }
-sub LOCALIZE () { return q([_)               }
-sub LSB      () { return q([)                }
-sub NO       () { return q(n)                }
-sub NUL      () { return q()                 }
-sub OK       () { return 0                   }
-sub PERMS    () { return oct q(0660)         }
-sub PHASE    () { return 2                   }
-sub PREFIX   () { return [ NUL, q(opt) ]     }
-sub QUIT     () { return q(q)                }
-sub RSB      () { return q(])                }
-sub SEP      () { return q(/)                }
-sub SPC      () { return q( )                }
-sub TRUE     () { return 1                   }
-sub WIDTH    () { return 80                  }
-sub YES      () { return q(y)                }
+sub ARRAY      () { q(ARRAY)            }
+sub BRK        () { q(: )               }
+sub CODE       () { q(CODE)             }
+sub ENCODINGS  () { ( qw(ascii iso-8859-1 UTF-8 guess) ) }
+sub EXTNS      () { ( qw(.pl .pm .t) )  }
+sub FAILED     () { 1                   }
+sub FALSE      () { 0                   }
+sub HASH       () { q(HASH)             }
+sub LANG       () { q(en)               }
+sub LOCALIZE   () { q([_)               }
+sub LOG_LEVELS () { ( qw(alert debug error fatal info warn) ) }
+sub LSB        () { q([)                }
+sub NO         () { q(n)                }
+sub NUL        () { q()                 }
+sub OK         () { 0                   }
+sub PERMS      () { oct q(0660)         }
+sub PHASE      () { 2                   }
+sub PREFIX     () { [ NUL, q(opt) ]     }
+sub QUIT       () { q(q)                }
+sub RSB        () { q(])                }
+sub SEP        () { q(/)                }
+sub SPC        () { q( )                }
+sub TRUE       () { 1                   }
+sub WIDTH      () { 80                  }
+sub YES        () { q(y)                }
 
-sub UNTAINT_PATH_REGEX () {
-   return qr{ \A ([[:print:]]+) \z }mx;
-}
+sub UNTAINT_PATH_REGEX () { qr{ \A ([[:print:]]+) \z }mx }
 
 1;
 
@@ -84,6 +85,10 @@ Separate leader (: ) from message
 
 String CODE
 
+=head2 ENCODINGS
+
+List of supported IO encodings
+
 =head2 EXTNS
 
 List of possible file suffixes used on Perl scripts
@@ -108,6 +113,10 @@ Default language code
 
 The character sequence that introduces a localization substitution
 parameter
+
+=head2 LOG_LEVELS
+
+List of methods the log object is expected to support
 
 =head2 LSB
 

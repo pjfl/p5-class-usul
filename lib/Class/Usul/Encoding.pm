@@ -12,15 +12,6 @@ use Encode::Guess;
 use Moose::Role;
 use Moose::Util::TypeConstraints;
 
-our ($ENCODINGS, $LEVELS);
-
-BEGIN {
-   $ENCODINGS = [ qw(ascii iso-8859-1 UTF-8 guess) ];
-   $LEVELS    = [ qw(alert debug error fatal info warn) ];
-}
-
-enum 'C_U_Encoding' => @{ $ENCODINGS };
-
 requires qw(encoding);
 
 sub mk_encoding_methods {
@@ -28,26 +19,24 @@ sub mk_encoding_methods {
 
    no strict q(refs); ## no critic
 
-   for my $enc (grep { not m{ guess }mx } @{ $ENCODINGS }) {
+   for my $enc (grep { not m{ guess }mx } ENCODINGS) {
       my $accessor = __PACKAGE__.q(::)._method_name( $enc );
 
-      unless (defined &{ "$accessor" }) {
-         *{ "$accessor" } = sub {
-            my ($self, $field, $caller, @rest) = @_;
+      defined &{ "$accessor" }
+         or *{ "$accessor" } = sub {
+               my ($self, $field, $caller, @rest) = @_;
 
-            return $self->_decode_data( $enc, $caller->$field( @rest ) );
+               return $self->_decode_data( $enc, $caller->$field( @rest ) );
          };
-      }
    }
 
    for my $field (@fields) {
-      for my $method (map { _method_name( $_ ) } @{ $ENCODINGS }) {
+      for my $method (map { _method_name( $_ ) } ENCODINGS) {
          my $accessor = $class.q(::).$field.$method;
 
-         unless (defined &{ "$accessor" }) {
-            *{ "$accessor" }
-               = sub { return __PACKAGE__->$method( $field, @_ ) };
-         }
+         defined &{ "$accessor" }
+            or *{ "$accessor" }
+                  = sub { return __PACKAGE__->$method( $field, @_ ) };
       }
    }
 
@@ -59,17 +48,16 @@ sub mk_log_methods {
 
    no strict q(refs); ## no critic
 
-   for my $level (@{ $LEVELS }) {
+   for my $level (LOG_LEVELS) {
       my $accessor = $class.q(::log_).$level;
 
-      unless (defined &{ "$accessor" }) {
-         *{ "$accessor" } = sub {
-            my ($self, $text) = @_; $text or return;
-            $self->encoding and $text = encode( $self->encoding, $text );
-            $self->log->$level( $text."\n" );
-            return;
+      defined &{ "$accessor" }
+         or *{ "$accessor" } = sub {
+               my ($self, $text) = @_; $text or return;
+               $self->encoding and $text = encode( $self->encoding, $text );
+               $self->log->$level( $text."\n" );
+               return;
          };
-      }
    }
 
    return;
@@ -103,7 +91,7 @@ sub _guess_encoding {
    defined ($data = $caller->$field( @rest )) or return;
 
    my $all = ref $data eq ARRAY ? join SPC, @{ $data } : $data;
-   my $enc = guess_encoding( $all, grep { not m{ guess }mx } @{ $ENCODINGS } );
+   my $enc = guess_encoding( $all, grep { not m{ guess }mx } ENCODINGS );
 
    return $enc && ref $enc ? $self->_decode_data( $enc->name, $data ) : $data;
 }
@@ -186,16 +174,16 @@ C<my_input_method_guess_encoding> for example
 
 Takes a list of method names in the calling package. For each of these
 a set of new methods are defined in the calling package. The method
-set is defined by the list of values in the C<$ENCODINGS> package
-variable. Each of these newly defined methods calls C<_decode_data>
+set is defined by the list of values in the C<ENCODINGS>
+constant. Each of these newly defined methods calls C<_decode_data>
 with a different encoding name
 
 =head2 mk_log_methods
 
-Creates a set of methods defined by the C<$LEVELS> package
-variable. The method expects C<< $self->log >> and C<< $self->encoding >>
-to be set.  It encodes the output string prior calling the log
-method at the given level
+Creates a set of methods defined by the C<LEVELS> constant. The method
+expects C<< $self->log >> and C<< $self->encoding >> to be set.  It
+encodes the output string prior calling the log method at the given
+level
 
 =head2 _decode_data
 

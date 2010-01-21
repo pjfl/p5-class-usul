@@ -20,7 +20,7 @@ use Path::Class::Dir;
 use Scalar::Util qw(blessed);
 use TryCatch;
 
-requires qw(Exception_Class);
+requires qw(Digest Exception_Class);
 
 sub app_prefix {
    (my $prefix = lc $_[1]) =~ s{ :: }{_}gmx; return $prefix;
@@ -39,7 +39,7 @@ sub basename {
 }
 
 sub catch {
-   my ($self, @rest) = @_; return $self->exception_class->catch( @rest );
+   my ($self, @rest) = @_; return $self->Exception_Class->catch( @rest );
 }
 
 sub catdir {
@@ -63,18 +63,17 @@ sub classfile {
 sub create_token {
    my ($self, $seed) = @_; my ($candidate, $digest, $digest_name);
 
-   unless ($digest_name = __PACKAGE__->get_inherited( q(digest) )) {
+   unless ($digest_name = $self->Digest) {
       for $candidate (qw(SHA-256 SHA-1 MD5)) {
          $digest = eval { Digest->new( $candidate ) } and last;
       }
 
       $digest or $self->throw( 'No digest algorithm' );
-
-      __PACKAGE__->set_inherited( q(digest), $candidate );
+      $self->Digest( $candidate );
    }
    else { $digest = Digest->new( $digest_name ) }
 
-   $digest->add( $seed || join q(), time, rand 10_000, $PID, {} );
+   $digest->add( $seed || join NUL, time, rand 10_000, $PID, {} );
    return $digest->hexdigest;
 }
 
@@ -120,10 +119,6 @@ sub escape_TT {
    return $v;
 }
 
-sub exception_class {
-   my $self = shift; return $self->Exception_Class;
-}
-
 sub find_source {
    my ($self, $class) = @_; my $file = $self->classfile( $class );
 
@@ -146,7 +141,7 @@ sub home2appl {
 sub io {
    my ($self, @rest) = @_; my $io = File::DataClass::IO->new( @rest );
 
-   $io->exception_class( $self->exception_class );
+   $io->exception_class( $self->Exception_Class );
 
    return $io;
 }
@@ -248,13 +243,13 @@ sub tempname {
 }
 
 sub throw {
-   my ($self, @rest) = @_; return $self->exception_class->throw( @rest );
+   my ($self, @rest) = @_; return $self->Exception_Class->throw( @rest );
 }
 
 sub throw_on_error {
    my ($self, @rest) = @_;
 
-   return $self->exception_class->throw_on_error( @rest );
+   return $self->Exception_Class->throw_on_error( @rest );
 }
 
 sub time2str {
@@ -432,11 +427,6 @@ The left square bracket causes problems in some contexts. Substitute a
 less than symbol instead. Also replaces the right square bracket with
 greater than for balance. L<Template::Toolkit> will work with these
 sequences too, so unescaping isn't absolutely necessary
-
-=head2 exception_class
-
-Return the exception class. Used by the action class to process
-exceptions
 
 =head2 find_source
 

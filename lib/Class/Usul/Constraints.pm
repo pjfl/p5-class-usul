@@ -1,30 +1,26 @@
 # @(#)$Id$
 
-package Class::Usul::Response::Meta;
+package Class::Usul::Constraints;
 
 use strict;
 use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use Moose;
-use YAML::Syck;
+use Class::Null;
+use Class::Usul::Constants;
+use Moose::Role;
+use Moose::Util::TypeConstraints;
+use Scalar::Util qw(blessed);
 
-has 'abstract' => is => 'ro', isa => 'Maybe[Str]';
-has 'author'   => is => 'ro', isa => 'Maybe[ArrayRef]';
-has 'license'  => is => 'ro', isa => 'Maybe[Str]';
-has 'name'     => is => 'ro', isa => 'Maybe[Str]';
-has 'provides' => is => 'ro', isa => 'Maybe[HashRef]';
-has 'version'  => is => 'ro', isa => 'Maybe[Str]';
+subtype 'C_U_Log' => as 'Object' =>
+   where   { $_->isa( q(Class::Null) )
+                or ($_->can( q(warn) ) and $_->can( q(error) ) ) } =>
+   message { 'Object '.(blessed $_ || $_).' is missing warn or error methods'};
 
-around BUILDARGS => sub {
-   my ($orig, $class, $path) = @_;
+enum 'C_U_Encoding' => ENCODINGS;
 
-   return $path && -f $path ? LoadFile( $path ) : {};
-};
-
-__PACKAGE__->meta->make_immutable;
-
-no Moose;
+no Moose::Util::TypeConstraints;
+no Moose::Role;
 
 1;
 
@@ -34,29 +30,34 @@ __END__
 
 =head1 Name
 
-Class::Usul::Response::Meta - Class for CPAN Meta file
+Class::Usul::Constraints -  Role defining package constraints
 
 =head1 Version
 
-This document describes Class::Usul::Response::Meta version 0.1.$Revision$
+This document describes Class::Usul::Constraints version 0.1.$Revision$
 
 =head1 Synopsis
 
-=head1 Description
+   use Moose;
 
-=head1 Subroutines/Methods
+   extends qw(Class::Usul);
+
+=head1 Description
 
 =head1 Configuration and Environment
 
-None
+=head1 Subroutines/Methods
 
 =head1 Diagnostics
+
+Setting the I<debug> attribute to true causes messages to be logged at the
+debug level
 
 =head1 Dependencies
 
 =over 3
 
-=item L<Class::Usul>
+=item L<Class::Usul::Constants>
 
 =back
 
@@ -73,6 +74,10 @@ Patches are welcome
 =head1 Author
 
 Peter Flanigan, C<< <Support at RoxSoft.co.uk> >>
+
+=head1 Acknowledgements
+
+Larry Wall - For the Perl programming language
 
 =head1 License and Copyright
 
@@ -91,3 +96,4 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
 # mode: perl
 # tab-width: 3
 # End:
+
