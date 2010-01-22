@@ -15,15 +15,13 @@ use Log::Handler;
 use Module::Pluggable::Object;
 use Moose;
 use MooseX::ClassAttribute;
-use Scalar::Util qw(blessed);
 
 with qw(Class::Usul::Constraints File::DataClass::Constraints);
 
-class_has 'Digest'          => is => 'rw', isa => 'Str', default => NUL;
+class_has 'Digest'          => is => 'rw', isa => 'C_U_Digest_Algorithm';
 class_has 'Exception_Class' => is => 'rw', isa => 'F_DC_Exception',
    default                  => q(File::DataClass::Exception);
 class_has 'Lock'            => is => 'rw', isa => 'F_DC_Lock';
-class_has 'Log'             => is => 'rw', isa => 'C_U_Log';
 
 has 'config'          => is => 'ro', isa => 'HashRef',
    default            => sub { {} };
@@ -130,21 +128,18 @@ sub _build_lock {
 }
 
 sub _build_log {
-   my $self = shift;
-
-   $self->Log and return $self->Log;
-
+   my $self    = shift;
    my $attrs   = $self->log_attributes;
    my $logfile = $attrs->{logfile} || $self->config->{logfile} || NUL;
    my $dir     = $self->dirname( $logfile );
 
-   ($logfile and -d $dir) or return Class::Null->new;
-
-   return $self->Log( Log::Handler->new
-                      ( file      => {
-                         filename => $logfile,
-                         maxlevel => $self->debug ? 7 : $attrs->{log_level},
-                         mode     => q(append), } ) );
+   return $logfile && -d $dir
+        ? Log::Handler->new
+        ( file      => {
+           filename => $logfile,
+           maxlevel => $self->debug ? 7 : $attrs->{log_level},
+           mode     => q(append), } )
+        : Class::Null->new;
 }
 
 sub _build_prefix {

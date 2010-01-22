@@ -10,14 +10,21 @@ use Class::Null;
 use Class::Usul::Constants;
 use Moose::Role;
 use Moose::Util::TypeConstraints;
-use Scalar::Util qw(blessed);
 
 subtype 'C_U_Log' => as 'Object' =>
-   where   { $_->isa( q(Class::Null) )
-                or ($_->can( q(warn) ) and $_->can( q(error) ) ) } =>
-   message { 'Object '.(blessed $_ || $_).' is missing warn or error methods'};
+   where   { $_->isa( q(Class::Null) ) or __has_log_level_methods( $_ ) } =>
+   message { 'Object '.(blessed $_ || $_).' is missing a log level method'};
 
 enum 'C_U_Encoding' => ENCODINGS;
+enum 'C_U_Digest_Algorithm' => DIGEST_ALGORITHMS;
+
+sub __has_log_level_methods {
+   my $obj = shift;
+
+   $obj->can( $_ ) or return FALSE for (LOG_LEVELS);
+
+   return TRUE;
+}
 
 no Moose::Util::TypeConstraints;
 no Moose::Role;

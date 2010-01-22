@@ -9,9 +9,9 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 my @constants;
 
 BEGIN {
-   @constants = ( qw(ARRAY BRK CODE ENCODINGS EXTNS FAILED FALSE HASH
-                     LANG LOCALIZE LOG_LEVELS LSB NO NUL OK PERMS
-                     PHASE PREFIX QUIT RSB SEP SPC TRUE
+   @constants = ( qw(ARRAY BRK CODE DIGEST_ALGORITHMS ENCODINGS EXTNS
+                     FAILED FALSE HASH LANG LOCALIZE LOG_LEVELS LSB NO
+                     NUL OK PERMS PHASE PREFIX QUIT RSB SEP SPC TRUE
                      UNTAINT_PATH_REGEX WIDTH YES) );
 }
 
@@ -45,6 +45,7 @@ sub TRUE       () { 1                   }
 sub WIDTH      () { 80                  }
 sub YES        () { q(y)                }
 
+sub DIGEST_ALGORITHMS  () { ( qw(SHA-256 SHA-1 MD5) ) }
 sub UNTAINT_PATH_REGEX () { qr{ \A ([[:print:]]+) \z }mx }
 
 1;
@@ -84,6 +85,10 @@ Separate leader (: ) from message
 =head2 CODE
 
 String CODE
+
+=head2 DIGEST_ALGORITHMS
+
+List of algorithms to try as args to L<Digest>
 
 =head2 ENCODINGS
 

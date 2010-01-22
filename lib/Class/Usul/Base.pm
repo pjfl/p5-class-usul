@@ -17,7 +17,6 @@ use File::Spec;
 use List::Util qw(first);
 use Moose::Role;
 use Path::Class::Dir;
-use Scalar::Util qw(blessed);
 use TryCatch;
 
 requires qw(Digest Exception_Class);
@@ -64,12 +63,12 @@ sub create_token {
    my ($self, $seed) = @_; my ($candidate, $digest, $digest_name);
 
    unless ($digest_name = $self->Digest) {
-      for $candidate (qw(SHA-256 SHA-1 MD5)) {
-         $digest = eval { Digest->new( $candidate ) } and last;
+      for $candidate (DIGEST_ALGORITHMS) {
+         $digest = eval { Digest->new( $digest_name = $candidate ) } and last;
       }
 
       $digest or $self->throw( 'No digest algorithm' );
-      $self->Digest( $candidate );
+      $self->Digest( $digest_name );
    }
    else { $digest = Digest->new( $digest_name ) }
 
