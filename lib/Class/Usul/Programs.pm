@@ -29,19 +29,19 @@ extends qw(Class::Usul);
 
 has 'appclass' => is => 'ro', isa => 'Str',            required => TRUE;
 has 'arglist'  => is => 'ro', isa => 'Str',            default  => NUL;
-has 'args'     => is => 'ro', isa => 'HashRef',        default  => sub { {} };
+has 'args'     => is => 'rw', isa => 'HashRef',        default  => sub { {} };
 has 'home'     => is => 'ro', isa => 'F_DC_Directory', coerce   => TRUE;
-has 'language' => is => 'ro', isa => 'Str',            default  => NUL;
+has 'language' => is => 'rw', isa => 'Str',            default  => NUL;
 has 'logname'  => is => 'ro', isa => 'Str',
    default     => $ENV{USER} || $ENV{LOGNAME};
 has 'messages' => is => 'rw', isa => 'HashRef',        default  => sub { {} };
-has 'method'   => is => 'ro', isa => 'Str',            default  => NUL;
+has 'method'   => is => 'rw', isa => 'Str',            default  => NUL;
 has 'name'     => is => 'ro', isa => 'Str',            required => TRUE;
 has 'os'       => is => 'ro', isa => 'HashRef',        default  => sub { {} };
 has 'parms'    => is => 'ro', isa => 'HashRef',        default  => sub { {} };
 has 'prefix'   => is => 'ro', isa => 'Str',            required => TRUE;
-has 'silent'   => is => 'ro', isa => 'Bool',           default  => FALSE;
-has 'vars'     => is => 'ro', isa => 'HashRef',        default  => sub { {} };
+has 'silent'   => is => 'rw', isa => 'Bool',           default  => FALSE;
+has 'vars'     => is => 'rw', isa => 'HashRef',        default  => sub { {} };
 
 with qw(Class::Usul::IPC);
 
@@ -443,13 +443,83 @@ sub _get_homedir {
    return File::Spec->tmpdir;
 }
 
-sub _inflate {
-   my ($class, $args, $defaults, $conf, $key) = @_;
+sub _inflate_config {
+   my ($class, $args) = @_;
+
+   my $defaults = {
+      appldir => '__APPLDIR__', binsdir => '__BINSDIR__', phase => PHASE,
+   };
+
+   $class->_inflate_values( $args, $defaults );
+
+   $defaults = {
+      pathname => '__binsdir('.$args->{script}.')__',
+      shell    => $class->catfile( NUL, qw(bin ksh) ),
+      suid     => '__binsdir('.$args->{prefix}.'_admin)__',
+      vardir   => '__appldir(var)__',
+   };
+
+   $class->_inflate_values( $args, $defaults );
+
+   $defaults = {
+      ctrldir  => '__vardir(etc)__',
+      dbasedir => '__vardir(db)__',
+      logsdir  => '__vardir(logs)__',
+      root     => '__vardir(root)__',
+      rundir   => '__vardir(run)__',
+      tempdir  => '__vardir(tmp)__',
+   };
+
+   $class->_inflate_values( $args, $defaults );
+
+   my $conf = $args->{config};
+
+   -d $conf->{tempdir}
+      or $conf->{tempdir} = $class->untaint_path( File::Spec->tmpdir );
+   -d $conf->{logsdir}
+      or $conf->{logsdir} = $conf->{tempdir};
+
+   $defaults = {
+      ctlfile  => '__ctrldir('.$args->{name}.q(.xml).')__',
+      logfile  => '__logsdir('.$args->{name}.q(.log).')__',
+   };
+
+   $class->_inflate_values( $args, $defaults );
+
+   $conf->{hostname }   = Sys::Hostname::hostname();
+   $conf->{no_thrash} ||= 3;
+   $conf->{owner    } ||= $args->{prefix} || q(root);
+   $conf->{pwidth   } ||= 60;
+
+   # TODO: Move this
+   $defaults = {};
+   $defaults->{ q(aliases_path)  } = $class->catfile( $conf->{ctrldir},
+                                                      q(aliases) );
+   $defaults->{ q(profiles_path) } = $class->catfile( $conf->{ctrldir},
+                                                      q(user_profiles.xml) );
+   $class->_inflate_values( $args, $defaults );
+   return;
+}
+
+sub _inflate_values {
+   my ($class, $args, $defaults) = @_; my $conf = $args->{config};
+
+   my @keys = ( keys %{ $defaults } );
+
+   for (@keys) {
+      $conf->{ $_ } = $class->_inflate_value( $args, $defaults, $_ );
+   }
+
+   return;
+}
+
+sub _inflate_value {
+   my ($class, $args, $defaults, $key) = @_; my $conf = $args->{config};
 
    my $v = $conf->{ $key } || $defaults->{ $key }; defined $v or return;
 
    if ($v =~ m{ __PHASE__ }mx) {
-      ($v) = $args->{config}->{appldir} =~ m{ \A v \d+ \. \d+ p (\d+) \z }msx;
+      ($v) = $conf->{appldir} =~ m{ \A v \d+ \. \d+ p (\d+) \z }msx;
 
       return defined $v ? $v : PHASE;
    }
@@ -470,27 +540,27 @@ sub _inflate {
          my $v = $class->dirname( $Config{sitelibexp} );
 
          if ($args->{home} =~ m{ \A $v }mx) { $v = $Config{scriptdir} }
-         else { $v = $class->catdir( $args->{config}->{appldir}, q(bin) ) }
+         else { $v = $class->catdir( $conf->{appldir}, q(bin) ) }
 
          return $v;
       },
       '__appldir\( (.*) \)__' => sub {
-         return $class->catdir( $args->{config}->{appldir}, $_[0] );
+         return $class->catdir( $conf->{appldir}, $_[0] );
       },
       '__binsdir\( (.*) \)__' => sub {
-         return $class->catdir( $args->{config}->{binsdir}, $_[0] );
+         return $class->catdir( $conf->{binsdir}, $_[0] );
       },
       '__ctrldir\( (.*) \)__' => sub {
-         return $class->catdir( $args->{config}->{ctrldir}, $_[0] );
+         return $class->catdir( $conf->{ctrldir}, $_[0] );
       },
       '__logsdir\( (.*) \)__' => sub {
-         return $class->catdir( $args->{config}->{logsdir}, $_[0] );
+         return $class->catdir( $conf->{logsdir}, $_[0] );
       },
       '__path_to\( (.*) \)__' => sub {
          return $class->catdir( $args->{home}, $_[0] );
       },
       '__vardir\( (.*) \)__' => sub {
-         return $class->catdir( $args->{config}->{vardir}, $_[0] );
+         return $class->catdir( $conf->{vardir}, $_[0] );
       },
    };
 
@@ -501,73 +571,6 @@ sub _inflate {
    }
 
    return abs_path( $class->untaint_path( $v ) );
-}
-
-sub _inflate_config {
-   my ($class, $args) = @_; my $conf = $args->{config};
-
-   my $defaults = {
-      appldir => '__APPLDIR__', binsdir => '__BINSDIR__', phase => PHASE,
-   };
-
-   my @keys = ( keys %{ $defaults } );
-
-   $conf->{ $_ } = $class->_inflate( $args, $defaults, $conf, $_ ) for (@keys);
-
-   $defaults = {
-      pathname => '__binsdir('.$args->{script}.')__',
-      shell    => $class->catfile( NUL, qw(bin ksh) ),
-      suid     => '__binsdir('.$args->{prefix}.'_admin)__',
-      vardir   => '__appldir(var)__',
-   };
-
-   @keys = ( keys %{ $defaults } );
-
-   $conf->{ $_ } = $class->_inflate( $args, $defaults, $conf, $_ ) for (@keys);
-
-   $defaults = {
-      ctrldir  => '__vardir(etc)__',
-      dbasedir => '__vardir(db)__',
-      logsdir  => '__vardir(logs)__',
-      root     => '__vardir(root)__',
-      rundir   => '__vardir(run)__',
-      tempdir  => '__vardir(tmp)__',
-   };
-
-   @keys = ( keys %{ $defaults } );
-
-   $conf->{ $_ } = $class->_inflate( $args, $defaults, $conf, $_ ) for (@keys);
-
-   -d $conf->{tempdir}
-      or $conf->{tempdir} = $class->untaint_path( File::Spec->tmpdir );
-   -d $conf->{logsdir}
-      or $conf->{logsdir} = $conf->{tempdir};
-
-   $defaults = {
-      ctlfile  => '__ctrldir('.$args->{name}.q(.xml).')__',
-      logfile  => '__logsdir('.$args->{name}.q(.log).')__',
-   };
-
-   @keys = ( keys %{ $defaults } );
-
-   $conf->{ $_ } = $class->_inflate( $args, $defaults, $conf, $_ ) for (@keys);
-
-   $conf->{hostname      }   = Sys::Hostname::hostname();
-   $conf->{no_thrash     } ||= 3;
-   $conf->{owner         } ||= $args->{prefix} || q(root);
-   $conf->{pwidth        } ||= 60;
-
-   # TODO: Move this
-   my $key; $defaults = {};
-
-   $defaults->{ $key = q(aliases_path) }
-      = $class->catfile( $conf->{ctrldir}, q(aliases) );
-   $conf->{ $key } = $class->_inflate( $args, $defaults, $conf, $key );
-   $defaults->{ $key = q(profiles_path) }
-      = $class->catfile( $conf->{ctrldir}, q(user_profiles.xml) );
-   $conf->{ $key } = $class->_inflate( $args, $defaults, $conf, $key );
-
-   return;
 }
 
 sub _load_args_ref {
