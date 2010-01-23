@@ -16,7 +16,7 @@ BEGIN {
       plan skip_all => q(CPAN Testing stopped);
    }
 
-   plan tests => 32;
+   plan tests => 33;
 }
 
 use_ok q(Class::Usul::Programs);
@@ -122,6 +122,9 @@ ok( $prog->time2str( q(%Y-%m-%d), 0 ) eq q(1970-01-01), q(time2str/1) );
 
 ok( $prog->time2str( q(%Y-%m-%d %H:%M:%S), 1185753932 )
     eq q(2007-07-30 01:05:32), q(time2str/2) );
+
+ok( $prog->decrypt( q(test), $prog->encrypt( q(test), 'Plain text' ) )
+    eq 'Plain text', 'encrypt/decrypt' );
 
 my $meta = $prog->get_meta( q(META.yml) );
 

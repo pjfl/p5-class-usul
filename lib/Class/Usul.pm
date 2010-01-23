@@ -47,7 +47,7 @@ has 'tempdir'         => is => 'ro', isa => 'F_DC_Directory',
    default            => sub { __PACKAGE__->io( File::Spec->tmpdir ) },
    coerce             => TRUE;
 
-with qw(Class::Usul::Base Class::Usul::Encoding);
+with qw(Class::Usul::Base Class::Usul::Encoding Class::Usul::Crypt);
 
 __PACKAGE__->mk_log_methods();
 

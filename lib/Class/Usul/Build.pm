@@ -9,7 +9,6 @@ use parent qw(Module::Build);
 
 use Class::Usul::Constants;
 use Class::Usul::Programs;
-use Class::Usul::Schema;
 use Config;
 use TryCatch;
 use File::Spec;
@@ -158,9 +157,9 @@ sub ask_questions {
 
    # Update the config by looping through the questions
    for my $attr (@{ $self->config_attributes }) {
-      my $method = q(get_).$attr;
+      my $question = q(get_).$attr;
 
-      $cfg->{ $attr } = $self->$method( $cfg );
+      $cfg->{ $attr } = $self->$question( $cfg );
    }
 
    # Save the updated config for the install action to use
@@ -194,7 +193,7 @@ sub cli {
 
    $self->{_command_line_interface}
       or $self->{_command_line_interface} = Class::Usul::Programs->new
-            ( { appclass => $self->module_name, args => { n => TRUE } } );
+            ( { appclass => $self->module_name, n => TRUE } );
 
    return $self->{_command_line_interface};
 }
@@ -978,7 +977,7 @@ sub _encrypt {
 
    $dir and $path = $cli->catfile( $dir, $cfg->{prefix}.q(.txt) );
    $path and -f $path and $args->{data} = $cli->io( $path )->all;
-   $value = Class::Usul::Schema->encrypt( $args, $value );
+   $value = $cli->encrypt( $args, $value );
    $value and $value = q(encrypt=).$value;
 
    return $value;
@@ -1571,8 +1570,6 @@ Edits and stores config information in the file F<build.xml>
 =over 3
 
 =item L<Class::Usul::Programs>
-
-=item L<Class::Usul::Schema>
 
 =item L<Module::Build>
 
