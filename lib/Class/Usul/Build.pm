@@ -7,21 +7,21 @@ use warnings;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use parent qw(Module::Build);
 
+use Class::Usul::Build::Actions;
+use Class::Usul::Build::Questions;
 use Class::Usul::Constants;
 use Class::Usul::Programs;
-use Config;
 use TryCatch;
 use File::Spec;
 use MRO::Compat;
 use Perl::Version;
 use Module::CoreList;
 use Pod::Eventual::Simple;
-use English         qw(-no_match_vars);
-use File::Copy      qw(copy move);
-use File::Find      qw(find);
-use File::Path      qw(make_path);
-use IO::Interactive qw(is_interactive);
-use XML::Simple     ();
+use English     qw(-no_match_vars);
+use File::Copy  qw(copy);
+use File::Find  qw(find);
+use File::Path  qw(make_path);
+use XML::Simple   ();
 
 if ($ENV{AUTOMATED_TESTING}) {
    # Some CPAN testers set these. Breaks dependencies
@@ -29,15 +29,8 @@ if ($ENV{AUTOMATED_TESTING}) {
    $ENV{TEST_CRITIC     } = FALSE; $ENV{TEST_POD     } = FALSE;
 }
 
-my $ACTIONS       = [ qw(create_dirs create_files copy_files link_files
-                         create_schema create_ugrps set_owner
-                         set_permissions make_default restart_server) ];
 my $ARRAYS        = [ qw(copy_files create_dirs
                          create_files credentials link_files run_cmds) ];
-my $ATTRS         = [ qw(ask style path_prefix ver phase create_ugrps
-                         process_owner setuid_root create_schema credentials
-                         run_cmd make_default restart_server
-                         restart_server_cmd built) ];
 my $CFG_FILE      = q(build.xml);
 my $CHANGE_ARGS   = [ q({{ $NEXT }}), q(%-9s %s), q(%Y-%m-%d %T %Z) ];
 my $CHANGES_FILE  = q(Changes);
@@ -54,9 +47,6 @@ my %META_KEYS     =
      mit          => 'MIT',
      mozilla      => [ map { "Mozilla_$_" } qw(1_0 1_1) ], );
 my $MIN_PERL_VER  = q(5.008);
-my $PARAGRAPH     = { cl => TRUE, fill => TRUE, nl => TRUE };
-my $PREFIX_NORMAL = [ NUL, qw(opt)     ];
-my $PREFIX_PERL   = [ NUL, qw(var www) ];
 
 # Around these M::B actions
 
@@ -83,8 +73,10 @@ sub ACTION_install {
    $self->cli->info( 'Base path '.$self->set_base_path( $cfg ) );
    $self->next::method();
 
+   my $install = $self->install_actions_class->new( builder => $self );
+
    # Call each of the defined actions
-   $self->$_( $cfg ) for (grep { $cfg->{ $_ } } @{ $self->actions });
+   $install->$_( $cfg ) for (grep { $cfg->{ $_ } } @{ $install->actions });
 
    return $cfg;
 }
@@ -140,26 +132,17 @@ sub ACTION_upload {
 
 # Public object methods
 
-sub actions {
-   # Accessor/mutator for the list of defined actions
-   my ($self, $actions) = @_;
-
-   defined $actions and $self->{_actions} = $actions;
-   defined $self->{_actions} or $self->{_actions} = $ACTIONS;
-
-   return $self->{_actions};
-}
-
 sub ask_questions {
    my ($self, $cfg) = @_;
 
-   my $cli = $self->cli; $cli->pwidth( $cfg->{pwidth} );
+   my $cli  = $self->cli; $cli->pwidth( $cfg->{pwidth} );
+   my $quiz = $self->question_class->new( builder => $self );
 
    # Update the config by looping through the questions
-   for my $attr (@{ $self->config_attributes }) {
-      my $question = q(get_).$attr;
+   for my $attr (@{ $quiz->config_attributes }) {
+      my $question = q(q_).$attr;
 
-      $cfg->{ $attr } = $self->$question( $cfg );
+      $cfg->{ $attr } = $quiz->$question( $cfg );
    }
 
    # Save the updated config for the install action to use
@@ -208,14 +191,20 @@ sub commit_release {
    return;
 }
 
-sub config_attributes {
-   # Accessor/mutator for the list of defined config attributes
-   my ($self, $attrs) = @_;
+sub connect_info {
+   my ($self, $path) = @_;
 
-   defined $attrs and $self->{_attributes} = $attrs;
-   defined $self->{_attributes} or $self->{_attributes} = $ATTRS;
+   my $cli    = $self->cli;
+   my $text   = $cli->io( $path )->all;
+   my $dtd    = join "\n", grep {  m{ <! .+ > }mx } split m{ \n }mx, $text;
+      $text   = join "\n", grep { !m{ <! .+ > }mx } split m{ \n }mx, $text;
+   my $arrays = $self->_get_arrays_from_dtd( $dtd );
+   my $info;
 
-   return $self->{_attributes};
+   try { $info = XML::Simple->new( ForceArray => $arrays )->xml_in( $text ) }
+   catch ($e) { $cli->fatal( $e ) }
+
+   return ($info, $dtd);
 }
 
 sub cpan_upload {
@@ -229,6 +218,10 @@ sub cpan_upload {
    $cli->ensure_class_loaded( q(CPAN::Uploader) );
    CPAN::Uploader->upload_file( $self->dist_dir.q(.tar.gz), $args );
    return;
+}
+
+sub install_actions_class {
+   return __PACKAGE__.q(::Actions);
 }
 
 sub post_install {
@@ -290,6 +283,10 @@ sub public_repository {
    my $class = shift; my $repo = $class->repository or return;
 
    return $repo !~ m{ \A file: }mx ? $repo : undef;
+}
+
+sub question_class {
+   return __PACKAGE__.q(::Questions);
 }
 
 sub read_config_file {
@@ -412,411 +409,7 @@ sub write_license_file {
    return;
 }
 
-# Questions
-
-sub get_ask {
-   my ($self, $cfg) = @_; is_interactive() or return FALSE;
-
-   return $self->cli->yorn( 'Ask questions during build', TRUE, TRUE, 0 );
-}
-
-sub get_built {
-   return TRUE;
-}
-
-sub get_create_schema {
-   my ($self, $cfg) = @_; my $create = $cfg->{create_schema} || FALSE;
-
-   $cfg->{ask} or return $create; my $cli = $self->cli;
-
-   my $text = 'Schema creation requires a database, id and password';
-
-   $cli->output( $text, $PARAGRAPH );
-
-   return $cli->yorn( 'Create database schema', $create, TRUE, 0 );
-}
-
-sub get_create_ugrps {
-   my ($self, $cfg) = @_; my $create = $cfg->{create_ugrps} || FALSE;
-
-   $cfg->{ask} or return $create; my $cli = $self->cli; my $text;
-
-   $text  = 'Use groupadd, useradd, and usermod to create the user ';
-   $text .= $cfg->{owner}.' and the groups '.$cfg->{group};
-   $text .= ' and '.$cfg->{admin_role};
-   $cli->output( $text, $PARAGRAPH );
-
-   return $cli->yorn( 'Create groups and user', $create, TRUE, 0 );
-}
-
-sub get_credentials {
-   my ($self, $cfg) = @_; my $credentials = $cfg->{credentials} || {};
-
-   return $credentials unless ($cfg->{ask} and $cfg->{create_schema});
-
-   my $cli     = $self->cli;
-   my $name    = $cfg->{database_name};
-   my $etcd    = $cli->catdir ( $self->base_dir, qw(var etc) );
-   my $path    = $cli->catfile( $etcd, $name.q(.xml) );
-   my ($dbcfg) = $self->_get_connect_info( $path );
-   my $prompts = { name     => 'Enter db name',
-                   driver   => 'Enter DBD driver',
-                   host     => 'Enter db host',
-                   port     => 'Enter db port',
-                   user     => 'Enter db user',
-                   password => 'Enter db password' };
-   my $defs    = { name     => $name,
-                   driver   => q(_field),
-                   host     => q(localhost),
-                   port     => q(_field),
-                   user     => q(_field),
-                   password => NUL };
-
-   for my $fld (qw(name driver host port user password)) {
-      my $value = $defs->{ $fld } eq q(_field)
-                ? $dbcfg->{credentials}->{ $name }->{ $fld }
-                : $defs->{ $fld };
-
-      $value = $cli->get_line( $prompts->{ $fld }, $value, TRUE, 0, FALSE,
-                               $fld eq q(password) ? TRUE : FALSE );
-      $fld eq q(password) and $value = $self->_encrypt( $cfg, $value, $etcd );
-      $credentials->{ $name }->{ $fld } = $value;
-   }
-
-   return $credentials;
-}
-
-sub get_make_default {
-   my ($self, $cfg) = @_; my $make_default = $cfg->{make_default} || FALSE;
-
-   $cfg->{ask} or return $make_default;
-
-   my $text = 'Make this the default version';
-
-   return $self->cli->yorn( $text, $make_default, TRUE, 0 );
-}
-
-sub get_path_prefix {
-   my ($self, $cfg) = @_; my $cli  = $self->cli;
-
-   my $default = $cfg->{style} && $cfg->{style} eq q(normal)
-               ? $PREFIX_NORMAL : $PREFIX_PERL;
-   my $prefix  = $cfg->{path_prefix} || $cli->catdir( @{ $default } );
-
-   $cfg->{ask} or return $prefix;
-
-   my $text = 'Application name is automatically appended to the prefix';
-
-   $cli->output( $text, $PARAGRAPH );
-
-   return $cli->get_line( 'Enter install path prefix', $prefix, TRUE, 0 );
-}
-
-sub get_phase {
-   my ($self, $cfg) = @_; my $phase = $cfg->{phase} || PHASE;
-
-   $cfg->{ask} or return $phase; my $cli = $self->cli; my $text;
-
-   $text  = 'Phase number determines at run time the purpose of the ';
-   $text .= 'application instance, e.g. live(1), test(2), development(3)';
-   $cli->output( $text, $PARAGRAPH );
-   $phase = $cli->get_line( 'Enter phase number', $phase, TRUE, 0 );
-   $phase =~ m{ \A \d+ \z }mx
-      or $cli->fatal( "Phase value $phase bad (not an integer)" );
-
-   return $phase;
-}
-
-sub get_process_owner {
-   my ($self, $cfg) = @_; my $user = $cfg->{process_owner} || q(www-data);
-
-   return $user unless ($cfg->{ask} and $cfg->{create_ugrps});
-
-   my $cli = $self->cli; my $text;
-
-   $text  = 'Which user does the web server/proxy run as? This user ';
-   $text .= 'will be added to the application group so that it can ';
-   $text .= 'access the application\'s files';
-   $cli->output( $text, $PARAGRAPH );
-
-   return $cli->get_line( 'Web server user', $user, TRUE, 0 );
-}
-
-sub get_restart_server {
-   my ($self, $cfg) = @_; my $restart = $cfg->{restart_server} || FALSE;
-
-   $cfg->{ask} or return $restart;
-
-   return $self->cli->yorn( 'Restart web server', $restart, TRUE, 0 );
-}
-
-sub get_restart_server_cmd {
-   my ($self, $cfg) = @_; my $cmd = $cfg->{restart_server_cmd} || NUL;
-
-   return $cmd unless ($cfg->{ask} and $cfg->{restart_server});
-
-   return $self->cli->get_line( 'Server restart command', $cmd, TRUE, 0 );
-}
-
-sub get_run_cmd {
-   my ($self, $cfg) = @_; my $run = $cfg->{run_cmd} || FALSE;
-
-   $cfg->{ask} or return $run; my $cli = $self->cli; my $text;
-
-   $text  = 'Execute post installation commands. These may take ';
-   $text .= 'several minutes to complete';
-   $cli->output( $text, $PARAGRAPH );
-
-   return $cli->yorn( 'Post install commands', $run, TRUE, 0 );
-}
-
-sub get_setuid_root {
-   my ($self, $cfg) = @_; my $setuid = $cfg->{setuid_root} || FALSE;
-
-   $cfg->{ask} or return $setuid; my $cli = $self->cli; my $text;
-
-   $text   = 'Enable wrapper which allows limited access to some root ';
-   $text  .= 'only functions like password checking and user management. ';
-   $text  .= 'Not necessary unless the Unix authentication store is used';
-   $cli->output( $text, $PARAGRAPH );
-
-   return $cli->yorn( 'Enable suid root', $setuid, TRUE, 0 );
-}
-
-sub get_style {
-   my ($self, $cfg) = @_; my $style = $cfg->{style} || q(normal);
-
-   $cfg->{ask} or return $style; my $cli = $self->cli; my $text;
-
-   $text  = 'The application has two modes if installation. In *normal* ';
-   $text .= 'mode it installs all components to a specifed path. In ';
-   $text .= '*perl* mode modules are install to the site lib, ';
-   $text .= 'executables to the site bin and the rest to a subdirectory ';
-   $text .= 'of /var/www. Installation defaults to normal mode since it is ';
-   $text .= 'easier to maintain';
-   $cli->output( $text, $PARAGRAPH );
-
-   return $cli->get_line( 'Enter the install mode', $style, TRUE, 0 );
-}
-
-sub get_ver {
-   my $self = shift;
-
-   my ($major, $minor) = split m{ \. }mx, $self->dist_version;
-
-   return $major.q(.).$minor;
-}
-
-# Actions
-
-sub copy_files {
-   # Copy some files
-   my ($self, $cfg) = @_; my $cli = $self->cli; my $base = $cfg->{base};
-
-   for my $ref (@{ $cfg->{copy_files} }) {
-      my $from = $self->_abs_path( $base, $ref->{from} );
-      my $path = $self->_abs_path( $base, $ref->{to  } );
-
-      if (-f $from and not -f $path) {
-         $cli->info( "Copying $from to $path" );
-         copy( $from, $path );
-         chmod oct q(0644), $path;
-      }
-   }
-
-   return;
-}
-
-sub create_dirs {
-   # Create some directories that don't ship with the distro
-   my ($self, $cfg) = @_; my $cli = $self->cli; my $base = $cfg->{base};
-
-   for my $dir (map { $self->_abs_path( $base, $_ ) }
-                @{ $cfg->{create_dirs} }) {
-      if (-d $dir) { $cli->info( "Directory $dir exists" ) }
-      else {
-         $cli->info( "Creating $dir" );
-         make_path( $dir, { mode => oct q(02750) } );
-      }
-   }
-
-   return;
-}
-
-sub create_files {
-   # Create some empty log files
-   my ($self, $cfg) = @_; my $cli = $self->cli; my $base = $cfg->{base};
-
-   for my $path (map { $self->_abs_path( $base, $_ ) }
-                 @{ $cfg->{create_files} }) {
-      unless (-f $path) {
-         $cli->info( "Creating $path" ); $cli->io( $path )->touch;
-      }
-   }
-
-   return;
-}
-
-sub create_schema {
-   # Create databases and edit credentials
-   my ($self, $cfg) = @_; my $cli = $self->cli;
-
-   # Edit the XML config file that contains the database connection info
-   $self->_edit_credentials( $cfg );
-
-   my $bind = $self->install_destination( q(bin) );
-   my $cmd  = $cli->catfile( $bind, $cfg->{prefix}.q(_schema) );
-
-   # Create the database if we can. Will do nothing if we can't
-   $cli->info( $cli->run_cmd( $cmd.q( -n -c create_database) )->out );
-
-   # Call DBIx::Class::deploy to create the
-   # schema and populate it with static data
-   $cli->info( 'Deploying schema and populating database' );
-   $cli->info( $cli->run_cmd( $cmd.q( -n -c deploy_and_populate) )->out );
-   return;
-}
-
-sub create_ugrps {
-   # Create the two groups used by this application
-   my ($self, $cfg) = @_; my $cli = $self->cli; my $base = $cfg->{base};
-
-   my $cmd = q(/usr/sbin/groupadd); my $text;
-
-   if (-x $cmd) {
-      # Create the application group
-      for my $grp ($cfg->{group}, $cfg->{admin_role}) {
-         unless (getgrnam $grp ) {
-            $cli->info( "Creating group $grp" );
-            $cli->run_cmd( $cmd.q( ).$grp );
-         }
-      }
-   }
-
-   $cmd = q(/usr/sbin/usermod);
-
-   if (-x $cmd and $cfg->{process_owner}) {
-      # Add the process owner user to the application group
-      $cmd .= ' -a -G'.$cfg->{group}.q( ).$cfg->{process_owner};
-      $cli->run_cmd( $cmd );
-   }
-
-   $cmd = q(/usr/sbin/useradd);
-
-   if (-x $cmd and not getpwnam $cfg->{owner}) {
-      # Create the user to own the files and support the application
-      $cli->info( 'Creating user '.$cfg->{owner} );
-      ($text = ucfirst $self->module_name) =~ s{ :: }{ }gmx;
-      $cmd .= ' -c "'.$text.' Support" -d ';
-      $cmd .= $cli->dirname( $base ).' -g '.$cfg->{group}.' -G ';
-      $cmd .= $cfg->{admin_role}.' -s ';
-      $cmd .= $cfg->{shell}.q( ).$cfg->{owner};
-      $cli->run_cmd( $cmd );
-   }
-
-   return;
-}
-
-sub link_files {
-   # Link some files
-   my ($self, $cfg) = @_; my $cli = $self->cli; my $base = $cfg->{base};
-
-   for my $ref (@{ $cfg->{link_files} }) {
-      my $from = $self->_abs_path( $base, $ref->{from} ) || NUL;
-      my $path = $self->_abs_path( $base, $ref->{to  } ) || NUL;
-
-      if ($from and $path) {
-         if (-e $from) {
-            -l $path and unlink $path;
-
-            if (! -e $path) {
-               $cli->info( "Symlinking $from to $path" );
-               symlink $from, $path;
-            }
-            else { $cli->info( "Path $path already exists" ) }
-         }
-         else { $cli->info( "Path $from does not exist" ) }
-      }
-      else { $cli->info( "Path from $from or to $path undefined" ) }
-   }
-
-   return;
-}
-
-sub make_default {
-   # Create the default version symlink
-   my ($self, $cfg) = @_; my $cli = $self->cli; my $base = $cfg->{base};
-
-   chdir $cli->dirname( $base );
-   -e q(default) and unlink q(default);
-   symlink $cli->basename( $base ), q(default);
-   return;
-}
-
-sub restart_server {
-   # Bump start the web server
-   my ($self, $cfg) = @_; my $cli = $self->cli; my $cmd;
-
-   return unless ($cmd = $cfg->{restart_server_cmd} and -x $cmd);
-
-   $cli->info( "Running $cmd" );
-   $cli->run_cmd( $cmd );
-   return;
-}
-
-sub set_owner {
-   # Now we have created everything and have an owner and group
-   my ($self, $cfg) = @_; my $cli = $self->cli; my $base = $cfg->{base};
-
-   my $gid = $cfg->{gid} = getgrnam( $cfg->{group} ) || 0;
-   my $uid = $cfg->{uid} = getpwnam( $cfg->{owner} ) || 0;
-   my $text;
-
-   $text  = 'Setting owner '.$cfg->{owner}."($uid) and group ";
-   $text .= $cfg->{group}."($gid)";
-   $cli->info( $text );
-
-   # Set ownership
-   chown $uid, $gid, $cli->dirname( $base );
-   find( sub { chown $uid, $gid, $_ }, $base );
-   chown $uid, $gid, $base;
-   return;
-}
-
-sub set_permissions {
-   # Set permissions
-   my ($self, $cfg) = @_; my $cli = $self->cli;
-
-   my $base = $cfg->{base}; my $pref = $cfg->{prefix};
-
-   chmod oct q(02750), $cli->dirname( $base );
-
-   find( sub { if    (-d $_)                { chmod oct q(02750), $_ }
-               elsif ($_ =~ m{ $pref _ }mx) { chmod oct q(0750),  $_ }
-               else                         { chmod oct q(0640),  $_ } },
-         $base );
-
-   $cfg->{create_dirs} or return;
-
-   # Make the shared directories group writable
-   for my $dir (grep { -d $_ }
-                map  { $self->_abs_path( $base, $_ ) }
-                @{ $cfg->{create_dirs} }) {
-      chmod oct q(02770), $dir;
-   }
-
-   return;
-}
-
 # Private methods
-
-sub _abs_path {
-   my ($self, $base, $path) = @_; my $cli = $self->cli;
-
-   $cli->io( $path )->is_absolute or $path = $cli->catfile( $base, $path );
-
-   return $path;
-}
 
 sub _compare_prereqs_with_used {
    my ($self, $field, $prereqs, $used) = @_;
@@ -938,51 +531,6 @@ sub _draw_line {
     my ($self, $count) = @_; return $self->cli->say( q(-) x ($count || 60) );
 }
 
-sub _edit_credentials {
-   my ($self, $cfg) = @_; my $value;
-
-   my $dbname = $cfg->{database_name} or return;
-
-   return unless ($cfg->{credentials} and $cfg->{credentials}->{ $dbname });
-
-   my $cli           = $self->cli;
-   my $etcd          = $cli->catdir ( $cfg->{base}, qw(var etc) );
-   my $path          = $cli->catfile( $etcd, $dbname.q(.xml) );
-   my ($dbcfg, $dtd) = $self->_get_connect_info( $path );
-   my $credentials   = $cfg->{credentials}->{ $dbname };
-
-   for my $fld (qw(driver host port user password)) {
-      defined ($value = $credentials->{ $fld }) or next;
-      $dbcfg->{credentials}->{ $dbname }->{ $fld } = $value;
-   }
-
-   try {
-      my $io = $cli->io( $path );
-      my $xs = XML::Simple->new( NoAttr => TRUE, RootName => q(config) );
-
-      $dtd and $io->println( $dtd );
-      $io->append( $xs->xml_out( $dbcfg ) );
-   }
-   catch ($e) { $cli->fatal( $e ) }
-
-   return;
-}
-
-sub _encrypt {
-   my ($self, $cfg, $value, $dir) = @_;
-
-   $value or return; my $cli = $self->cli; my $path;
-
-   my $args = { seed => $cfg->{secret} || $cfg->{prefix} };
-
-   $dir and $path = $cli->catfile( $dir, $cfg->{prefix}.q(.txt) );
-   $path and -f $path and $args->{data} = $cli->io( $path )->all;
-   $value = $cli->encrypt( $args, $value );
-   $value and $value = q(encrypt=).$value;
-
-   return $value;
-}
-
 sub _filter_dependents {
    my ($self, $used) = @_;
    my $perl_version  = $used->{ perl } || $MIN_PERL_VER;
@@ -1017,22 +565,6 @@ sub _get_arrays_from_dtd {
    }
 
    return $arrays;
-}
-
-sub _get_connect_info {
-   my ($self, $path) = @_;
-
-   my $cli    = $self->cli;
-   my $text   = $cli->io( $path )->all;
-   my $dtd    = join "\n", grep {  m{ <! .+ > }mx } split m{ \n }mx, $text;
-      $text   = join "\n", grep { !m{ <! .+ > }mx } split m{ \n }mx, $text;
-   my $arrays = $self->_get_arrays_from_dtd( $dtd );
-   my $info;
-
-   try { $info = XML::Simple->new( ForceArray => $arrays )->xml_in( $text ) }
-   catch ($e) { $cli->fatal( $e ) }
-
-   return ($info, $dtd);
 }
 
 sub _prereq_comparison_report {
@@ -1234,8 +766,9 @@ actions will take place. Should be generic enough for any web application
 
 When called by it's subclass this method prompts the user for
 information about how this installation is to be performed. User
-responses are saved to the F<build.xml> file. The L</config_attributes>
-method returns the list of questions to ask
+responses are saved to the F<build.xml> file. The
+L<Class::Usul::Build::Questions/config_attributes> returns the list of
+questions to ask
 
 =head2 ACTION_change_version
 
@@ -1301,12 +834,14 @@ package variable
 Returns an instance of L<Class::Usul::Programs>, the command line
 interface object
 
-=head2 config_attributes
+=head2 connect_info
 
-   $current_list_of_attrs = $builder->config_attributes( $new_list_of_attrs );
+   ($info, $dtd) = $builder->connect_info( $path );
 
-This accessor/mutator method defaults to the list defined in the C<$ATTRS>
-package variable
+Reads database connection information from F<$path> using L<XML::Simple>.
+The I<ForceArray> attribute passed to L<XML::Simple> is obtained by parsing
+the DTD elements in the file. Called by the L</get_credentials> question
+and L<_edit_credentials>
 
 =head2 post_install
 
@@ -1367,157 +902,7 @@ that match this pattern. Set to false to not have a skip list
 Writes the C<$config> hash to the F<$path> file for later use by
 the install action. Called from L<ACTION_build>
 
-=head1 Questions
-
-All question methods are passed C<$config> and return the new value
-for one of it's attributes
-
-=head2 get_ask
-
-Ask if questions should be asked in future runs of the build process
-
-=head2 get_built
-
-Always returns true. This dummy question is used to trigger the suppression
-of any further questions once the build phase is complete
-
-=head2 get_create_schema
-
-Should a database schema be created? If yes then the database connection
-information must be entered. The database must be available at install
-time
-
-=head2 get_create_ugrps
-
-Create the application user and group that owns the files and directories
-in the application
-
-=head2 get_credentials
-
-Get the database connection information
-
-=head2 get_make_default
-
-When installed should this installation become the default for this
-host? Causes the symbolic link (that hides the version directory from
-the C<PATH> environment variable) to be deleted and recreated pointing
-to this installation
-
-=head2 get_path_prefix
-
-Prompt for the installation prefix. The application name and version
-directory are automatically appended. If the installation style is
-B<normal>, the all of the application will be installed to this
-path. The default is F</opt>. If the installation style is B<perl>
-then only the "var" data will be installed to this path. The default is
-F</var/www>
-
-=head2 get_phase
-
-The phase number represents the reason for the installation. It is
-encoded into the name of the application home directory. At runtime
-the application will load some configuration data that is dependent
-upon this value
-
-=head2 get_process_owner
-
-Prompts for the userid of the web server process owner. This user will
-be added to the group that owns the application files and directories.
-This will allow the web server processes to read and write these files
-
-=head2 get_restart_server
-
-When the application is mostly installed, should the web server be
-restarted?
-
-=head2 get_restart_server_cmd
-
-What is the command used to restart the web server
-
-=head2 get_run_cmd
-
-Run the post installation commands? These may take a long time to complete
-
-=head2 get_setuid_root
-
-Enable the C<setuid> root wrapper?
-
-=head2 get_style
-
-Which installation layout? Either B<perl> or B<normal>
-
-=over 3
-
-=item B<normal>
-
-Modules, programs, and the F<var> directory tree are installed to a
-user selectable path. Defaults to F<< /opt/<appname> >>
-
-=item B<perl>
-
-Will install modules and programs in their usual L<Config> locations. The
-F<var> directory tree will be install to F<< /var/www/<appname> >>
-
-=back
-
-=head2 get_ver
-
-Dummy question returns the version part of the installation directory
-
-=head1 Actions
-
-All action methods are passed C<$config>
-
-=head2 copy_files
-
-Copies files as defined in the C<< $config->{copy_files} >> attribute.
-Each item in this list is a hash ref containing I<from> and I<to> keys
-
-=head2 create_dirs
-
-Create the directory paths specified in the list
-C<< $config->{create_dirs} >> if they do not exist
-
-=head2 create_files
-
-Create the files specified in the list
-C<< $config->{create_files} >> if they do not exist
-
-=head2 create_schema
-
-Creates a database then deploys and populates the schema
-
-=head2 create_ugrps
-
-Creates the user and group to own the application files
-
-=head2 link_files
-
-Creates some symbolic links
-
-=head2 make_default
-
-Makes this installation the default for this server
-
-=head2 restart_server
-
-Restarts the web server
-
-=head2 set_owner
-
-Set the ownership of the installed files and directories
-
-=head2 set_permissions
-
-Set the permissions on the installed files and directories
-
 =head1 Private Methods
-
-=head2 _abs_path
-
-   $absolute_path = $builder->_abs_path( $base, $path );
-
-Prepends F<$base> to F<$path> unless F<$path> is an absolute path
 
 =head2 _copy_file
 
@@ -1526,36 +911,12 @@ Prepends F<$base> to F<$path> unless F<$path> is an absolute path
 Called by L</process_files>. Copies the C<$source> file to the
 C<$destination> directory
 
-=head2 _edit_credentials
-
-   $builder->_edit_credentials( $config, $dbname );
-
-Writes the database login information stored in the C<$config> to the
-application config file in the F<var/etc> directory. Called from
-L</create_schema>
-
-=head2 _encrypt
-
-   $encrypted_value = $self->_encrypt( $config, $plain_value, $dir )
-
-Returns the encrypted value the plain value. Called from
-L</get_credentials>
-
 =head2 _get_arrays_from_dtd
 
    $list_of_arrays = $builder->_get_arrays_from_dtd( $dtd );
 
 Parses the C<$dtd> data and returns the list of element names which are
-interpolated into arrays. Called from L</_get_connect_info>
-
-=head2 _get_connect_info
-
-   ($info, $dtd) = $builder->_get_connect_info( $path );
-
-Reads database connection information from F<$path> using L<XML::Simple>.
-The I<ForceArray> attribute passed to L<XML::Simple> is obtained by parsing
-the DTD elements in the file. Called by the L</get_credentials> question
-and L<_edit_credentials>
+interpolated into arrays. Called from L</connect_info>
 
 =head1 Diagnostics
 
