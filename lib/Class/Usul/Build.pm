@@ -7,7 +7,7 @@ use warnings;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use parent qw(Module::Build);
 
-use Class::Usul::Build::Actions;
+use Class::Usul::Build::InstallActions;
 use Class::Usul::Build::Questions;
 use Class::Usul::Constants;
 use Class::Usul::Programs;
@@ -221,7 +221,7 @@ sub cpan_upload {
 }
 
 sub install_actions_class {
-   return __PACKAGE__.q(::Actions);
+   return __PACKAGE__.q(::InstallActions);
 }
 
 sub post_install {

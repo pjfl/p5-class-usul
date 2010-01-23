@@ -1,6 +1,6 @@
 # @(#)$Id$
 
-package Class::Usul::Build::Actions;
+package Class::Usul::Build::InstallActions;
 
 use strict;
 use namespace::autoclean;
@@ -221,6 +221,8 @@ sub set_permissions {
    return;
 }
 
+# Private methods
+
 sub _abs_path {
    my ($self, $base, $path) = @_; my $cli = $self->cli;
 
@@ -267,11 +269,11 @@ __END__
 
 =head1 Name
 
-Class::Usul::Build::Actions - Things to do after Build install
+Class::Usul::Build::InstallActions - Things to do after Build install
 
 =head1 Version
 
-Describes Class::Usul::Build::Actions version 0.1.$Revision$
+Describes Class::Usul::Build::InstallActions version 0.1.$Revision$
 
 =head1 Synopsis
 
