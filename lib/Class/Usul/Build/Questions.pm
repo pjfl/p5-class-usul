@@ -1,6 +1,6 @@
 # @(#)$Id$
 
-package Class::Usul::Build;
+package Class::Usul::Build::Questions;
 
 use strict;
 use namespace::autoclean;
@@ -10,8 +10,8 @@ use Class::Usul::Constants;
 use Moose;
 use IO::Interactive qw(is_interactive);
 
-has 'builder'           => is => 'ro', isa => 'Object', required => TRUE
-   handles              => [ qw(base_dir cli connect_info dist_version) ];
+has 'builder'           => is => 'ro', isa => 'Object', required => TRUE,
+   handles              => [ qw(cli) ];
 has 'config_attributes' => is => 'ro', isa => 'ArrayRef',
    default              => sub {
       [ qw(ask style path_prefix ver phase create_ugrps
@@ -67,9 +67,9 @@ sub q_credentials {
 
    my $cli     = $self->cli;
    my $name    = $cfg->{database_name};
-   my $etcd    = $cli->catdir ( $self->base_dir, qw(var etc) );
+   my $etcd    = $cli->catdir ( $self->builder->base_dir, qw(var etc) );
    my $path    = $cli->catfile( $etcd, $name.q(.xml) );
-   my ($dbcfg) = $self->connect_info( $path );
+   my ($dbcfg) = $self->builder->connect_info( $path );
    my $prompts = { name     => 'Enter db name',
                    driver   => 'Enter DBD driver',
                    host     => 'Enter db host',
@@ -213,7 +213,7 @@ sub q_style {
 sub q_ver {
    my $self = shift;
 
-   my ($major, $minor) = split m{ \. }mx, $self->dist_version;
+   my ($major, $minor) = split m{ \. }mx, $self->builder->dist_version;
 
    return $major.q(.).$minor;
 }

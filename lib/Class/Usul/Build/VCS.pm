@@ -10,36 +10,38 @@ use Class::Usul::Constants;
 use IPC::Cmd qw(can_run);
 use Moose;
 
-with qw(Class::Usul);
+extends qw(Class::Usul);
 
 has 'type' => is => 'rw', isa => 'Str';
 has 'vcs'  => is => 'rw', isa => 'Object';
 
-sub BUILDARGS {
-   my ($orig, $class, $project_dir) = @_; my $attrs = {};
+around BUILDARGS => sub {
+   my ($orig, $class, @rest) = @_;
 
-   if (-d $class->catfile( $project_dir, q(.git) )) {
+   my $attrs = $class->$orig( @rest ); my $dir = $attrs->{project_dir};
+
+   if (-d $class->catfile( $dir, q(.git) )) {
       can_run( q(git) ) or return $attrs; # Be nice to CPAN testing
 
       require Git::Class::Worktree;
 
-      $attrs->{vcs } = Git::Class::Worktree->new( path => $project_dir );
+      $attrs->{vcs } = Git::Class::Worktree->new( path => $dir );
       $attrs->{type} = q(git);
       return $attrs;
    }
 
-   if (-d $class->catfile( $project_dir, q(.svn) )) {
+   if (-d $class->catfile( $dir, q(.svn) )) {
       can_run( q(svn) ) or return $attrs; # Be nice to CPAN testing
 
       require SVN::Class;
 
-      $attrs->{vcs } = SVN::Class::svn_dir( $project_dir );
+      $attrs->{vcs } = SVN::Class::svn_dir( $dir );
       $attrs->{type} = q(svn);
       return $attrs;
    }
 
    return $attrs;
-}
+};
 
 sub commit {
    my ($self, $msg) = @_;

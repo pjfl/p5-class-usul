@@ -9,6 +9,7 @@ use parent qw(Module::Build);
 
 use Class::Usul::Build::InstallActions;
 use Class::Usul::Build::Questions;
+use Class::Usul::Build::VCS;
 use Class::Usul::Constants;
 use Class::Usul::Programs;
 use TryCatch;
@@ -17,11 +18,11 @@ use MRO::Compat;
 use Perl::Version;
 use Module::CoreList;
 use Pod::Eventual::Simple;
-use English     qw(-no_match_vars);
-use File::Copy  qw(copy);
-use File::Find  qw(find);
-use File::Path  qw(make_path);
-use XML::Simple   ();
+use English    qw(-no_match_vars);
+use File::Copy qw(copy);
+use File::Find qw(find);
+use File::Path qw(make_path);
+use XML::Simple  ();
 
 if ($ENV{AUTOMATED_TESTING}) {
    # Some CPAN testers set these. Breaks dependencies
@@ -29,8 +30,8 @@ if ($ENV{AUTOMATED_TESTING}) {
    $ENV{TEST_CRITIC     } = FALSE; $ENV{TEST_POD     } = FALSE;
 }
 
-my $ARRAYS        = [ qw(copy_files create_dirs
-                         create_files credentials link_files run_cmds) ];
+my $ARRAYS        = [ qw(copy_files create_dirs create_files credentials
+                         link_files run_cmds) ];
 my $CFG_FILE      = q(build.xml);
 my $CHANGE_ARGS   = [ q({{ $NEXT }}), q(%-9s %s), q(%Y-%m-%d %T %Z) ];
 my $CHANGES_FILE  = q(Changes);
@@ -176,7 +177,7 @@ sub cli {
 
    $self->{_command_line_interface}
       or $self->{_command_line_interface} = Class::Usul::Programs->new
-            ( { appclass => $self->module_name, n => TRUE } );
+            ( appclass => $self->module_name, n => TRUE );
 
    return $self->{_command_line_interface};
 }
@@ -629,13 +630,18 @@ sub _update_version {
 }
 
 sub _vcs {
-   my $self = shift; my $class = __PACKAGE__.q(::VCS); my $vcs;
+   my $self   = shift;
+   my $is_ref = ref $self;
 
-   my $dir  = ref $self ? $self->cli->config->{appldir} : File::Spec->curdir;
+   $is_ref and $self->{_vcs} and return $self->{_vcs};
 
-   ref $self and $vcs = $self->{_vcs} and return $vcs;
+   my $class  = __PACKAGE__.q(::VCS);
+   my $cli    = $is_ref ? $self->cli              : undef;
+   my $dir    = $cli    ? $cli->config->{appldir} : File::Spec->curdir;
+   my $config = $cli    ? $cli->config            : {};
+   my $vcs    = $class->new( project_dir => $dir, config => $config );
 
-   $vcs = $class->new( $dir ); ref $self and $self->{_vcs} = $vcs;
+   $is_ref and $self->{_vcs} = $vcs;
 
    return $vcs;
 }

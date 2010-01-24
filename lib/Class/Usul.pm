@@ -52,7 +52,10 @@ with qw(Class::Usul::Base Class::Usul::Encoding Class::Usul::Crypt);
 __PACKAGE__->mk_log_methods();
 
 around BUILDARGS => sub {
-   my ($orig, $class, $attr) = @_; my $config = $attr->{config} ||= {};
+   my ($orig, $class, @rest) = @_;
+
+   my $attr   = $class->$orig( @rest );
+   my $config = $attr->{config} ||= {};
 
    for (grep { defined $config->{ $_ } }
         __PACKAGE__->meta->get_attribute_list) {

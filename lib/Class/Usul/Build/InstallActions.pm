@@ -11,6 +11,7 @@ use Moose;
 use File::Copy qw(copy move);
 use File::Path qw(make_path);
 use File::Find qw(find);
+use TryCatch;
 use XML::Simple  ();
 
 has 'actions' => is => 'ro', isa => 'ArrayRef',
@@ -18,7 +19,7 @@ has 'actions' => is => 'ro', isa => 'ArrayRef',
       [ qw(create_dirs create_files copy_files link_files
            create_schema create_ugrps set_owner
            set_permissions make_default restart_server) ] };
-has 'builder' => is => 'ro', isa => 'Object', required => TRUE
+has 'builder' => is => 'ro', isa => 'Object', required => TRUE,
    handles    => [ qw(cli connect_info installation_destination
                       module_name) ];
 

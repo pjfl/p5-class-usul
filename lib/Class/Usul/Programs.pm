@@ -429,10 +429,11 @@ sub _get_homedir {
    $path and -d $path and return $path;
    $path = $self->catdir( @{ PREFIX() }, $self->class2appdir( $class ) );
 
-   my $prefix   = $args->{prefix} || $path;
+   my $prefix   = $args->{install_prefix} || $path;
    my $dir_path = $self->catdir( split m{ :: }mx, $class );
 
    $path = $self->catdir( $prefix, qw(default lib), $dir_path );
+
    -d $path and return $path;
 
    for (@INC) {
