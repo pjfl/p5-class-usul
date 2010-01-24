@@ -44,7 +44,6 @@ my $builder = Module::Build->new
                              'Text::Diff'          => 1.37, },
      configure_requires => { 'version'             => 0.74,
                              'ExtUtils::MakeMaker' => 6.42, },
-     create_makefile_pl => q(traditional),
      create_readme      => 1,
      create_packlist    => 0,
      dist_version_from  => $class_path,

@@ -30,12 +30,14 @@ around BUILDARGS => sub {
       return $attrs;
    }
 
-   if (-d $class->catfile( $dir, q(.svn) )) {
+   $dir = $class->catfile( $attrs->{project_dir}, q(.svn) );
+
+   if (-d $dir) {
       can_run( q(svn) ) or return $attrs; # Be nice to CPAN testing
 
       require SVN::Class;
 
-      $attrs->{vcs } = SVN::Class::svn_dir( $class->catfile( $dir, q(.svn) ) );
+      $attrs->{vcs } = SVN::Class::svn_dir( $dir );
       $attrs->{type} = q(svn);
       return $attrs;
    }
