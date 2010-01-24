@@ -54,7 +54,7 @@ sub popen {
    my $err  = IO::Handle->new();
    my $out  = IO::Handle->new();
    my $in   = IO::Handle->new();
-   my $res  = Class::Usul::IPC::Response->new();
+   my $res  = Class::Usul::Response::IPC->new();
 
    {  local ($CHILD_ERROR, $ERRNO, $WAITEDPID); local $ERROR = FALSE;
 
@@ -292,7 +292,7 @@ sub _run_cmd_using_ipc_run {
    try            { $rv = __ipc_run_harness( $cmd_ref, @cmd_args ) }
    catch ($error) { $self->throw_on_error( $error ) }
 
-   my $res = Class::Usul::IPC::Response->new();
+   my $res = Class::Usul::Response::IPC->new();
 
    $res->sig( $rv & 127 ); $res->core( $rv & 128 ); $rv = $res->rv( $rv >> 8 );
 
@@ -349,7 +349,7 @@ sub _run_cmd_using_system {
       }
    }
 
-   my $res = Class::Usul::IPC::Response->new();
+   my $res = Class::Usul::Response::IPC->new();
 
    $res->sig( $rv & 127 ); $res->core( $rv & 128 ); $rv = $res->rv( $rv >> 8 );
 
@@ -457,7 +457,7 @@ sub __ipc_run_harness {
 }
 
 sub __new_process_table {
-   my $table = Class::Usul::Table->new
+   my $table = Class::Usul::Response::Table->new
       ( align  => { uid   => 'left',   pid   => 'right',
                     ppid  => 'right',  start => 'right',
                     tty   => 'right',  time  => 'right',
