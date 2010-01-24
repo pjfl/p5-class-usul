@@ -4,7 +4,7 @@ package Class::Usul::Build::VCS;
 
 use strict;
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 818 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 818 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use IPC::Cmd qw(can_run);
@@ -93,7 +93,7 @@ Class::Usul::Build::VCS - Version control
 
 =head1 Version
 
-This document describes Class::Usul::Build::VCS version 0.1.$Revision: 818 $
+This document describes Class::Usul::Build::VCS version 0.2.$Revision: 818 $
 
 =head1 Synopsis
 
