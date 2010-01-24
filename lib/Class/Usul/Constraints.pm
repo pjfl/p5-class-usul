@@ -4,7 +4,7 @@ package Class::Usul::Constraints;
 
 use strict;
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -41,7 +41,7 @@ Class::Usul::Constraints -  Role defining package constraints
 
 =head1 Version
 
-This document describes Class::Usul::Constraints version 0.1.$Revision$
+This document describes Class::Usul::Constraints version 0.2.$Revision$
 
 =head1 Synopsis
 

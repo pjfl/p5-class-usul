@@ -4,7 +4,7 @@ package Class::Usul::Encoding;
 
 use strict;
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Encode;
@@ -115,7 +115,7 @@ Class::Usul::Encoding - Create additional methods for different encodings
 
 =head1 Version
 
-0.1.$Revision$
+0.2.$Revision$
 
 =head1 Synopsis
 
