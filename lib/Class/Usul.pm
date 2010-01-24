@@ -172,7 +172,7 @@ Class::Usul - A base class for Catalyst MVC components
 
 =head1 Version
 
-This document describes Class::Usul version 0.2.$Revision$
+Describes Class::Usul version 0.2.$Revision$
 
 =head1 Synopsis
 
