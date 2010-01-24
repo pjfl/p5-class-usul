@@ -171,6 +171,10 @@ sub change_version {
    return;
 }
 
+sub class_path {
+   return File::Spec->catfile( q(lib), split m{ :: }mx, $_[1].q(.pm) );
+}
+
 sub cli {
    # Self initialising accessor for the command line interface object
    my $self = shift;
@@ -219,6 +223,10 @@ sub cpan_upload {
    $cli->ensure_class_loaded( q(CPAN::Uploader) );
    CPAN::Uploader->upload_file( $self->dist_dir.q(.tar.gz), $args );
    return;
+}
+
+sub distname {
+   my $distname = $_[1]; $distname =~ s{ :: }{-}gmx; return $distname;
 }
 
 sub install_actions_class {
@@ -322,6 +330,18 @@ sub replace {
 
 sub repository {
    my $vcs = shift->_vcs or return; return $vcs->repository;
+}
+
+sub resources {
+   my ($class, $license, $tracker, $home_page, $distname) = @_;
+
+   my $resources  = { license => $license, bugtracker => $tracker.$distname };
+   my $repository = $class->public_repository;
+
+   $home_page  and $resources->{homepage  } = $home_page;
+   $repository and $resources->{repository} = $repository;
+
+   return $resources;
 }
 
 sub set_base_path {
@@ -630,8 +650,7 @@ sub _update_version {
 }
 
 sub _vcs {
-   my $self   = shift;
-   my $is_ref = ref $self;
+   my $self = shift; my $is_ref = ref $self;
 
    $is_ref and $self->{_vcs} and return $self->{_vcs};
 
