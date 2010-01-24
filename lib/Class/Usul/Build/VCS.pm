@@ -73,8 +73,8 @@ sub tag {
    my $from = $repo.SEP.q(trunk);
    my $to   = $repo.SEP.q(tags).SEP.$vtag;
    my $msg  = "Tagging $vtag";
-   warn "$from $to";
-   return $self->vcs->svn_run( q(copy), [ q(-m), $msg ], "$from $to" );
+
+   return $self->vcs->svn_run( q(copy), [ q(-m), "'$msg'" ], "$from $to" );
 }
 
 __PACKAGE__->meta->make_immutable;
