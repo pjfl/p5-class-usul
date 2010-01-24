@@ -4,7 +4,7 @@ package Class::Usul::I18N;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 
@@ -41,7 +41,7 @@ Class::Usul::I18N - Localize text strings
 
 =head1 Version
 
-0.2.$Revision$
+0.1.$Revision$
 
 =head1 Synopsis
 
