@@ -445,7 +445,7 @@ sub _get_homedir {
 }
 
 sub _inflate_config {
-   my ($class, $args) = @_;
+   my ($class, $args) = @_; $args->{config} ||= {};
 
    my $defaults = {
       appldir => '__APPLDIR__', binsdir => '__BINSDIR__', phase => PHASE,
