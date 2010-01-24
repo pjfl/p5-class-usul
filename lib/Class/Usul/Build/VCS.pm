@@ -35,7 +35,7 @@ around BUILDARGS => sub {
 
       require SVN::Class;
 
-      $attrs->{vcs } = SVN::Class::svn_dir( $dir );
+      $attrs->{vcs } = SVN::Class::svn_dir( $class->catfile( $dir, q(.svn) ) );
       $attrs->{type} = q(svn);
       return $attrs;
    }

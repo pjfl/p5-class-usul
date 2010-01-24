@@ -448,7 +448,7 @@ sub _inflate_config {
    my ($class, $args) = @_; $args->{config} ||= {};
 
    my $defaults = {
-      appldir => '__APPLDIR__', binsdir => '__BINSDIR__', phase => PHASE,
+      appldir => '__APPLDIR__', binsdir => '__BINSDIR__', phase => '__PHASE__',
    };
 
    $class->_inflate_values( $args, $defaults );
@@ -503,12 +503,10 @@ sub _inflate_config {
 }
 
 sub _inflate_values {
-   my ($class, $args, $defaults) = @_; my $conf = $args->{config};
+   my ($class, $args, $defaults) = @_;
 
-   my @keys = ( keys %{ $defaults } );
-
-   for (@keys) {
-      $conf->{ $_ } = $class->_inflate_value( $args, $defaults, $_ );
+   for (keys %{ $defaults }) {
+      $args->{config}->{ $_ } = $class->_inflate_value( $args, $defaults, $_ );
    }
 
    return;
@@ -571,7 +569,7 @@ sub _inflate_value {
       }
    }
 
-   return abs_path( $class->untaint_path( $v ) );
+   return $class->untaint_path( $v );
 }
 
 sub _load_args_ref {
