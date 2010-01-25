@@ -46,3 +46,4 @@ Thumbs.db
 \bClass-Usul-v[\d\.\_]+
 \bt/ipc_srlock
 \bt/file-dataclass
+\bbuild.xml
