@@ -73,11 +73,9 @@ $resources->{repository} = $repository if ($repository);
 my $builder = Module::Build->new
    ( add_to_cleanup     => [ q(Debian_CPANTS.txt), $distname.q(-*),
                              map { ( q(*/) x $_ ).q(*~) } 0..5 ],
-     build_requires     => { 'Exception::Class'    => 1.23,
-                             'Test::More'          => 0.74,
-                             'Text::Diff'          => 1.37, },
+     build_requires     => { 'Test::More'          => 0.74, },
      configure_requires => { 'version'             => 0.77,
-                             'ExtUtils::MakeMaker' => 6.42, },
+                             'Module::Build'       => 0.35, },
      create_readme      => 1,
      create_packlist    => 0,
      dist_version_from  => $class_path,

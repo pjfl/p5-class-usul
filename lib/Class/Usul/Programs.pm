@@ -503,10 +503,10 @@ sub _inflate_config {
 }
 
 sub _inflate_values {
-   my ($class, $args, $defaults) = @_;
+   my ($class, $args, $defaults) = @_; my $conf = $args->{config};
 
    for (keys %{ $defaults }) {
-      $args->{config}->{ $_ } = $class->_inflate_value( $args, $defaults, $_ );
+      $conf->{ $_ } = $class->_inflate_value( $args, $defaults, $_ );
    }
 
    return;
