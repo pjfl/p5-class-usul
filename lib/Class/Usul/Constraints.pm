@@ -13,7 +13,7 @@ use Moose::Util::TypeConstraints;
 
 subtype 'C_U_Log' => as 'Object' =>
    where   { $_->isa( q(Class::Null) ) or __has_log_level_methods( $_ ) } =>
-   message { 'Object '.(blessed $_ || $_).' is missing a log level method'};
+   message { 'Object '.(blessed $_ || $_).' is missing a log level method' };
 
 enum 'C_U_Encoding' => ENCODINGS;
 enum 'C_U_Digest_Algorithm' => DIGEST_ALGORITHMS;
