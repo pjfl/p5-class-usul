@@ -37,7 +37,6 @@ my $REQUIRES   = {
    'Text::Autoformat'          => '1.13',
    'Time::Zone'                => '2.22',
    'TryCatch'                  => '1.002000',
-   'XML::Simple'               => '2.18',
    'YAML::Syck'                => '1.05',
    'namespace::autoclean'      => '0.09',
    'namespace::clean'          => '0.11',

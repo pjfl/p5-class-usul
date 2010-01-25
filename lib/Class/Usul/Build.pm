@@ -22,7 +22,6 @@ use English    qw(-no_match_vars);
 use File::Copy qw(copy);
 use File::Find qw(find);
 use File::Path qw(make_path);
-use XML::Simple  ();
 
 if ($ENV{AUTOMATED_TESTING}) {
    # Some CPAN testers set these. Breaks dependencies
@@ -136,7 +135,7 @@ sub ACTION_upload {
 sub ask_questions {
    my ($self, $cfg) = @_;
 
-   my $cli  = $self->cli; $cli->pwidth( $cfg->{pwidth} );
+   my $cli  = $self->cli;
    my $quiz = $self->question_class->new( builder => $self );
 
    # Update the config by looping through the questions
@@ -194,22 +193,6 @@ sub commit_release {
    $vcs->commit( ucfirst $msg ) and $cli->say( "Committed $msg" );
    $vcs->error and $cli->say( @{ $vcs->error } );
    return;
-}
-
-sub connect_info {
-   my ($self, $path) = @_;
-
-   my $cli    = $self->cli;
-   my $text   = $cli->io( $path )->all;
-   my $dtd    = join "\n", grep {  m{ <! .+ > }mx } split m{ \n }mx, $text;
-      $text   = join "\n", grep { !m{ <! .+ > }mx } split m{ \n }mx, $text;
-   my $arrays = $self->_get_arrays_from_dtd( $dtd );
-   my $info;
-
-   try { $info = XML::Simple->new( ForceArray => $arrays )->xml_in( $text ) }
-   catch ($e) { $cli->fatal( $e ) }
-
-   return ($info, $dtd);
 }
 
 sub cpan_upload {
@@ -302,11 +285,11 @@ sub read_config_file {
    my $self = shift;
    my $cli  = $self->cli;
    my $path = $cli->catfile( $self->base_dir, $CFG_FILE );
-   my $cfg;
+   my $cfg  = {};
 
-   -f $path or $cli->fatal( "File $path not found" );
+   -f $path or return $cfg;
 
-   try { $cfg = XML::Simple->new( ForceArray => $ARRAYS )->xml_in( $path ) }
+   try        { $cfg = $cli->data_load( arrays => $ARRAYS, path => $path ) }
    catch ($e) { $cli->fatal( $e ) }
 
    return $cfg;
@@ -398,19 +381,14 @@ sub update_changlog {
 
 sub write_config_file {
    my ($self, $cfg) = @_;
-   my $cli          = $self->cli;
-   my $path         = $cli->catfile( $self->base_dir, $CFG_FILE );
+
+   my $cli  = $self->cli;
+   my $path = $cli->catfile( $self->base_dir, $CFG_FILE );
 
    defined $path or $cli->fatal( 'Config path undefined' );
    defined $cfg  or $cli->fatal( 'Config data undefined' );
 
-   try {
-      my $xs = XML::Simple->new
-         ( NoAttr => TRUE, OutputFile => $path, RootName => q(config) );
-
-      chmod oct q(0640), $path;
-      $xs->xml_out( $cfg );
-   }
+   try        { $cli->data_dump( data => $cfg, path => $path ) }
    catch ($e) { $cli->fatal( $e ) }
 
    return $cfg;
@@ -574,18 +552,6 @@ sub _filter_configure_requires_paths {
 
 sub _filter_requires_paths {
    return [ grep { not m{ \.t \z }mx and $_ ne q(Build.PL) } @{ $_[ 1 ] } ];
-}
-
-sub _get_arrays_from_dtd {
-   my ($self, $dtd) = @_; my $arrays = [];
-
-   my $pattern = q(<!ELEMENT \s+ (\w+) \s+ \( \s* ARRAY \s* \) \*? \s* >);
-
-   for my $line (split m{ \n }mx, $dtd) {
-      $line =~ m{ \A $pattern \z }imsx and push @{ $arrays }, $1;
-   }
-
-   return $arrays;
 }
 
 sub _prereq_comparison_report {
@@ -859,15 +825,6 @@ package variable
 Returns an instance of L<Class::Usul::Programs>, the command line
 interface object
 
-=head2 connect_info
-
-   ($info, $dtd) = $builder->connect_info( $path );
-
-Reads database connection information from F<$path> using L<XML::Simple>.
-The I<ForceArray> attribute passed to L<XML::Simple> is obtained by parsing
-the DTD elements in the file. Called by the L</get_credentials> question
-and L<_edit_credentials>
-
 =head2 post_install
 
    $builder->post_install( $config );
@@ -935,13 +892,6 @@ the install action. Called from L<ACTION_build>
 
 Called by L</process_files>. Copies the C<$source> file to the
 C<$destination> directory
-
-=head2 _get_arrays_from_dtd
-
-   $list_of_arrays = $builder->_get_arrays_from_dtd( $dtd );
-
-Parses the C<$dtd> data and returns the list of element names which are
-interpolated into arrays. Called from L</connect_info>
 
 =head1 Diagnostics
 

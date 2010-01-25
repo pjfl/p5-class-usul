@@ -15,9 +15,9 @@ use Pod::Man;
 use TryCatch;
 use File::Spec;
 use Pod::Usage;
-use XML::Simple;
 use Term::ReadKey;
 use Text::Autoformat;
+use File::DataClass::Schema;
 use Cwd             qw(abs_path);
 use English         qw(-no_match_vars);
 use Getopt::Mixed   qw(nextOption);
@@ -110,6 +110,21 @@ sub anykey {
    my ($self, $prompt) = @_; $prompt ||= 'Press any key to continue...';
 
    return $self->prompt( -p => $prompt, -e => NUL, -1 => TRUE );
+}
+
+sub data_dump {
+   my ($self, @rest) = @_; my $args = $self->arg_list( @rest );
+
+   return File::DataClass::Schema->connect( {}, $self )->dump( $args );
+}
+
+sub data_load {
+   my ($self, @rest) = @_; my $args = $self->arg_list( @rest );
+
+   $args = { path => $args->{path} || NUL,
+             storage_attributes => { _arrays => $args->{arrays} || [] } };
+
+   return File::DataClass::Schema->connect( $args, $self )->load;
 }
 
 sub dispatch {
@@ -593,10 +608,10 @@ sub _load_config {
    my $file = $class->app_prefix( $args->{appclass} );
    my $path = $class->catfile   ( $args->{home}, $file.q(.xml) );
 
-   if (-f $path) {
-      try { $cfg = XML::Simple->new( SuppressEmpty => TRUE )->xml_in( $path ) }
-      catch ($e) { $class->throw( $e ) }
-   }
+   -f $path or return $cfg;
+
+   try        { $cfg = $class->data_load( path => $path ) }
+   catch ($e) { $class->throw( $e ) }
 
    return $cfg;
 }
@@ -606,17 +621,11 @@ sub _load_messages {
    my $lang = $self->language or return {};
    my $file = q(default_).$lang.q(.xml);
    my $path = $self->catfile( $self->config->{ctrldir}, $file );
-   my $cfg;
+   my $cfg  = {};
 
    return {} unless ($path = $self->untaint_path( $path ) and -f $path);
 
-   try {
-      my $xs   = XML::Simple->new( ForceArray => [ q(messages) ] );
-      my $text = $self->io( $path )->lock->all;
-
-      $text = join "\n", grep { not m{ <! .+ > }mx } split m{ \n }mx, $text;
-      $cfg  = $xs->xml_in( $text ) || {};
-   }
+   try { $cfg = $self->data_load( arrays => [ q(messages) ], path => $path ) }
    catch ($e) { $self->error( $e ) }
 
    return $cfg->{messages} || {};
@@ -629,13 +638,7 @@ sub _load_os_depends {
 
    return {} unless ($path = $self->untaint_path( $path ) and -f $path);
 
-   try {
-      my $text = $self->io( $path )->lock->all;
-      my $xs   = XML::Simple->new( ForceArray => [ q(os) ] );
-
-      $text = join "\n", grep { not m{ <! .+ > }mx } split m{ \n }mx, $text;
-      $cfg  = $xs->xml_in( $text ) || {};
-   }
+   try        { $cfg = $self->data_load( arrays => [ q(os) ], path => $path ) }
    catch ($e) { $self->error( $e ) }
 
    return $cfg->{os} || {};
@@ -1049,6 +1052,8 @@ Turning debug on produces some more output
 
 =item L<Class::Usul::InflateSymbols>
 
+=item L<File::DataClass>
+
 =item L<Getopt::Mixed>
 
 =item L<IO::Interactive>
@@ -1056,8 +1061,6 @@ Turning debug on produces some more output
 =item L<Term::ReadKey>
 
 =item L<Text::Autoformat>
-
-=item L<XML::Simple>
 
 =back
 

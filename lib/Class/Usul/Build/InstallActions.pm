@@ -7,12 +7,11 @@ use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
-use Moose;
 use File::Copy qw(copy move);
 use File::Path qw(make_path);
 use File::Find qw(find);
 use TryCatch;
-use XML::Simple  ();
+use Moose;
 
 has 'actions' => is => 'ro', isa => 'ArrayRef',
    default    => sub {
@@ -20,8 +19,7 @@ has 'actions' => is => 'ro', isa => 'ArrayRef',
            create_schema create_ugrps set_owner
            set_permissions make_default restart_server) ] };
 has 'builder' => is => 'ro', isa => 'Object', required => TRUE,
-   handles    => [ qw(cli connect_info installation_destination
-                      module_name) ];
+   handles    => [ qw(cli installation_destination module_name) ];
 
 sub copy_files {
    # Copy some files
@@ -143,7 +141,7 @@ sub link_files {
          if (-e $from) {
             -l $path and unlink $path;
 
-            if (! -e $path) {
+            unless (-e $path) {
                $cli->info( "Symlinking $from to $path" );
                symlink $from, $path;
             }
@@ -239,24 +237,18 @@ sub _edit_credentials {
 
    return unless ($cfg->{credentials} and $cfg->{credentials}->{ $dbname });
 
-   my $cli           = $self->cli;
-   my $etcd          = $cli->catdir ( $cfg->{base}, qw(var etc) );
-   my $path          = $cli->catfile( $etcd, $dbname.q(.xml) );
-   my ($dbcfg, $dtd) = $self->connect_info( $path );
-   my $credentials   = $cfg->{credentials}->{ $dbname };
+   my $cli         = $self->cli;
+   my $etcd        = $cli->catdir ( $cfg->{base}, qw(var etc) );
+   my $path        = $cli->catfile( $etcd, $dbname.q(.xml) );
+   my $data        = $cli->data_load( path => $path );
+   my $credentials = $cfg->{credentials}->{ $dbname };
 
    for my $field (qw(driver host port user password)) {
       defined ($value = $credentials->{ $field }) or next;
-      $dbcfg->{credentials}->{ $dbname }->{ $field } = $value;
+      $data->{credentials}->{ $dbname }->{ $field } = $value;
    }
 
-   try {
-      my $io = $cli->io( $path );
-      my $xs = XML::Simple->new( NoAttr => TRUE, RootName => q(config) );
-
-      $dtd and $io->println( $dtd );
-      $io->append( $xs->xml_out( $dbcfg ) );
-   }
+   try        { $cli->data_dump( data => $data, path => $path ) }
    catch ($e) { $cli->fatal( $e ) }
 
    return;

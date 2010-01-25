@@ -38,8 +38,9 @@ sub q_built {
 sub q_create_schema {
    my ($self, $cfg) = @_; my $create = $cfg->{create_schema} || FALSE;
 
-   $cfg->{ask} or return $create; my $cli = $self->cli;
+   return $create unless ($cfg->{ask} and $cfg->{database});
 
+   my $cli  = $self->cli;
    my $text = 'Schema creation requires a database, id and password';
 
    $cli->output( $text, $self->paragraph );
@@ -52,6 +53,10 @@ sub q_create_ugrps {
 
    $cfg->{ask} or return $create; my $cli = $self->cli; my $text;
 
+   $cfg->{owner     } ||= $cli->app_prefix( $self->builder->module_name );
+   $cfg->{group     } ||= $cfg->{owner};
+   $cfg->{admin_role} ||= q(admin);
+
    $text  = 'Use groupadd, useradd, and usermod to create the user ';
    $text .= $cfg->{owner}.' and the groups '.$cfg->{group};
    $text .= ' and '.$cfg->{admin_role};
@@ -63,13 +68,14 @@ sub q_create_ugrps {
 sub q_credentials {
    my ($self, $cfg) = @_; my $credentials = $cfg->{credentials} || {};
 
-   return $credentials unless ($cfg->{ask} and $cfg->{create_schema});
+   return $credentials
+      unless ($cfg->{ask} and $cfg->{create_schema} and $cfg->{database_name});
 
    my $cli     = $self->cli;
    my $name    = $cfg->{database_name};
    my $etcd    = $cli->catdir ( $self->builder->base_dir, qw(var etc) );
    my $path    = $cli->catfile( $etcd, $name.q(.xml) );
-   my ($dbcfg) = $self->builder->connect_info( $path );
+   my $dbcfg   = $cli->data_load( path => $path );
    my $prompts = { name     => 'Enter db name',
                    driver   => 'Enter DBD driver',
                    host     => 'Enter db host',
@@ -145,12 +151,12 @@ sub q_process_owner {
 
    my $cli = $self->cli; my $text;
 
-   $text  = 'Which user does the web server/proxy run as? This user ';
-   $text .= 'will be added to the application group so that it can ';
-   $text .= 'access the application\'s files';
+   $text  = 'Which user does the application or web server/proxy run as? ';
+   $text .= 'This user will be added to the application group so that ';
+   $text .= 'it can access the application\'s files';
    $cli->output( $text, $self->paragraph );
 
-   return $cli->get_line( 'Web server user', $user, TRUE, 0 );
+   return $cli->get_line( 'Process owner', $user, TRUE, 0 );
 }
 
 sub q_restart_server {
@@ -158,7 +164,7 @@ sub q_restart_server {
 
    $cfg->{ask} or return $restart;
 
-   return $self->cli->yorn( 'Restart web server', $restart, TRUE, 0 );
+   return $self->cli->yorn( 'Restart server', $restart, TRUE, 0 );
 }
 
 sub q_restart_server_cmd {
@@ -186,9 +192,8 @@ sub q_setuid_root {
 
    $cfg->{ask} or return $setuid; my $cli = $self->cli; my $text;
 
-   $text   = 'Enable wrapper which allows limited access to some root ';
-   $text  .= 'only functions like password checking and user management. ';
-   $text  .= 'Not necessary unless the Unix authentication store is used';
+   $text  = 'Enable wrapper which allows limited access to some root ';
+   $text .= 'only functions like password checking and user management';
    $cli->output( $text, $self->paragraph );
 
    return $cli->yorn( 'Enable suid root', $setuid, TRUE, 0 );
@@ -201,7 +206,7 @@ sub q_style {
 
    $text  = 'The application has two modes if installation. In *normal* ';
    $text .= 'mode it installs all components to a specifed path. In ';
-   $text .= '*perl* mode modules are install to the site lib, ';
+   $text .= '*perl* mode modules are installed to the site lib, ';
    $text .= 'executables to the site bin and the rest to a subdirectory ';
    $text .= 'of /var/www. Installation defaults to normal mode since it is ';
    $text .= 'easier to maintain';
