@@ -43,6 +43,15 @@ sub mk_encoding_methods {
    return;
 }
 
+sub mk_log_message {
+   my ($self, $s, $message) = @_; chomp $message;
+
+   my $text  = (ucfirst $s->{leader} || NUL).LSB.($s->{user} || NUL);
+      $text .= RSB.SPC.(ucfirst $message || 'no message');
+
+   return $text;
+}
+
 sub mk_log_methods {
    my $self = shift; my $class = ref $self || $self;
 
@@ -61,15 +70,6 @@ sub mk_log_methods {
    }
 
    return;
-}
-
-sub mk_log_message {
-   my ($self, $s, $message) = @_; chomp $message;
-
-   my $text  = (ucfirst $s->{leader} || NUL).LSB.($s->{user} || NUL);
-      $text .= RSB.SPC.(ucfirst $message || 'no message');
-
-   return $text;
 }
 
 # Private class methods
@@ -177,6 +177,8 @@ a set of new methods are defined in the calling package. The method
 set is defined by the list of values in the C<ENCODINGS>
 constant. Each of these newly defined methods calls C<_decode_data>
 with a different encoding name
+
+=head2 mk_log_message
 
 =head2 mk_log_methods
 

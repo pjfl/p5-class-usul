@@ -261,38 +261,38 @@ for one of it's attributes
 
 =head1 Subroutines/Methods
 
-=head2 get_ask
+=head2 q_ask
 
 Ask if questions should be asked in future runs of the build process
 
-=head2 get_built
+=head2 q_built
 
 Always returns true. This dummy question is used to trigger the suppression
 of any further questions once the build phase is complete
 
-=head2 get_create_schema
+=head2 q_create_schema
 
 Should a database schema be created? If yes then the database connection
 information must be entered. The database must be available at install
 time
 
-=head2 get_create_ugrps
+=head2 q_create_ugrps
 
 Create the application user and group that owns the files and directories
 in the application
 
-=head2 get_credentials
+=head2 q_credentials
 
 Get the database connection information
 
-=head2 get_make_default
+=head2 q_make_default
 
 When installed should this installation become the default for this
 host? Causes the symbolic link (that hides the version directory from
 the C<PATH> environment variable) to be deleted and recreated pointing
 to this installation
 
-=head2 get_path_prefix
+=head2 q_path_prefix
 
 Prompt for the installation prefix. The application name and version
 directory are automatically appended. If the installation style is
@@ -301,37 +301,37 @@ path. The default is F</opt>. If the installation style is B<perl>
 then only the "var" data will be installed to this path. The default is
 F</var/www>
 
-=head2 get_phase
+=head2 q_phase
 
 The phase number represents the reason for the installation. It is
 encoded into the name of the application home directory. At runtime
 the application will load some configuration data that is dependent
 upon this value
 
-=head2 get_process_owner
+=head2 q_process_owner
 
 Prompts for the userid of the web server process owner. This user will
 be added to the group that owns the application files and directories.
 This will allow the web server processes to read and write these files
 
-=head2 get_restart_server
+=head2 q_restart_server
 
 When the application is mostly installed, should the web server be
 restarted?
 
-=head2 get_restart_server_cmd
+=head2 q_restart_server_cmd
 
 What is the command used to restart the web server
 
-=head2 get_run_cmd
+=head2 q_run_cmd
 
 Run the post installation commands? These may take a long time to complete
 
-=head2 get_setuid_root
+=head2 q_setuid_root
 
 Enable the C<setuid> root wrapper?
 
-=head2 get_style
+=head2 q_style
 
 Which installation layout? Either B<perl> or B<normal>
 
@@ -349,7 +349,7 @@ F<var> directory tree will be install to F<< /var/www/<appname> >>
 
 =back
 
-=head2 get_ver
+=head2 q_ver
 
 Dummy question returns the version part of the installation directory
 

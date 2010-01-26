@@ -744,12 +744,9 @@ constructor can initialise a multi-lingual message catalog if required
 
 =head1 Subroutines/Methods
 
-=head2 new
+=head2 BUILDARGS
 
-   $self = Class::Usul::Programs->new({ ... })
-
-Return a new program object. The optional argument is a hash ref which
-may contain these attributes:
+=head2 BUILD
 
 =head3 applclass
 
@@ -855,6 +852,10 @@ keyboard (that generates a character response)
    $self = $self->config();
 
 Return a reference to self
+
+=head2 data_dump
+
+=head2 data_load
 
 =head2 dispatch
 

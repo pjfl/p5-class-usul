@@ -101,6 +101,14 @@ This document describes Class::Usul::Build::VCS version 0.1.$Revision: 818 $
 
 =head1 Subroutines/Methods
 
+=head2 commit
+
+=head2 error
+
+=head2 repository
+
+=head2 tag
+
 =head1 Diagnostics
 
 None

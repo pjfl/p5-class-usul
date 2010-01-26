@@ -797,6 +797,10 @@ list of steps required to install the application
 Iterates over the I<requires> attributes calling L<CPAN> each time to
 install the dependent module
 
+=head2 ACTION_prereq_update
+
+=head2 prereq_update
+
 =head2 ACTION_release
 
 =head2 release
@@ -818,6 +822,10 @@ Upload distribution to CPAN
 This accessor/mutator method defaults to the list defined in the C<$ACTIONS>
 package variable
 
+=head2 ask_questions
+
+=head2 class_path
+
 =head2 cli
 
    $cli = $builder->cli;
@@ -825,11 +833,21 @@ package variable
 Returns an instance of L<Class::Usul::Programs>, the command line
 interface object
 
+=head2 commit_release
+
+=head2 cpan_upload
+
+=head2 distname
+
+=head2 install_actions_class
+
 =head2 post_install
 
    $builder->post_install( $config );
 
 Executes the custom post installation commands
+
+=head2 prereq_update
 
 =head2 process_files
 
@@ -847,6 +865,8 @@ is optional and defaults to B<blib>
 Return the URI of the SVN repository for this project. Return undef
 if we are not using svn or the repository is a local file path
 
+=head2 question_class
+
 =head2 read_config_file
 
    $config = $builder->read_config_file( $path );
@@ -860,6 +880,10 @@ I<ForceArray> attribute. Called by L</ACTION_build> and L<ACTION_install>
    $builder->replace( $this, $that, $path );
 
 Substitutes C<$this> string for C<$that> string in the file F<$path>
+
+=head2 repository
+
+=head2 resources
 
 =head2 set_base_path
 
@@ -877,12 +901,16 @@ as appropriate. Called from L<ACTION_install>
 Accessor/mutator method. Used by L</_copy_file> to skip processing files
 that match this pattern. Set to false to not have a skip list
 
+=head2 update_changlog
+
 =head2 write_config_file
 
    $config = $builder->write_config_file( $path, $config );
 
 Writes the C<$config> hash to the F<$path> file for later use by
 the install action. Called from L<ACTION_build>
+
+=head2 write_license_file
 
 =head1 Private Methods
 
