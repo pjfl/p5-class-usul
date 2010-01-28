@@ -57,10 +57,10 @@ around BUILDARGS => sub {
    $attr->{prefix  } ||= $class->split_on__( $prog, 0 );
    $attr->{name    } ||= $class->split_on__( $prog, 1 ) || $prog;
    $attr->{appclass} ||= ucfirst $attr->{prefix};
-   $attr->{home    } ||= $class->_get_homedir    ( $attr );
-   $attr->{config  } ||= $class->_load_config    ( $attr );
-                         $class->_inflate_config ( $attr );
-   $attr->{os      } ||= $class->_load_os_depends( $attr );
+   $attr->{home    } ||= $class->get_homedir    ( $attr );
+   $attr->{config  } ||= $class->load_config    ( $attr );
+                         $class->finalize_config( $attr );
+   $attr->{os      } ||= $class->load_os_depends( $attr );
 
    exists $attr->{n} and $attr->{args}->{n} = TRUE;
 
@@ -83,7 +83,7 @@ sub BUILD {
    $self->_set_attr  ( q(S), q(silent)         );
    $self->debug      ( $self->get_debug_option );
    $self->lock->debug( $self->debug            );
-   $self->messages   ( $self->_load_messages   );
+   $self->messages   ( $self->load_messages    );
 
    return;
 }
@@ -193,6 +193,64 @@ sub fatal {
    exit 1;
 }
 
+sub finalize_config {
+   my ($class, $args) = @_; $args->{config} ||= {};
+
+   my $defaults = {
+      appldir => '__APPLDIR__', binsdir => '__BINSDIR__', phase => '__PHASE__',
+   };
+
+   $class->_inflate_values( $args, $defaults );
+
+   $defaults = {
+      pathname => '__binsdir('.$args->{script}.')__',
+      shell    => $class->catfile( NUL, qw(bin ksh) ),
+      suid     => '__binsdir('.$args->{prefix}.'_admin)__',
+      vardir   => '__appldir(var)__',
+   };
+
+   $class->_inflate_values( $args, $defaults );
+
+   $defaults = {
+      ctrldir  => '__vardir(etc)__',
+      dbasedir => '__vardir(db)__',
+      logsdir  => '__vardir(logs)__',
+      root     => '__vardir(root)__',
+      rundir   => '__vardir(run)__',
+      tempdir  => '__vardir(tmp)__',
+   };
+
+   $class->_inflate_values( $args, $defaults );
+
+   my $conf = $args->{config};
+
+   -d $conf->{tempdir}
+      or $conf->{tempdir} = $class->untaint_path( File::Spec->tmpdir );
+   -d $conf->{logsdir}
+      or $conf->{logsdir} = $conf->{tempdir};
+
+   $defaults = {
+      ctlfile  => '__ctrldir('.$args->{name}.q(.xml).')__',
+      logfile  => '__logsdir('.$args->{name}.q(.log).')__',
+   };
+
+   $class->_inflate_values( $args, $defaults );
+
+   $conf->{hostname }   = Sys::Hostname::hostname();
+   $conf->{no_thrash} ||= 3;
+   $conf->{owner    } ||= $args->{prefix} || q(root);
+   $conf->{pwidth   } ||= 60;
+
+   # TODO: Move this
+   $defaults = {};
+   $defaults->{ q(aliases_path)  } = $class->catfile( $conf->{ctrldir},
+                                                      q(aliases) );
+   $defaults->{ q(profiles_path) } = $class->catfile( $conf->{ctrldir},
+                                                      q(user_profiles.xml) );
+   $class->_inflate_values( $args, $defaults );
+   return;
+}
+
 sub get_debug_option {
    my $self = shift; my $args = $self->args || {};
 
@@ -201,6 +259,40 @@ sub get_debug_option {
    is_interactive()    or  return FALSE;
 
    return $self->yorn( 'Do you want debugging turned on', FALSE, TRUE );
+}
+
+sub get_homedir {
+   my ($class, $args) = @_;
+
+   my $app  = $args->{appclass};
+   my $file = $class->app_prefix( $app );
+   my $path = $ENV{ $args->{evar} || $class->env_prefix( $app ).q(_HOME) };
+
+   $path = $class->_assert_directory( $path ) and return $path;
+   $path = $class->catfile( NUL, qw(etc default), $file );
+
+   my $well_known = $args->{install} || $path; $path = undef;
+
+   -f $well_known and $path = first { length }
+                              grep  { not m{ \A \# }mx }
+                              $class->io( $well_known )->chomp->getlines;
+
+   $path = $class->_assert_directory( $path ) and return $path;
+   $path = $class->catdir( @{ PREFIX() }, $class->class2appdir( $app ) );
+
+   my $prefix   = $args->{install_prefix} || $path;
+   my $app_path = $class->catdir( split m{ :: }mx, $app );
+
+   $path = $class->catdir( $prefix, qw(default lib), $app_path );
+   $path = $class->_assert_directory( $path ) and return $path;
+
+   for my $dir (map { $class->catdir( abs_path( $_ ), $app_path ) } @INC) {
+      $path = $class->untaint_path( $class->catfile( $dir, $file.q(.xml) ) );
+
+      -f $path and return $class->dirname( $path );
+   }
+
+   return $class->untaint_path( File::Spec->tmpdir );
 }
 
 sub get_line {
@@ -257,6 +349,52 @@ sub info {
 
    $self->silent or $self->say( $text );
    return;
+}
+
+sub load_config {
+   my ($class, $args) = @_;
+
+   # Now we know where the config file should be we can try parsing it
+   my $file = $class->app_prefix( $args->{appclass} ).q(.xml);
+   my $path = $class->catfile( $args->{home}, $file );
+   my $cfg  = {};
+
+   -f $path or return $cfg;
+
+   try        { $cfg = $class->data_load( path => $path ) }
+   catch ($e) { $class->throw( $e ) }
+
+   return $cfg;
+}
+
+sub load_messages {
+   my $self = shift;
+   my $lang = $self->language or return {};
+   my $file = q(default_).$lang.q(.xml);
+   my $path = $self->catfile( $self->config->{ctrldir}, $file );
+   my $cfg  = {};
+
+   -f $path or return {};
+
+   try { $cfg = $self->data_load( arrays => [ q(messages) ], path => $path ) }
+   catch ($e) { $self->error( $e ) }
+
+   return $cfg->{messages} || {};
+}
+
+sub load_os_depends {
+   my ($class, $args) = @_;
+
+   my $file = q(os_).$Config{osname}.q(.xml);
+   my $path = $class->catfile( $args->{config}->{ctrldir}, $file );
+   my $cfg  = {};
+
+   -f $path or return {};
+
+   try { $cfg = $class->data_load( arrays => [ q(os) ], path => $path ) }
+   catch ($e) { $class->error( $e ) }
+
+   return $cfg->{os} || {};
 }
 
 *loc = \&localize;
@@ -418,103 +556,18 @@ sub yorn {
 
 # Private methods
 
+sub _assert_directory {
+   my ($class, $path) = @_; $path or return;
+
+   $path = $class->untaint_path( $path ) or return;
+
+   return -d $path ? $path : undef;
+}
+
 sub _get_control_chars {
    my ($self, $handle) = @_; my %cntl = GetControlChars $handle;
 
    return ((join q(|), values %cntl), %cntl);
-}
-
-sub _get_homedir {
-   my ($self, $args) = @_;
-
-   my $class = $args->{appclass};
-   my $path  = $ENV{ $args->{evar} || $self->env_prefix( $class ).q(_HOME) };
-
-   $path and -d $path and return $path;
-
-   my $app_prefix = $self->app_prefix( $class );
-
-   $path = $self->catfile( NUL, qw(etc default), $app_prefix );
-
-   my $well_known = $args->{install} || $path; $path = undef;
-
-   -f $well_known and $path = first { length }
-                              grep  { not m{ \A \# }mx }
-                              $self->io( $well_known )->chomp->getlines;
-   $path and -d $path and return $path;
-   $path = $self->catdir( @{ PREFIX() }, $self->class2appdir( $class ) );
-
-   my $prefix   = $args->{install_prefix} || $path;
-   my $dir_path = $self->catdir( split m{ :: }mx, $class );
-
-   $path = $self->catdir( $prefix, qw(default lib), $dir_path );
-
-   -d $path and return $path;
-
-   for (@INC) {
-      $path = $self->catfile( $_, $dir_path, $app_prefix.q(.xml) );
-      -f $path and return abs_path( $self->dirname( $path ) );
-   }
-
-   return File::Spec->tmpdir;
-}
-
-sub _inflate_config {
-   my ($class, $args) = @_; $args->{config} ||= {};
-
-   my $defaults = {
-      appldir => '__APPLDIR__', binsdir => '__BINSDIR__', phase => '__PHASE__',
-   };
-
-   $class->_inflate_values( $args, $defaults );
-
-   $defaults = {
-      pathname => '__binsdir('.$args->{script}.')__',
-      shell    => $class->catfile( NUL, qw(bin ksh) ),
-      suid     => '__binsdir('.$args->{prefix}.'_admin)__',
-      vardir   => '__appldir(var)__',
-   };
-
-   $class->_inflate_values( $args, $defaults );
-
-   $defaults = {
-      ctrldir  => '__vardir(etc)__',
-      dbasedir => '__vardir(db)__',
-      logsdir  => '__vardir(logs)__',
-      root     => '__vardir(root)__',
-      rundir   => '__vardir(run)__',
-      tempdir  => '__vardir(tmp)__',
-   };
-
-   $class->_inflate_values( $args, $defaults );
-
-   my $conf = $args->{config};
-
-   -d $conf->{tempdir}
-      or $conf->{tempdir} = $class->untaint_path( File::Spec->tmpdir );
-   -d $conf->{logsdir}
-      or $conf->{logsdir} = $conf->{tempdir};
-
-   $defaults = {
-      ctlfile  => '__ctrldir('.$args->{name}.q(.xml).')__',
-      logfile  => '__logsdir('.$args->{name}.q(.log).')__',
-   };
-
-   $class->_inflate_values( $args, $defaults );
-
-   $conf->{hostname }   = Sys::Hostname::hostname();
-   $conf->{no_thrash} ||= 3;
-   $conf->{owner    } ||= $args->{prefix} || q(root);
-   $conf->{pwidth   } ||= 60;
-
-   # TODO: Move this
-   $defaults = {};
-   $defaults->{ q(aliases_path)  } = $class->catfile( $conf->{ctrldir},
-                                                      q(aliases) );
-   $defaults->{ q(profiles_path) } = $class->catfile( $conf->{ctrldir},
-                                                      q(user_profiles.xml) );
-   $class->_inflate_values( $args, $defaults );
-   return;
 }
 
 sub _inflate_values {
@@ -599,49 +652,6 @@ sub _load_args_ref {
    }
 
    return;
-}
-
-sub _load_config {
-   my ($class, $args) = @_; my $cfg = {};
-
-   # Now we know where the config file should be we can try parsing it
-   my $file = $class->app_prefix( $args->{appclass} );
-   my $path = $class->catfile   ( $args->{home}, $file.q(.xml) );
-
-   -f $path or return $cfg;
-
-   try        { $cfg = $class->data_load( path => $path ) }
-   catch ($e) { $class->throw( $e ) }
-
-   return $cfg;
-}
-
-sub _load_messages {
-   my $self = shift;
-   my $lang = $self->language or return {};
-   my $file = q(default_).$lang.q(.xml);
-   my $path = $self->catfile( $self->config->{ctrldir}, $file );
-   my $cfg  = {};
-
-   return {} unless ($path = $self->untaint_path( $path ) and -f $path);
-
-   try { $cfg = $self->data_load( arrays => [ q(messages) ], path => $path ) }
-   catch ($e) { $self->error( $e ) }
-
-   return $cfg->{messages} || {};
-}
-
-sub _load_os_depends {
-   my ($self, $args) = @_; my $dir = $args->{config}->{ctrldir}; my $cfg;
-
-   my $path = $self->catfile( $dir, q(os_).$Config{osname}.q(.xml) );
-
-   return {} unless ($path = $self->untaint_path( $path ) and -f $path);
-
-   try        { $cfg = $self->data_load( arrays => [ q(os) ], path => $path ) }
-   catch ($e) { $self->error( $e ) }
-
-   return $cfg->{os} || {};
 }
 
 sub _load_vars_ref {

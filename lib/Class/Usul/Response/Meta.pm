@@ -17,9 +17,7 @@ has 'provides' => is => 'ro', isa => 'Maybe[HashRef]';
 has 'version'  => is => 'ro', isa => 'Maybe[Str]';
 
 around BUILDARGS => sub {
-   my ($orig, $class, $path) = @_;
-
-   return $path && -f $path ? LoadFile( $path ) : {};
+   return $_[2] && -f $_[2] ? LoadFile( $_[2] ) : {};
 };
 
 __PACKAGE__->meta->make_immutable;
