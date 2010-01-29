@@ -22,8 +22,8 @@ my $REQUIRES   = {
    'namespace::clean'     => '0.11',
    'version'              => '0.77',
 };
-my $VERPAT     = "'s{ \Q${from}\E \\.%d    }{${to}.%d}gmx; ";
-   $VERPAT    .= "s{ \Q${from}\E \\.\$Rev }{${to}.\$Rev}gmx'";
+my $VPATTERN   = '\'s{ \Q${from}\E \\.%d    }{${to}.%d}gmx; ';
+   $VPATTERN  .= 's{ \Q${from}\E \\.\$Rev }{${to}.\$Rev}gmx\'';
 
 use strict;
 use warnings;
@@ -51,7 +51,8 @@ my $builder     = $build_class->new
      license            => $LICENSE,
      module_name        => $APPNAME,
      no_index           => { directory => [ qw(t) ] },
-     notes              => { version_pattern => $VERPAT },
+     notes              => { cpan_testers_version => 1,
+                             version_pattern      => $VPATTERN },
      recommands         => $RECOMMENDS,
      requires           => $REQUIRES,
      resources          => $resources, );
