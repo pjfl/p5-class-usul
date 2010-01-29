@@ -20,19 +20,19 @@ my $KEY     = " \t" x 8;
 my $DATA    = do { local $RS = undef; <DATA> };
 
 sub decrypt {
-   my ($self, $seed, $encoded) = @_; $encoded or return;
+   my ($self, $key, $encoded) = @_; $encoded or return;
 
    my $cipher = Crypt::CBC->new( -cipher => q(Twofish),
-                                 -key    => $self->keygen( $seed ) );
+                                 -key    => $self->keygen( $key ) );
 
    return $cipher->decrypt( decode_base64( $encoded ) );
 }
 
 sub encrypt {
-   my ($self, $seed, $plain) = @_; $plain or return;
+   my ($self, $key, $plain) = @_; $plain or return;
 
    my $cipher = Crypt::CBC->new( -cipher => q(Twofish),
-                                 -key    => $self->keygen( $seed ) );
+                                 -key    => $self->keygen( $key ) );
 
    return encode_base64( $cipher->encrypt( $plain ), NUL );
 }
@@ -77,18 +77,18 @@ Class::Usul::Crypt - Encryption/decryption class methods
 
 =head2 decrypt
 
-   my $plain = $self->decrypt( $seed, $encoded );
+   my $plain = $self->decrypt( $key, $encoded );
 
 Decodes and decrypts the C<$encoded> argument and returns the plain
 text result. See the C<encrypt> method
 
 =head2 encrypt
 
-   my $encrypted = $self->encrypt( $seed, $plain );
+   my $encrypted = $self->encrypt( $key, $plain );
 
 Encrypts the plain text passed in the C<$plain> argument and returns
 it Base64 encoded. L<Crypt::Twofish_PP> is used to do the encryption. The
-C<$seed> argument is passed to the C<keygen> method
+C<$key> argument is passed to the C<keygen> method
 
 =head2 keygen
 
