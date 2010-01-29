@@ -27,7 +27,7 @@ my $VPATTERN   = 's{ \Q${from}\E \\.%d    }{${to}.%d}gmx; ';
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use File::Spec::Functions;
 use FindBin qw( $Bin );
 use lib catdir( $Bin, updir, q(lib) ); # Remove updir if not an example

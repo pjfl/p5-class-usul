@@ -4,7 +4,7 @@ package Class::Usul::Build::InstallActions;
 
 use strict;
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use File::Copy qw(copy move);
@@ -266,7 +266,7 @@ Class::Usul::Build::InstallActions - Things to do after Build install
 
 =head1 Version
 
-Describes Class::Usul::Build::InstallActions version 0.2.$Revision$
+Describes Class::Usul::Build::InstallActions version 0.1.$Revision$
 
 =head1 Synopsis
 
