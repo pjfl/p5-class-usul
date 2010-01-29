@@ -4,7 +4,7 @@ package Class::Usul::Crypt;
 
 use strict;
 use namespace::clean -except => 'meta';
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Crypt::CBC;
@@ -65,7 +65,7 @@ Class::Usul::Crypt - Encryption/decryption class methods
 
 =head1 Version
 
-0.1.$Revision$
+0.2.$Revision$
 
 =head1 Synopsis
 

@@ -4,7 +4,7 @@ package Class::Usul;
 
 use strict;
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev$ =~ /\d+/gmx );
 
 use 5.008;
 use Class::Null;
@@ -173,7 +173,7 @@ Class::Usul - A base class for Catalyst MVC components
 
 =head1 Version
 
-Describes Class::Usul version 0.1.$Revision$
+Describes Class::Usul version 0.2.$Revision$
 
 =head1 Synopsis
 

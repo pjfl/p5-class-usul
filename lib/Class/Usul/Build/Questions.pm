@@ -4,7 +4,7 @@ package Class::Usul::Build::Questions;
 
 use strict;
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Moose;
@@ -250,7 +250,7 @@ Class::Usul::Build::Questions - Things to ask when Build runs
 
 =head1 Version
 
-Describes Class::Usul::Build::Questions version 0.1.$Revision$
+Describes Class::Usul::Build::Questions version 0.2.$Revision$
 
 =head1 Synopsis
 
