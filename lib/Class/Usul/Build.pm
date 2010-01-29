@@ -504,7 +504,7 @@ sub _dependencies {
       my $lines = __read_non_pod_lines( $path );
 
       for my $line (split m{ \n }mx, $lines) {
-         my $modules = __parse_depends_line( $line ); $modules->[ 0 ] or next;
+         my $modules = __parse_depends( $line ); $modules->[ 0 ] or next;
 
          for (@{ $modules }) {
             __looks_like_version( $_ ) and $used->{perl} = $_ and next;
@@ -663,7 +663,7 @@ sub __looks_like_version {
     return defined $ver && $ver =~ m{ \A v? \d+ (?: \.[\d_]+ )? \z }mx;
 }
 
-sub __parse_depends_line {
+sub __parse_depends {
    my $line = shift; my $modules = [];
 
    for my $stmt (grep   { length }

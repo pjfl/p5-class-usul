@@ -8,6 +8,7 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::I18N;
+use Class::Usul::InflateSymbols;
 use Class::Usul::Response::Meta;
 use Moose;
 use Config;
@@ -194,60 +195,18 @@ sub fatal {
 }
 
 sub finalize_config {
-   my ($class, $args) = @_; $args->{config} ||= {};
-
-   my $defaults = {
-      appldir => '__APPLDIR__', binsdir => '__BINSDIR__', phase => '__PHASE__',
-   };
-
-   $class->_inflate_values( $args, $defaults );
-
-   $defaults = {
-      pathname => '__binsdir('.$args->{script}.')__',
-      shell    => $class->catfile( NUL, qw(bin ksh) ),
-      suid     => '__binsdir('.$args->{prefix}.'_admin)__',
-      vardir   => '__appldir(var)__',
-   };
-
-   $class->_inflate_values( $args, $defaults );
-
-   $defaults = {
-      ctrldir  => '__vardir(etc)__',
-      dbasedir => '__vardir(db)__',
-      logsdir  => '__vardir(logs)__',
-      root     => '__vardir(root)__',
-      rundir   => '__vardir(run)__',
-      tempdir  => '__vardir(tmp)__',
-   };
-
-   $class->_inflate_values( $args, $defaults );
-
-   my $conf = $args->{config};
-
-   -d $conf->{tempdir}
-      or $conf->{tempdir} = $class->untaint_path( File::Spec->tmpdir );
-   -d $conf->{logsdir}
-      or $conf->{logsdir} = $conf->{tempdir};
-
-   $defaults = {
-      ctlfile  => '__ctrldir('.$args->{name}.q(.xml).')__',
-      logfile  => '__logsdir('.$args->{name}.q(.log).')__',
-   };
-
-   $class->_inflate_values( $args, $defaults );
+   my ($class, $args) = @_; my $conf = $args->{config} ||= {};
 
    $conf->{hostname }   = Sys::Hostname::hostname();
    $conf->{no_thrash} ||= 3;
    $conf->{owner    } ||= $args->{prefix} || q(root);
    $conf->{pwidth   } ||= 60;
+   $conf->{shell    } ||= $class->catfile( NUL, qw(bin ksh) );
 
-   # TODO: Move this
-   $defaults = {};
-   $defaults->{ q(aliases_path)  } = $class->catfile( $conf->{ctrldir},
-                                                      q(aliases) );
-   $defaults->{ q(profiles_path) } = $class->catfile( $conf->{ctrldir},
-                                                      q(user_profiles.xml) );
-   $class->_inflate_values( $args, $defaults );
+   my $inflation_class = $args->{inflation_class}
+                      || q(Class::Usul::InflateSymbols);
+
+   $inflation_class->new( args => $args )->inflate;
    return;
 }
 
@@ -352,14 +311,13 @@ sub info {
 }
 
 sub load_config {
-   my ($class, $args) = @_;
+   my ($class, $args) = @_; my $cfg;
 
    # Now we know where the config file should be we can try parsing it
    my $file = $class->app_prefix( $args->{appclass} ).q(.xml);
    my $path = $class->catfile( $args->{home}, $file );
-   my $cfg  = {};
 
-   -f $path or return $cfg;
+   -f $path or return;
 
    try        { $cfg = $class->data_load( path => $path ) }
    catch ($e) { $class->throw( $e ) }
@@ -568,76 +526,6 @@ sub _get_control_chars {
    my ($self, $handle) = @_; my %cntl = GetControlChars $handle;
 
    return ((join q(|), values %cntl), %cntl);
-}
-
-sub _inflate_values {
-   my ($class, $args, $defaults) = @_; my $conf = $args->{config};
-
-   for (keys %{ $defaults }) {
-      $conf->{ $_ } = $class->_inflate_value( $args, $defaults, $_ );
-   }
-
-   return;
-}
-
-sub _inflate_value {
-   my ($class, $args, $defaults, $key) = @_; my $conf = $args->{config};
-
-   my $v = $conf->{ $key } || $defaults->{ $key }; defined $v or return;
-
-   if ($v =~ m{ __PHASE__ }mx) {
-      ($v) = $conf->{appldir} =~ m{ \A v \d+ \. \d+ p (\d+) \z }msx;
-
-      return defined $v ? $v : PHASE;
-   }
-
-   my $symbols = {
-      '__APPLDIR__' => sub {
-         my $v = $class->dirname( $Config{sitelibexp} );
-
-         if ($args->{home} =~ m{ \A $v }mx) {
-            $v = $class->class2appdir( $args->{name} );
-            $v = $class->catdir( NUL, qw(var www), $v, q(default) );
-         }
-         else { $v = $class->home2appl( $args->{home} ) }
-
-         return $v;
-      },
-      '__BINSDIR__' => sub {
-         my $v = $class->dirname( $Config{sitelibexp} );
-
-         if ($args->{home} =~ m{ \A $v }mx) { $v = $Config{scriptdir} }
-         else { $v = $class->catdir( $conf->{appldir}, q(bin) ) }
-
-         return $v;
-      },
-      '__appldir\( (.*) \)__' => sub {
-         return $class->catdir( $conf->{appldir}, $_[0] );
-      },
-      '__binsdir\( (.*) \)__' => sub {
-         return $class->catdir( $conf->{binsdir}, $_[0] );
-      },
-      '__ctrldir\( (.*) \)__' => sub {
-         return $class->catdir( $conf->{ctrldir}, $_[0] );
-      },
-      '__logsdir\( (.*) \)__' => sub {
-         return $class->catdir( $conf->{logsdir}, $_[0] );
-      },
-      '__path_to\( (.*) \)__' => sub {
-         return $class->catdir( $args->{home}, $_[0] );
-      },
-      '__vardir\( (.*) \)__' => sub {
-         return $class->catdir( $conf->{vardir}, $_[0] );
-      },
-   };
-
-   for my $pattern (keys %{ $symbols }) {
-      if ($v =~ m{ $pattern }mx) {
-         $v = $symbols->{ $pattern }->( $1 ); last;
-      }
-   }
-
-   return $class->untaint_path( $v );
 }
 
 sub _load_args_ref {
