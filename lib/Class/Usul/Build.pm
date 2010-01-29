@@ -610,8 +610,9 @@ sub _update_version {
       $cmd  .= " s{ \Q${from}\E \\.\$Rev }{${to}.\$Rev}gmx'";
       $cmd   = [ q(xargs), q(-i), $prog, q(-pi), q(-e), $cmd, q({}) ];
    my $paths = [ map { "$_\n" } @{ $self->_source_paths } ];
+use Data::Dumper; warn Dumper( $self->notes );
 
-   $cli->popen( $cmd, { err => q(out), in => $paths } );
+#   $cli->popen( $cmd, { err => q(out), in => $paths } );
    return;
 }
 
