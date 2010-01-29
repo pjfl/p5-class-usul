@@ -604,15 +604,15 @@ sub _source_paths {
 sub _update_version {
    my ($self, $from, $to) = @_;
 
-   my $cli   = $self->cli;
-   my $prog  = $EXECUTABLE_NAME;
-   my $cmd   = "'s{ \Q${from}\E \\.%d    }{${to}.%d}gmx;";
-      $cmd  .= " s{ \Q${from}\E \\.\$Rev }{${to}.\$Rev}gmx'";
-      $cmd   = [ q(xargs), q(-i), $prog, q(-pi), q(-e), $cmd, q({}) ];
-   my $paths = [ map { "$_\n" } @{ $self->_source_paths } ];
-use Data::Dumper; warn Dumper( $self->notes );
+   my $cli   =  $self->cli;
+   my $prog  =  $EXECUTABLE_NAME;
+   my $cmd   =  $self->notes->{version_pattern} or return;
+      $cmd   =~ s{ \$\{from\} }{$from}gmx;
+      $cmd   =~ s{ \$\{to\} }{$to}gmx;
+      $cmd   =  [ q(xargs), q(-i), $prog, q(-pi), q(-e), "'".$cmd."'", q({}) ];
+   my $paths =  [ map { "$_\n" } @{ $self->_source_paths } ];
 
-#   $cli->popen( $cmd, { err => q(out), in => $paths } );
+   $cli->popen( $cmd, { err => q(out), in => $paths } );
    return;
 }
 
