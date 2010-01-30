@@ -40,7 +40,7 @@ has 'vardir'        => is => 'rw', isa => 'Str',     lazy_build => TRUE;
 sub BUILD {
    my $self = shift;
 
-   for my $k ($self->meta->get_attribute_list) {
+   for my $k (grep { $_ ne q(args) } $self->meta->get_attribute_list) {
       my $v = $self->$k();
 
       if ($v =~ m{ __(.+?)\((.+?)\)__ }mx) {
@@ -170,7 +170,7 @@ sub _build_shell {
 sub _build_suid {
    my $self = shift;
 
-   return $self->inflate( q(binsdir), $self->args->{prefix}.'_admin' );
+   return $self->inflate( q(binsdir), $self->args->{prefix}.q(_admin) );
 }
 
 sub _build_tempdir {
