@@ -24,7 +24,7 @@ class_has 'Exception_Class' => is => 'rw', isa => 'F_DC_Exception',
    default                  => q(File::DataClass::Exception);
 class_has 'Lock'            => is => 'rw', isa => 'F_DC_Lock';
 
-has 'config'          => is => 'ro', isa => 'HashRef',
+has 'config'          => is => 'ro', isa => 'HashRef | Object',
    default            => sub { {} };
 has 'debug'           => is => 'rw', isa => 'Bool',
    default            => FALSE;

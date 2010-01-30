@@ -6,9 +6,9 @@ use strict;
 use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
+use Class::Usul::Config;
 use Class::Usul::Constants;
 use Class::Usul::I18N;
-use Class::Usul::InflateSymbols;
 use Class::Usul::Response::Meta;
 use Moose;
 use Config;
@@ -24,7 +24,6 @@ use English         qw(-no_match_vars);
 use Getopt::Mixed   qw(nextOption);
 use IO::Interactive qw(is_interactive);
 use List::Util      qw(first);
-use Sys::Hostname     ();
 
 extends qw(Class::Usul);
 
@@ -51,6 +50,8 @@ around BUILDARGS => sub {
 
    my $attr = $class->arg_list( @args );
 
+   exists $attr->{n} and $attr->{args}->{n} = TRUE;
+
    $attr->{script  } ||= $class->basename( $attr->{script} || $PROGRAM_NAME );
 
    my $prog = $class->basename( lc $attr->{script}, $attr->{extns} || EXTNS );
@@ -60,10 +61,7 @@ around BUILDARGS => sub {
    $attr->{appclass} ||= ucfirst $attr->{prefix};
    $attr->{home    } ||= $class->get_homedir    ( $attr );
    $attr->{config  } ||= $class->load_config    ( $attr );
-                         $class->finalize_config( $attr );
    $attr->{os      } ||= $class->load_os_depends( $attr );
-
-   exists $attr->{n} and $attr->{args}->{n} = TRUE;
 
    return $class->$orig( $attr );
 };
@@ -71,7 +69,7 @@ around BUILDARGS => sub {
 sub BUILD {
    my $self = shift;
 
-   autoflush STDOUT 1; autoflush STDERR 1;
+   autoflush STDOUT TRUE; autoflush STDERR TRUE;
 
    Getopt::Mixed::init( q(c=s D H h L=s n o=s S ).$self->arglist );
 
@@ -194,22 +192,6 @@ sub fatal {
    exit 1;
 }
 
-sub finalize_config {
-   my ($class, $args) = @_; my $conf = $args->{config} ||= {};
-
-   $conf->{hostname }   = Sys::Hostname::hostname();
-   $conf->{no_thrash} ||= 3;
-   $conf->{owner    } ||= $args->{prefix} || q(root);
-   $conf->{pwidth   } ||= 60;
-   $conf->{shell    } ||= $class->catfile( NUL, qw(bin ksh) );
-
-   my $inflation_class = $args->{inflation_class}
-                      || q(Class::Usul::InflateSymbols);
-
-   $inflation_class->new( args => $args )->inflate;
-   return;
-}
-
 sub get_debug_option {
    my $self = shift; my $args = $self->args || {};
 
@@ -311,18 +293,20 @@ sub info {
 }
 
 sub load_config {
-   my ($class, $args) = @_; my $cfg;
+   my ($class, $args) = @_; my $cfg = {};
 
    # Now we know where the config file should be we can try parsing it
    my $file = $class->app_prefix( $args->{appclass} ).q(.xml);
    my $path = $class->catfile( $args->{home}, $file );
 
-   -f $path or return;
+   if (-f $path) {
+      try        { $cfg = $class->data_load( path => $path ) }
+      catch ($e) { $class->throw( $e ) }
+   }
 
-   try        { $cfg = $class->data_load( path => $path ) }
-   catch ($e) { $class->throw( $e ) }
+   my $config_class = $args->{config_class} || q(Class::Usul::Config);
 
-   return $cfg;
+   return $config_class->new( args => $args, %{ $cfg } );
 }
 
 sub load_messages {
