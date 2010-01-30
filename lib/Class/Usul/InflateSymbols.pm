@@ -7,26 +7,58 @@ use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
-use Cwd qw(abs_path);
-use File::Spec;
 use Config;
 use Moose;
 
 extends qw(Class::Usul);
 
-has 'args' => is => 'ro', isa => 'HashRef', default => sub { {} };
+has 'args'          => is => 'ro', isa => 'HashRef', default => sub { {} };
+has 'appldir'       => is => 'ro', isa => 'Str',     lazy_build => TRUE;
+has 'binsdir'       => is => 'ro', isa => 'Str',     lazy_build => TRUE;
+has 'ctlfile'       => is => 'ro', isa => 'Str',     lazy_build => TRUE;
+has 'ctrldir'       => is => 'ro', isa => 'Str',     lazy_build => TRUE;
+has 'dbasedir'      => is => 'ro', isa => 'Str',     lazy_build => TRUE;
+has 'home'          => is => 'ro', isa => 'Str',     lazy_build => TRUE;
+has 'logfile'       => is => 'ro', isa => 'Str',     lazy_build => TRUE;
+has 'logsdir'       => is => 'ro', isa => 'Str',     lazy_build => TRUE;
+has 'pathname'      => is => 'ro', isa => 'Str',     lazy_build => TRUE;
+has 'phase'         => is => 'ro', isa => 'Str',     lazy_build => TRUE;
+has 'root'          => is => 'ro', isa => 'Str',     lazy_build => TRUE;
+has 'rundir'        => is => 'ro', isa => 'Str',     lazy_build => TRUE;
+has 'suid'          => is => 'ro', isa => 'Str',     lazy_build => TRUE;
+has 'tempdir'       => is => 'ro', isa => 'Str',     lazy_build => TRUE;
+has 'vardir'        => is => 'ro', isa => 'Str',     lazy_build => TRUE;
+has 'aliases_path'  => is => 'ro', isa => 'Str',     lazy_build => TRUE;
+has 'profiles_path' => is => 'ro', isa => 'Str',     lazy_build => TRUE;
 
 sub inflate {
    my $self = shift;
 
    $self->$_() for (grep { $_ ne q(inflate)
-                           and $_ ne q(new) and $_ ne q(DESTROY) }
-                    $self->meta->get_method_list);
+                       and $_ ne q(_inflate_symbols)
+                       and $_ ne q(new)
+                       and $_ ne q(DESTROY) } $self->meta->get_method_list);
+
+   s{ __(.+?)\((.+?)\)__ }{$self->_inflate_symbols( $1, $2 )}egmx
+      for (keys %{ $self->args->{config} || {} });
 
    return;
 }
 
-sub appldir {
+sub _inflate_symbols {
+   my ($self, $symbol, $path) = @_; my $method = lc $symbol;
+
+   $method eq q(path_to) and $method = q(home);
+
+   my @parts = ($self->$method(), split m{ / }mx, $path);
+
+   $path = $self->catdir( @parts );
+   -d $path or $path = $self->catfile( @parts );
+
+   return $self->canonpath( $path );
+}
+
+sub _build_appldir {
    my $self = shift; my $args = $self->args; my $conf = $args->{config};
 
    if (not $conf->{appldir} or $conf->{appldir} =~ m{ __APPLDIR__ }mx) {
@@ -38,7 +70,7 @@ sub appldir {
       }
       else { $v = $self->home2appl( $args->{home} ) }
 
-      $conf->{appldir} = abs_path( $self->untaint_path( $v ) );
+      $conf->{appldir} = $self->rel2abs( $self->untaint_path( $v ) );
    }
 
    return $conf->{appldir};
@@ -53,7 +85,7 @@ sub binsdir {
       if ($args->{home} =~ m{ \A $v }mx) { $v = $Config{scriptdir} }
       else { $v = $self->catdir( $self->home2appl( $args->{home} ), q(bin) ) }
 
-      $conf->{binsdir} = abs_path( $self->untaint_path( $v ) );
+      $conf->{binsdir} = $self->rel2abs( $self->untaint_path( $v ) );
    }
 
    return $conf->{binsdir};
@@ -91,6 +123,10 @@ sub dbasedir {
    return $conf->{dbasedir};
 }
 
+sub home {
+   return shift->args->{home};
+}
+
 sub logfile {
    my $self = shift; my $args = $self->args; my $conf = $args->{config};
 
@@ -112,10 +148,6 @@ sub logsdir {
    }
 
    return $conf->{logsdir};
-}
-
-sub path_to {
-   return shift->args->{home};
 }
 
 sub pathname {
@@ -178,8 +210,7 @@ sub tempdir {
 
    if (not $conf->{tempdir} or $conf->{tempdir} =~ m{ __TEMPDIR__ }mx) {
       $conf->{tempdir} = $self->catdir( $self->vardir, q(tmp) );
-      -d $conf->{tempdir}
-         or $conf->{tempdir} = $self->untaint_path( File::Spec->tmpdir );
+      -d $conf->{tempdir} or $conf->{tempdir} = $self->SUPER::tempdir;
    }
 
    return $conf->{tempdir};

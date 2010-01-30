@@ -37,6 +37,10 @@ sub basename {
    return $self->io( $path )->basename( @suffixes );
 }
 
+sub canonpath {
+   my ($self, @rest) = @_; return File::Spec->canonpath( @rest );
+}
+
 sub catch {
    my ($self, @rest) = @_; return $self->Exception_Class->catch( @rest );
 }
@@ -173,6 +177,10 @@ sub load_component {
 
 sub nap {
    my ($self, @rest) = @_; return Class::Usul::Time->nap( @rest );
+}
+
+sub rel2abs {
+   my ($self, @rest) = @_; return File::Spec->rel2abs( @rest );
 }
 
 sub say {
