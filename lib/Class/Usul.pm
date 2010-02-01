@@ -10,7 +10,6 @@ use 5.008;
 use Class::Null;
 use Class::Usul::Constants;
 use File::DataClass::Exception;
-use File::Spec;
 use IPC::SRLock;
 use Log::Handler;
 use Module::Pluggable::Object;
@@ -20,51 +19,29 @@ use MooseX::ClassAttribute;
 with qw(Class::Usul::Constraints File::DataClass::Constraints);
 
 class_has 'Digest'          => is => 'rw', isa => 'C_U_Digest_Algorithm';
+
 class_has 'Exception_Class' => is => 'rw', isa => 'F_DC_Exception',
    default                  => q(File::DataClass::Exception);
+
 class_has 'Lock'            => is => 'rw', isa => 'F_DC_Lock';
 
-has 'config'          => is => 'ro', isa => 'HashRef | Object',
-   default            => sub { {} };
-has 'debug'           => is => 'rw', isa => 'Bool',
-   default            => FALSE;
-has 'encoding'        => is => 'rw', isa => 'C_U_Encoding',
-   default            => q(UTF-8);
-has 'lock'            => is => 'ro', isa => 'F_DC_Lock',
-   lazy_build         => TRUE;
-has 'lock_attributes' => is => 'ro', isa => 'HashRef',
-   default            => sub { {} };
-has 'log'             => is => 'ro', isa => 'C_U_Log',
-   lazy_build         => TRUE;
-has 'log_attributes'  => is => 'ro', isa => 'HashRef',
-   default            => sub { { log_level => 6 } };
-has 'prefix '         => is => 'ro', isa => 'Str',
-   lazy_build         => TRUE;
-has 'secret'          => is => 'ro', isa => 'Str',
-   lazy_build         => TRUE;
-has 'suid'            => is => 'ro', isa => 'F_DC_Path',
-   coerce             => TRUE;
-has 'tempdir'         => is => 'ro', isa => 'F_DC_Directory',
-   default            => sub { __PACKAGE__->io( File::Spec->tmpdir ) },
-   coerce             => TRUE;
+has '_config'    => is => 'ro', isa     => 'HashRef | Object',
+   reader        => 'config',   default => sub { {} }, init_arg => 'config';
+
+has 'debug'      => is => 'rw', isa     => 'Bool', default => FALSE;
+
+has 'encoding'   => is => 'rw', isa     => 'C_U_Encoding', default => q(UTF-8),
+   documentation => 'Decode/encode input/output using this encoding';
+
+has '_lock'      => is => 'ro', isa     => 'F_DC_Lock', lazy_build => TRUE,
+   reader        => 'lock';
+
+has '_log'       => is => 'ro', isa     => 'C_U_Log', lazy_build => TRUE,
+   reader        => 'log';
 
 with qw(Class::Usul::Base Class::Usul::Encoding Class::Usul::Crypt);
 
 __PACKAGE__->mk_log_methods();
-
-around BUILDARGS => sub {
-   my ($orig, $class, @rest) = @_;
-
-   my $attr   = $class->$orig( @rest );
-   my $config = $attr->{config} ||= {};
-
-   for (grep { defined $config->{ $_ } }
-        __PACKAGE__->meta->get_attribute_list) {
-      $attr->{ $_ } ||= $config->{ $_ };
-   }
-
-   return $attr;
-};
 
 sub build_subcomponents {
    # Voodo by mst. Finds and loads component subclasses
@@ -117,23 +94,23 @@ sub udump {
 
 # Private methods
 
-sub _build_lock {
+sub _build__lock {
    my $self = shift;
 
    $self->Lock and return $self->Lock;
 
-   my $attrs = $self->lock_attributes;
+   my $attrs = $self->config->{lock_attributes} || {};
 
    $attrs->{debug  } ||= $self->debug;
    $attrs->{log    } ||= $self->log;
-   $attrs->{tempdir} ||= $self->tempdir;
+   $attrs->{tempdir} ||= $self->config->{tempdir};
 
    return $self->Lock( IPC::SRLock->new( $attrs ) );
 }
 
-sub _build_log {
+sub _build__log {
    my $self    = shift;
-   my $attrs   = $self->log_attributes;
+   my $attrs   = $self->config->{log_attributes} || {};
    my $logfile = $attrs->{logfile} || $self->config->{logfile} || NUL;
    my $dir     = $self->dirname( $logfile );
 
@@ -141,19 +118,9 @@ sub _build_log {
         ? Log::Handler->new
         ( file      => {
            filename => $logfile,
-           maxlevel => $self->debug ? 7 : $attrs->{log_level},
+           maxlevel => $self->debug ? 7 : $attrs->{log_level} || 6,
            mode     => q(append), } )
         : Class::Null->new;
-}
-
-sub _build_prefix {
-   my $self = shift;
-
-   return $self->split_on__( $self->basename( $self->suid ) );
-}
-
-sub _build_secret {
-   my $self = shift; return $self->prefix;
 }
 
 __PACKAGE__->meta->make_immutable;
@@ -222,22 +189,6 @@ The application context log. Defaults to a L<Class::Null> object
 
 The prefix applied to executable programs in the I<bin>
 directory. This is extracted from the I<suid> key in the config hash
-
-=item secret
-
-This applications secret key as set by the administrators in the
-configuration. It is used to perturb the encryption methods. Defaults to
-the I<prefix> attribute value
-
-=item suid
-
-Supplied by the config hash, it is the name of the setuid root
-program in the I<bin> directory. Defaults to the null string
-
-=item tempdir
-
-Supplied by the config hash, it is the location of any temporary files
-created by the application. Defaults to the L<File::Spec> tempdir
 
 =back
 

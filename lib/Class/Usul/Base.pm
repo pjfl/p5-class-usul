@@ -19,7 +19,7 @@ use Moose::Role;
 use Path::Class::Dir;
 use TryCatch;
 
-requires qw(Digest Exception_Class);
+requires qw(config Digest Exception_Class);
 
 sub app_prefix {
    (my $prefix = lc $_[1]) =~ s{ :: }{_}gmx; return $prefix;
@@ -81,9 +81,9 @@ sub create_token {
 }
 
 sub delete_tmp_files {
-   my ($self, $dir) = @_;
+   my ($self, $dir) = @_; $dir ||= $self->config->{tempdir}; $dir or return;
 
-   return $self->io( $dir || $self->tempdir )->delete_tmp_files;
+   return $self->io( $dir )->delete_tmp_files;
 }
 
 sub dirname {
@@ -179,6 +179,11 @@ sub nap {
    my ($self, @rest) = @_; return Class::Usul::Time->nap( @rest );
 }
 
+sub prefix2class {
+   return
+      join q(::), map { ucfirst } split m{ - }mx, $_[0]->split_on__( $_[1] );
+}
+
 sub rel2abs {
    my ($self, @rest) = @_; return File::Spec->rel2abs( @rest );
 }
@@ -238,7 +243,9 @@ sub supports {
 }
 
 sub tempfile {
-   my ($self, $dir) = @_; return $self->io( $dir || $self->tempdir )->tempfile;
+   my ($self, $dir) = @_;
+
+   return $self->io( $dir || $self->config->{tempdir} )->tempfile;
 }
 
 sub tempname {
@@ -246,7 +253,7 @@ sub tempname {
 
    my $file = sprintf '%6.6d%s', $PID, (substr $self->create_token, 0, 4);
 
-   return $self->catfile( $dir || $self->tempdir, $file );
+   return $self->catfile( $dir || $self->config->{tempdir}, $file );
 }
 
 sub throw {
@@ -467,19 +474,20 @@ remaining parameters
 Ensures that each component is loaded then fixes @ISA for the child so that
 it inherits from the parents
 
-=head2 mk_accessors
-
-   $self->mk_accessors( @fieldspec );
-
-Create accessors methods like L<Class::Accessor::Fast> but using
-L<Class::Accessor::Grouped>
-
 =head2 nap
 
    $self->nap( $time_in_seconds );
 
 Exposes the L<nap|Class::Usul::Time/nap> method which sleeps for
 (possibly fractional) periods of time
+
+=head2 prefix2class
+
+   $class = $self->prefix2class( $self->basename( $PROGRAM_NAME, EXTNS ) );
+
+Splits the program name on _ (underscore), take the first field, split
+it on - (hyphen), uppercase the first letter of each word in the list, and
+return the list joined with :: (two colons)
 
 =head2 say
 

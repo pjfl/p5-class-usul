@@ -21,49 +21,77 @@ use Text::Autoformat;
 use File::DataClass::Schema;
 use Cwd             qw(abs_path);
 use English         qw(-no_match_vars);
-use Getopt::Mixed   qw(nextOption);
 use IO::Interactive qw(is_interactive);
 use List::Util      qw(first);
 
 extends qw(Class::Usul);
+with    qw(MooseX::Getopt::Dashes);
 
-has 'appclass' => is => 'ro', isa => 'Str',            required => TRUE;
-has 'arglist'  => is => 'ro', isa => 'Str',            default  => NUL;
-has 'args'     => is => 'rw', isa => 'HashRef',        default  => sub { {} };
-has 'home'     => is => 'ro', isa => 'F_DC_Directory', coerce   => TRUE;
-has 'language' => is => 'rw', isa => 'Str',            default  => NUL;
-has 'logname'  => is => 'ro', isa => 'Str',
-   default     => $ENV{USER} || $ENV{LOGNAME};
-has 'messages' => is => 'rw', isa => 'HashRef',        default  => sub { {} };
-has 'method'   => is => 'rw', isa => 'Str',            default  => NUL;
-has 'name'     => is => 'ro', isa => 'Str',            required => TRUE;
-has 'os'       => is => 'ro', isa => 'HashRef',        default  => sub { {} };
-has 'parms'    => is => 'ro', isa => 'HashRef',        default  => sub { {} };
-has 'prefix'   => is => 'ro', isa => 'Str',            required => TRUE;
-has 'silent'   => is => 'rw', isa => 'Bool',           default  => FALSE;
-has 'vars'     => is => 'rw', isa => 'HashRef',        default  => sub { {} };
+has 'debug',     => is => 'rw', isa => 'Bool',
+   documentation => 'Output debugging information',
+   traits        => [ 'Getopt' ], cmd_aliases => q(D), cmd_flag => 'debug';
+
+has 'help1'      => is => 'ro', isa => 'Bool', default => FALSE,
+   documentation => 'Uses Pod::Usage to describe the program usage options',
+   traits        => [ 'Getopt' ], cmd_aliases => q(h), cmd_flag => 'some_help';
+
+has 'help2'      => is => 'ro', isa => 'Bool', default => FALSE,
+   documentation => 'Uses Pod::Man to display the program documentation',
+   traits        => [ 'Getopt' ], cmd_aliases => q(H), cmd_flag => 'more_help';
+
+has 'home'       => is => 'ro', isa => 'F_DC_Directory', coerce => TRUE,
+   documentation => 'Directory containing the config file';
+
+has 'language'   => is => 'ro', isa => 'Str', default => NUL,
+   documentation => 'Loads the message catalog for a given language',
+   traits        => [ 'Getopt' ], cmd_aliases => q(L), cmd_flag => 'language';
+
+has 'method'     => is => 'ro', isa => 'Str', default => NUL,
+   documentation => 'Name of the command to run',
+   traits        => [ 'Getopt' ], cmd_aliases => q(c), cmd_flag => 'command';
+
+has 'params'     => is => 'ro', isa => 'HashRef', default => sub { {} },
+   documentation => 'Key/value pairs passed as arguments to the command',
+   traits        => [ 'Getopt' ], cmd_aliases => q(o), cmd_flag => 'option';
+
+has 'silent'     => is => 'ro', isa => 'Bool', default => FALSE,
+   documentation => 'Suppress the display of information messages',
+   traits        => [ 'Getopt' ], cmd_aliases => q(S), cmd_flag => 'silent';
+
+
+has '_appclass'  => is => 'ro', isa     => 'Maybe[ClassName]',
+   init_arg      => 'appclass', reader  => 'appclass';
+
+has '_logname'   => is => 'ro', isa     => 'Str', init_arg => undef,
+   reader        => 'logname',  default => $ENV{USER} || $ENV{LOGNAME};
+
+has '_messages'  => is => 'rw', isa     => 'HashRef', init_arg => undef,
+   accessor      => 'messages', default => sub { {} };
+
+has '_name'      => is => 'rw', isa     => 'Str', init_arg => 'name',
+   reader        => 'name',     default => NUL;
+
+has '_os'        => is => 'ro', isa     => 'HashRef', init_arg => undef,
+   reader        => 'os',       default => sub { {} };
 
 with qw(Class::Usul::IPC);
 
 around BUILDARGS => sub {
    my ($orig, $class, @args) = @_;
 
-   my $attr = $class->arg_list( @args );
+   my $attr = $class->$orig( @args );
+   my $prog = $class->basename( $PROGRAM_NAME, EXTNS );
 
-   exists $attr->{n} and $attr->{args}->{n} = TRUE;
+   $attr->{appclass} ||= $class->prefix2class    ( $prog );
+   $attr->{name    } ||= $class->get_program_name( $prog );
+   $attr->{home    } ||= $class->get_homedir     ( $attr );
+   $attr->{config  }   = $class->load_config     ( $attr );
+   $attr->{os      }   = $class->load_os_depends ( $attr );
 
-   $attr->{script  } ||= $class->basename( $attr->{script} || $PROGRAM_NAME );
+#$_ = decode('utf8', $_) for @ARGV;
+#binmode $_, ':encoding(utf8)' for (*STDIN, *STDOUT, *STDERR);
 
-   my $prog = $class->basename( lc $attr->{script}, $attr->{extns} || EXTNS );
-
-   $attr->{prefix  } ||= $class->split_on__( $prog, 0 );
-   $attr->{name    } ||= $class->split_on__( $prog, 1 ) || $prog;
-   $attr->{appclass} ||= ucfirst $attr->{prefix};
-   $attr->{home    } ||= $class->get_homedir    ( $attr );
-   $attr->{config  } ||= $class->load_config    ( $attr );
-   $attr->{os      } ||= $class->load_os_depends( $attr );
-
-   return $class->$orig( $attr );
+   return $attr;
 };
 
 sub BUILD {
@@ -71,19 +99,14 @@ sub BUILD {
 
    autoflush STDOUT TRUE; autoflush STDERR TRUE;
 
-   Getopt::Mixed::init( q(c=s D H h L=s n o=s S ).$self->arglist );
+   $self->debug       ( $self->get_debug_option );
+   $self->lock->debug ( $self->debug            );
+   $self->SUPER::debug( $self->debug            );
+   $self->messages    ( $self->load_messages    );
 
-   $self->_load_args_ref; $self->_load_vars_ref;
-
-   Getopt::Mixed::cleanup();
-
-   $self->_set_attr  ( q(c), q(method)         );
-   $self->_set_attr  ( q(L), q(language)       );
-   $self->_set_attr  ( q(S), q(silent)         );
-   $self->debug      ( $self->get_debug_option );
-   $self->lock->debug( $self->debug            );
-   $self->messages   ( $self->load_messages    );
-
+   $self->help2 and $self->usage(2);
+   $self->help1 and $self->usage(1);
+   $self->method or $self->usage(0);
    return;
 }
 
@@ -126,47 +149,8 @@ sub data_load {
    return File::DataClass::Schema->connect( $args, $self )->load;
 }
 
-sub dispatch {
-   my $self = shift; my ($rv, $text);
-
-   exists $self->args->{h} and $self->usage(1);
-   exists $self->args->{H} and $self->usage(2);
-
-   my $method = $self->method || $self->usage(0);
-
-   $text  = 'Started by '.$self->logname.' Version '.$VERSION.SPC;
-   $text .= 'Pid '.(abs $PID);
-   $self->output( $text );
-
-   if ($self->can( $method )) {
-      umask oct ($self->config->{mode} || PERMS);
-
-      my $parms = exists $self->parms->{ $method }
-                ? $self->parms->{ $method } : [];
-
-      try { $rv = $self->$method( @{ $parms } ) }
-      catch ($error) {
-         my $e = $self->catch( $error );
-
-         $e->out and $self->output( $e->out );
-         $self->error( $e->as_string( $self->debug ), { args => $e->args } );
-         $rv = $e->rv || -1;
-      }
-
-      unless (defined $rv) {
-         $self->error( "Method $method return value undefined" ); $rv = -1;
-      }
-   }
-   else {
-      $self->error( "Method $method not defined in class ".(ref $self) );
-      $rv = -1;
-   }
-
-   if (defined $rv and not $rv) { $self->output( 'Finished' ) }
-   else { $self->output( "Terminated code $rv" ) }
-
-   $self->delete_tmp_files;
-   return $rv;
+sub dont_ask {
+   return $_[0]->help1 || $_[0]->help2 || ! is_interactive();
 }
 
 sub error {
@@ -193,11 +177,10 @@ sub fatal {
 }
 
 sub get_debug_option {
-   my $self = shift; my $args = $self->args || {};
+   my $self = shift;
 
-   exists $args->{D}   and return TRUE;
-   __dont_ask( $args ) and return FALSE;
-   is_interactive()    or  return FALSE;
+   defined $self->debug and return $self->debug;
+   $self->dont_ask      and return FALSE;
 
    return $self->yorn( 'Do you want debugging turned on', FALSE, TRUE );
 }
@@ -279,6 +262,10 @@ sub get_meta {
 
    $self->throw( 'No META.yml file' );
    return;
+}
+
+sub get_program_name {
+   my ($class, $prog) = @_; return $class->split_on__( $prog, 1 ) || $prog;
 }
 
 sub info {
@@ -429,8 +416,46 @@ sub prompt {
    return;
 }
 
+sub run {
+   my $self = shift; my $method = $self->method; my ($rv, $text);
+
+   $text  = 'Started by '.$self->logname.' Version '.$VERSION.SPC;
+   $text .= 'Pid '.(abs $PID);
+   $self->output( $text );
+
+   if ($self->can( $method )) {
+      umask oct ($self->config->{mode} || PERMS);
+
+      my $params = exists $self->params->{ $method }
+                 ? $self->params->{ $method } : [];
+
+      try { $rv = $self->$method( @{ $params } ) }
+      catch ($error) {
+         my $e = $self->catch( $error );
+
+         $e->out and $self->output( $e->out );
+         $self->error( $e->as_string( $self->debug ), { args => $e->args } );
+         $rv = $e->rv || -1;
+      }
+
+      unless (defined $rv) {
+         $self->error( "Method $method return value undefined" ); $rv = -1;
+      }
+   }
+   else {
+      $self->error( "Method $method not defined in class ".(ref $self) );
+      $rv = -1;
+   }
+
+   if (defined $rv and not $rv) { $self->output( 'Finished' ) }
+   else { $self->output( "Terminated code $rv" ) }
+
+   $self->delete_tmp_files;
+   return $rv || OK;
+}
+
 sub usage {
-   my ($self, $verbose) = @_;
+   my ($self, $verbose) = @_; $verbose ||= 0;
 
    if ($verbose < 2) {
       pod2usage( { -input   => $self->config->{pathname},
@@ -512,36 +537,8 @@ sub _get_control_chars {
    return ((join q(|), values %cntl), %cntl);
 }
 
-sub _load_args_ref {
-   my $self = shift; my $args = $self->args; my ($k, $v);
-
-   while (($k, $v) = nextOption()) {
-      if ($args->{ $k }) {
-         if (ref $args->{ $k } eq ARRAY) { push @{ $args->{ $k } }, $v }
-         else { $args->{ $k } = [ $args->{ $k }, $v ] }
-      }
-      else { $args->{ $k } = $v }
-   }
-
-   return;
-}
-
-sub _load_vars_ref {
-   my $self = shift; my $args = $self->args; my $vars = $self->vars;
-
-   exists $args->{o} or return; my $opts = $args->{o};
-
-   for my $opt (ref $opts eq ARRAY ? @{ $opts } : ( $opts )) {
-      my ($k, $v) = split m{ [=] }mx, $opt;
-
-      if ($vars->{ $k }) {
-         if (ref $vars->{ $k } eq ARRAY) { push @{ $vars->{ $k } }, $v }
-         else { $vars->{ $k } = [ $vars->{ $k }, $v ] }
-      }
-      else { $vars->{ $k } = $v }
-   }
-
-   return;
+sub _getopt_full_usage {
+   # Required to stop MX::Getopt from printing usage
 }
 
 sub _map_prompt_args {
@@ -570,25 +567,6 @@ sub _raw_mode {
 
 sub _restore_mode {
    my ($self, $handle) = @_; ReadMode q(restore), $handle; return;
-}
-
-sub _set_attr {
-   my ($self, $opt, $attr) = @_; my $v;
-
-   exists $self->args->{ $opt } or return;
-
-   if ($self->arglist =~ m{ $opt =s }mx) {
-      $v = $self->args->{ $opt } and $self->$attr( $self->untaint_path( $v ) );
-   }
-   else { $self->$attr( TRUE ) }
-
-   return;
-}
-
-# Private subroutines
-
-sub __dont_ask {
-   return exists $_[0]->{n} or exists $_[0]->{h} or exists $_[0]->{H};
 }
 
 __PACKAGE__->meta->make_immutable;
@@ -739,13 +717,6 @@ Return a reference to self
 
 =head2 data_load
 
-=head2 dispatch
-
-   $rv = $self->dispatch;
-
-Call the method specified by the C<-c> option on the command
-line. Returns the exit code
-
 =head2 error
 
    $self->error( $text, $args );
@@ -842,6 +813,13 @@ The character to echo in place of the one typed
 Prompt string
 
 =back
+
+=head2 run
+
+   $rv = $self->run;
+
+Call the method specified by the C<-c> option on the command
+line. Returns the exit code
 
 =head2 usage
 

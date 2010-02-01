@@ -176,13 +176,13 @@ sub class_path {
 
 sub cli {
    # Self initialising accessor for the command line interface object
-   my $self = shift;
+   my $self = shift; my $key = q(_command_line_interface);
 
-   $self->{_command_line_interface}
-      or $self->{_command_line_interface} = Class::Usul::Programs->new
-            ( appclass => $self->module_name, n => TRUE );
+   $self->{ $key }
+      or $self->{ $key } = Class::Usul::Programs->new
+            ( appclass => $self->module_name, debug => FALSE );
 
-   return $self->{_command_line_interface};
+   return $self->{ $key };
 }
 
 sub commit_release {

@@ -6,6 +6,7 @@ use strict;
 use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
+use English qw(-no_match_vars);
 use Class::Usul::Constants;
 use Sys::Hostname ();
 use File::Spec;
@@ -13,6 +14,7 @@ use Config;
 use Moose;
 
 extends qw(Class::Usul);
+with    qw(File::DataClass::Constraints);
 
 has 'args'          => is => 'ro', isa => 'HashRef', default    => sub { {} };
 has 'aliases_path'  => is => 'rw', isa => 'Str',     lazy_build => TRUE;
@@ -23,18 +25,23 @@ has 'ctrldir'       => is => 'rw', isa => 'Str',     lazy_build => TRUE;
 has 'dbasedir'      => is => 'rw', isa => 'Str',     lazy_build => TRUE;
 has 'hostname'      => is => 'ro', isa => 'Str',     lazy_build => TRUE;
 has 'logfile'       => is => 'rw', isa => 'Str',     lazy_build => TRUE;
-has 'logsdir'       => is => 'rw', isa => 'Str',     lazy_build => TRUE;
+has 'logsdir'       => is => 'rw', isa => 'F_DC_Directory',
+   coerce           => TRUE,       lazy_build => TRUE;
 has 'no_thrash'     => is => 'rw', isa => 'Int',     default    => 3;
 has 'owner'         => is => 'rw', isa => 'Str',     lazy_build => TRUE;
 has 'pathname'      => is => 'rw', isa => 'Str',     lazy_build => TRUE;
-has 'phase'         => is => 'ro', isa => 'Str',     lazy_build => TRUE;
+has 'phase'         => is => 'ro', isa => 'Int',     lazy_build => TRUE;
+has 'prefix'        => is => 'rw', isa => 'Str',     lazy_build => TRUE;
 has 'profiles_path' => is => 'rw', isa => 'Str',     lazy_build => TRUE;
 has 'pwidth'        => is => 'rw', isa => 'Int',     default    => 60;
 has 'root'          => is => 'rw', isa => 'Str',     lazy_build => TRUE;
 has 'rundir'        => is => 'rw', isa => 'Str',     lazy_build => TRUE;
+has 'secret'        => is => 'ro', isa => 'Str',     lazy_build => TRUE;
 has 'shell'         => is => 'rw', isa => 'Str',     lazy_build => TRUE;
-has 'suid'          => is => 'rw', isa => 'Str',     lazy_build => TRUE;
-has 'tempdir'       => is => 'rw', isa => 'Str',     lazy_build => TRUE;
+has 'suid'          => is => 'ro', isa => 'F_DC_Path',
+   coerce           => TRUE,       lazy_build => TRUE;
+has 'tempdir'       => is => 'rw', isa => 'F_DC_Directory',
+   coerce           => TRUE,       lazy_build => TRUE;
 has 'vardir'        => is => 'rw', isa => 'Str',     lazy_build => TRUE;
 
 sub BUILD {
@@ -81,7 +88,7 @@ sub _build_appldir {
    my $path = $self->dirname( $Config{sitelibexp} );
 
    if ($args->{home} =~ m{ \A $path }mx) {
-      $path = $self->class2appdir( $args->{name} );
+      $path = $self->class2appdir( $args->{appclass} );
       $path = $self->catdir( NUL, qw(var www), $path, q(default) );
    }
    else { $path = $self->home2appl( $args->{home} ) }
@@ -134,13 +141,15 @@ sub _build_logsdir {
 }
 
 sub _build_owner {
-   my $self = shift; return $self->args->{prefix} || q(root);
+   my $self = shift; return $self->prefix || q(root);
 }
 
 sub _build_pathname {
-   my $self = shift;
+   my $self = shift; return $self->rel2abs( $PROGRAM_NAME );
+}
 
-   return $self->inflate( q(binsdir), $self->args->{script} );
+sub _build_prefix {
+   my $self = shift; return (split m{ :: }mx, lc $self->args->{appclass})[-1];
 }
 
 sub _build_phase {
@@ -163,6 +172,10 @@ sub _build_rundir {
    my $self = shift; return $self->inflate( qw(vardir run) );
 }
 
+sub _build_secret {
+   my $self = shift; return $self->prefix;
+}
+
 sub _build_shell {
    my $self = shift; return $self->catfile( NUL, qw(bin ksh) );
 }
@@ -170,7 +183,7 @@ sub _build_shell {
 sub _build_suid {
    my $self = shift;
 
-   return $self->inflate( q(binsdir), $self->args->{prefix}.q(_admin) );
+   return $self->inflate( q(binsdir), $self->prefix.q(_admin) );
 }
 
 sub _build_tempdir {
@@ -205,6 +218,26 @@ Describes Class::Usul::Config version 0.1.$Revision$
 =head1 Synopsis
 
 =head1 Description
+
+=over 3
+
+=item secret
+
+This applications secret key as set by the administrators in the
+configuration. It is used to perturb the encryption methods. Defaults to
+the I<prefix> attribute value
+
+=item suid
+
+Name of the setuid root program in the I<bin> directory. Defaults to
+the I<prefix>_admin
+
+=item tempdir
+
+Supplied by the config hash, it is the location of any temporary files
+created by the application. Defaults to the L<File::Spec> tempdir
+
+=back
 
 =head1 Subroutines/Methods
 

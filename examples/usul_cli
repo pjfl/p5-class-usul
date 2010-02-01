@@ -1,0 +1,125 @@
+#!/usr/bin/env perl
+
+# @(#)$Id$
+
+use strict;
+use warnings;
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
+use File::Spec::Functions;
+use FindBin qw( $Bin );
+use lib catdir( $Bin, updir, q(lib) );
+
+# Replace this with the name of your subclass
+use Class::Usul::Programs;
+
+# Appclass is the class name of the application to which this program belongs.
+# It is used to determine the location of the default configuration file
+exit Class::Usul::Programs->new_with_options( appclass => 'Class::Usul' )->run;
+
+__END__
+
+=pod
+
+=head1 Name
+
+usul_cli - A command line interface to OO methods
+
+=head1 Synopsis
+
+=over 3
+
+=item B<usul_cli> B<-c> I<method> [B<-o> I<var=value,...>]
+
+Execute named method
+
+=item B<usul_cli> B<-H>|B<-h>
+
+Display man page/usage string
+
+=back
+
+=head1 Version
+
+0.1.$Rev$
+
+=head1 Description
+
+This program exposes the methods in the L<Class::Usul::Programs> module
+
+=head1 Required Arguments
+
+=over 3
+
+=item B<-c> I<subroutine>
+
+=back
+
+=head1 Options
+
+=over 3
+
+=item B<-D       >
+
+Turn debugging on
+
+=item B<--nodebug>
+
+Do not prompt for debugging
+
+=back
+
+=head1 Exit Status
+
+Returns zero on success, non zero on failure
+
+=head1 Configuration
+
+Uses the constructor's I<appclass> attribute to locate a configuration file
+
+=head1 Diagnostics
+
+Prints errors to C<STDERR>
+
+=head1 Dependencies
+
+=over 3
+
+=item L<Class::Usul::Programs>
+
+=back
+
+=head1 Incompatibilities
+
+There are no known incompatibilities in this module
+
+=head1 Bugs and Limitations
+
+There are no known bugs in this module.
+Please report problems to the address below.
+Patches are welcome
+
+=head1 Acknowledgements
+
+Larry Wall - For the Perl programming language
+
+=head1 Author
+
+Peter Flanigan, C<< <Support at RoxSoft.co.uk> >>
+
+=head1 License and Copyright
+
+Copyright (c) 2010 Peter Flanigan. All rights reserved
+
+This program is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself. See L<perlartistic>
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
+
+=cut
+
+# Local Variables:
+# mode: perl
+# tab-width: 3
+# End:
