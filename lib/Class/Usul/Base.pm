@@ -57,6 +57,10 @@ sub class2appdir {
    my ($self, $class) = @_; return lc $self->distname( $class );
 }
 
+sub classdir {
+   my ($self, $class) = @_; return $self->catdir( split m{ :: }mx, $class );
+}
+
 sub classfile {
    my ($self, $class) = @_;
 

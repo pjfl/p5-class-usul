@@ -16,10 +16,12 @@ use Pod::Man;
 use TryCatch;
 use File::Spec;
 use Pod::Usage;
+use File::HomeDir;
 use Term::ReadKey;
 use Text::Autoformat;
 use File::DataClass::Schema;
 use Cwd             qw(abs_path);
+use Encode          qw(decode);
 use English         qw(-no_match_vars);
 use IO::Interactive qw(is_interactive);
 use List::Util      qw(first);
@@ -84,12 +86,10 @@ around BUILDARGS => sub {
 
    $attr->{appclass} ||= $class->prefix2class    ( $prog );
    $attr->{name    } ||= $class->get_program_name( $prog );
-   $attr->{home    } ||= $class->get_homedir     ( $attr );
+   $attr->{home    } ||= $class->get_homedir     ( $attr->{appclass} );
    $attr->{config  }   = $class->load_config     ( $attr );
-   $attr->{os      }   = $class->load_os_depends ( $attr );
-
-#$_ = decode('utf8', $_) for @ARGV;
-#binmode $_, ':encoding(utf8)' for (*STDIN, *STDOUT, *STDERR);
+   $attr->{encoding}   = $class->apply_encoding  ( $attr );
+   $attr->{os      }   = $class->load_os_depends ( $attr->{config  } );
 
    return $attr;
 };
@@ -104,9 +104,10 @@ sub BUILD {
    $self->SUPER::debug( $self->debug            );
    $self->messages    ( $self->load_messages    );
 
-   $self->help2 and $self->usage(2);
-   $self->help1 and $self->usage(1);
-   $self->method or $self->usage(0);
+   $self->devel and $self->udump( $self );
+   $self->help2 and $self->usage( 2     );
+   $self->help1 and $self->usage( 1     );
+   $self->method or $self->usage( 0     );
    return;
 }
 
@@ -134,6 +135,16 @@ sub anykey {
    return $self->prompt( -p => $prompt, -e => NUL, -1 => TRUE );
 }
 
+sub apply_encoding {
+   my ($class, $args) = @_;
+
+   my $enc = $args->{encoding} || $args->{config}->{encoding} || q(UTF-8);
+
+   $_ = decode( $enc , $_ )        for @ARGV;
+   binmode $_, ":encoding(${enc})" for (*STDIN, *STDOUT, *STDERR);
+   return $enc;
+}
+
 sub data_dump {
    my ($self, @rest) = @_; my $args = $self->arg_list( @rest );
 
@@ -147,6 +158,11 @@ sub data_load {
              storage_attributes => { _arrays => $args->{arrays} || [] } };
 
    return File::DataClass::Schema->connect( $args, $self )->load;
+}
+
+sub devel {
+   return $_[0]->debug
+       && $ENV{ $_[0]->env_prefix( $_[0]->appclass ).q(_DEVEL) };
 }
 
 sub dont_ask {
@@ -186,36 +202,41 @@ sub get_debug_option {
 }
 
 sub get_homedir {
-   my ($class, $args) = @_;
+   my ($class, $app) = @_;
 
-   my $app  = $args->{appclass};
-   my $file = $class->app_prefix( $app );
-   my $path = $ENV{ $args->{evar} || $class->env_prefix( $app ).q(_HOME) };
-
-   $path = $class->_assert_directory( $path ) and return $path;
-   $path = $class->catfile( NUL, qw(etc default), $file );
-
-   my $well_known = $args->{install} || $path; $path = undef;
-
-   -f $well_known and $path = first { length }
-                              grep  { not m{ \A \# }mx }
-                              $class->io( $well_known )->chomp->getlines;
+   # 1. Environment variable
+   my $path = $ENV{ $class->env_prefix( $app ).q(_HOME) };
 
    $path = $class->_assert_directory( $path ) and return $path;
-   $path = $class->catdir( @{ PREFIX() }, $class->class2appdir( $app ) );
 
-   my $prefix   = $args->{install_prefix} || $path;
-   my $app_path = $class->catdir( split m{ :: }mx, $app );
+   # 2. Users home directory
+   my $appdir   = $class->class2appdir( $app );
+   my $classdir = $class->classdir( $app );
 
-   $path = $class->catdir( $prefix, qw(default lib), $app_path );
+   $path = $class->catdir( File::HomeDir->my_home, $appdir );
+   $path = $class->catdir( $path, qw(default lib), $classdir );
    $path = $class->_assert_directory( $path ) and return $path;
 
-   for my $dir (map { $class->catdir( abs_path( $_ ), $app_path ) } @INC) {
+   # 3. Well known path
+   my $file       = $class->app_prefix( $app );
+   my $well_known = $class->catfile( NUL, qw(etc default), $file );
+
+   $path = $class->_read_path_from( $well_known );
+   $path = $class->_assert_directory( $path ) and return $path;
+
+   # 4. Default install prefix
+   $path = $class->catdir( @{ PREFIX() }, $appdir );
+   $path = $class->catdir( $path, qw(default lib), $classdir );
+   $path = $class->_assert_directory( $path ) and return $path;
+
+   # 5. Config file found in @INC
+   for my $dir (map { $class->catdir( abs_path( $_ ), $classdir ) } @INC) {
       $path = $class->untaint_path( $class->catfile( $dir, $file.q(.xml) ) );
 
       -f $path and return $class->dirname( $path );
    }
 
+   # 6. Default to /tmp
    return $class->untaint_path( File::Spec->tmpdir );
 }
 
@@ -293,7 +314,10 @@ sub load_config {
 
    my $config_class = $args->{config_class} || q(Class::Usul::Config);
 
-   return $config_class->new( args => $args, %{ $cfg } );
+   return $config_class->new( args =>
+                              { appclass => $args->{appclass},
+                                home     => $args->{home},
+                                name     => $args->{name} }, %{ $cfg } );
 }
 
 sub load_messages {
@@ -312,10 +336,10 @@ sub load_messages {
 }
 
 sub load_os_depends {
-   my ($class, $args) = @_;
+   my ($class, $config) = @_;
 
    my $file = q(os_).$Config{osname}.q(.xml);
-   my $path = $class->catfile( $args->{config}->{ctrldir}, $file );
+   my $path = $class->catfile( $config->{ctrldir}, $file );
    my $cfg  = {};
 
    -f $path or return {};
@@ -565,6 +589,15 @@ sub _raw_mode {
    my ($self, $handle) = @_; ReadMode q(raw), $handle; return;
 }
 
+sub _read_path_from {
+   my ($self, $path) = @_;
+
+   return -f $path ? first { length }
+                     grep  { not m{ \A \# }mx }
+                     $self->io( $path )->chomp->getlines
+                   : undef;
+}
+
 sub _restore_mode {
    my ($self, $handle) = @_; ReadMode q(restore), $handle; return;
 }
@@ -590,12 +623,14 @@ This document describes Class::Usul::Programs version 0.1.$Revision$
 =head1 Synopsis
 
    # In YourClass.pm
-   use base qw(Class::Usul::Programs);
+   use Moose;
+
+   extends qw(Class::Usul::Programs);
 
    # In yourProg.pl
-   use base qw(YourClass);
+   use YourClass;
 
-   exit YourClass->new( appclass => 'YourApplicationClass' )->dispatch;
+   exit YourClass->new( appclass => 'YourApplicationClass' )->run;
 
 =head1 Description
 
@@ -661,12 +696,6 @@ Suppresses the usual started/finished information messages
 
 Boolean which if true causes program debug output to be
 generated. Defaults to false
-
-=head3 evar
-
-Environment variable containing the path to a file which contains
-the application installation directory. Defaults to the environment
-variable <uppercase application name>_HOME
 
 =head3 install
 
@@ -740,6 +769,18 @@ code of one
 
 If it is an interactive session prompts the user to turn debugging
 on. Returns true if debug is on. Also offers the option to quit
+
+=head2 get_homedir
+
+   $path = $self->get_homedir( $args );
+
+Environment variable containing the path to a file which contains
+the application installation directory. Defaults to the environment
+variable <uppercase application name>_HOME
+
+Search through subdirectories of @INC looking for the file
+myApplication.xml. Uses the location of this file to return the path to
+the installation directory
 
 =head2 get_line
 
@@ -856,14 +897,6 @@ Initialise the contents of the self referential hash
 
 Returns a string of pipe separated control characters and a hash of
 symbolic names and values
-
-=head2 _get_homedir
-
-   $path = $self->_get_homedir( 'myApplication' );
-
-Search through subdirectories of @INC looking for the file
-myApplication.xml. Uses the location of this file to return the path to
-the installation directory
 
 =head2 _inflate
 

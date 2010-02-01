@@ -14,17 +14,18 @@ use Class::Usul::Programs;
 
 # Appclass is the class name of the application to which this program belongs.
 # It is used to determine the location of the default configuration file
+
 exit Class::Usul::Programs->new_with_options( appclass => 'Class::Usul' )->run;
 
 __END__
 
 =pod
 
-=head1 Name
+=head1 NAME
 
 usul_cli - A command line interface to OO methods
 
-=head1 Synopsis
+=head1 SYNOPSIS
 
 =over 3
 
@@ -38,49 +39,73 @@ Display man page/usage string
 
 =back
 
-=head1 Version
+=head1 VERSION
 
 0.1.$Rev$
 
-=head1 Description
+=head1 DESCRIPTION
 
 This program exposes the methods in the L<Class::Usul::Programs> module
 
-=head1 Required Arguments
+=head1 OPTIONS
 
 =over 3
 
-=item B<-c> I<subroutine>
+=item B<-c> I<method>
 
-=back
+Name of method to execute. Required
 
-=head1 Options
+=item B<-D        >
 
-=over 3
+Turn debugging on. Defaults to prompting for debug if interactive
 
-=item B<-D       >
+=item B<--encoding>
 
-Turn debugging on
+Decodes/encodes input/output using the value. Defaults to I<UTF-8>
 
-=item B<--nodebug>
+=item B<-h        >
+
+Display usage information
+
+=item B<-H        >
+
+Display manual page. Pipes through C<nroff>
+
+=item B<--home    >
+
+Directory containing the configuration file
+
+=item B<-L        >
+
+Load a message catalog in the language
+
+=item B<--nodebug >
 
 Do not prompt for debugging
 
+=item B<-o        >
+
+Zero, one or more key value pairs passed to the method call
+
+=item B<-S        >
+
+Suppress information messages
+
 =back
 
-=head1 Exit Status
+=head1 EXIT STATUS
 
 Returns zero on success, non zero on failure
 
-=head1 Configuration
+=head1 CONFIGURATION
 
 Uses the constructor's I<appclass> attribute to locate a configuration file
 
-=head1 Diagnostics
+=head1 DIAGNOSTICS
 
 Prints errors to C<STDERR>
 
-=head1 Dependencies
+=head1 DEPENDENCIES
 
 =over 3
 
@@ -88,25 +113,25 @@ Prints errors to C<STDERR>
 
 =back
 
-=head1 Incompatibilities
+=head1 INCOMPATIBILITIES
 
 There are no known incompatibilities in this module
 
-=head1 Bugs and Limitations
+=head1 BUGS and LIMITATIONS
 
 There are no known bugs in this module.
 Please report problems to the address below.
 Patches are welcome
 
-=head1 Acknowledgements
+=head1 ACKNOWLEDGEMENTS
 
 Larry Wall - For the Perl programming language
 
-=head1 Author
+=head1 AUTHOR
 
 Peter Flanigan, C<< <Support at RoxSoft.co.uk> >>
 
-=head1 License and Copyright
+=head1 LICENSE and COPYRIGHT
 
 Copyright (c) 2010 Peter Flanigan. All rights reserved
 
