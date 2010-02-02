@@ -86,10 +86,10 @@ around BUILDARGS => sub {
 
    $attr->{appclass} ||= $class->prefix2class    ( $prog );
    $attr->{name    } ||= $class->get_program_name( $prog );
-   $attr->{home    } ||= $class->get_homedir     ( $attr->{appclass} );
+   $attr->{home    } ||= $class->get_homedir     ( $attr );
    $attr->{config  }   = $class->load_config     ( $attr );
    $attr->{encoding}   = $class->apply_encoding  ( $attr );
-   $attr->{os      }   = $class->load_os_depends ( $attr->{config  } );
+   $attr->{os      }   = $class->load_os_depends ( $attr );
 
    return $attr;
 };
@@ -202,7 +202,7 @@ sub get_debug_option {
 }
 
 sub get_homedir {
-   my ($class, $app) = @_;
+   my ($class, $args) = @_; my $app = $args->{appclass};
 
    # 1. Environment variable
    my $path = $ENV{ $class->env_prefix( $app ).q(_HOME) };
@@ -273,13 +273,13 @@ sub get_line {
 sub get_meta {
    my ($self, $path) = @_; my $meta_class = q(Class::Usul::Response::Meta);
 
-   my @paths = ( $self->catfile( $self->config->{appldir}, q(META.yml) ),
-                 $self->catfile( $self->config->{ctrldir}, q(META.yml) ),
-                 q(META.yml) );
+   my @paths = ( $self->config->{appldir}->catfile( q(META.yml) ),
+                 $self->config->{ctrldir}->catfile( q(META.yml) ),
+                 $self->io( q(META.yml) ) );
 
-   $path and unshift @paths, $path;
+   $path and unshift @paths, $self->io( $path );
 
-   return $meta_class->new( $_ ) for (grep { -f $_ } @paths);
+   return $meta_class->new( $_ ) for (grep { $_->is_file } @paths);
 
    $self->throw( 'No META.yml file' );
    return;
@@ -324,7 +324,7 @@ sub load_messages {
    my $self = shift;
    my $lang = $self->language or return {};
    my $file = q(default_).$lang.q(.xml);
-   my $path = $self->catfile( $self->config->{ctrldir}, $file );
+   my $path = $self->config->{ctrldir}->catfile( $file );
    my $cfg  = {};
 
    -f $path or return {};
@@ -336,11 +336,12 @@ sub load_messages {
 }
 
 sub load_os_depends {
-   my ($class, $config) = @_;
+   my ($class, $args) = @_;
 
-   my $file = q(os_).$Config{osname}.q(.xml);
-   my $path = $class->catfile( $config->{ctrldir}, $file );
-   my $cfg  = {};
+   my $config = $args->{config};
+   my $file   = q(os_).$Config{osname}.q(.xml);
+   my $path   = $class->catfile( $config->{ctrldir}, $file );
+   my $cfg    = {};
 
    -f $path or return {};
 
@@ -481,8 +482,10 @@ sub run {
 sub usage {
    my ($self, $verbose) = @_; $verbose ||= 0;
 
+   my $path = NUL.$self->config->{pathname};
+
    if ($verbose < 2) {
-      pod2usage( { -input   => $self->config->{pathname},
+      pod2usage( { -input   => $path,
                    -message => SPC, -verbose => $verbose } );
       exit 0; # Never reached
    }
@@ -495,7 +498,7 @@ sub usage {
    my $tempfile = $self->tempfile;
    my $cmd      = q(cat ).$tempfile->pathname.q( | nroff -man);
 
-   $parser->parse_from_file( $self->config->{pathname}, $tempfile->pathname );
+   $parser->parse_from_file( $path, $tempfile->pathname );
    system $cmd;
    exit 0;
 }

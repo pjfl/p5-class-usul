@@ -117,7 +117,7 @@ sub _build__log {
    return $logfile && -d $dir
         ? Log::Handler->new
         ( file      => {
-           filename => $logfile,
+           filename => NUL.$logfile,
            maxlevel => $self->debug ? 7 : $attrs->{log_level} || 6,
            mode     => q(append), } )
         : Class::Null->new;

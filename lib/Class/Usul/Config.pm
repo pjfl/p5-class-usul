@@ -16,33 +16,77 @@ use Moose;
 extends qw(Class::Usul);
 with    qw(File::DataClass::Constraints);
 
-has 'args'          => is => 'ro', isa => 'HashRef', default    => sub { {} };
-has 'aliases_path'  => is => 'rw', isa => 'Str',     lazy_build => TRUE;
-has 'appldir'       => is => 'ro', isa => 'Str',     lazy_build => TRUE;
-has 'binsdir'       => is => 'ro', isa => 'Str',     lazy_build => TRUE;
-has 'ctlfile'       => is => 'rw', isa => 'Str',     lazy_build => TRUE;
-has 'ctrldir'       => is => 'rw', isa => 'Str',     lazy_build => TRUE;
-has 'dbasedir'      => is => 'rw', isa => 'Str',     lazy_build => TRUE;
-has 'hostname'      => is => 'ro', isa => 'Str',     lazy_build => TRUE;
-has 'logfile'       => is => 'rw', isa => 'Str',     lazy_build => TRUE;
+has 'args'          => is => 'ro', isa => 'HashRef',
+   default          => sub { {} };
+
+has 'aliases_path'  => is => 'rw', isa => 'F_DC_Path',
+   lazy_build       => TRUE, coerce    => TRUE;
+
+has 'appldir'       => is => 'ro', isa => 'F_DC_Directory',
+   lazy_build       => TRUE, coerce    => TRUE;
+
+has 'binsdir'       => is => 'ro', isa => 'F_DC_Path',
+   lazy_build       => TRUE, coerce    => TRUE;
+
+has 'ctlfile'       => is => 'rw', isa => 'F_DC_Path',
+   lazy_build       => TRUE, coerce    => TRUE;
+
+has 'ctrldir'       => is => 'rw', isa => 'F_DC_Path',
+   lazy_build       => TRUE, coerce    => TRUE;
+
+has 'dbasedir'      => is => 'rw', isa => 'F_DC_Path',
+   lazy_build       => TRUE, coerce    => TRUE;
+
+has 'hostname'      => is => 'ro', isa => 'Str',
+   lazy_build       => TRUE;
+
+has 'logfile'       => is => 'rw', isa => 'F_DC_Path',
+   lazy_build       => TRUE, coerce    => TRUE;
+
 has 'logsdir'       => is => 'rw', isa => 'F_DC_Directory',
-   coerce           => TRUE,       lazy_build => TRUE;
-has 'no_thrash'     => is => 'rw', isa => 'Int',     default    => 3;
-has 'owner'         => is => 'rw', isa => 'Str',     lazy_build => TRUE;
-has 'pathname'      => is => 'rw', isa => 'Str',     lazy_build => TRUE;
-has 'phase'         => is => 'ro', isa => 'Int',     lazy_build => TRUE;
-has 'prefix'        => is => 'rw', isa => 'Str',     lazy_build => TRUE;
-has 'profiles_path' => is => 'rw', isa => 'Str',     lazy_build => TRUE;
-has 'pwidth'        => is => 'rw', isa => 'Int',     default    => 60;
-has 'root'          => is => 'rw', isa => 'Str',     lazy_build => TRUE;
-has 'rundir'        => is => 'rw', isa => 'Str',     lazy_build => TRUE;
-has 'secret'        => is => 'ro', isa => 'Str',     lazy_build => TRUE;
-has 'shell'         => is => 'rw', isa => 'Str',     lazy_build => TRUE;
+   lazy_build       => TRUE, coerce    => TRUE;
+
+has 'no_thrash'     => is => 'rw', isa => 'Int',
+   default          => 3;
+
+has 'owner'         => is => 'rw', isa => 'Str',
+   lazy_build       => TRUE;
+
+has 'pathname'      => is => 'rw', isa => 'F_DC_File',
+   lazy_build       => TRUE, coerce    => TRUE;
+
+has 'phase'         => is => 'ro', isa => 'Int',
+   lazy_build       => TRUE;
+
+has 'prefix'        => is => 'rw', isa => 'Str',
+   lazy_build       => TRUE;
+
+has 'profiles_path' => is => 'rw', isa => 'F_DC_Path',
+   lazy_build       => TRUE, coerce    => TRUE;
+
+has 'pwidth'        => is => 'rw', isa => 'Int',
+   default          => 60;
+
+has 'root'          => is => 'rw', isa => 'F_DC_Path',
+   lazy_build       => TRUE, coerce    => TRUE;
+
+has 'rundir'        => is => 'rw', isa => 'F_DC_Path',
+   lazy_build       => TRUE, coerce    => TRUE;
+
+has 'secret'        => is => 'ro', isa => 'Str',
+   lazy_build       => TRUE;
+
+has 'shell'         => is => 'rw', isa => 'F_DC_Path',
+   lazy_build       => TRUE, coerce    => TRUE;
+
 has 'suid'          => is => 'ro', isa => 'F_DC_Path',
-   coerce           => TRUE,       lazy_build => TRUE;
+   lazy_build       => TRUE, coerce    => TRUE;
+
 has 'tempdir'       => is => 'rw', isa => 'F_DC_Directory',
-   coerce           => TRUE,       lazy_build => TRUE;
-has 'vardir'        => is => 'rw', isa => 'Str',     lazy_build => TRUE;
+   lazy_build       => TRUE, coerce    => TRUE;
+
+has 'vardir'        => is => 'rw', isa => 'F_DC_Path',
+   lazy_build       => TRUE, coerce    => TRUE;
 
 sub BUILD {
    my $self = shift;
