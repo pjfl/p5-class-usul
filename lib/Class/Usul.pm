@@ -150,47 +150,38 @@ Describes Class::Usul version 0.1.$Revision$
 
 =head1 Description
 
-These modules provide a set of base classes for a Perl
-applications
+These modules provide a set of base classes for a Perl applications
 
 =head1 Configuration and Environment
 
-=head1 Subroutines/Methods
+   $self = Class::Usul->new( $attrs );
 
-=head2 new
-
-   $self = Class::Usul->new( $attrs, $app );
-
-The C<$attrs> arg is a hash ref containing the object
-attributes. An optional object refrence, C<$app>, that defines a
-C<config> method can be supplied. The C<config> method should return a
-hash ref that may define the following attributes:
+The C<$attrs> arg is a hash ref containing the object attributes.
 
 =over 3
 
+=item config
+
+The C<config> attribute should be a hash ref that may define key/value pairs
+that provide filesystem paths for the temporary directory etc.
+
 =item debug
 
-The application context debug is used to set this. Defaults to false
+Defaults to false
 
 =item encoding
 
-The config supplies the encoding for the C<query_array>,
-C<query_value> and log methods. Defaults to I<UTF-8>
+Decode input and encode output. Defaults to I<UTF-8>
 
-=item lock
+=item exception_class
 
-The lock object. This is readonly and instantiates on first use
-
-=item log
-
-The application context log. Defaults to a L<Class::Null> object
-
-=item prefix
-
-The prefix applied to executable programs in the I<bin>
-directory. This is extracted from the I<suid> key in the config hash
+The name of the class used to throw exceptions
 
 =back
+
+Defines the lock object. This is readonly and instantiates on first use
+
+Defined the application context log. Defaults to a L<Class::Null> object
 
 The constructor applies these roles:
 
@@ -203,6 +194,8 @@ The constructor applies these roles:
 =item L<File::DataClass::Constraints>
 
 =back
+
+=head1 Subroutines/Methods
 
 =head2 build_subcomponents
 
