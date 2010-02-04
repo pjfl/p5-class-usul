@@ -19,7 +19,7 @@ use Moose::Role;
 use Path::Class::Dir;
 use TryCatch;
 
-requires qw(Digest config exception_class);
+requires qw(digest config exception_class);
 
 sub app_prefix {
    (my $prefix = lc $_[1]) =~ s{ :: }{_}gmx; return $prefix;
@@ -70,13 +70,13 @@ sub classfile {
 sub create_token {
    my ($self, $seed) = @_; my ($candidate, $digest, $digest_name);
 
-   unless ($digest_name = $self->Digest) {
+   unless ($digest_name = $self->digest) {
       for $candidate (DIGEST_ALGORITHMS) {
          $digest = eval { Digest->new( $digest_name = $candidate ) } and last;
       }
 
       $digest or $self->throw( 'No digest algorithm' );
-      $self->Digest( $digest_name );
+      $self->digest( $digest_name );
    }
    else { $digest = Digest->new( $digest_name ) }
 

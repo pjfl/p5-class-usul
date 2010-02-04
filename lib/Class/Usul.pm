@@ -18,26 +18,26 @@ use MooseX::ClassAttribute;
 
 with qw(Class::Usul::Constraints File::DataClass::Constraints);
 
-class_has 'Digest'          => is => 'rw', isa => 'C_U_Digest_Algorithm';
-
 class_has 'Lock'            => is => 'rw', isa => 'F_DC_Lock';
+
+class_has 'digest'          => is => 'rw', isa => 'C_U_Digest_Algorithm';
 
 class_has 'exception_class' => is => 'rw', isa => 'F_DC_Exception',
    default                  => q(File::DataClass::Exception);
 
-has '_config'    => is => 'ro', isa     => 'HashRef | Object',
-   reader        => 'config',   default => sub { {} }, init_arg => 'config';
+has '_config'    => is => 'ro',    isa => 'HashRef | Object',
+   reader        => 'config', init_arg => 'config', default => sub { {} };
 
-has 'debug'      => is => 'rw', isa     => 'Bool', default => FALSE;
+has 'debug'      => is => 'rw',    isa => 'Bool', default => FALSE;
 
-has 'encoding'   => is => 'rw', isa     => 'C_U_Encoding', default => q(UTF-8),
+has 'encoding'   => is => 'rw',    isa => 'C_U_Encoding', default => q(UTF-8),
    documentation => 'Decode/encode input/output using this encoding';
 
-has '_lock'      => is => 'ro', isa     => 'F_DC_Lock', lazy_build => TRUE,
-   reader        => 'lock';
+has '_lock'      => is => 'ro',    isa => 'F_DC_Lock', lazy_build => TRUE,
+   reader        => 'lock',   init_arg => 'lock';
 
-has '_log'       => is => 'ro', isa     => 'C_U_Log', lazy_build => TRUE,
-   reader        => 'log';
+has '_log'       => is => 'ro',    isa => 'C_U_Log', lazy_build => TRUE,
+   reader        => 'log',    init_arg => 'log';
 
 with qw(Class::Usul::Base Class::Usul::Encoding Class::Usul::Crypt);
 
