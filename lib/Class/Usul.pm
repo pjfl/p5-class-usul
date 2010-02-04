@@ -20,10 +20,10 @@ with qw(Class::Usul::Constraints File::DataClass::Constraints);
 
 class_has 'Digest'          => is => 'rw', isa => 'C_U_Digest_Algorithm';
 
-class_has 'Exception_Class' => is => 'rw', isa => 'F_DC_Exception',
-   default                  => q(File::DataClass::Exception);
-
 class_has 'Lock'            => is => 'rw', isa => 'F_DC_Lock';
+
+class_has 'exception_class' => is => 'rw', isa => 'F_DC_Exception',
+   default                  => q(File::DataClass::Exception);
 
 has '_config'    => is => 'ro', isa     => 'HashRef | Object',
    reader        => 'config',   default => sub { {} }, init_arg => 'config';

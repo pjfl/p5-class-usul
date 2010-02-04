@@ -73,7 +73,7 @@ has '_messages'  => is => 'rw', isa     => 'HashRef', init_arg => undef,
 has '_name'      => is => 'rw', isa     => 'Str', init_arg => 'name',
    reader        => 'name',     default => NUL;
 
-has '_os'        => is => 'ro', isa     => 'HashRef', init_arg => undef,
+has '_os'        => is => 'rw', isa     => 'HashRef', init_arg => undef,
    reader        => 'os',       default => sub { {} };
 
 with qw(Class::Usul::IPC);
@@ -89,7 +89,6 @@ around BUILDARGS => sub {
    $attr->{home    } ||= $class->get_homedir     ( $attr );
    $attr->{config  }   = $class->load_config     ( $attr );
    $attr->{encoding}   = $class->apply_encoding  ( $attr );
-   $attr->{os      }   = $class->load_os_depends ( $attr );
 
    return $attr;
 };
@@ -102,6 +101,7 @@ sub BUILD {
    $self->debug       ( $self->get_debug_option );
    $self->lock->debug ( $self->debug            );
    $self->SUPER::debug( $self->debug            );
+   $self->os          ( $self->load_os_depends  );
    $self->messages    ( $self->load_messages    );
 
    $self->devel and $self->udump( $self );
@@ -148,7 +148,7 @@ sub apply_encoding {
 sub data_dump {
    my ($self, @rest) = @_; my $args = $self->arg_list( @rest );
 
-   return File::DataClass::Schema->connect( {}, $self )->dump( $args );
+   return File::DataClass::Schema->new( $self )->dump( $args );
 }
 
 sub data_load {
@@ -157,7 +157,7 @@ sub data_load {
    $args = { path => $args->{path} || NUL,
              storage_attributes => { _arrays => $args->{arrays} || [] } };
 
-   return File::DataClass::Schema->connect( $args, $self )->load;
+   return File::DataClass::Schema->new( $self, $args )->load;
 }
 
 sub devel {
@@ -301,23 +301,12 @@ sub info {
 }
 
 sub load_config {
-   my ($class, $args) = @_; my $cfg = {};
+   my ($class, $args) = @_;
+
+   my $config_class = delete $args->{config_class} || q(Class::Usul::Config);
 
    # Now we know where the config file should be we can try parsing it
-   my $file = $class->app_prefix( $args->{appclass} ).q(.xml);
-   my $path = $class->catfile( $args->{home}, $file );
-
-   if (-f $path) {
-      try        { $cfg = $class->data_load( path => $path ) }
-      catch ($e) { $class->throw( $e ) }
-   }
-
-   my $config_class = $args->{config_class} || q(Class::Usul::Config);
-
-   return $config_class->new( args =>
-                              { appclass => $args->{appclass},
-                                home     => $args->{home},
-                                name     => $args->{name} }, %{ $cfg } );
+   return $config_class->new( $args );
 }
 
 sub load_messages {
@@ -325,28 +314,22 @@ sub load_messages {
    my $lang = $self->language or return {};
    my $file = q(default_).$lang.q(.xml);
    my $path = $self->config->{ctrldir}->catfile( $file );
-   my $cfg  = {};
 
    -f $path or return {};
 
-   try { $cfg = $self->data_load( arrays => [ q(messages) ], path => $path ) }
-   catch ($e) { $self->error( $e ) }
+   my $cfg  = $self->data_load( arrays => [ q(messages) ], path => $path );
 
    return $cfg->{messages} || {};
 }
 
 sub load_os_depends {
-   my ($class, $args) = @_;
-
-   my $config = $args->{config};
-   my $file   = q(os_).$Config{osname}.q(.xml);
-   my $path   = $class->catfile( $config->{ctrldir}, $file );
-   my $cfg    = {};
+   my $self = shift;
+   my $file = q(os_).$Config{osname}.q(.xml);
+   my $path = $self->config->{ctrldir}->catfile( $file );
 
    -f $path or return {};
 
-   try { $cfg = $class->data_load( arrays => [ q(os) ], path => $path ) }
-   catch ($e) { $class->error( $e ) }
+   my $cfg  = $self->data_load( arrays => [ q(os) ], path => $path );
 
    return $cfg->{os} || {};
 }

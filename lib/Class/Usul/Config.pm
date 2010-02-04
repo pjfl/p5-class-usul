@@ -7,6 +7,7 @@ use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use English qw(-no_match_vars);
+use File::DataClass::Schema;
 use Class::Usul::Constants;
 use Sys::Hostname ();
 use File::Spec;
@@ -16,11 +17,11 @@ use Moose;
 extends qw(Class::Usul);
 with    qw(File::DataClass::Constraints);
 
-has 'args'          => is => 'ro', isa => 'HashRef',
-   default          => sub { {} };
-
 has 'aliases_path'  => is => 'rw', isa => 'F_DC_Path',
    lazy_build       => TRUE, coerce    => TRUE;
+
+has 'appclass'      => is => 'ro', isa => 'Maybe[ClassName]',
+   required         => TRUE;
 
 has 'appldir'       => is => 'ro', isa => 'F_DC_Directory',
    lazy_build       => TRUE, coerce    => TRUE;
@@ -37,6 +38,9 @@ has 'ctrldir'       => is => 'rw', isa => 'F_DC_Path',
 has 'dbasedir'      => is => 'rw', isa => 'F_DC_Path',
    lazy_build       => TRUE, coerce    => TRUE;
 
+has 'home'          => is => 'ro', isa => 'F_DC_Directory',
+   required         => TRUE, coerce    => TRUE;
+
 has 'hostname'      => is => 'ro', isa => 'Str',
    lazy_build       => TRUE;
 
@@ -45,6 +49,9 @@ has 'logfile'       => is => 'rw', isa => 'F_DC_Path',
 
 has 'logsdir'       => is => 'rw', isa => 'F_DC_Directory',
    lazy_build       => TRUE, coerce    => TRUE;
+
+has 'name'          => is => 'ro', isa => 'Str',
+   required         => TRUE;
 
 has 'no_thrash'     => is => 'rw', isa => 'Int',
    default          => 3;
@@ -88,10 +95,24 @@ has 'tempdir'       => is => 'rw', isa => 'F_DC_Directory',
 has 'vardir'        => is => 'rw', isa => 'F_DC_Path',
    lazy_build       => TRUE, coerce    => TRUE;
 
+around BUILDARGS => sub {
+   my ($orig, $class, @args) = @_;
+
+   my $attrs  = $class->$orig( @args );
+   my $file   = $class->app_prefix( $attrs->{appclass} ).q(.xml);
+   my $path   = $class->catfile( $attrs->{home}, $file );
+
+   -f $path or return $attrs;
+
+   my $config = File::DataClass::Schema->new->load( $path );
+
+   return { %{ $attrs }, %{ $config || {} } };
+};
+
 sub BUILD {
    my $self = shift;
 
-   for my $k (grep { $_ ne q(args) } $self->meta->get_attribute_list) {
+   for my $k ($self->meta->get_attribute_list) {
       my $v = $self->$k();
 
       if ($v =~ m{ __(.+?)\((.+?)\)__ }mx) {
@@ -101,10 +122,6 @@ sub BUILD {
    }
 
    return;
-}
-
-sub home {
-   return shift->args->{home};
 }
 
 sub inflate {
@@ -123,47 +140,43 @@ sub inflate {
 # Private methods
 
 sub _build_aliases_path {
-   my $self = shift; return $self->inflate( qw(ctrldir aliases) );
+   return shift->inflate( qw(ctrldir aliases) );
 }
 
 sub _build_appldir {
-   my $self = shift; my $args = $self->args;
+   my $self = shift; my $path = $self->dirname( $Config{sitelibexp} );
 
-   my $path = $self->dirname( $Config{sitelibexp} );
-
-   if ($args->{home} =~ m{ \A $path }mx) {
-      $path = $self->class2appdir( $args->{appclass} );
+   if ($self->home =~ m{ \A $path }mx) {
+      $path = $self->class2appdir( $self->appclass );
       $path = $self->catdir( NUL, qw(var www), $path, q(default) );
    }
-   else { $path = $self->home2appl( $args->{home} ) }
+   else { $path = $self->home2appl( $self->home ) }
 
    return $self->rel2abs( $self->untaint_path( $path ) );
 }
 
 sub _build_binsdir {
-   my $self = shift; my $args = $self->args;
+   my $self = shift; my $path = $self->dirname( $Config{sitelibexp} );
 
-   my $path = $self->dirname( $Config{sitelibexp} );
-
-   if ($args->{home} =~ m{ \A $path }mx) { $path = $Config{scriptdir} }
-   else { $path = $self->catdir( $self->home2appl( $args->{home} ), q(bin) ) }
+   if ($self->home =~ m{ \A $path }mx) { $path = $Config{scriptdir} }
+   else { $path = $self->catdir( $self->home2appl( $self->home ), q(bin) ) }
 
    return $self->rel2abs( $self->untaint_path( $path ) );
 }
 
 sub _build_ctlfile {
    my $self = shift;
-   my $path = $self->inflate( q(ctrldir), $self->args->{name}.q(.xml) );
+   my $path = $self->inflate( q(ctrldir), $self->name.q(.xml) );
 
    return $self->untaint_path( $path );
 }
 
 sub _build_ctrldir {
-   my $self = shift; return $self->inflate( qw(vardir etc) );
+   return shift->inflate( qw(vardir etc) );
 }
 
 sub _build_dbasedir {
-   my $self = shift; return $self->inflate( qw(vardir db) );
+   return shift->inflate( qw(vardir db) );
 }
 
 sub _build_hostname {
@@ -172,7 +185,7 @@ sub _build_hostname {
 
 sub _build_logfile {
    my $self = shift;
-   my $path = $self->inflate( q(logsdir), $self->args->{name}.q(.log) );
+   my $path = $self->inflate( q(logsdir), $self->name.q(.log) );
 
    return $self->untaint_path( $path );
 }
@@ -185,15 +198,15 @@ sub _build_logsdir {
 }
 
 sub _build_owner {
-   my $self = shift; return $self->prefix || q(root);
+   return shift->prefix || q(root);
 }
 
 sub _build_pathname {
-   my $self = shift; return $self->rel2abs( $PROGRAM_NAME );
+   return shift->rel2abs( $PROGRAM_NAME );
 }
 
 sub _build_prefix {
-   my $self = shift; return (split m{ :: }mx, lc $self->args->{appclass})[-1];
+   my $self = shift; return (split m{ :: }mx, lc $self->appclass)[-1];
 }
 
 sub _build_phase {
@@ -205,23 +218,23 @@ sub _build_phase {
 }
 
 sub _build_profiles_path {
-   my $self = shift; return $self->inflate( qw(ctrldir user_profiles.xml) );
+   return shift->inflate( qw(ctrldir user_profiles.xml) );
 }
 
 sub _build_root {
-   my $self = shift; return $self->inflate( qw(vardir root) );
+   return shift->inflate( qw(vardir root) );
 }
 
 sub _build_rundir {
-   my $self = shift; return $self->inflate( qw(vardir run) );
+   return shift->inflate( qw(vardir run) );
 }
 
 sub _build_secret {
-   my $self = shift; return $self->prefix;
+   return shift->prefix;
 }
 
 sub _build_shell {
-   my $self = shift; return $self->catfile( NUL, qw(bin ksh) );
+   return shift->catfile( NUL, qw(bin ksh) );
 }
 
 sub _build_suid {
@@ -238,7 +251,7 @@ sub _build_tempdir {
 }
 
 sub _build_vardir {
-   my $self = shift; return $self->inflate( qw(appldir var) );
+   return shift->inflate( qw(appldir var) );
 }
 
 __PACKAGE__->meta->make_immutable;

@@ -19,7 +19,7 @@ use Moose::Role;
 use Path::Class::Dir;
 use TryCatch;
 
-requires qw(config Digest Exception_Class);
+requires qw(Digest config exception_class);
 
 sub app_prefix {
    (my $prefix = lc $_[1]) =~ s{ :: }{_}gmx; return $prefix;
@@ -42,7 +42,7 @@ sub canonpath {
 }
 
 sub catch {
-   my ($self, @rest) = @_; return $self->Exception_Class->catch( @rest );
+   my ($self, @rest) = @_; return $self->exception_class->catch( @rest );
 }
 
 sub catdir {
@@ -148,7 +148,7 @@ sub home2appl {
 sub io {
    my ($self, @rest) = @_; my $io = File::DataClass::IO->new( @rest );
 
-   $io->exception_class( $self->Exception_Class );
+   $io->exception_class( $self->exception_class );
 
    return $io;
 }
@@ -261,13 +261,13 @@ sub tempname {
 }
 
 sub throw {
-   my ($self, @rest) = @_; return $self->Exception_Class->throw( @rest );
+   my ($self, @rest) = @_; return $self->exception_class->throw( @rest );
 }
 
 sub throw_on_error {
    my ($self, @rest) = @_;
 
-   return $self->Exception_Class->throw_on_error( @rest );
+   return $self->exception_class->throw_on_error( @rest );
 }
 
 sub time2str {
