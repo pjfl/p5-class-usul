@@ -21,12 +21,12 @@ BEGIN {
 
 use_ok q(Class::Usul::Programs);
 
-my $prog = Class::Usul::Programs->new( n => 1 );
+my $prog = Class::Usul::Programs->new( appclass => q(Class::Usul),
+                                       debug    => 0 );
 
-cmp_deeply( $prog, methods(appclass => q(10base),
+cmp_deeply( $prog, methods(appclass => q(Class::Usul),
                            encoding => q(UTF-8),
-                           name => q(10base),
-                           prefix => q(10base)), 'constructs default object' );
+                           name => q(10base)), 'constructs default object' );
 
 ok( $prog->app_prefix( q(Test::Application) ) eq q(test_application),
     q(app_prefix) );

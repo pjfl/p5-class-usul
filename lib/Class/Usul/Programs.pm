@@ -74,7 +74,7 @@ has '_name'      => is => 'rw', isa     => 'Str', init_arg => 'name',
    reader        => 'name',     default => NUL;
 
 has '_os'        => is => 'rw', isa     => 'HashRef', init_arg => undef,
-   reader        => 'os',       default => sub { {} };
+   accessor      => 'os',       default => sub { {} };
 
 with qw(Class::Usul::IPC);
 
@@ -107,7 +107,6 @@ sub BUILD {
    $self->devel and $self->udump( $self );
    $self->help2 and $self->usage( 2     );
    $self->help1 and $self->usage( 1     );
-   $self->method or $self->usage( 0     );
    return;
 }
 
@@ -425,7 +424,9 @@ sub prompt {
 }
 
 sub run {
-   my $self = shift; my $method = $self->method; my ($rv, $text);
+   my $self = shift; my ($rv, $text);
+
+   my $method = $self->method or $self->usage( 0 );
 
    $text  = 'Started by '.$self->logname.' Version '.$VERSION.SPC;
    $text .= 'Pid '.(abs $PID);
@@ -722,6 +723,8 @@ Prompt string defaults to 'Press any key to continue...'. Calls and
 returns L<prompt|/prompt>. Requires the user to press any key on the
 keyboard (that generates a character response)
 
+=head2 apply_encoding
+
 =head2 config
 
    $self = $self->config();
@@ -731,6 +734,10 @@ Return a reference to self
 =head2 data_dump
 
 =head2 data_load
+
+=head2 devel
+
+=head2 dont_ask
 
 =head2 error
 
@@ -789,6 +796,8 @@ F<META.yml> file.  Optionally look in C<$dir> for the file instead of
 C<< $self->appldir >>. Returns a response object with accessors
 defined
 
+=head2 get_program_name
+
 =head2 info
 
    $self->info( $text, $args );
@@ -796,6 +805,12 @@ defined
 Calls L<Class::Usul::localize|Class::Usul/localize> with
 the passed args. Logs the result at the info level, then adds the
 program leader and prints the result to I<STDOUT>
+
+=head2 load_config
+
+=head2 load_messages
+
+=head2 load_os_depends
 
 =head2 loc
 
@@ -873,34 +888,12 @@ included in the prompt. If the C<$width> argument is defined then the
 string is formatted to the specified width which is C<$width> or
 C<< $self->pwdith >> or 40
 
-=head2 _bootstrap
-
-Initialise the contents of the self referential hash
-
 =head2 _get_control_chars
 
    ($cntrl, %cntrl) = $self->_get_control_chars( $handle );
 
 Returns a string of pipe separated control characters and a hash of
 symbolic names and values
-
-=head2 _inflate
-
-   $tempdir = $self->inflate( '__appldir(var/tmp)__' );
-
-Inflates symbolic pathnames with their actual runtime values
-
-=head2 _load_messages
-
-=head2 _load_os_depends
-
-=head2 _load_vars_ref
-
-=head2 _new_log_object
-
-=head2 _set_attr
-
-Sets the specified attribute from the command line option
 
 =head2 _raw_mode
 

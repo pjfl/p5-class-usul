@@ -363,6 +363,12 @@ parameters
 
 Returns the L<base name|File::Basename/basename> of the passed path
 
+=head2 canonpath
+
+   $canonical_path = $self->canonpath( $path );
+
+Expose L<File::Spec/canonpath>
+
 =head2 catch
 
    $e = $self->catch;
@@ -383,18 +389,25 @@ Expose L<File::Spec/catfile>
 
 =head2 class2appdir
 
-   $appdir = $self->class2appdir( __PACKAGE__ );
+   $appdir = $self->class2appdir( $classname );
 
 Returns lower cased L</distname>, e.g. C<App::Munchies> becomes
 C<app-munchies>
 
+=head2 classdir
+
+   $directory_path = $self->classdir( $classname );
+
+Returns the directory path for a given class name, e.g. C<Class::Usul>
+becomes C<Class/Usul>
+
 =head2 classfile
 
-   $path = $self->classfile( __PACKAGE__ );
+   $file_path = $self->classfile( $classname );
 
 Returns the path/file name plus extension of a given class. Uses
-L<File::Spec> for portability, e.g. C<App::Munchies> becomes
-C<App/Munchies.pm>
+L<File::Spec> for portability, e.g. C<Class::Usul> becomes
+C<Class/Usul.pm>
 
 =head2 create_token
 
@@ -492,6 +505,12 @@ Exposes the L<nap|Class::Usul::Time/nap> method which sleeps for
 Splits the program name on _ (underscore), take the first field, split
 it on - (hyphen), uppercase the first letter of each word in the list, and
 return the list joined with :: (two colons)
+
+=head2 rel2abs
+
+   $absolute_path = $self->rel2abs( $relative_path );
+
+Expose L<File::Spec/rel2abs>
 
 =head2 say
 

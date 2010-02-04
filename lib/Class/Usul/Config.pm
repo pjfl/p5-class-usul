@@ -298,6 +298,12 @@ created by the application. Defaults to the L<File::Spec> tempdir
 
 =head1 Subroutines/Methods
 
+=head2 BUILDARGS
+
+=head2 BUILD
+
+=head2 inflate
+
 =head1 Configuration and Environment
 
 None
