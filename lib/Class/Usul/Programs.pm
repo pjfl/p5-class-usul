@@ -438,17 +438,17 @@ sub run {
       my $params = exists $self->params->{ $method }
                  ? $self->params->{ $method } : [];
 
-      try { $rv = $self->$method( @{ $params } ) }
+      try {
+         defined ($rv = $self->$method( @{ $params } ))
+            or $self->throw( error => 'Method [_1] return value undefined',
+                             args  => [ $method ] );
+      }
       catch ($error) {
          my $e = $self->catch( $error );
 
          $e->out and $self->output( $e->out );
          $self->error( $e->as_string( $self->debug ), { args => $e->args } );
          $rv = $e->rv || -1;
-      }
-
-      unless (defined $rv) {
-         $self->error( "Method $method return value undefined" ); $rv = -1;
       }
    }
    else {

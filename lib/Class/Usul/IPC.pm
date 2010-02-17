@@ -458,18 +458,21 @@ sub __ipc_run_harness {
 
 sub __new_process_table {
    my $table = Class::Usul::Response::Table->new
-      ( align  => { uid   => 'left',   pid   => 'right',
-                    ppid  => 'right',  start => 'right',
-                    tty   => 'right',  time  => 'right',
-                    size  => 'right',  state => 'left',
-                    cmd   => 'left' },
-        flds   => [ qw(uid pid ppid start time size state tty cmd) ],
-        labels => { uid   => 'User',   pid   => 'PID',
-                    ppid  => 'PPID',   start => 'Start Time',
-                    tty   => 'TTY',    time  => 'Time',
-                    size  => 'Size',   state => 'State',
-                    cmd   => 'Command' },
-        wrap   => { cmd => 1 }, );
+      ( align    => { uid   => 'left',   pid   => 'right',
+                      ppid  => 'right',  start => 'right',
+                      tty   => 'right',  time  => 'right',
+                      size  => 'right',  state => 'left',
+                      cmd   => 'left' },
+        flds     => [ qw(uid pid ppid start time size state tty cmd) ],
+        labels   => { uid   => 'User',   pid   => 'PID',
+                      ppid  => 'PPID',   start => 'Start Time',
+                      tty   => 'TTY',    time  => 'Time',
+                      size  => 'Size',   state => 'State',
+                      cmd   => 'Command' },
+        typelist => { pid   => q(numeric), ppid => q(numeric),
+                      start => q(date),    size => q(numeric),
+                      time  => q(numeric) },
+        wrap     => { cmd => 1 }, );
 
    return $table;
 }
