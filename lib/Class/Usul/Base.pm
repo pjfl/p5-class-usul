@@ -19,7 +19,7 @@ use Moose::Role;
 use Path::Class::Dir;
 use TryCatch;
 
-requires qw(digest config exception_class);
+requires qw(config digest exception_class);
 
 sub app_prefix {
    (my $prefix = lc $_[1]) =~ s{ :: }{_}gmx; return $prefix;

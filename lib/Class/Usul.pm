@@ -87,7 +87,7 @@ sub udump {
    my $d = Data::Dumper->new( [ ref $self || $self, @rest ] );
 
    $d->Sortkeys( sub { return [ sort keys %{ $_[0] } ] } );
-   $d->Indent( 1 ); $d->Useperl( 1 );
+   $d->Indent( TRUE ); $d->Useperl( TRUE );
    warn $d->Dump;
    return;
 }
