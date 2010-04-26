@@ -216,9 +216,9 @@ sub q_style {
 }
 
 sub q_ver {
-   my $self = shift;
+   my $self = shift; (my $ver = $self->builder->dist_version) =~ s{ \A v }{}mx;
 
-   my ($major, $minor) = split m{ \. }mx, $self->builder->dist_version;
+   my ($major, $minor) = split m{ \. }mx, $ver;
 
    return $major.q(.).$minor;
 }
