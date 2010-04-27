@@ -450,6 +450,9 @@ sub run {
          $self->error( $e->as_string( $self->debug ), { args => $e->args } );
          $rv = $e->rv || -1;
       }
+
+      not defined $rv and $rv = -1
+         and $self->error( "Method $method error uncaught/rv undefined" );
    }
    else {
       $self->error( "Method $method not defined in class ".(ref $self) );
