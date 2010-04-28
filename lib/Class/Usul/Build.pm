@@ -61,7 +61,7 @@ sub ACTION_build {
 sub ACTION_distmeta {
    my $self = shift;
 
-   $self->update_changlog( $self->_dist_version );
+   $self->update_changelog( $self->_dist_version );
    $self->write_license_file;
 
    return $self->next::method();
@@ -164,7 +164,7 @@ sub change_version {
    $comp == 0 and $ver->component( 1, 0 );
    $self->_update_version( $from, __tag_from_version( $ver ) );
    $self->_create_tag_release( $from );
-   $self->update_changlog( $ver = $self->_dist_version );
+   $self->update_changelog( $ver = $self->_dist_version );
    $self->commit_release( 'first '.__tag_from_version( $ver ) );
    $self->_rebuild_build;
    return;
@@ -359,7 +359,7 @@ sub skip_pattern {
    return $self->{_skip_pattern};
 }
 
-sub update_changlog {
+sub update_changelog {
    my ($self, $ver) = @_;
    my ($tok, $line_format, $time_format) = @{ $CHANGE_ARGS };
    my $file = $CHANGES_FILE;
@@ -825,6 +825,10 @@ package variable
 
 =head2 ask_questions
 
+   $builder->ask_questions( $config );
+
+Called by the L</ACTION_build> method
+
 =head2 class_path
 
 =head2 cli
@@ -836,7 +840,18 @@ interface object
 
 =head2 commit_release
 
+   $builder->commit_release( 'Release message for VCS log' );
+
+Commits the release to the VCS
+
 =head2 cpan_upload
+
+   $builder->cpan_upload;
+
+Called by L</ACTION_upload>. Uses L<CPAN::Uploader> (which it loads on
+demand) to do the lifting. Reads from the users F<.pause> in their
+C<$ENV{HOME}> directory
+
 
 =head2 distname
 
@@ -847,8 +862,6 @@ interface object
    $builder->post_install( $config );
 
 Executes the custom post installation commands
-
-=head2 prereq_update
 
 =head2 process_files
 
@@ -884,6 +897,8 @@ Substitutes C<$this> string for C<$that> string in the file F<$path>
 
 =head2 repository
 
+Returns the URI of the VCS repository for this project
+
 =head2 resources
 
 =head2 set_base_path
@@ -902,7 +917,9 @@ as appropriate. Called from L<ACTION_install>
 Accessor/mutator method. Used by L</_copy_file> to skip processing files
 that match this pattern. Set to false to not have a skip list
 
-=head2 update_changlog
+=head2 update_changelog
+
+Update the version number and date/time stamp in the F<Changes> file
 
 =head2 write_config_file
 
@@ -912,6 +929,9 @@ Writes the C<$config> hash to the F<$path> file for later use by
 the install action. Called from L<ACTION_build>
 
 =head2 write_license_file
+
+Instantiates an instance of L<Software::License>, fills in the copyright
+holder information and writes a F<LICENSE> file
 
 =head1 Private Methods
 
