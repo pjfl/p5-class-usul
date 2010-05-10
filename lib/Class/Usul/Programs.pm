@@ -241,30 +241,29 @@ sub get_homedir {
 
 sub get_line {
    # General text input routine.
-   my ($self, $question, $default, $quit, $width, $newline, $pword) = @_;
+   my ($self, $question, $default, $quit, $width, $multiline, $noecho) = @_;
 
    $question ||= 'Enter your answer';
-   $default    = defined $default ? $default : NUL;
+   $default    = defined $default ? q([).$default.q(]) : NUL;
 
-   my $advice       = $quit ? '('.QUIT.' to quit) ' : NUL;
-   my $right_prompt = $advice.(defined $default ? q([).$default.q(]) : NUL);
-   my $left_prompt;
+   my $advice       = $quit ? "($QUIT to quit)" : NUL;
+   my $right_prompt = $advice.($multiline ? NUL : SPC.$default);
+   my $left_prompt  = $question;
 
    if (defined $width) {
-      my $total    = $width || $self->config->{pwidth} || 40;
-      my $right_x  = length $right_prompt;
-      my $left_x   = $total - $right_x;
+      my $total  = $width || $self->pwidth || 60;
+      my $left_x = $total - (length $right_prompt);
 
       $left_prompt = sprintf '%-*s', $left_x, $question;
    }
-   else { $left_prompt = $question }
 
-   my $prompt = $left_prompt.SPC.$right_prompt.BRK.($newline ? "\n" : NUL);
-   my $result = $pword
-              ? $self->prompt( -d => $default, -p => $prompt, -e => q(*) )
-              : $self->prompt( -d => $default, -p => $prompt );
+   my $prompt  = $left_prompt.SPC.$right_prompt;
+      $prompt .= ($multiline ? "\n".$default : NUL).BRK;
+   my $result  = $noecho
+               ? $self->prompt( -d => $default, -p => $prompt, -e => q(*) )
+               : $self->prompt( -d => $default, -p => $prompt );
 
-   $quit and defined $result and lc $result eq QUIT and exit 1;
+   $quit and defined $result and lc $result eq $QUIT and exit 1;
 
    return NUL.$result;
 }
