@@ -157,21 +157,27 @@ sub link_files {
 
 sub make_default {
    # Create the default version symlink
-   my ($self, $cfg) = @_; my $cli = $self->cli; my $base = $cfg->{base};
+   my ($self, $cfg) = @_; my $cli = $self->cli;
 
+   my $base = $cfg->{base}; my $verdir = $cli->basename( $base );
+
+   $cli->info( "Making $verdir the default version" );
    chdir $cli->dirname( $base );
    -e q(default) and unlink q(default);
-   symlink $cli->basename( $base ), q(default);
+   symlink $verdir, q(default);
    return;
 }
 
 sub restart_server {
    # Bump start the web server
-   my ($self, $cfg) = @_; my $cli = $self->cli; my $cmd;
+   my ($self, $cfg) = @_; my $cli = $self->cli;
 
-   return unless ($cmd = $cfg->{restart_server_cmd} and -x $cmd);
+   my $cmd  = $cfg->{restart_server_cmd};
+   my $prog = (split SPC, $cmd)[0];
 
-   $cli->info( "Running $cmd" );
+   return unless ($cmd and -x $prog);
+
+   $cli->info( "Server restart, running $cmd" );
    $cli->run_cmd( $cmd );
    return;
 }

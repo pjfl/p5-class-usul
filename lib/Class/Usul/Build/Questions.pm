@@ -172,7 +172,7 @@ sub q_restart_server_cmd {
 
    return $cmd unless ($cfg->{ask} and $cfg->{restart_server});
 
-   return $self->cli->get_line( 'Server restart command', $cmd, TRUE, 0 );
+   return $self->cli->get_line( 'Server restart command', $cmd, TRUE, 0, TRUE );
 }
 
 sub q_run_cmd {
