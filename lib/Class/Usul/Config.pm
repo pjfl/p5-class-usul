@@ -20,8 +20,7 @@ with    qw(File::DataClass::Constraints);
 has 'aliases_path'  => is => 'rw', isa => 'F_DC_Path',
    lazy_build       => TRUE, coerce    => TRUE;
 
-has 'appclass'      => is => 'ro', isa => 'Maybe[ClassName]',
-   required         => TRUE;
+has 'appclass'      => is => 'ro', isa => 'Str', required => TRUE;
 
 has 'appldir'       => is => 'ro', isa => 'F_DC_Directory',
    lazy_build       => TRUE, coerce    => TRUE;

@@ -65,8 +65,8 @@ has 'version'    => is => 'ro', isa => 'Bool', default => FALSE,
    traits        => [ 'Getopt' ], cmd_aliases => q(V), cmd_flag => 'version';
 
 
-has '_appclass'  => is => 'ro', isa     => 'Maybe[ClassName]',
-   init_arg      => 'appclass', reader  => 'appclass';
+has '_appclass'  => is => 'ro', isa     => 'Str', init_arg => 'appclass',
+   reader        => 'appclass';
 
 has '_logname'   => is => 'ro', isa     => 'Str', init_arg => undef,
    reader        => 'logname',  default => $ENV{USER} || $ENV{LOGNAME};
