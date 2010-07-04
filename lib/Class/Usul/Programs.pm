@@ -56,7 +56,7 @@ has 'params'     => is => 'ro', isa => 'HashRef', default => sub { {} },
    documentation => 'Key/value pairs passed as arguments to the command',
    traits        => [ 'Getopt' ], cmd_aliases => q(o), cmd_flag => 'option';
 
-has 'silent'     => is => 'ro', isa => 'Bool', default => FALSE,
+has 'silent'     => is => 'rw', isa => 'Bool', default => FALSE,
    documentation => 'Suppress the display of information messages',
    traits        => [ 'Getopt' ], cmd_aliases => q(S), cmd_flag => 'silent';
 
