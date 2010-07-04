@@ -60,6 +60,10 @@ has 'silent'     => is => 'ro', isa => 'Bool', default => FALSE,
    documentation => 'Suppress the display of information messages',
    traits        => [ 'Getopt' ], cmd_aliases => q(S), cmd_flag => 'silent';
 
+has 'version'    => is => 'ro', isa => 'Bool', default => FALSE,
+   documentation => 'Displays the version of the C::U::Programs subclass',
+   traits        => [ 'Getopt' ], cmd_aliases => q(V), cmd_flag => 'version';
+
 
 has '_appclass'  => is => 'ro', isa     => 'Maybe[ClassName]',
    init_arg      => 'appclass', reader  => 'appclass';
@@ -76,9 +80,6 @@ has '_name'      => is => 'rw', isa     => 'Str', init_arg => 'name',
 has '_os'        => is => 'rw', isa     => 'HashRef', init_arg => undef,
    accessor      => 'os',       default => sub { {} };
 
-has '_version'   => is => 'rw', isa     => 'Str', init_arg => 'version',
-   reader        => 'version',  default => sub { $VERSION };
-
 with qw(Class::Usul::IPC);
 
 around BUILDARGS => sub {
@@ -92,7 +93,6 @@ around BUILDARGS => sub {
    $attr->{home    } ||= $class->get_homedir     ( $attr );
    $attr->{config  }   = $class->load_config     ( $attr );
    $attr->{encoding}   = $class->apply_encoding  ( $attr );
-   $attr->{version }   = $class->VERSION;
 
    return $attr;
 };
@@ -102,15 +102,16 @@ sub BUILD {
 
    autoflush STDOUT TRUE; autoflush STDERR TRUE;
 
+   $self->devel   and $self->udump( $self );
+   $self->help2   and $self->usage( 2     );
+   $self->help1   and $self->usage( 1     );
+   $self->version and $self->output_version;
+
    $self->debug       ( $self->get_debug_option );
    $self->lock->debug ( $self->debug            );
    $self->SUPER::debug( $self->debug            );
    $self->os          ( $self->load_os_depends  );
    $self->messages    ( $self->load_messages    );
-
-   $self->devel and $self->udump( $self );
-   $self->help2 and $self->usage( 2     );
-   $self->help1 and $self->usage( 1     );
    return;
 }
 
@@ -354,6 +355,10 @@ sub output {
    return;
 }
 
+sub output_version {
+   my $self = shift; $self->output( 'Version '.$self->VERSION ); exit 0;
+}
+
 sub prompt {
    my ($self, @rest) = @_; my ($len, $newlines, $next, $text);
 
@@ -431,7 +436,7 @@ sub run {
 
    my $method = $self->method or $self->usage( 0 );
 
-   $text  = 'Started by '.$self->logname.' Version '.$self->version.SPC;
+   $text  = 'Started by '.$self->logname.' Version '.$self->VERSION.SPC;
    $text .= 'Pid '.(abs $PID);
    $self->output( $text );
 
@@ -481,7 +486,7 @@ sub usage {
    my $doc_title = $self->config->{doc_title} || NUL;
    my $parser    = Pod::Man->new( center  => $doc_title,
                                   name    => $self->appclass,
-                                  release => 'Version '.($main::VERSION || NUL),
+                                  release => 'Version '.($self->VERSION || NUL),
                                   section => q(3m) );
    my $tempfile = $self->tempfile;
    my $cmd      = q(cat ).$tempfile->pathname.q( | nroff -man);
