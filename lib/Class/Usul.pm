@@ -36,8 +36,8 @@ has 'encoding'   => is => 'rw',    isa => 'C_U_Encoding', default => q(UTF-8),
 has '_lock'      => is => 'ro',    isa => 'F_DC_Lock', lazy_build => TRUE,
    reader        => 'lock',   init_arg => 'lock';
 
-has '_log'       => is => 'ro',    isa => 'C_U_Log', lazy_build => TRUE,
-   reader        => 'log',    init_arg => 'log';
+has '_log'       => is => 'rw',    isa => 'C_U_Log', lazy_build => TRUE,
+   accessor      => 'log',    init_arg => 'log';
 
 with qw(Class::Usul::Base Class::Usul::Encoding Class::Usul::Crypt);
 

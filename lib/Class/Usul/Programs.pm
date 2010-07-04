@@ -76,6 +76,9 @@ has '_name'      => is => 'rw', isa     => 'Str', init_arg => 'name',
 has '_os'        => is => 'rw', isa     => 'HashRef', init_arg => undef,
    accessor      => 'os',       default => sub { {} };
 
+has '_version'   => is => 'rw', isa     => 'Str', init_arg => 'version',
+   reader        => 'version',  default => sub { $VERSION };
+
 with qw(Class::Usul::IPC);
 
 around BUILDARGS => sub {
@@ -89,6 +92,7 @@ around BUILDARGS => sub {
    $attr->{home    } ||= $class->get_homedir     ( $attr );
    $attr->{config  }   = $class->load_config     ( $attr );
    $attr->{encoding}   = $class->apply_encoding  ( $attr );
+   $attr->{version }   = $class->VERSION;
 
    return $attr;
 };
@@ -246,7 +250,7 @@ sub get_line {
    $question ||= 'Enter your answer';
    $default    = defined $default ? q([).$default.q(]) : NUL;
 
-   my $advice       = $quit ? "($QUIT to quit)" : NUL;
+   my $advice       = $quit ? '('.QUIT.' to quit)' : NUL;
    my $right_prompt = $advice.($multiline ? NUL : SPC.$default);
    my $left_prompt  = $question;
 
@@ -263,7 +267,7 @@ sub get_line {
                ? $self->prompt( -d => $default, -p => $prompt, -e => q(*) )
                : $self->prompt( -d => $default, -p => $prompt );
 
-   $quit and defined $result and lc $result eq $QUIT and exit 1;
+   $quit and defined $result and lc $result eq QUIT and exit 1;
 
    return NUL.$result;
 }
@@ -427,7 +431,7 @@ sub run {
 
    my $method = $self->method or $self->usage( 0 );
 
-   $text  = 'Started by '.$self->logname.' Version '.$VERSION.SPC;
+   $text  = 'Started by '.$self->logname.' Version '.$self->version.SPC;
    $text .= 'Pid '.(abs $PID);
    $self->output( $text );
 
@@ -437,15 +441,13 @@ sub run {
       my $params = exists $self->params->{ $method }
                  ? $self->params->{ $method } : [];
 
-      try {
-         defined ($rv = $self->$method( @{ $params } ))
-            or $self->throw( error => 'Method [_1] return value undefined',
-                             args  => [ $method ] );
+      try { defined ($rv = $self->$method( @{ $params } ))
+               or $self->throw( error => 'Method [_1] return value undefined',
+                                args  => [ $method ] );
       }
       catch ($error) {
          my $e = $self->catch( $error );
 
-         $e->out and $self->output( $e->out );
          $self->error( $e->as_string( $self->debug ), { args => $e->args } );
          $rv = $e->rv || -1;
       }
@@ -479,7 +481,7 @@ sub usage {
    my $doc_title = $self->config->{doc_title} || NUL;
    my $parser    = Pod::Man->new( center  => $doc_title,
                                   name    => $self->appclass,
-                                  release => 'Version '.$main::VERSION,
+                                  release => 'Version '.($main::VERSION || NUL),
                                   section => q(3m) );
    my $tempfile = $self->tempfile;
    my $cmd      = q(cat ).$tempfile->pathname.q( | nroff -man);

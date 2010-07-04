@@ -48,7 +48,7 @@ sub popen {
 
    $cmd or $self->throw( 'Command not specified' );
 
-   ref $cmd eq ARRAY and $cmd = join SPC, @{ $cmd };
+   ref $cmd eq ARRAY and $cmd = join q( ), @{ $cmd };
 
    my $args = $self->arg_list( @rest );
    my $err  = IO::Handle->new();
@@ -155,7 +155,7 @@ sub run_cmd {
          return $self->_run_cmd_using_ipc_run( $cmd, @rest );
       }
 
-      $cmd = join SPC, @{ $cmd };
+      $cmd = join q( ), @{ $cmd };
    }
 
    return $self->_run_cmd_using_system( $cmd, @rest );
@@ -270,7 +270,7 @@ sub _run_cmd_using_ipc_run {
 
    my $args     = $self->_run_cmd_ipc_run_args( @rest );
    my $cmd_ref  = __partition_command( $cmd );
-   my $cmd_str  = join SPC, @{ $cmd };
+   my $cmd_str  = join q( ), @{ $cmd };
    my $null     = File::Spec->devnull;
    my $err      = $args->{err};
    my $out      = $args->{out};

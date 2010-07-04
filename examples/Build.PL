@@ -35,7 +35,7 @@ my $resources   = $build_class->resources( $LICENSES,  $TRACKER,
                                            $HOME_PAGE, $distname );
 my $builder     = $build_class->new
    ( add_to_cleanup     => [ q(Debian_CPANTS.txt), q(MANIFEST.bak),
-                             $distname.q(-v*), q(Makefile),
+                             $distname.q(-*.gz), q(Makefile),
                              map { ( q(*/) x $_ ) . q(*~) } 0..5 ],
      build_requires     => { 'version'    => q(0.77),
                              'Test::More' => q(0.74) },
