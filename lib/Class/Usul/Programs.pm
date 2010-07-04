@@ -838,6 +838,10 @@ Calls L<Class::Usul::localize|Class::Usul/localize> with
 the passed args. Adds the program leader and prints the result to
 I<STDOUT>
 
+=head2 output_version
+
+Prints out the version of the C::U::Programs subclass
+
 =head2 prompt
 
    $line = $self->prompt( 'key' => 'value', ... );
