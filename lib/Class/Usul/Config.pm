@@ -115,6 +115,15 @@ sub BUILD {
    for my $k ($self->meta->get_attribute_list) {
       my $v = $self->$k();
 
+      if ($v =~ m{ __([^\(]+?)__ }mx) {
+         $v =~ s{ __(.+?)__ }{$self->inflate( $1, NUL )}egmx;
+         $self->$k( $v );
+      }
+   }
+
+   for my $k ($self->meta->get_attribute_list) {
+      my $v = $self->$k();
+
       if ($v =~ m{ __(.+?)\((.+?)\)__ }mx) {
          $v =~ s{ __(.+?)\((.+?)\)__ }{$self->inflate( $1, $2 )}egmx;
          $self->$k( $v );

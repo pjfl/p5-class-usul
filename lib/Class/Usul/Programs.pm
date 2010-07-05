@@ -156,7 +156,7 @@ sub data_load {
    my ($self, @rest) = @_; my $args = $self->arg_list( @rest );
 
    $args = { path => $args->{path} || NUL,
-             storage_attributes => { _arrays => $args->{arrays} || [] } };
+             storage_attributes => { _arrays => $args->{arrays} || {} } };
 
    return File::DataClass::Schema->new( $self, $args )->load;
 }
@@ -214,12 +214,16 @@ sub get_homedir {
 
    $path = $class->_assert_directory( $path ) and return $path;
 
-   # 2. Users home directory
+   # 2a. Users home directory
    my $appdir   = $class->class2appdir( $app );
    my $classdir = $class->classdir( $app );
 
    $path = $class->catdir( File::HomeDir->my_home, $appdir );
    $path = $class->catdir( $path, qw(default lib), $classdir );
+   $path = $class->_assert_directory( $path ) and return $path;
+
+   # 2b.
+   $path = $class->catdir( File::HomeDir->my_home, q(.).$appdir );
    $path = $class->_assert_directory( $path ) and return $path;
 
    # 3. Well known path
