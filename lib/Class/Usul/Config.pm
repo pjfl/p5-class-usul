@@ -17,9 +17,6 @@ use Moose;
 extends qw(Class::Usul);
 with    qw(File::DataClass::Constraints);
 
-has 'aliases_path'  => is => 'rw', isa => 'F_DC_Path',
-   lazy_build       => TRUE, coerce    => TRUE;
-
 has 'appclass'      => is => 'ro', isa => 'Str', required => TRUE;
 
 has 'appldir'       => is => 'ro', isa => 'F_DC_Directory',
@@ -67,9 +64,6 @@ has 'phase'         => is => 'ro', isa => 'Int',
 has 'prefix'        => is => 'rw', isa => 'Str',
    lazy_build       => TRUE;
 
-has 'profiles_path' => is => 'rw', isa => 'F_DC_Path',
-   lazy_build       => TRUE, coerce    => TRUE;
-
 has 'pwidth'        => is => 'rw', isa => 'Int',
    default          => 60;
 
@@ -92,6 +86,13 @@ has 'tempdir'       => is => 'rw', isa => 'F_DC_Directory',
    lazy_build       => TRUE, coerce    => TRUE;
 
 has 'vardir'        => is => 'rw', isa => 'F_DC_Path',
+   lazy_build       => TRUE, coerce    => TRUE;
+
+# TODO: Move these away, a long way away
+has 'aliases_path'  => is => 'rw', isa => 'F_DC_Path',
+   lazy_build       => TRUE, coerce    => TRUE;
+
+has 'profiles_path' => is => 'rw', isa => 'F_DC_Path',
    lazy_build       => TRUE, coerce    => TRUE;
 
 around BUILDARGS => sub {
@@ -137,10 +138,6 @@ sub inflate {
 }
 
 # Private methods
-
-sub _build_aliases_path {
-   return shift->inflate( qw(ctrldir aliases) );
-}
 
 sub _build_appldir {
    my $self = shift; my $path = $self->dirname( $Config{sitelibexp} );
@@ -216,10 +213,6 @@ sub _build_phase {
    return defined $phase ? $phase : PHASE;
 }
 
-sub _build_profiles_path {
-   return shift->inflate( qw(ctrldir user_profiles.xml) );
-}
-
 sub _build_root {
    return shift->inflate( qw(vardir root) );
 }
@@ -251,6 +244,14 @@ sub _build_tempdir {
 
 sub _build_vardir {
    return shift->inflate( qw(appldir var) );
+}
+
+sub _build_aliases_path {
+   return shift->inflate( qw(ctrldir aliases) );
+}
+
+sub _build_profiles_path {
+   return shift->inflate( qw(ctrldir user_profiles.xml) );
 }
 
 __PACKAGE__->meta->make_immutable;
