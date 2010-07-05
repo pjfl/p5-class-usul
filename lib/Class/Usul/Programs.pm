@@ -116,12 +116,9 @@ sub BUILD {
 }
 
 sub add_leader {
-   my ($self, $text, $args) = @_; $args ||= {};
+   my ($self, $text, $args) = @_; $text or return NUL; $args ||= {};
 
-   $text = $self->loc( $text || '[no message]', @{ $args->{args} || [] } );
-
-   my $leader = exists $args->{noLead} || exists $args->{no_lead}
-              ? NUL : (ucfirst $self->name).BRK;
+   my $leader = exists $args->{no_lead} ? NUL : (ucfirst $self->name).BRK;
 
    if ($args->{fill}) {
       my $width = $args->{width} || WIDTH;
@@ -174,23 +171,27 @@ sub dont_ask {
 }
 
 sub error {
-   my ($self, $text, $args) = @_;
+   my ($self, $text, $args) = @_; $text ||= '[no message]'; $args ||= {};
 
-   $text = $self->add_leader( $text, $args );
+   $text = $self->loc( $text, @{ $args->{loc} || [] } );
 
    $self->log_error( $_ ) for (split m{ \n }mx, $text);
 
-   $self->_print_fh( \*STDERR, $text."\n" );
+   $self->_print_fh( \*STDERR, $self->add_leader( $text, $args )."\n" );
    return;
 }
 
 sub fatal {
-   my ($self, $text, $args) = @_; my (undef, $file, $line) = caller 0;
+   my ($self, $text, $args) = @_; $text ||= '[no message]'; $args ||= {};
+
+   $text = $self->loc( $text, @{ $args->{loc} || [] } );
+
+   $self->log_alert( $_ ) for (split m{ \n }mx, $text);
+
+   my (undef, $file, $line) = caller 0;
 
    $text  = $self->add_leader( $text, $args );
    $text .= ' at '.abs_path( $file ).' line '.$line;
-
-   $self->log_alert( $_ ) for (split m{ \n }mx, $text);
 
    $self->_print_fh( \*STDERR, $text."\n" );
    exit 1;
@@ -293,13 +294,13 @@ sub get_program_name {
 }
 
 sub info {
-   my ($self, $text, $args) = @_;
+   my ($self, $text, $args) = @_; $text ||= '[no message]'; $args ||= {};
 
-   $text = $self->add_leader( $text, $args );
+   $text = $self->loc( $text, @{ $args->{loc} || [] } );
 
    $self->log_info( $_ ) for (split m{ \n }mx, $text);
 
-   $self->silent or $self->say( $text );
+   $self->silent or $self->say( $self->add_leader( $text, $args ) );
    return;
 }
 
@@ -346,12 +347,13 @@ sub localize {
 }
 
 sub output {
-   my ($self, $text, $args) = @_;
+   my ($self, $text, $args) = @_; $text or return; $args ||= {};
 
    $self->silent and return;
-   $args and $args->{cl} and $self->say;
+   $args->{cl} and $self->say;
+   $text = $self->loc( $text, @{ $args->{loc} || [] } );
    $self->say( $self->add_leader( $text, $args ) );
-   $args and $args->{nl} and $self->say;
+   $args->{nl} and $self->say;
    return;
 }
 
@@ -453,7 +455,7 @@ sub run {
       catch ($error) {
          my $e = $self->catch( $error );
 
-         $self->error( $e->as_string( $self->debug ), { args => $e->args } );
+         $self->error( $e->as_string( $self->debug ), { loc => $e->args } );
          $rv = $e->rv || -1;
       }
 
@@ -497,13 +499,13 @@ sub usage {
 }
 
 sub warning {
-   my ($self, $text, $args) = @_;
+   my ($self, $text, $args) = @_; $text ||= '[no message]'; $args ||= {};
 
-   $text = $self->add_leader( $text, $args );
+   $text = $self->loc( $text, @{ $args->{loc} || [] } );
 
    $self->log_warning( $_ ) for (split m{ \n }mx, $text);
 
-   $self->silent or $self->say( $text );
+   $self->silent or $self->say( $self->add_leader( $text, $args ) );
    return;
 }
 
