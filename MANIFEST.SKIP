@@ -13,6 +13,7 @@
 \bblibdirs$
 ^MANIFEST\.skip$
 ^MANIFEST\.SKIP$
+^MYMETA.yml$
 ^SIGNATURE$
 ^Debian_CPANTS.txt$
 
@@ -42,7 +43,7 @@
 TAGS
 Thumbs.db
 # Avoid archives of this distribution
-\bClass-Usul-v[\d\.\_]+
+\bClass-Usul-[\d\.\_]+
 \bt/ipc_srlock
 \bt/file-dataclass
 \bbuild.xml
