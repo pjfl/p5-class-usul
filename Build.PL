@@ -75,11 +75,11 @@ sub repository {
 my $class_path = catfile( q(lib), split m{ :: }mx, $MODULE.q(.pm) );
 my $distname   = $MODULE; $distname =~ s{ :: }{-}gmx;
 my $resources  = { license => q(http://dev.perl.org/licenses/), };
-my $repository = repository();
 
 $HOME_PAGE  and $resources->{homepage  } = $HOME_PAGE;
 $TRACKER    and $resources->{bugtracker} = $TRACKER.$distname;
-$repository and $resources->{repository} = $repository;
+
+-f q(MANIFEST.SKIP) and $resources->{repository} = repository();
 
 Module::Build->new
    ( add_to_cleanup     => [ q(Debian_CPANTS.txt), $distname.q(-*),
