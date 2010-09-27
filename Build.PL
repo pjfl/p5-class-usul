@@ -1,13 +1,12 @@
 # @(#)$Id$
+# Definitions
 
-my $MODULE     = q(Class::Usul);
-my $HOME_PAGE  = q(http://www.roxsoft.co.uk);
-my $LICENSE    = q(http://dev.perl.org/licenses/);
-my $TRACKER    = q(http://rt.cpan.org/NoAuth/Bugs.html?Dist=);
-my $RECOMMENDS = {
-   'CPAN'                      => '1.9402',
-};
-my $REQUIRES   = {
+my $SIGN      = 1;
+my $LICENSE   = q(perl);
+my $MODULE    = q(Class::Usul);
+my $HOME_PAGE = q(http://www.roxsoft.co.uk);
+my $TRACKER   = q(http://rt.cpan.org/NoAuth/Bugs.html?Dist=);
+my $REQUIRES  = {
    'Class::MOP'                => '0.94',
    'Class::Null'               => '1.09',
    'Crypt::CBC'                => '2.30',
@@ -44,9 +43,21 @@ my $REQUIRES   = {
    'perl'                      => '5.008',
    'version'                   => '0.77',
 };
+my $RECOMMENDS = { 'CPAN' => '1.9402', };
+
+# Boilerplate
 
 use strict;
 use warnings;
+
+use English qw(-no_match_vars);
+
+sub whimper { print {*STDOUT} $_[ 0 ]."\n"; exit 0 }
+
+BEGIN {
+   eval { require 5.008; }; $EVAL_ERROR and whimper 'Perl minimum 5.8';
+}
+
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use File::Spec::Functions;
@@ -63,31 +74,29 @@ sub repository {
 
 my $class_path = catfile( q(lib), split m{ :: }mx, $MODULE.q(.pm) );
 my $distname   = $MODULE; $distname =~ s{ :: }{-}gmx;
+my $resources  = { license => q(http://dev.perl.org/licenses/), };
 my $repository = repository();
-my $resources  = { license => $LICENSE, bugtracker => $TRACKER.$distname, };
 
-$resources->{homepage  } = $HOME_PAGE  if ($HOME_PAGE);
-$resources->{repository} = $repository if ($repository);
+$HOME_PAGE  and $resources->{homepage  } = $HOME_PAGE;
+$TRACKER    and $resources->{bugtracker} = $TRACKER.$distname;
+$repository and $resources->{repository} = $repository;
 
-my $builder = Module::Build->new
+Module::Build->new
    ( add_to_cleanup     => [ q(Debian_CPANTS.txt), $distname.q(-*),
                              map { ( q(*/) x $_ ).q(*~) } 0..5 ],
-     build_requires     => { 'Test::More'          => 0.74, },
-     configure_requires => { 'version'             => 0.77,
-                             'Module::Build'       => 0.35, },
+     build_requires     => { 'Test::More'    => 0.74, },
+     configure_requires => { 'Module::Build' => 0.35,
+                             'version'       => 0.77, },
      create_readme      => 1,
      create_packlist    => 0,
      dist_version_from  => $class_path,
-     license            => q(perl),
+     license            => $LICENSE,
      module_name        => $MODULE,
      no_index           => { directory => [ q(t) ] },
-     notes              => { cpan_testers_version => 1 },
      recommends         => $RECOMMENDS,
      requires           => $REQUIRES,
      resources          => $resources,
-     sign               => 1, );
-
-$builder->create_build_script; # Goal
+     sign               => $SIGN, )->create_build_script; # Goal
 
 # Local Variables:
 # mode: perl

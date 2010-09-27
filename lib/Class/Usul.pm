@@ -18,9 +18,9 @@ use MooseX::ClassAttribute;
 
 with qw(Class::Usul::Constraints File::DataClass::Constraints);
 
-class_has 'Lock'            => is => 'rw', isa => 'F_DC_Lock';
+class_has 'Lock'   => is => 'rw', isa => 'F_DC_Lock';
 
-class_has 'digest'          => is => 'rw', isa => 'C_U_Digest_Algorithm';
+class_has 'digest' => is => 'rw', isa => 'C_U_Digest_Algorithm';
 
 class_has 'exception_class' => is => 'rw', isa => 'F_DC_Exception',
    default                  => q(File::DataClass::Exception);
