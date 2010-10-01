@@ -52,6 +52,19 @@ use warnings;
 
 use English qw(-no_match_vars);
 
+sub repository {
+   # Accessor for the SVN repository information
+   require SVN::Class;
+
+   my $file = SVN::Class->svn_dir( q(.) ) or return;
+   my $info = $file->info or return;
+
+   return $info->root !~ m{ \A file: }mx ? $info->root : undef;
+}
+
+sub testing { !! ($ENV{AUTOMATED_TESTING} || $ENV{PERL_CR_SMOKER_CURRENT}
+              || ($ENV{PERL5OPT} || q()) =~ m{ CPAN-Reporter }mx) }
+
 sub whimper { print {*STDOUT} $_[ 0 ]."\n"; exit 0 }
 
 BEGIN {
@@ -62,24 +75,15 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use File::Spec::Functions;
 use Module::Build;
-use SVN::Class ();
-
-sub repository {
-   # Accessor for the SVN repository information
-   my $file = SVN::Class->svn_dir( q(.) ) or return;
-   my $info = $file->info or return;
-
-   return $info->root !~ m{ \A file: }mx ? $info->root : undef;
-}
 
 my $class_path = catfile( q(lib), split m{ :: }mx, $MODULE.q(.pm) );
 my $distname   = $MODULE; $distname =~ s{ :: }{-}gmx;
 my $resources  = { license => q(http://dev.perl.org/licenses/), };
 
-$HOME_PAGE  and $resources->{homepage  } = $HOME_PAGE;
-$TRACKER    and $resources->{bugtracker} = $TRACKER.$distname;
+$HOME_PAGE and $resources->{homepage  } = $HOME_PAGE;
+$TRACKER   and $resources->{bugtracker} = $TRACKER.$distname;
 
--f q(MANIFEST.SKIP) and $resources->{repository} = repository();
+-f q(MANIFEST.SKIP) and $resources->{repository} = repository;
 
 Module::Build->new
    ( add_to_cleanup     => [ q(Debian_CPANTS.txt), $distname.q(-*),
@@ -87,12 +91,14 @@ Module::Build->new
      build_requires     => { 'Test::More'    => 0.74, },
      configure_requires => { 'Module::Build' => 0.35,
                              'version'       => 0.77, },
-     create_readme      => 1,
+     create_license     => 1,
      create_packlist    => 0,
+     create_readme      => 1,
      dist_version_from  => $class_path,
      license            => $LICENSE,
      module_name        => $MODULE,
-     no_index           => { directory => [ q(t) ] },
+     no_index           => { directory  => [ qw(t) ], },
+     notes              => { stop_tests => testing,   },
      recommends         => $RECOMMENDS,
      requires           => $REQUIRES,
      resources          => $resources,
