@@ -32,6 +32,9 @@ use lib catdir( $Bin, updir, q(lib) ); # Remove updir if not an example
 use Class::Usul::Build;
 use Class::Usul::Constants;
 
+sub testing { !! ($ENV{AUTOMATED_TESTING} || $ENV{PERL_CR_SMOKER_CURRENT}
+              || ($ENV{PERL5OPT} || q()) =~ m{ CPAN-Reporter }mx) }
+
 my $build_class = q(Class::Usul::Build);
 my $distname    = $build_class->distname( $MODULE );
 my $resources   = $build_class->resources( q(http://dev.perl.org/licenses/),
@@ -42,13 +45,15 @@ $build_class->new
                              map { ( q(*/) x $_ ) . q(*~) } 0..5 ],
      build_requires     => $BUILDREQS,
      configure_requires => $CONFIGURE,
+     create_license     => TRUE,
      create_packlist    => FALSE,
      create_readme      => TRUE,
      dist_version_from  => $build_class->class_path( $MODULE ),
      license            => $LICENSE,
      module_name        => $MODULE,
-     no_index           => { directory => [ qw(t) ] },
-     notes              => { version_pattern => $VPATTERN },
+     no_index           => { directory       => [ qw(t) ], },
+     notes              => { stop_tests      => testing,
+                             version_pattern => $VPATTERN, },
      recommands         => $RECOMMENDS,
      requires           => $REQUIRES,
      resources          => $resources,
