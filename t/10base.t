@@ -12,8 +12,10 @@ use Test::More;
 use Test::Deep;
 
 BEGIN {
-   Module::Build->current->notes->{stop_tests}
-      and plan skip_all => q(CPAN Testing stopped);
+   my $current = eval { Module::Build->current };
+
+   $current and $current->notes->{stop_tests}
+            and plan skip_all => q(CPAN Testing stopped);
 
    plan tests => 33;
 }
