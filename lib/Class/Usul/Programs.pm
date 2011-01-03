@@ -103,8 +103,8 @@ sub BUILD {
    autoflush STDOUT TRUE; autoflush STDERR TRUE;
 
    $self->devel   and $self->udump( $self );
-   $self->help2   and $self->usage( 2     );
-   $self->help1   and $self->usage( 1     );
+   $self->help2   and $self->print_usage( 2 );
+   $self->help1   and $self->print_usage( 1 );
    $self->version and $self->output_version;
 
    $self->debug       ( $self->get_debug_option );
@@ -365,6 +365,30 @@ sub output_version {
    my $self = shift; $self->output( 'Version '.$self->VERSION ); exit 0;
 }
 
+sub print_usage {
+   my ($self, $verbose) = @_; $verbose ||= 0;
+
+   my $path = NUL.$self->config->{pathname};
+
+   if ($verbose < 2) {
+      pod2usage( { -input   => $path,
+                   -message => SPC, -verbose => $verbose } );
+      exit 0; # Never reached
+   }
+
+   my $doc_title = $self->config->{doc_title} || NUL;
+   my $parser    = Pod::Man->new( center  => $doc_title,
+                                  name    => $self->appclass,
+                                  release => 'Version '.($self->VERSION || NUL),
+                                  section => q(3m) );
+   my $tempfile = $self->tempfile;
+   my $cmd      = q(cat ).$tempfile->pathname.q( | nroff -man);
+
+   $parser->parse_from_file( $path, $tempfile->pathname );
+   system $cmd;
+   exit 0;
+}
+
 sub prompt {
    my ($self, @rest) = @_; my ($len, $newlines, $next, $text);
 
@@ -440,7 +464,7 @@ sub prompt {
 sub run {
    my $self = shift; my ($rv, $text);
 
-   my $method = $self->method or $self->usage( 0 );
+   my $method = $self->method or $self->print_usage( 0 );
 
    $text  = 'Started by '.$self->logname.' Version '.$self->VERSION.SPC;
    $text .= 'Pid '.(abs $PID);
@@ -476,30 +500,6 @@ sub run {
 
    $self->delete_tmp_files;
    return $rv || OK;
-}
-
-sub usage {
-   my ($self, $verbose) = @_; $verbose ||= 0;
-
-   my $path = NUL.$self->config->{pathname};
-
-   if ($verbose < 2) {
-      pod2usage( { -input   => $path,
-                   -message => SPC, -verbose => $verbose } );
-      exit 0; # Never reached
-   }
-
-   my $doc_title = $self->config->{doc_title} || NUL;
-   my $parser    = Pod::Man->new( center  => $doc_title,
-                                  name    => $self->appclass,
-                                  release => 'Version '.($self->VERSION || NUL),
-                                  section => q(3m) );
-   my $tempfile = $self->tempfile;
-   my $cmd      = q(cat ).$tempfile->pathname.q( | nroff -man);
-
-   $parser->parse_from_file( $path, $tempfile->pathname );
-   system $cmd;
-   exit 0;
 }
 
 sub warning {
@@ -848,6 +848,12 @@ I<STDOUT>
 
 Prints out the version of the C::U::Programs subclass
 
+=head2 print_usage
+
+   $self->print_usage( $verbosity );
+
+Print out usage information from POD. The C<$verbosity> is; 0, 1 or 2
+
 =head2 prompt
 
    $line = $self->prompt( 'key' => 'value', ... );
@@ -881,12 +887,6 @@ Prompt string
 
 Call the method specified by the C<-c> option on the command
 line. Returns the exit code
-
-=head2 usage
-
-   $self->usage( $verbosity );
-
-Print out usage information from POD. The C<$verbosity> is; 0, 1 or 2
 
 =head2 warning
 

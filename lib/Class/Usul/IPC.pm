@@ -480,7 +480,7 @@ sub __new_process_table {
 sub __partition_command {
    my $cmd = shift; my $aref = []; my @command = ();
 
-   for my $item (grep { length && defined } @{ $cmd }) {
+   for my $item (grep { defined && length } @{ $cmd }) {
       if ($item =~ $SPECIAL_CHARS) { push @command, $aref, $item; $aref = [] }
       else { push @{ $aref }, $item }
    }
