@@ -47,3 +47,4 @@ Thumbs.db
 \bt/ipc_srlock
 \bt/file-dataclass
 \bbuild.xml
+^MYMETA\.json$
