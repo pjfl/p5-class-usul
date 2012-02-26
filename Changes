@@ -1,6 +1,8 @@
 Revision history for Class::Usul
 
 {{ $NEXT }}
+         - Updated Moose / Class::MOP / MRO::Compat dependencies
+
 0.1.103  2011-02-22
          - Updated inc::Bob
          - Moved boilerplate M::B subclass code to inc/Bob.pm
