@@ -6,14 +6,13 @@ use strict;
 use namespace::clean -except => 'meta';
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
+use Moose::Role;
 use Class::Usul::Constants;
+use Class::Usul::Functions qw(create_token);
 use Crypt::CBC;
 use English qw(-no_match_vars);
 use MIME::Base64;
-use Moose::Role;
 use Sys::Hostname;
-
-requires qw(create_token);
 
 my $CLEANER = '.*^\s*use\s+Acme::Bleach\s*;\r*\n';
 my $KEY     = " \t" x 8;
@@ -45,7 +44,7 @@ sub keygen {
    (my $salt = __inflate( $args->{data} || $DATA )) =~ s{ $CLEANER }{}msx;
 
    ## no critic
-   return substr $self->create_token( ( eval $salt ).$args->{seed} ), 0, 32;
+   return substr create_token( ( eval $salt ).$args->{seed} ), 0, 32;
    ## critic
 }
 

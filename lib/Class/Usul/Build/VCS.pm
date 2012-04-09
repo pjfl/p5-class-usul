@@ -6,9 +6,9 @@ use strict;
 use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 818 $ =~ /\d+/gmx );
 
+use Moose;
 use Class::Usul::Constants;
 use IPC::Cmd qw(can_run);
-use Moose;
 
 extends qw(Class::Usul);
 
@@ -56,16 +56,20 @@ sub commit {
 
 sub error {
    # TODO: Git implementation
-   my $self = shift; return $self->vcs->error;
+   my $self = shift; return $self->vcs ? $self->vcs->error : 'No VCS';
 }
 
 sub repository {
    # TODO: Git implementation
-   my $self = shift; my $info = $self->vcs->info or return; return $info->root;
+   my $self = shift; $self->vcs or return;
+
+   my $info = $self->vcs->info or return;
+
+   return $info->root;
 }
 
 sub tag {
-   my ($self, $tag) = @_; my $vtag = q(v).$tag;
+   my ($self, $tag) = @_; my $vtag = q(v).$tag; $self->vcs or return;
 
    $self->type eq q(git) and return $self->vcs->tag( { tag => $vtag } );
 
@@ -74,7 +78,7 @@ sub tag {
    my $to   = $repo.SEP.q(tags).SEP.$vtag;
    my $msg  = "Tagging $vtag";
 
-   return $self->vcs->svn_run( q(copy), [ q(-m), "'$msg'" ], "$from $to" );
+   return $self->vcs->svn_run( q(copy), [ q(-m), $msg ], "$from $to" );
 }
 
 __PACKAGE__->meta->make_immutable;

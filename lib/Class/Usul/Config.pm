@@ -6,13 +6,13 @@ use strict;
 use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
+use Moose;
 use English qw(-no_match_vars);
 use File::DataClass::Schema;
 use Class::Usul::Constants;
 use Sys::Hostname ();
 use File::Spec;
 use Config;
-use Moose;
 
 extends qw(Class::Usul);
 with    qw(File::DataClass::Constraints);

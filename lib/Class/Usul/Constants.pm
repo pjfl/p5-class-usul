@@ -3,16 +3,29 @@
 package Class::Usul::Constants;
 
 use strict;
-use warnings;
+use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
+
+use Moose;
+use MooseX::ClassAttribute;
+use File::DataClass::Exception;
+
+with qw(File::DataClass::Constraints);
+
+class_has 'Assert'          => is => 'rw', isa => 'CodeRef'
+   default                  => sub {};
+
+class_has 'Exception_Class' => is => 'rw', isa => 'F_DC_Exception',
+   default                  => q(File::DataClass::Exception);
 
 my @constants;
 
 BEGIN {
-   @constants = ( qw(ARRAY BRK CODE DIGEST_ALGORITHMS ENCODINGS EXTNS
-                     FAILED FALSE HASH LANG LOCALIZE LOG_LEVELS LSB NO
-                     NUL OK PERMS PHASE PREFIX QUIT RSB SEP SPC TRUE
-                     UNTAINT_PATH_REGEX WIDTH YES) );
+   @constants = ( qw(ARRAY ASSERT BRK CODE DIGEST_ALGORITHMS ENCODINGS
+                     EXCEPTION_CLASS EXTNS FAILED FALSE HASH LANG
+                     LOCALIZE LOG_LEVELS LSB NO NUL OK PERMS PHASE
+                     PREFIX QUIT RSB SEP SPC TRUE UNTAINT_PATH_REGEX
+                     UUID_PATH WIDTH YES) );
 }
 
 use Sub::Exporter -setup => {
@@ -42,11 +55,20 @@ sub RSB        () { q(])                }
 sub SEP        () { q(/)                }
 sub SPC        () { q( )                }
 sub TRUE       () { 1                   }
+sub UUID_PATH  () { [ NUL, qw(proc sys kernel random uuid) ] }
 sub WIDTH      () { 80                  }
 sub YES        () { q(y)                }
 
-sub DIGEST_ALGORITHMS  () { ( qw(SHA-256 SHA-1 MD5) ) }
-sub UNTAINT_PATH_REGEX () { qr{ \A ([[:print:]]+) \z }mx }
+sub ASSERT             () { __PACKAGE__->Assert }
+sub DIGEST_ALGORITHMS  () { ( qw(SHA-512 SHA-256 SHA-1 MD5) ) }
+sub EXCEPTION_CLASS    () { __PACKAGE__->Exception_Class }
+sub UNTAINT_PATH_REGEX () { qr{ \A ([^\$%;|&><]+) \z }mx }
+
+
+__PACKAGE__->meta->make_immutable;
+
+no MooseX::ClassAttribute;
+no Moose;
 
 1;
 

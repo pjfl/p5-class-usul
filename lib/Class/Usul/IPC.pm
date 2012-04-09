@@ -6,7 +6,9 @@ use strict;
 use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
+use Moose::Role;
 use Class::Usul::Constants;
+use Class::Usul::Functions qw(is_arrayref throw);
 use Class::Usul::Response::IPC;
 use Class::Usul::Response::Table;
 use English qw(-no_match_vars);
@@ -14,11 +16,10 @@ use File::Spec;
 use IO::Handle;
 use IO::Select;
 use IPC::Open3;
-use Moose::Role;
 use Module::Load::Conditional qw(can_load);
 use POSIX qw(:signal_h :errno_h :sys_wait_h);
 use Proc::ProcessTable;
-use TryCatch;
+use Try::Tiny;
 
 our ($ERROR, $WAITEDPID);
 
@@ -46,15 +47,15 @@ sub child_list {
 sub popen {
    my ($self, $cmd, @rest) = @_; my ($e, $pid, @ready);
 
-   $cmd or $self->throw( 'Command not specified' );
+   $cmd or throw 'Command not specified';
 
-   ref $cmd eq ARRAY and $cmd = join q( ), @{ $cmd };
+   is_arrayref $cmd and $cmd = join SPC, @{ $cmd };
 
-   my $args = $self->arg_list( @rest );
+   my $args = arg_list @rest;
    my $err  = IO::Handle->new();
    my $out  = IO::Handle->new();
    my $in   = IO::Handle->new();
-   my $res  = Class::Usul::Response::IPC->new();
+   my $res  = CatalystX::Usul::IPC::Response->new();
 
    {  local ($CHILD_ERROR, $ERRNO, $WAITEDPID); local $ERROR = FALSE;
 
@@ -65,17 +66,17 @@ sub popen {
 
          for my $line (@{ $args->{in} || [] }) {
             print {$in} $line
-               or $self->throw( error => 'IO error [_1]', args =>[ $ERRNO ] );
+               or throw error => 'IO error [_1]', args =>[ $ERRNO ];
          }
 
          $in->close;
       }
-      catch ($error) { $e = $error }
+      catch { $e = $_ }
 
-      $e .= " - whilst executing $cmd" if (not $e and $e = $ERROR);
+      not $e and $e = $ERROR and $e .= " - whilst executing ${cmd}";
    }
 
-   if ($e) { $err->close; $out->close; $self->throw( $e ) }
+   if ($e) { $err->close; $out->close; throw $e }
 
    my $selector = IO::Select->new(); $selector->add( $err, $out );
 
@@ -88,7 +89,7 @@ sub popen {
       }
    }
 
-   waitpid $pid, 0; $e and $self->throw( $e );
+   waitpid $pid, 0; $e and throw $e;
 
    return $res;
 }
@@ -146,9 +147,7 @@ sub process_table {
 }
 
 sub run_cmd {
-   my ($self, $cmd, @rest) = @_;
-
-   $cmd or $self->throw( 'Command not specified' );
+   my ($self, $cmd, @rest) = @_; $cmd or throw 'Run command not specified';
 
    if (ref $cmd eq ARRAY) {
       if (can_load( modules => { 'IPC::Run' => q(0.84) } )) {
@@ -187,9 +186,7 @@ sub signal_process_as_root {
       $sig eq q(TERM) and unlink $file;
    }
 
-   unless (defined $pids->[0] and $pids->[0] =~ m{ \d+ }mx) {
-      $self->throw( 'Process id bad' );
-   }
+   (defined $pids->[0] and $pids->[0] =~ m{ \d+ }mx) or throw 'Process id bad';
 
    for my $mpid (@{ $pids }) {
       if (exists $args->{flag} and $args->{flag} =~ m{ one }imx) {
@@ -266,11 +263,11 @@ sub _run_cmd_system_args {
 }
 
 sub _run_cmd_using_ipc_run {
-   my ($self, $cmd, @rest) = @_; my ($buf_err, $buf_out, $error, $rv);
+   my ($self, $cmd, @rest) = @_; my ($buf_err, $buf_out, $error, $msg, $rv);
 
    my $args     = $self->_run_cmd_ipc_run_args( @rest );
    my $cmd_ref  = __partition_command( $cmd );
-   my $cmd_str  = join q( ), @{ $cmd };
+   my $cmd_str  = join SPC, @{ $cmd };
    my $null     = File::Spec->devnull;
    my $err      = $args->{err};
    my $out      = $args->{out};
@@ -287,12 +284,14 @@ sub _run_cmd_using_ipc_run {
    elsif ($err eq q(null))   { push @cmd_args, q(2>).$null      }
    elsif ($err ne q(stderr)) { push @cmd_args, q(2>), \$buf_err }
 
-   $args->{debug} and $self->log_debug( "Running $cmd_str" );
+   $args->{debug} and $self->log_debug( "Running ${cmd_str}" );
 
-   try            { $rv = __ipc_run_harness( $cmd_ref, @cmd_args ) }
-   catch ($error) { $self->throw_on_error( $error ) }
+   try   { $rv = __ipc_run_harness( $cmd_ref, @cmd_args ) }
+   catch { throw $_ }
 
-   my $res = Class::Usul::Response::IPC->new();
+   $args->{debug} and $self->log_debug( "Run harness returned ${rv}\n" );
+
+   my $res = CatalystX::Usul::IPC::Response->new();
 
    $res->sig( $rv & 127 ); $res->core( $rv & 128 ); $rv = $res->rv( $rv >> 8 );
 
@@ -309,18 +308,20 @@ sub _run_cmd_using_ipc_run {
    else { $error = NUL }
 
    if ($rv > $args->{expected_rv}) {
-      $error .= ' Return value [_1]' if ($args->{debug});
-      $self->throw( error => $error, args => [ $rv ], rv => $rv );
+      $error ||= 'Unknown error';
+      $msg = "Return value ${rv} error ${error}";
+      $args->{debug} and $self->log_debug( $msg );
+      throw error => $error, rv => $rv;
    }
 
    return $res;
 }
 
 sub _run_cmd_using_system {
-   my ($self, $cmd, @rest) = @_; my ($e, $error, $rv);
+   my ($self, $cmd, @rest) = @_; my ($error, $msg, $rv);
 
    my $args = $self->_run_cmd_system_args( @rest );
-   my $prog = $self->basename( (split SPC, $cmd)[0] );
+   my $prog = $self->basename( (split SPC, $cmd)[ 0 ] );
    my $null = File::Spec->devnull;
    my $err  = $args->{err};
    my $out  = $args->{out};
@@ -336,27 +337,37 @@ sub _run_cmd_using_system {
 
    $cmd .= ' & echo $! 1>'.$args->{pid_ref}->pathname if ($args->{async});
 
-   $args->{debug} and $self->log_debug( "Running $cmd" );
+   $args->{debug} and $self->log_debug( "Running ${cmd}" );
 
-   {  local ($CHILD_ERROR, $ERRNO, $WAITEDPID);
+   {  local ($CHILD_ERROR, $ERRNO, $EVAL_ERROR);
+      local $WAITEDPID = 0; local $ERROR = OK;
 
-      try            { local $SIG{CHLD} = \&__handler; $rv = system $cmd }
-      catch ($error) { $self->throw_on_error( $error ) }
+      eval { local $SIG{CHLD} = \&__handler; $rv = system $cmd };
+
+      $EVAL_ERROR and throw $EVAL_ERROR;
+
+      $msg = "System returned ${rv} waitedpid ${WAITEDPID} error ${ERROR}\n";
+
+      $args->{debug} and $self->log_debug( $msg );
+#     On some systems the child handler reaps the child process so the system
+#     call returns -1 and sets $ERRNO to No child processes. This line and
+#     the child handler code fix the problem
+      $rv == -1 and $WAITEDPID > 0 and $rv = $ERROR;
 
       if ($rv == -1) {
-         $error = 'Program [_1] failed to start [_2]';
-         $self->throw( error => $error, args  => [ $prog, $ERRNO ], rv => -1 );
+         $error = 'Program [_1] failed to start: [_2]';
+         throw error => $error, args  => [ $prog, $ERRNO ], rv => -1;
       }
    }
 
-   my $res = Class::Usul::Response::IPC->new();
+   my $res = CatalystX::Usul::IPC::Response->new();
 
    $res->sig( $rv & 127 ); $res->core( $rv & 128 ); $rv = $res->rv( $rv >> 8 );
 
    if ($args->{async}) {
       if ($rv != 0) {
          $error = 'Program [_1] failed to start';
-         $self->throw( error => $error, args => [ $prog ], rv => $rv );
+         throw error => $error, args => [ $prog ], rv => $rv;
       }
 
       my $pid = $args->{pid_ref}->chomp->getline || 'unknown pid';
@@ -381,8 +392,10 @@ sub _run_cmd_using_system {
    else { $error = NUL }
 
    if ($rv > $args->{expected_rv}) {
-      $error .= ' Return value [_1]' if ($args->{debug});
-      $self->throw( error => $error, args => [ $rv ], rv => $rv );
+      $error ||= 'Unknown error';
+      $msg = "Return value ${rv} error ${error}";
+      $args->{debug} and $self->log_debug( $msg );
+      throw error => $error, rv => $rv;
    }
 
    return $res;
@@ -444,9 +457,13 @@ sub __cmd_matches_pattern {
 }
 
 sub __handler {
-   my $pid = waitpid -1, WNOHANG();
+   local $ERRNO; # so that waitpid does not step on existing value
 
-   $WAITEDPID = $pid if ($pid != -1 and WIFEXITED( $CHILD_ERROR ));
+   while ((my $child_pid = waitpid -1, WNOHANG) > 0) {
+      if (WIFEXITED( $CHILD_ERROR ) and $child_pid > $WAITEDPID) {
+         $WAITEDPID = $child_pid; $ERROR = $CHILD_ERROR;
+      }
+   }
 
    $SIG{CHLD} = \&__handler; # in case of unreliable signals
    return;

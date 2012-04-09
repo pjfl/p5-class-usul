@@ -6,10 +6,10 @@ use strict;
 use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
+use Moose::Role;
 use Class::Usul::Constants;
 use Encode;
 use Encode::Guess;
-use Moose::Role;
 use Moose::Util::TypeConstraints;
 
 requires qw(encoding);

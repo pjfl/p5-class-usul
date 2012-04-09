@@ -6,22 +6,26 @@ use strict;
 use warnings;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use parent qw(Module::Build);
+use lib;
 
 use Class::Usul::Build::InstallActions;
 use Class::Usul::Build::Questions;
 use Class::Usul::Build::VCS;
 use Class::Usul::Constants;
+use Class::Usul::Functions qw(say throw);
 use Class::Usul::Programs;
-use TryCatch;
+use Config;
+use Try::Tiny;
 use File::Spec;
 use MRO::Compat;
 use Perl::Version;
 use Module::CoreList;
+use Module::Metadata;
 use Pod::Eventual::Simple;
-use English    qw(-no_match_vars);
-use File::Copy qw(copy);
-use File::Find qw(find);
-use File::Path qw(make_path);
+use English      qw(-no_match_vars);
+use File::Copy   qw(copy);
+use File::Find   qw(find);
+use Scalar::Util qw(blessed);
 
 if ($ENV{AUTOMATED_TESTING}) {
    # Some CPAN testers set these. Breaks dependencies
@@ -29,56 +33,79 @@ if ($ENV{AUTOMATED_TESTING}) {
    $ENV{TEST_CRITIC     } = FALSE; $ENV{TEST_POD     } = FALSE;
 }
 
-my $ARRAYS        = [ qw(copy_files create_dirs create_files credentials
-                         link_files run_cmds) ];
-my $CFG_FILE      = q(build.xml);
-my $CHANGE_ARGS   = [ q({{ $NEXT }}), q(%-9s %s), q(%Y-%m-%d %T %Z) ];
-my $CHANGES_FILE  = q(Changes);
-my $LICENSE_FILE  = q(LICENSE);
-my $MANIFEST_FILE = q(MANIFEST);
-my %META_KEYS     =
-   ( perl         => 'Perl_5',
-     apache       => [ map { "Apache_$_" } qw(1_1 2_0) ],
-     artistic     => 'Artistic_1_0',
-     artistic_2   => 'Artistic_2_0',
-     lgpl         => [ map { "LGPL_$_" } qw(2_1 3_0) ],
-     bsd          => 'BSD',
-     gpl          => [ map { "GPL_$_" } qw(1 2 3) ],
-     mit          => 'MIT',
-     mozilla      => [ map { "Mozilla_$_" } qw(1_0 1_1) ], );
-my $MIN_PERL_VER  = q(5.008);
+my %CONFIG =
+   ( arrays        => [ qw(actions arrays attrs copy_files create_dirs
+                           create_files credentials link_files
+                           post_install_cmds) ],
+     changes_file  => q(Changes),
+     change_token  => q({{ $NEXT }}),
+     cpan_authors  => q(http://search.cpan.org/CPAN/authors/id),
+     cpan_dists    => q(http://search.cpan.org/dist),
+     config_attrs  => { storage_attributes => { root_name => q(config) } },
+     config_file   => [ qw(var etc build.xml) ],
+     create_ugrps  => TRUE,
+     edit_files    => TRUE,
+     install       => TRUE,
+     license_file  => q(LICENSE),
+     line_format   => q(%-9s %s),
+     local_lib     => q(local),
+     manifest_file => q(MANIFEST),
+     meta_keys     => {
+        perl       => 'Perl_5',
+        apache     => [ map { "Apache_$_" } qw(1_1 2_0) ],
+        artistic   => 'Artistic_1_0',
+        artistic_2 => 'Artistic_2_0',
+        lgpl       => [ map { "LGPL_$_" } qw(2_1 3_0) ],
+        bsd        => 'BSD',
+        gpl        => [ map { "GPL_$_" } qw(1 2 3) ],
+        mit        => 'MIT',
+        mozilla    => [ map { "Mozilla_$_" } qw(1_0 1_1) ], },
+     paragraph     => { cl => TRUE, fill => TRUE, nl => TRUE },
+     path_prefix   => [ NUL, qw(opt) ],
+     phase         => 1,
+     pwidth        => 50,
+     time_format   => q(%Y-%m-%d %T %Z), );
 
 # Around these M::B actions
-
-sub ACTION_build {
-   my $self = shift; my $cfg = $self->read_config_file;
-
-   $cfg->{built} or $self->ask_questions( $cfg );
-
-   return $self->next::method();
-}
 
 sub ACTION_distmeta {
    my $self = shift;
 
-   $self->update_changelog( $self->_dist_version );
-   $self->write_license_file;
+   try {
+      my $cfg = $self->_get_config;
+      # Optionally create a README.pod file
+      $self->notes->{create_readme_pod} and podselect( {
+         -output => q(README.pod) }, $self->dist_version_from );
 
-   return $self->next::method();
+      $self->_update_changelog( $cfg, $self->_dist_version );
+      $self->_write_license_file( $cfg );
+      $self->next::method();
+   }
+   catch { $self->cli->fatal( $_ ) }
+
+   return;
 }
 
 sub ACTION_install {
-   my $self = shift; my $cfg = $self->read_config_file;
+   my $self = shift;
 
-   $self->cli->info( 'Base path '.$self->set_base_path( $cfg ) );
-   $self->next::method();
+   try {
+      my $cfg = $self->_get_config; $self->_ask_questions( $cfg );
 
-   my $install = $self->install_actions_class->new( builder => $self );
+      $self->_set_install_paths( $cfg );
+      $cfg->{install} and $self->next::method();
 
-   # Call each of the defined actions
-   $install->$_( $cfg ) for (grep { $cfg->{ $_ } } @{ $install->actions });
+      my $install = $self->_install_actions_class->new( builder => $self );
 
-   return $cfg;
+      # Call each of the defined installation actions
+      $install->$_( $cfg ) for (grep { $cfg->{ $_ } } @{ $install->actions });
+
+      $self->_log_info( 'Installation complete' );
+      $self->_post_install( $cfg );
+   }
+   catch { $self->cli->fatal( $_ ) }
+
+   return;
 }
 
 # New M::B actions
@@ -86,37 +113,153 @@ sub ACTION_install {
 sub ACTION_change_version {
    my $self = shift;
 
-   $self->depends_on( q(manifest) );
-   $self->depends_on( q(release)  );
-   $self->change_version;
+   try {
+      $self->depends_on( q(manifest) );
+      $self->depends_on( q(release)  );
+      $self->_change_version( $self->_get_config );
+   }
+   catch { $self->cli->fatal( $_ ) }
+
    return;
 }
 
-sub ACTION_installdeps {
-   # Install all the dependent modules
+sub ACTION_install_local_cpanm {
    my $self = shift;
 
-   $self->cli->ensure_class_loaded( q(CPAN) );
-
-   for my $depend (grep { $_ ne q(perl) } keys %{ $self->requires }) {
-      CPAN::Shell->install( $depend );
+   try {
+      $self->depends_on( q(install_local_lib) );
+      $self->_install_local_cpanm( $self->_get_local_config );
    }
+   catch { $self->cli->fatal( $_ ) }
 
    return;
 }
 
-sub ACTION_prereq_update {
-   my $self = shift; my $field = $self->args->{ARGV}->[ 0 ] || q(requires);
+sub ACTION_install_local_deps {
+   my $self = shift;
 
-   $self->prereq_update( $field );
+   try {
+      my $cfg = $self->_get_local_config;
+
+      $ENV{DEVEL_COVER_NO_COVERAGE} = TRUE;     # Devel::Cover
+      $ENV{SITEPREFIX} = $cfg->{perlbrew_root}; # XML::DTD
+
+      $self->depends_on( q(install_local_cpanm) );
+      $self->_install_local_deps( $cfg );
+   }
+   catch { $self->cli->fatal( $_ ) }
+
+   return;
+}
+
+sub ACTION_install_local_lib {
+   my $self = shift;
+
+   try {
+      my $cfg = $self->_get_local_config;
+
+      $self->_install_local_lib( $cfg );
+      $self->_import_local_env ( $cfg );
+   }
+   catch { $self->cli->fatal( $_ ) }
+
+   return;
+}
+
+sub ACTION_install_local_perl {
+   my $self = shift;
+
+   try {
+      $self->depends_on( q(install_local_perlbrew) );
+      $self->_install_local_perl( $self->_get_local_config );
+   }
+   catch { $self->cli->fatal( $_ ) }
+
+   return;
+}
+
+sub ACTION_install_local_perlbrew {
+   my $self = shift;
+
+   try {
+      $self->depends_on( q(install_local_lib) );
+      $self->_install_local_perlbrew( $self->_get_local_config );
+   }
+   catch { $self->cli->fatal( $_ ) }
+
+   return;
+}
+
+sub ACTION_local_archive {
+   my $self = shift;
+
+   try {
+      my $dir = $self->_get_config->{local_lib};
+
+      $self->make_tarball( $dir, $self->_get_archive_names( $dir )->[ 0 ] );
+   }
+   catch { $self->cli->fatal( $_ ) }
+
+   return;
+}
+
+sub ACTION_prereq_diff {
+   my $self = shift;
+
+   try   { $self->_prereq_diff( $self->_get_config ) }
+   catch { $self->cli->fatal( $_ ) }
+
    return;
 }
 
 sub ACTION_release {
    my $self = shift;
 
-   $self->depends_on( q(distmeta) );
-   $self->commit_release( 'release '.$self->_dist_version );
+   try {
+      $self->depends_on( q(distmeta) );
+      $self->_commit_release( 'release '.$self->_dist_version ) }
+   catch { $self->cli->fatal( $_ ) }
+
+   return;
+}
+
+sub ACTION_restore_local_archive {
+   my $self = shift;
+
+   try {
+      my $dir = $self->_get_config->{local_lib};
+
+      $self->_extract_tarball( $self->_get_archive_names( $dir ) );
+   }
+   catch { $self->cli->fatal( $_ ) }
+
+   return;
+}
+
+sub ACTION_standalone {
+   my $self = shift;
+
+   try {
+      $self->depends_on( q(install_local_deps) );
+      $self->depends_on( q(manifest) );
+      $self->depends_on( q(dist) );
+   }
+   catch { $self->cli->fatal( $_ ) }
+
+   return;
+}
+
+sub ACTION_uninstall {
+   my $self = shift;
+
+   try {
+      my $cfg = $self->_get_config;
+
+      $self->_set_install_paths( $cfg );
+      $self->_uninstall( $cfg );
+   }
+   catch { $self->cli->fatal( $_ ) }
+
    return;
 }
 
@@ -124,54 +267,20 @@ sub ACTION_upload {
    # Upload the distribution to CPAN
    my $self = shift;
 
-   $self->depends_on( q(release) );
-   $self->depends_on( q(dist) );
-   $self->cpan_upload;
+   try {
+      $self->depends_on( q(release) );
+      $self->depends_on( q(dist) );
+      $self->_cpan_upload;
+   }
+   catch { $self->cli->fatal( $_ ) }
+
    return;
 }
 
 # Public object methods
 
-sub ask_questions {
-   my ($self, $cfg) = @_;
-
-   my $cli  = $self->cli;
-   my $quiz = $self->question_class->new( builder => $self );
-
-   # Update the config by looping through the questions
-   for my $attr (@{ $quiz->config_attributes }) {
-      my $question = q(q_).$attr;
-
-      $cfg->{ $attr } = $quiz->$question( $cfg );
-   }
-
-   # Save the updated config for the install action to use
-   $self->write_config_file( $cfg );
-   $cfg->{ask} and $cli->anykey;
-   return;
-}
-
-sub change_version {
-   my $self = shift;
-   my $cli  = $self->cli;
-   my $comp = $cli->get_line( 'Enter major/minor 0 or 1',  1, TRUE, 0 );
-   my $bump = $cli->get_line( 'Enter increment/decrement', 0, TRUE, 0 )
-           or return;
-   my $ver  = $self->_dist_version or return;
-   my $from = __tag_from_version( $ver );
-
-   $ver->component( $comp, $ver->component( $comp ) + $bump );
-   $comp == 0 and $ver->component( 1, 0 );
-   $self->_update_version( $from, __tag_from_version( $ver ) );
-   $self->_create_tag_release( $from );
-   $self->update_changelog( $ver = $self->_dist_version );
-   $self->commit_release( 'first '.__tag_from_version( $ver ) );
-   $self->_rebuild_build;
-   return;
-}
-
 sub class_path {
-   return File::Spec->catfile( q(lib), split m{ :: }mx, $_[1].q(.pm) );
+   return File::Spec->catfile( q(lib), split m{ :: }mx, $_[ 1 ].q(.pm) );
 }
 
 sub cli {
@@ -180,76 +289,43 @@ sub cli {
 
    $self->{ $key }
       or $self->{ $key } = Class::Usul::Programs->new
-            ( appclass => $self->module_name, debug => FALSE );
+            ( { appclass => $self->module_name, debug => FALSE, n => TRUE } );
 
    return $self->{ $key };
 }
 
-sub commit_release {
-   my ($self, $msg) = @_;
-
-   my $vcs = $self->_vcs or return; my $cli = $self->cli;
-
-   $vcs->commit( ucfirst $msg ) and $cli->say( "Committed $msg" );
-   $vcs->error and $cli->say( @{ $vcs->error } );
-   return;
-}
-
-sub cpan_upload {
-   my $self = shift;
-   my $cli  = $self->cli;
-   my $args = $self->_read_pauserc;
-
-   $args->{subdir} = lc $self->dist_name;
-   exists $args->{dry_run} or $args->{dry_run}
-      = $cli->yorn( 'Really upload to CPAN', FALSE, TRUE, 0 );
-   $cli->ensure_class_loaded( q(CPAN::Uploader) );
-   CPAN::Uploader->upload_file( $self->dist_dir.q(.tar.gz), $args );
-   return;
+sub dispatch {
+   # Now we can have M::B plugins
+   my $self = shift; $self->_setup_plugins; return $self->next::method( @_ );
 }
 
 sub distname {
-   my $distname = $_[1]; $distname =~ s{ :: }{-}gmx; return $distname;
+   my $distname = $_[ 1 ]; $distname =~ s{ :: }{-}gmx; return $distname;
 }
 
-sub install_actions_class {
-   return __PACKAGE__.q(::InstallActions);
+sub dist_description {
+   # More meta data. Requires patching M::B::PodParser
+   return shift->_pod_parse( q(description) );
 }
 
-sub post_install {
-   my ($self, $cfg) = @_; my $cli = $self->cli;
+sub make_tarball {
+   # I want my tarballs in the parent of the project directory
+   my ($self, $dir, $archive) = @_; $archive ||= $dir;
 
-   my $bind = $self->install_destination( q(bin) );
-
-   $cli->info( 'The following commands may take a *long* time to complete' );
-
-   for my $cmd (@{ $cfg->{run_cmds} || [] }) {
-      my $prog = (split SPC, $cmd)[0];
-
-      not $cli->io( $prog )->is_absolute and $cmd = $cli->catdir( $bind, $cmd);
-      $cmd =~ s{ \[% \s+ (\w+) \s+ %\] }{$cfg->{ $1 }}gmx;
-
-      if ($cfg->{run_cmd}) {
-         $cli->info( "Running $cmd" );
-         $cli->info( $cli->run_cmd( $cmd )->out );
-      }
-      else { $cli->info( "Would run $cmd" ) }
-   }
-
-   return;
+   return $self->next::method( $dir, $self->_archive_file( $archive ) );
 }
 
-sub prereq_update {
-   my ($self, $field) = @_;
+sub patch_file {
+   # Will apply a patch to a file only once
+   my ($self, $path, $patch) = @_; my $cli = $self->cli;
 
-   my $filter   = q(_filter_).$field.q(_paths);
-   my $prereqs  = $self->prereq_data->{ $field };
-   my $paths    = $self->$filter( $self->_source_paths );
-   my $used     = $self->_filter_dependents( $self->_dependencies( $paths ) );
-   my $compares = $self->_compare_prereqs_with_used( $field, $prereqs, $used );
+   (not $path->is_file or -f $path.q(.orig)) and return;
 
-   $self->_prereq_comparison_report( $compares );
-   # TODO: Update the versions in prereqs
+   $self->_log_info( "Patching ${path}" ); $path->copy( $path.q(.orig) );
+
+   my $cmd = [ qw(patch -p0), $path->pathname, $patch->pathname ];
+
+   $self->_log_info( $cli->run_cmd( $cmd, { err => q(out) } )->out );
    return;
 }
 
@@ -270,6 +346,11 @@ sub process_files {
    return;
 }
 
+sub process_local_files {
+   # Will copy the local lib into the blib
+   my $self = shift; return $self->process_files( q(local) );
+}
+
 sub public_repository {
    # Accessor for the public VCS repository information
    my $class = shift; my $repo = $class->repository or return;
@@ -277,77 +358,8 @@ sub public_repository {
    return $repo !~ m{ \A file: }mx ? $repo : undef;
 }
 
-sub question_class {
-   return __PACKAGE__.q(::Questions);
-}
-
-sub read_config_file {
-   my $self = shift;
-   my $cli  = $self->cli;
-   my $path = $cli->catfile( $self->base_dir, $CFG_FILE );
-   my $cfg  = {};
-
-   -f $path or return $cfg;
-
-   try        { $cfg = $cli->data_load( arrays => $ARRAYS, path => $path ) }
-   catch ($e) { $cli->fatal( $e ) }
-
-   return $cfg;
-}
-
-sub replace {
-   # Edit a file and replace one string with another
-   my ($self, $this, $that, $path) = @_; my $cli = $self->cli;
-
-   -s $path or $cli->fatal( "File $path not found or zero length" );
-
-   my $wtr = $cli->io( $path )->atomic;
-
-   for ($cli->io( $path )->getlines) {
-      s{ $this }{$that}gmx; $wtr->print( $_ );
-   }
-
-   $wtr->close;
-   return;
-}
-
 sub repository {
    my $vcs = shift->_vcs or return; return $vcs->repository;
-}
-
-sub resources {
-   my ($class, $license, $tracker, $home_page, $distname) = @_;
-
-   my $resources  = { license => $license, bugtracker => $tracker.$distname };
-   my $repository = $class->public_repository;
-
-   $home_page  and $resources->{homepage  } = $home_page;
-   $repository and $resources->{repository} = $repository;
-
-   return $resources;
-}
-
-sub set_base_path {
-   my ($self, $cfg) = @_;
-
-   my $cli = $self->cli; my $prefix = $cfg->{path_prefix};
-
-   -d $prefix or make_path( $prefix, { mode => oct q(02750) } );
-   -d $prefix or $cli->fatal( "Path $prefix cannot create" );
-
-   my $base = $cli->catdir( $prefix,
-                            $cli->class2appdir( $self->module_name ),
-                            q(v).$cfg->{ver}.q(p).$cfg->{phase} );
-
-   if ($cfg->{style} and $cfg->{style} eq q(normal)) {
-      $self->install_base( $base );
-      $self->install_path( bin => $cli->catdir( $base, q(bin) ) );
-      $self->install_path( lib => $cli->catdir( $base, q(lib) ) );
-      $self->install_path( var => $cli->catdir( $base, q(var) ) );
-   }
-   else { $self->install_path( var => $base ) }
-
-   return $cfg->{base} = $base;
 }
 
 sub skip_pattern {
@@ -359,84 +371,61 @@ sub skip_pattern {
    return $self->{_skip_pattern};
 }
 
-sub update_changelog {
-   my ($self, $ver) = @_;
-   my ($tok, $line_format, $time_format) = @{ $CHANGE_ARGS };
-   my $file = $CHANGES_FILE;
-   my $cli  = $self->cli;
-   my $io   = $cli->io( $file );
-   my $time = $cli->time2str( $time_format, time );
-   my $line = sprintf $line_format, $ver->normal, $time;
-   my $tag  = q(v).__tag_from_version( $ver );
-   my $text = $io->all;
-
-   if (   $text =~ m{ ^   \Q$tag\E }mx)    {
-          $text =~ s{ ^ ( \Q$tag\E .* ) $ }{$line}mx   }
-   else { $text =~ s{   ( \Q$tok\E    )   }{$1\n\n$line}mx }
-
-   $cli->say( "Updating $file" );
-   $io->close->print( $text );
-   return;
-}
-
-sub write_config_file {
-   my ($self, $cfg) = @_;
-
-   my $cli  = $self->cli;
-   my $path = $cli->catfile( $self->base_dir, $CFG_FILE );
-
-   defined $path or $cli->fatal( 'Config path undefined' );
-   defined $cfg  or $cli->fatal( 'Config data undefined' );
-
-   try        { $cli->data_dump( data => $cfg, path => $path ) }
-   catch ($e) { $cli->fatal( $e ) }
-
-   return $cfg;
-}
-
-sub write_license_file {
-   my $self    = shift;
-   my $license = $META_KEYS{ $self->license } or return;
-      $license = ref $license ? $license->[ -1 ] : $license;
-   my $class   = q(Software::License::).$license;
-   my $cli     = $self->cli;
-
-   $cli->ensure_class_loaded( $class );
-   $cli->say( "Creating $LICENSE_FILE" );
-   $license = $class->new( { holder => $cli->get_meta->author->[ 0 ] } );
-   $cli->io( $LICENSE_FILE )->print( $license->fulltext );
-   return;
-}
-
 # Private methods
 
-sub _compare_prereqs_with_used {
-   my ($self, $field, $prereqs, $used) = @_;
+sub _archive_dir {
+   return File::Spec->updir;
+}
 
-   my $result     = {};
-   my $add_key    = "Would add these to the $field in Build.PL";
-   my $remove_key = "Would remove these from the $field in Build.PL";
-   my $update_key = "Would update these in the $field in Build.PL";
+sub _archive_file {
+   return File::Spec->catfile( $_[ 0 ]->_archive_dir, $_[ 1 ] );
+}
 
-   for (grep { defined $used->{ $_ } } keys %{ $used }) {
-      if (exists $prereqs->{ $_ }) {
-         my $oldver = version->new( $prereqs->{ $_ } );
-         my $newver = version->new( $used->{ $_ }    );
+sub _ask_questions {
+   my ($self, $cfg) = @_; $cfg->{built} and return;
 
-         if ($newver != $oldver) {
-            $result->{ $update_key }->{ $_ }
-               = $prereqs->{ $_ }.q( => ).$used->{ $_ };
-         }
-      }
-      else { $result->{ $add_key }->{ $_ } = $used->{ $_ } }
+   my $cli  = $self->cli; $cli->pwidth( $cfg->{pwidth} );
+
+   my $quiz = $self->_question_class->new( builder => $self );
+
+   # Update the config by looping through the questions
+   for my $attr (@{ $quiz->config_attributes }) {
+      my $question = q(q_).$attr; $cfg->{ $attr } = $quiz->$question( $cfg );
    }
 
-   for (keys %{ $prereqs }) {
-      exists $used->{ $_ }
-         or $result->{ $remove_key }->{ $_ } = $prereqs->{ $_ };
-   }
+   # Save the updated config for the install action to use
+   my $args = { data => $cfg, path => $self->_get_config_path( $cfg ) };
 
-   return $result;
+   $self->cli->file_dataclass_schema( $cfg->{config_attrs} )->dump( $args );
+   $cfg->{ask} and $cli->anykey;
+   return;
+}
+
+sub _change_version {
+   my ($self, $cfg) = @_; my $cli = $self->cli;
+
+   my $comp = $cli->get_line( 'Enter major/minor 0 or 1',  1, TRUE, 0 );
+   my $bump = $cli->get_line( 'Enter increment/decrement', 0, TRUE, 0 )
+           or return;
+   my $ver  = $self->_dist_version or return;
+   my $from = __tag_from_version( $ver );
+
+   $ver->component( $comp, $ver->component( $comp ) + $bump );
+   $comp == 0 and $ver->component( 1, 0 );
+   $self->_update_version( $from, __tag_from_version( $ver ) );
+   $self->_create_tag_release( $from );
+   $self->_update_changelog( $cfg, $ver = $self->_dist_version );
+   $self->_commit_release( 'first '.__tag_from_version( $ver ) );
+   $self->_rebuild_build;
+   return;
+}
+
+sub _commit_release {
+   my ($self, $msg) = @_; my $vcs = $self->_vcs or return;
+
+   $vcs->commit( ucfirst $msg ) and say "Committed ${msg}";
+   $vcs->error and say @{ $vcs->error };
+   return;
 }
 
 sub _consolidate {
@@ -470,30 +459,39 @@ sub _consolidate {
 }
 
 sub _copy_file {
-   my ($self, $src, $dest) = @_;
+   my ($self, $src, $dest) = @_; my $cli = $self->cli;
 
-   my $cli = $self->cli; my $pattern = $self->skip_pattern;
+   my $pattern = $self->skip_pattern;
 
-   return unless ($src and -f $src and (not $pattern or $src !~ $pattern));
+   ($src and -f $src and (not $pattern or $src !~ $pattern)) or return;
 
    # Rebase the directory path
-   my $dir = $cli->catdir( $dest, $cli->dirname( $src ) );
+   my $dir = File::Spec->catdir( $dest, $cli->dirname( $src ) );
 
    # Ensure target directory exists
-   -d $dir or make_path( $dir, { mode => oct q(02750) } );
+   -d $dir or $cli->io( $dir )->mkpath( oct q(02750) );
 
    copy( $src, $dir );
    return;
 }
 
+sub _cpan_upload {
+   my $self = shift; my $cli = $self->cli; my $args = $self->_read_pauserc;
+
+   $args->{subdir} = lc $self->dist_name;
+   exists $args->{dry_run} or $args->{dry_run}
+      = $cli->yorn( 'Really upload to CPAN', FALSE, TRUE, 0 );
+   $cli->ensure_class_loaded( q(CPAN::Uploader) );
+   CPAN::Uploader->upload_file( $self->dist_dir.q(.tar.gz), $args );
+   return;
+}
+
 sub _create_tag_release {
-   my ($self, $tag) = @_;
+   my ($self, $tag) = @_; my $vcs = $self->_vcs or return;
 
-   my $vcs  = $self->_vcs or return; my $cli = $self->cli;
+   say "Creating tagged release v${tag}";
 
-   $cli->say( "Creating tagged release v$tag" );
-   $vcs->tag( $tag );
-   $vcs->error and $cli->say( @{ $vcs->error } );
+   $vcs->tag( $tag ); $vcs->error and say @{ $vcs->error };
    return;
 }
 
@@ -504,7 +502,7 @@ sub _dependencies {
       my $lines = __read_non_pod_lines( $path );
 
       for my $line (split m{ \n }mx, $lines) {
-         my $modules = __parse_depends( $line ); $modules->[ 0 ] or next;
+         my $modules = __parse_depends_line( $line ); $modules->[ 0 ] or next;
 
          for (@{ $modules }) {
             __looks_like_version( $_ ) and $used->{perl} = $_ and next;
@@ -520,21 +518,32 @@ sub _dependencies {
 
 sub _dist_version {
    my $self = shift;
-   my $file = $self->dist_version_from;
-   my $info = Module::Build::ModuleInfo->new_from_file( $file );
+   my $info = Module::Metadata->new_from_file( $self->dist_version_from );
 
    return Perl::Version->new( $info->version );
 }
 
-sub _draw_line {
-    my ($self, $count) = @_; return $self->cli->say( q(-) x ($count || 60) );
+sub _extract_tarball {
+   my ($self, $archives) = @_; my $cli = $self->cli;
+
+   for my $file (map { $self->_archive_file( $_.q(.tar.gz) ) } @{ $archives }) {
+      unless (-f $file) { $cli->info( "Archive ${file} not found\n" ) }
+      else {
+         $cli->run_cmd( [ qw(tar -xzf), $file ] );
+         $cli->info   ( "Extracted ${file}\n"   );
+         return;
+      }
+   }
+
+   return;
 }
 
 sub _filter_dependents {
-   my ($self, $used) = @_;
-   my $perl_version  = $used->{ perl } || $MIN_PERL_VER;
-   my $core_modules  = $Module::CoreList::version{ $perl_version };
-   my $provides      = $self->cli->get_meta->provides;
+   my ($self, $cfg, $used) = @_;
+
+   my $perl_version = $used->{perl} || $cfg->{min_perl_ver};
+   my $core_modules = $Module::CoreList::version{ $perl_version };
+   my $provides     = $self->cli->get_meta->provides;
 
    return $self->_consolidate( { map   { $_ => $used->{ $_ }              }
                                  grep  { not exists $core_modules->{ $_ } }
@@ -554,32 +563,221 @@ sub _filter_requires_paths {
    return [ grep { not m{ \.t \z }mx and $_ ne q(Build.PL) } @{ $_[ 1 ] } ];
 }
 
-sub _prereq_comparison_report {
-   my ($self, $diffs) = @_; my $cli = $self->cli; $self->_draw_line;
+sub _get_archive_names {
+   my ($self, $original_dir) = @_;
 
-   for my $table (sort keys %{ $diffs }) {
-      $cli->say( $table ); $self->_draw_line;
+   my $name     = $self->dist_name;
+   my $arch     = $Config{myarchname};
+   my @archives = ( join q(-), $name, $original_dir,
+                    $self->args->{ARGV}->[ 0 ] || $self->_dist_version, $arch );
+   my $pattern  = "${name} - ${original_dir} - (.+) - ${arch}";
+   my $latest   = ( map  { $_->[ 1 ] }               # Returning filename
+                    sort { $a->[ 0 ] <=> $b->[ 0 ] } # By version object
+                    map  { __to_version_and_filename( $pattern, $_ ) }
+                    $self->cli->io    ( $self->_archive_dir      )
+                              ->filter( sub { m{ $pattern }msx } )
+                              ->all_files )[ -1 ];
 
-      for (sort keys %{ $diffs->{ $table } }) {
-         $cli->say( "'$_' => '".$diffs->{ $table }->{ $_ }."'," );
-      }
+   $latest and push @archives, $latest;
+   return \@archives;
+}
 
-      $self->_draw_line;
-   }
+{ my $cache;
+
+  sub _get_config {
+     my ($self, $passed_cfg) = @_; $cache and return $cache;
+
+     my $cfg  = { %CONFIG, %{ $passed_cfg || {} }, %{ $self->notes } };
+     my $path = $self->_get_config_path( $cfg );
+
+     if (-f $path) {
+        my $attrs = { storage_attributes => { force_array => $cfg->{arrays} } };
+
+        $cfg = $self->cli->file_dataclass_schema( $attrs )->load( $path );
+     }
+
+     return $cache = $cfg;
+  }
+}
+
+sub _get_config_path {
+   my ($self, $cfg) = @_;
+
+   return File::Spec->catfile( $self->base_dir, $self->blib,
+                               @{ $cfg->{config_file} } );
+}
+
+sub _get_dest_base {
+   my ($self, $cfg) = @_;
+
+   return $self->destdir ? File::Spec->catdir( $self->destdir, $cfg->{base} )
+                         : $cfg->{base};
+}
+
+sub _get_local_config {
+   my $self = shift; my $cli = $self->cli;
+
+   $self->{_local_config_cache} and return $self->{_local_config_cache};
+
+  (my $perl_ver = $PERL_VERSION) =~ s{ \A v }{perl-}mx;
+
+   my $argv = $self->args->{ARGV}; my $cfg = $self->_get_config;
+
+   $cfg->{perl_ver     } = $argv->[ 0 ] || $perl_ver;
+   $cfg->{appldir      } = $argv->[ 1 ] || $cli->config->{appldir};
+   $cfg->{perlbrew_root} = File::Spec->catdir ( $cfg->{appldir},
+                                                $cfg->{local_lib} );
+   $cfg->{local_etc    } = File::Spec->catdir ( $cfg->{perlbrew_root}, q(etc) );
+   $cfg->{local_libperl} = File::Spec->catdir ( $cfg->{perlbrew_root},
+                                                qw(lib perl5));
+   $cfg->{perlbrew_bin } = File::Spec->catdir ( $cfg->{perlbrew_root}, q(bin) );
+   $cfg->{perlbrew_cmnd} = File::Spec->catfile( $cfg->{perlbrew_bin },
+                                                q(perlbrew) );
+   $cfg->{local_lib_uri} = join SEP, $cfg->{cpan_authors}, $cfg->{ll_author},
+                                     $cfg->{ll_ver_dir}.q(.tar.gz);
+
+   return $self->{_local_config_cache} ||= $cfg;
+}
+
+sub _import_local_env {
+   my ($self, $cfg) = @_;
+
+   lib->import( $cfg->{local_libperl} );
+
+   require local::lib; local::lib->import( $cfg->{perlbrew_root} );
 
    return;
 }
 
-sub _read_pauserc {
-   my $self    = shift;
-   my $cli     = $self->cli;
-   my $pauserc = $cli->catfile( $ENV{HOME} || File::Spec->curdir, q(.pause) );
-   my $args    = {};
+sub _install_actions_class {
+   return __PACKAGE__.q(::InstallActions);
+}
 
-   for ($cli->io( $pauserc )->chomp->getlines) {
-      next unless ($_ and $_ !~ m{ \A \s* \# }mx);
+sub _install_local_cpanm {
+   my ($self, $cfg) = @_; my $cli = $self->cli;
+
+   my $cmd  = q(curl -s -L http://cpanmin.us | perl - App::cpanminus -L );
+   my $path = File::Spec->catfile( $cfg->{perlbrew_bin}, q(cpanm) );
+
+   -f $path and return;
+
+   $self->_log_info( 'Installing local copy of App::cpanminus...' );
+   $cli->run_cmd( $cmd.$cfg->{perlbrew_root} );
+   not -f $path and throw "Failed to install App::cpanminus to ${path}";
+   return;
+}
+
+sub _install_local_deps {
+   my ($self, $cfg) = @_; my $cli = $self->cli;
+
+   my $local_lib = $cfg->{perlbrew_root} or throw 'Local lib not set';
+
+   $self->_log_info( "Installing dependencies to ${local_lib}..." );
+
+   my $cmd = [ qw(cpanm -L), $local_lib, qw(--installdeps .) ];
+
+   $cli->run_cmd( $cmd, { err => q(stderr), out => q(stdout) } );
+
+   my $ref; $ref = $self->can( q(hook_local_deps) ) and $self->$ref( $cfg );
+
+   return;
+}
+
+sub _install_local_lib {
+   my ($self, $cfg) = @_; my $cli = $self->cli;
+
+   my $dir = $cfg->{ll_ver_dir}; -d $cfg->{local_lib} and return;
+
+   chdir $cfg->{appldir};
+   $self->_log_info( 'Installing local::lib to '.$cfg->{perlbrew_root} );
+   $cli->run_cmd( q(curl -s -L ).$cfg->{local_lib_uri}.q( | tar -xzf -) );
+
+   (-d $dir and chdir $dir) or throw "Directory ${dir} cannot access";
+
+   my $cmd = q(perl Makefile.PL --bootstrap=).$cfg->{perlbrew_root};
+
+   $cli->run_cmd( $cmd.q( --no-manpages) );
+   $cli->run_cmd( q(make test) );
+   $cli->run_cmd( q(make install) );
+
+   chdir $cfg->{appldir}; $cli->io( $cfg->{ll_ver_dir} )->rmtree;
+   return;
+}
+
+sub _install_local_perl {
+   my ($self, $cfg) = @_; my $cli = $self->cli;
+
+   unless (__perlbrew_mirror_is_set( $cfg )) {
+      my $cmd = "echo 'm\n".$cfg->{perl_mirror}."' | perlbrew mirror";
+
+      $self->_log_info( 'Setting perlbrew mirror' );
+      __run_perlbrew( $cli, $cfg, $cmd );
+   }
+
+   unless (__perl_version_is_installed( $cli, $cfg )) {
+      $self->_log_info( 'Installing '.$cfg->{perl_ver}.'...' );
+      __run_perlbrew( $cli, $cfg, q(perlbrew install ).$cfg->{perl_ver} );
+   }
+
+   __run_perlbrew( $cli, $cfg, q(perlbrew switch ).$cfg->{perl_ver} );
+   return;
+}
+
+sub _install_local_perlbrew {
+   my ($self, $cfg) = @_; my $cli = $self->cli;
+
+   -f $cfg->{perlbrew_cmnd} and return;
+
+   $self->_log_info( 'Installing local perlbrew...' );
+   $cli->run_cmd ( q(cpanm -L ).$cfg->{perlbrew_root}.q( App::perlbrew) );
+   __run_perlbrew( $cli, $cfg, q(perlbrew init) );
+   $cli->io      ( [ $cfg->{local_etc}, q(kshrc) ] )
+       ->print   ( __local_kshrc_content( $cfg ) );
+
+   my $ref; $ref = $self->can( q(hook_local_perlbrew) ) and $self->$ref( $cfg );
+
+   return;
+}
+
+sub _log_info {
+   return shift->log_info( map { chomp; "${_}\n" } @{ [ @_ ] } );
+}
+
+sub _post_install {
+   my ($self, $cfg) = @_;
+
+   $cfg->{post_install} and $self->_run_bin_cmd( $cfg, q(post_install) )
+      and $self->_log_info( 'Post install complete' );
+
+   return;
+}
+
+sub _prereq_diff {
+   my ($self, $cfg) = @_;
+
+   my $field   = $self->args->{ARGV}->[ 0 ] || q(requires);
+   my $filter  = q(_filter_).$field.q(_paths);
+   my $prereqs = $self->prereq_data->{ $field };
+   my $depends = $self->_dependencies( $self->$filter( $self->_source_paths ) );
+   my $used    = $self->_filter_dependents( $cfg, $depends );
+
+   $self->_say_diffs( __compare_prereqs_with_used( $field, $prereqs, $used ) );
+   return;
+}
+
+sub _question_class {
+   return __PACKAGE__.q(::Questions);
+}
+
+sub _read_pauserc {
+   my $self = shift; my $cli = $self->cli;
+
+   my $dir  = $ENV{HOME} || File::Spec->curdir; my $args = {};
+
+   for ($cli->io( [ $dir, q(.pause) ] )->chomp->getlines) {
+      ($_ and $_ !~ m{ \A \s* \# }mx) or next;
       my ($k, $v) = m{ \A \s* (\w+) \s+ (.+) \z }mx;
-      exists $args->{ $k } and die "Multiple enties for $k";
+      exists $args->{ $k } and throw "Multiple enties for ${k}";
       $args->{ $k } = $v;
    }
 
@@ -593,12 +791,105 @@ sub _rebuild_build {
    return;
 }
 
+sub _run_bin_cmd {
+   my ($self, $cfg, $key) = @_; my $cli = $self->cli; my $cmd;
+
+   $cfg and ref $cfg eq HASH and $key and $cmd = $cfg->{ $key.q(_cmd) }
+         or throw "Command ${key} not found";
+
+   my ($prog, @args) = split SPC, $cmd;
+   my $bind = $self->install_destination( q(bin) );
+   my $path = $cli->abs_path( $bind, $prog );
+
+   -f $path or throw "Path ${path} not found";
+
+   $cmd = join SPC, $path, @args;
+   $self->_log_info( "Running ${cmd}" );
+   $cli->run_cmd( $cmd, { err => q(stderr), out => q(stdout) } );
+
+   my $ref; $ref = $self->can( q(hook_).$key ) and $self->$ref( $cfg );
+
+   return TRUE;
+}
+
+sub _say_diffs {
+   my ($self, $diffs) = @_; my $cli = $self->cli; __draw_line();
+
+   for my $table (sort keys %{ $diffs }) {
+      say $table; __draw_line();
+
+      for (sort keys %{ $diffs->{ $table } }) {
+         say "'$_' => '".$diffs->{ $table }->{ $_ }."',";
+      }
+
+      __draw_line();
+   }
+
+   return;
+}
+
+sub _set_install_paths {
+   my ($self, $cfg) = @_; my $cli = $self->cli;
+
+   $cfg->{base} or throw 'Config base path not set';
+
+   $self->_log_info( 'Base path '.$cfg->{base} );
+   $self->install_base( $cfg->{base} );
+   $self->install_path( bin   => File::Spec->catdir( $cfg->{base}, q(bin)   ) );
+   $self->install_path( lib   => File::Spec->catdir( $cfg->{base}, q(lib)   ) );
+   $self->install_path( var   => File::Spec->catdir( $cfg->{base}, q(var)   ) );
+   $self->install_path( local => File::Spec->catdir( $cfg->{base}, q(local) ) );
+   return;
+}
+
+sub _setup_plugins {
+   # Load CX::U::Plugin::Build::* plugins. Can haz plugins for M::B!
+   my $self = shift; my $cli = $self->cli;
+
+   exists $self->{_plugins} and return $self->{_plugins};
+
+   my $config = { child_class  => blessed $self,
+                  search_paths => [ q(::Plugin::Build) ],
+                  %{ $cli->config->{ setup_plugins } || {} } };
+
+   return $self->{_plugins} = $cli->setup_plugins( $config );
+}
+
 sub _source_paths {
    my $self = shift; my $cli = $self->cli;
 
    return [ grep { __is_perl_script( $cli, $_ ) }
             map  { s{ \s+ }{ }gmx; (split SPC, $_)[0] }
-            $cli->io( $MANIFEST_FILE )->chomp->getlines ];
+            $cli->io( $CONFIG{manifest_file} )->chomp->getlines ];
+}
+
+sub _uninstall {
+   my ($self, $cfg) = @_;
+
+   $self->_run_bin_cmd( $cfg, q(uninstall) )
+      and $self->_log_info( 'Uninstall complete' );
+
+   return;
+}
+
+sub _update_changelog {
+   my ($self, $cfg, $ver) = @_;
+
+   my $cli  = $self->cli;
+   my $io   = $cli->io( $cfg->{changes_file} );
+   my $tok  = $cfg->{change_token};
+   my $time = time2str( $cfg->{time_format} || NUL );
+   my $line = sprintf $cfg->{line_format}, $ver->normal, $time;
+   my $tag  = q(v).__tag_from_version( $ver );
+   my $text = $io->all;
+
+   if (   $text =~ m{ ^   \Q$tag\E }mx)    {
+          $text =~ s{ ^ ( \Q$tag\E .* ) $ }{$line}mx   }
+   else { $text =~ s{   ( \Q$tok\E    )   }{$1\n\n$line}mx }
+
+   say 'Updating '.$cfg->{changes_file};
+   $io->close->print( $text );
+   return;
 }
 
 sub _update_version {
@@ -617,17 +908,13 @@ sub _update_version {
 }
 
 sub _vcs {
-   my $self = shift; my $is_ref = ref $self;
+   my $self = shift; my $class = __PACKAGE__.q(::VCS); my $vcs;
 
-   $is_ref and $self->{_vcs} and return $self->{_vcs};
+   my $dir  = ref $self ? $self->cli->config->{appldir} : File::Spec->curdir;
 
-   my $class  = __PACKAGE__.q(::VCS);
-   my $cli    = $is_ref ? $self->cli              : undef;
-   my $dir    = $cli    ? $cli->config->{appldir} : File::Spec->curdir;
-   my $config = $cli    ? $cli->config            : {};
-   my $vcs    = $class->new( project_dir => $dir, config => $config );
+   ref $self and $vcs = $self->{_vcs} and return $vcs;
 
-   $is_ref and $self->{_vcs} = $vcs;
+   $vcs = $class->new( $dir ); ref $self and $self->{_vcs} = $vcs;
 
    return $vcs;
 }
@@ -635,17 +922,64 @@ sub _vcs {
 sub _version_from_module {
    my ($self, $module) = @_; my $version;
 
-   eval "no warnings; require $module; \$version = $module->VERSION;";
+   eval "no warnings; require ${module}; \$version = ${module}->VERSION;";
 
    return $self->cli->catch || ! $version ? undef : $version;
 }
 
+sub _write_license_file {
+   my ($self, $cfg) = @_; my $cli = $self->cli;
+
+   my $license = $cfg->{meta_keys}->{ $self->license } or return;
+      $license = ref $license ? $license->[ -1 ] : $license;
+   my $class   = q(Software::License::).$license;
+
+   $cli->ensure_class_loaded( $class );
+   say 'Creating '.$cfg->{license_file};
+   $license = $class->new( { holder => $cli->get_meta->author->[ 0 ] } );
+   $cli->io( $cfg->{license_file} )->print( $license->fulltext );
+   return;
+}
+
 # Private subroutines
+
+sub __compare_prereqs_with_used {
+   my ($field, $prereqs, $used) = @_;
+
+   my $result     = {};
+   my $add_key    = "Would add these to the ${field} in Build.PL";
+   my $remove_key = "Would remove these from the ${field} in Build.PL";
+   my $update_key = "Would update these in the ${field} in Build.PL";
+
+   for (grep { defined $used->{ $_ } } keys %{ $used }) {
+      if (exists $prereqs->{ $_ }) {
+         my $oldver = version->new( $prereqs->{ $_ } );
+         my $newver = version->new( $used->{ $_ }    );
+
+         if ($newver != $oldver) {
+            $result->{ $update_key }->{ $_ }
+               = $prereqs->{ $_ }.q( => ).$used->{ $_ };
+         }
+      }
+      else { $result->{ $add_key }->{ $_ } = $used->{ $_ } }
+   }
+
+   for (keys %{ $prereqs }) {
+      exists $used->{ $_ }
+         or $result->{ $remove_key }->{ $_ } = $prereqs->{ $_ };
+   }
+
+   return $result;
+}
 
 sub __dist_from_module {
    my $module = CPAN::Shell->expand( q(Module), $_[ 0 ] );
 
    return $module ? $module->distribution : undef;
+}
+
+sub __draw_line {
+    return say q(-) x ($_[ 0 ] || 60);
 }
 
 sub __is_perl_script {
@@ -658,13 +992,80 @@ sub __is_perl_script {
    return $line =~ m{ \A \#! (?: .* ) perl (?: \s | \z ) }mx ? TRUE : FALSE;
 }
 
+sub __local_kshrc_content {
+   my $cfg = shift; my $content;
+
+   $content  = '#!/usr/bin/env ksh'."\n";
+   $content .= q(export LOCAL_LIB=).$cfg->{local_libperl}."\n";
+   $content .= q(export PERLBREW_ROOT=).$cfg->{perlbrew_root}."\n";
+   $content .= q(export PERLBREW_PERL=).$cfg->{perl_ver}."\n";
+   $content .= q(export PERLBREW_BIN=).$cfg->{perlbrew_bin}."\n";
+   $content .= q(export PERLBREW_CMND=).$cfg->{perlbrew_cmnd}."\n";
+   $content .= <<'RC';
+
+perlbrew_set_path() {
+   alias -d perl 1>/dev/null
+   path_without_perlbrew=$(perl -e \
+      'print join ":", grep   { index $_, $ENV{PERLBREW_ROOT} }
+                       split m{ : }mx, $ENV{PATH};')
+   export PATH=${PERLBREW_BIN}:${path_without_perlbrew}
+}
+
+perlbrew() {
+   local rc ; export SHELL ; short_option=""
+
+   if [ $(echo ${1} | cut -c1) = '-' ]; then
+      short_option=${1} ; shift
+   fi
+
+   case "${1}" in
+   (use)
+      if [ -z "${2}" ]; then
+         print "Using ${PERLBREW_PERL} version"
+      elif [ -x ${PERLBREW_ROOT}/perls/${2}/bin/perl -o ${2} = system ]; then
+         unset PERLBREW_PERL
+         eval $(${PERLBREW_CMND} ${short_option} env ${2})
+         perlbrew_set_path
+      else
+         print "${2} is not installed" >&2 ; rc=1
+      fi
+      ;;
+
+   (switch)
+      ${PERLBREW_CMND} ${short_option} ${*} ; rc=${?}
+      test -n "$2" && perlbrew_set_path
+      ;;
+
+   (off)
+      unset PERLBREW_PERL
+      ${PERLBREW_CMND} ${short_option} off
+      perlbrew_set_path
+      ;;
+
+   (*)
+      ${PERLBREW_CMND} ${short_option} ${*} ; rc=${?}
+      ;;
+   esac
+   alias -t -r
+   return ${rc:-0}
+}
+
+eval $(perl -I${LOCAL_LIB} -Mlocal::lib=${PERLBREW_ROOT})
+
+perlbrew_set_path
+
+RC
+
+   return $content;
+}
+
 sub __looks_like_version {
     my $ver = shift;
 
     return defined $ver && $ver =~ m{ \A v? \d+ (?: \.[\d_]+ )? \z }mx;
 }
 
-sub __parse_depends {
+sub __parse_depends_line {
    my $line = shift; my $modules = [];
 
    for my $stmt (grep   { length }
@@ -699,6 +1100,18 @@ sub __parse_list {
    return grep { length && !m{ [^\.:\w] }mx } split m{ \s+ }mx, $string;
 }
 
+sub __perl_version_is_installed {
+   my ($cli, $cfg) = @_; my $perl_ver = $cfg->{perl_ver};
+
+   my $installed = __run_perlbrew( $cli, $cfg, q(perlbrew list) )->out;
+
+   return (grep { m{ $perl_ver }mx } split "\n", $installed)[0] ? TRUE : FALSE;
+}
+
+sub __perlbrew_mirror_is_set {
+   return -f File::Spec->catfile( $_[ 0 ]->{perlbrew_root}, q(Conf.pm) );
+}
+
 sub __read_non_pod_lines {
    my $path = shift; my $p = Pod::Eventual::Simple->read_file( $path );
 
@@ -706,8 +1119,32 @@ sub __read_non_pod_lines {
                      grep { $_->{type} eq q(nonpod) } @{ $p };
 }
 
+sub __run_perlbrew {
+   my ($cli, $cfg, $cmd) = @_;
+
+   my $path_sep = $Config::Config{path_sep};
+   my $path     = join     $path_sep,
+                  grep   { index $_, $cfg->{perlbrew_root} }
+                  split m{ $path_sep }mx, $ENV{PATH};
+
+   $ENV{PATH         } = $cfg->{perlbrew_bin }.$path_sep.$path;
+   $ENV{PERLBREW_ROOT} = $cfg->{perlbrew_root};
+   $ENV{PERLBREW_PERL} = $cfg->{perl_ver     };
+
+   return $cli->run_cmd( $cmd );
+}
+
 sub __tag_from_version {
    my $ver = shift; return $ver->component( 0 ).q(.).$ver->component( 1 );
+}
+
+sub __to_version_and_filename {
+   my ($pattern, $io) = @_;
+
+  (my $file  = $io->filename) =~ s{ [.]tar[.]gz \z }{}msx;
+   my ($ver) = $file =~ m{ $pattern }msx;
+
+   return [ qv( $ver ), $file ];
 }
 
 1;
@@ -838,9 +1275,9 @@ Called by the L</ACTION_build> method
 Returns an instance of L<Class::Usul::Programs>, the command line
 interface object
 
-=head2 commit_release
+=head2 _commit_release
 
-   $builder->commit_release( 'Release message for VCS log' );
+   $builder->_commit_release( 'Release message for VCS log' );
 
 Commits the release to the VCS
 
@@ -881,14 +1318,6 @@ if we are not using svn or the repository is a local file path
 
 =head2 question_class
 
-=head2 read_config_file
-
-   $config = $builder->read_config_file( $path );
-
-Reads the configuration information from F<$path> using L<XML::Simple>.
-The package variable C<$ARRAYS> is passed to L<XML::Simple> as the
-I<ForceArray> attribute. Called by L</ACTION_build> and L<ACTION_install>
-
 =head2 replace
 
    $builder->replace( $this, $that, $path );
@@ -920,13 +1349,6 @@ that match this pattern. Set to false to not have a skip list
 =head2 update_changelog
 
 Update the version number and date/time stamp in the F<Changes> file
-
-=head2 write_config_file
-
-   $config = $builder->write_config_file( $path, $config );
-
-Writes the C<$config> hash to the F<$path> file for later use by
-the install action. Called from L<ACTION_build>
 
 =head2 write_license_file
 

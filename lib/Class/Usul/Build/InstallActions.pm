@@ -6,34 +6,31 @@ use strict;
 use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use Class::Usul::Constants;
-use File::Copy qw(copy move);
-use File::Path qw(make_path);
-use File::Find qw(find);
-use TryCatch;
 use Moose;
+use Class::Usul::Constants;
+use File::Find qw(find);
+use Try::Tiny;
 
 has 'actions' => is => 'ro', isa => 'ArrayRef',
    default    => sub {
       [ qw(create_dirs create_files copy_files link_files
            create_schema create_ugrps set_owner
            set_permissions make_default restart_server) ] };
+
 has 'builder' => is => 'ro', isa => 'Object', required => TRUE,
    handles    => [ qw(cli installation_destination module_name) ];
 
 sub copy_files {
-   # Copy some files
-   my ($self, $cfg) = @_; my $cli = $self->cli; my $base = $cfg->{base};
+   # Copy some files without overwriting
+   my ($self, $cfg) = @_; my $cli = $self->cli;
 
-   for my $ref (@{ $cfg->{copy_files} }) {
-      my $from = $self->_abs_path( $base, $ref->{from} );
-      my $path = $self->_abs_path( $base, $ref->{to  } );
+   for my $pair (@{ $cfg->{copy_files} }) {
+      my $from = $cli->abs_path( $self->base_dir, $pair->{from} );
+      my $to   = $cli->abs_path( $self->_get_dest_base( $cfg ), $pair->{to} );
 
-      if (-f $from and not -f $path) {
-         $cli->info( "Copying $from to $path" );
-         copy( $from, $path );
-         chmod oct q(0644), $path;
-      }
+      ($from->is_file and not -e $to->pathname) or next;
+      $self->_log_info( "Copying ${from} to ${to}" );
+      $from->copy( $to )->chmod( 0640 );
    }
 
    return;
@@ -41,15 +38,13 @@ sub copy_files {
 
 sub create_dirs {
    # Create some directories that don't ship with the distro
-   my ($self, $cfg) = @_; my $cli = $self->cli; my $base = $cfg->{base};
+   my ($self, $cfg) = @_; my $cli = $self->cli;
 
-   for my $dir (map { $self->_abs_path( $base, $_ ) }
-                @{ $cfg->{create_dirs} }) {
-      if (-d $dir) { $cli->info( "Directory $dir exists" ) }
-      else {
-         $cli->info( "Creating $dir" );
-         make_path( $dir, { mode => oct q(02750) } );
-      }
+   my $base = $self->_get_dest_base( $cfg );
+
+   for my $io (map { $cli->abs_path( $base, $_ ) } @{ $cfg->{create_dirs} }) {
+      if ($io->is_dir) { $self->_log_info( "Directory ${io} exists" ) }
+      else { $self->_log_info( "Creating ${io}" ); $io->mkpath( oct q(02750) ) }
    }
 
    return;
@@ -57,13 +52,12 @@ sub create_dirs {
 
 sub create_files {
    # Create some empty log files
-   my ($self, $cfg) = @_; my $cli = $self->cli; my $base = $cfg->{base};
+   my ($self, $cfg) = @_; my $cli = $self->cli;
 
-   for my $path (map { $self->_abs_path( $base, $_ ) }
-                 @{ $cfg->{create_files} }) {
-      unless (-f $path) {
-         $cli->info( "Creating $path" ); $cli->io( $path )->touch;
-      }
+   my $base = $self->_get_dest_base( $cfg );
+
+   for my $io (map { $cli->abs_path( $base, $_ ) } @{ $cfg->{create_files} }){
+      unless ($io->is_file) { $self->_log_info( "Creating ${io}" ); $io->touch }
    }
 
    return;
@@ -129,27 +123,38 @@ sub create_ugrps {
    return;
 }
 
+sub edit_files {
+   my ($self, $cfg) = @_; my $cli = $self->cli;
+
+   # Fix hard coded path in suid program
+   my $io   = $cli->io( [ $self->install_destination( q(bin) ),
+                          $cli->prefix.q(_admin) ] );
+   my $that = qr( \A use \s+ lib \s+ .* \z )msx;
+   my $this = 'use lib q('.$cli->catdir( $cfg->{base}, q(lib) ).");\n";
+
+   $io->is_file and $io->substitute( $that, $this )->chmod( 0555 );
+
+   # Pointer to the application directory in /etc/default/<app dirname>
+   $io   = $cli->io( [ NUL, qw(etc default),
+                       class2appdir $self->module_name ] );
+   $that = qr( \A APPLDIR= .* \z )msx;
+   $this = q(APPLDIR=).$cfg->{base}."\n";
+
+   $io->is_file and $io->substitute( $that, $this )->chmod( 0644 );
+   return;
+}
+
 sub link_files {
    # Link some files
-   my ($self, $cfg) = @_; my $cli = $self->cli; my $base = $cfg->{base};
+   my ($self, $cfg) = @_; my $cli = $self->cli;
 
-   for my $ref (@{ $cfg->{link_files} }) {
-      my $from = $self->_abs_path( $base, $ref->{from} ) || NUL;
-      my $path = $self->_abs_path( $base, $ref->{to  } ) || NUL;
+   my $base = $self->_get_dest_base( $cfg ); my $msg;
 
-      if ($from and $path) {
-         if (-e $from) {
-            -l $path and unlink $path;
+   for my $link (@{ $cfg->{link_files} }) {
+      try   { $msg = $self->symlink( $base, $link->{from}, $link->{to} ) }
+      catch { $msg = NUL.$_ }
 
-            unless (-e $path) {
-               $cli->info( "Symlinking $from to $path" );
-               symlink $from, $path;
-            }
-            else { $cli->info( "Path $path already exists" ) }
-         }
-         else { $cli->info( "Path $from does not exist" ) }
-      }
-      else { $cli->info( "Path from $from or to $path undefined" ) }
+      $self->_log_info( $msg );
    }
 
    return;

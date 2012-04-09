@@ -6,24 +6,19 @@ use strict;
 use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use 5.008;
+use 5.010;
+use Moose;
 use Class::Null;
 use Class::Usul::Constants;
-use File::DataClass::Exception;
+use Class::Usul::Functions qw(merge_attributes);
 use IPC::SRLock;
 use Log::Handler;
 use Module::Pluggable::Object;
-use Moose;
 use MooseX::ClassAttribute;
 
 with qw(Class::Usul::Constraints File::DataClass::Constraints);
 
 class_has 'Lock'   => is => 'rw', isa => 'F_DC_Lock';
-
-class_has 'digest' => is => 'rw', isa => 'C_U_Digest_Algorithm';
-
-class_has 'exception_class' => is => 'rw', isa => 'F_DC_Exception',
-   default                  => q(File::DataClass::Exception);
 
 has '_config'    => is => 'ro',    isa => 'HashRef | Object',
    reader        => 'config', init_arg => 'config', default => sub { {} };
@@ -39,7 +34,8 @@ has '_lock'      => is => 'ro',    isa => 'F_DC_Lock', lazy_build => TRUE,
 has '_log'       => is => 'rw',    isa => 'C_U_Log', lazy_build => TRUE,
    accessor      => 'log',    init_arg => 'log';
 
-with qw(Class::Usul::Base Class::Usul::Encoding Class::Usul::Crypt);
+with qw(Class::Usul::Base     Class::Usul::File
+        Class::Usul::Encoding Class::Usul::Crypt);
 
 __PACKAGE__->mk_log_methods();
 
@@ -79,31 +75,17 @@ sub setup_plugins {
    return \@plugins;
 }
 
-sub udump {
-   my ($self, @rest) = @_;
-
-   require Data::Dumper;
-
-   my $d = Data::Dumper->new( [ ref $self || $self, @rest ] );
-
-   $d->Sortkeys( sub { return [ sort keys %{ $_[0] } ] } );
-   $d->Indent( TRUE ); $d->Useperl( TRUE );
-   warn $d->Dump;
-   return;
-}
-
 # Private methods
 
-sub _build__lock {
+sub _build_lock {
+   # There is only one lock object. Instantiate on first use
    my $self = shift;
 
    $self->Lock and return $self->Lock;
 
    my $attrs = $self->config->{lock_attributes} || {};
 
-   $attrs->{debug  } ||= $self->debug;
-   $attrs->{log    } ||= $self->log;
-   $attrs->{tempdir} ||= $self->config->{tempdir};
+   merge_attributes $attrs, $self, {}, [ qw(debug log tempdir) ];
 
    return $self->Lock( IPC::SRLock->new( $attrs ) );
 }
@@ -114,13 +96,13 @@ sub _build__log {
    my $logfile = $attrs->{logfile} || $self->config->{logfile} || NUL;
    my $dir     = $self->dirname( $logfile );
 
-   return $logfile && -d $dir
-        ? Log::Handler->new
-        ( file      => {
-           filename => NUL.$logfile,
-           maxlevel => $self->debug ? 7 : $attrs->{log_level} || 6,
-           mode     => q(append), } )
-        : Class::Null->new;
+   $logfile and -d $dir or return Class::Null->new;
+
+   return Log::Handler->new
+      ( file      => {
+         filename => NUL.$logfile,
+         maxlevel => $self->debug ? 7 : $attrs->{log_level} || 6,
+         mode     => q(append), } );
 }
 
 __PACKAGE__->meta->make_immutable;
