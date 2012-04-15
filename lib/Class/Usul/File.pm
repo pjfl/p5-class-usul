@@ -4,18 +4,19 @@ package Class::Usul::File;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.6.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Moose::Role;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(create_token is_arrayref throw);
+use Class::Usul::Functions
+    qw(arg_list classfile create_token is_arrayref throw untaint_path);
 use English qw(-no_match_vars);
 use File::DataClass::IO ();
 use File::DataClass::Schema;
 use File::Spec;
 use Scalar::Util qw(blessed);
 
-requires qw(tempdir);
+requires qw(config);
 
 sub abs_path {
    my ($self, $base, $path) = @_; $base ||= NUL; $path or return NUL;
@@ -25,49 +26,38 @@ sub abs_path {
    return $self->io( $path )->absolute( $base );
 }
 
-sub basename {
-   my ($self, $path, @suffixes) = @_;
+sub data_dump {
+   my ($self, @rest) = @_;
 
-   return $self->io( $path )->basename( @suffixes );
+   return $self->file_dataclass_schema->dump( arg_list @rest );
 }
 
-sub catdir {
-   my ($self, @rest) = @_; return File::Spec->catdir( @rest );
-}
+sub data_load {
+   my ($self, @rest) = @_; my $args = arg_list @rest;
 
-sub catfile {
-   my ($self, @rest) = @_; return File::Spec->catfile( @rest );
-}
+   $args = { path => $args->{path} || NUL,
+             storage_attributes => { _arrays => $args->{arrays} || {} } };
 
-sub classdir {
-   return File::Spec->catdir( split m{ :: }mx, $_[ 1 ] );
-}
-
-sub classfile {
-   return File::Spec->catfile( split m{ :: }mx, $_[ 1 ].q(.pm) );
+   return $self->file_dataclass_schema( $args )->load;
 }
 
 sub delete_tmp_files {
    return $_[ 0 ]->io( $_[ 1 ] || $_[ 0 ]->tempdir )->delete_tmp_files;
 }
 
-sub dirname {
-   return $_[ 0 ]->io( $_[ 1 ] )->dirname;
-}
-
 sub file_dataclass_schema {
-   my ($self, $attrs) = @_; $attrs = { %{ $attrs || {} } };
+   my ($self, $attr) = @_; $attr = { %{ $attr || {} } };
 
-   blessed $self and $attrs->{ioc_obj} = $self;
+   blessed $self and $attr->{ioc_obj} = $self;
 
-   delete $attrs->{cache} or $attrs->{cache_class} = q(none);
-   delete $attrs->{lock } or $attrs->{lock_class } = q(none);
+   delete $attr->{cache} or $attr->{cache_class} = q(none);
+   delete $attr->{lock } or $attr->{lock_class } = q(none);
 
-   return File::DataClass::Schema->new( $attrs );
+   return File::DataClass::Schema->new( $attr );
 }
 
 sub find_source {
-   my ($self, $class) = @_; my $file = $self->classfile( $class );
+   my ($self, $class) = @_; my $file = classfile $class;
 
    for (@INC) {
       my $path = File::Spec->catfile( $_, $file ); -f $path and return $path;
@@ -80,6 +70,21 @@ sub io {
    my ($self, @rest) = @_; my $io = File::DataClass::IO->new( @rest );
 
    $io->exception_class( EXCEPTION_CLASS ); return $io;
+}
+
+{  my $cache;
+
+   sub read_post_install_config {
+      my $self  = shift; defined $cache and return $cache;
+
+      my $cfg   = $self->config;
+      my $attrs = { storage_attributes => {
+                           force_array => $cfg->{pi_arrays} } };
+      my $path  = File::Spec->catfile( $cfg->{ctrldir},
+                                       $cfg->{pi_config_file} );
+
+      return $cache = $self->file_dataclass_schema( $attrs )->load( $path );
+   }
 }
 
 sub status_for {
@@ -101,6 +106,10 @@ sub symlink {
    return "Symlinked ${from} to ${to}";
 }
 
+sub tempdir {
+   return untaint_path( $_[ 0 ]->config->{tempdir} || File::Spec->tmpdir );
+}
+
 sub tempfile {
    return $_[ 0 ]->io( $_[ 1 ] || $_[ 0 ]->tempdir )->tempfile;
 }
@@ -120,6 +129,8 @@ sub tempname {
 sub uuid {
    return $_[ 0 ]->io( $_[ 1 ] || UUID_PATH )->lock->chomp->getline;
 }
+
+no Moose::Role;
 
 1;
 
@@ -153,38 +164,9 @@ Provides file and directory methods to the application base class
 
 Prepends F<$base> to F<$path> unless F<$path> is an absolute path
 
-=head2 basename
+=head2 data_dump
 
-   $basename = $self->basename( $path, @suffixes );
-
-Returns the L<base name|File::Basename/basename> of the passed path
-
-=head2 catdir
-
-   $dir_path = $self->catdir( $part1, $part2 );
-
-Expose L<File::Spec/catdir>
-
-=head2 catfile
-
-   $file_path = $self->catfile( $dir_path, $file_name );
-
-Expose L<File::Spec/catfile>
-
-=head2 classdir
-
-   $dir_path = $self->classdir( __PACKAGE__ );
-
-Returns the path (directory) of a given class. Like L</classfile> but
-without the I<.pm> extenstion
-
-=head2 classfile
-
-   $file_path = $self->classfile( __PACKAGE__ );
-
-Returns the path (file name plus extension) of a given class. Uses
-L<File::Spec> for portability, e.g. C<App::Munchies> becomes
-C<App/Munchies.pm>
+=head2 data_load
 
 =head2 delete_tmp_files
 
@@ -192,12 +174,6 @@ C<App/Munchies.pm>
 
 Delete this processes temporary files. Files are in the C<$dir> directory
 which defaults to C<< $self->tempdir >>
-
-=head2 dirname
-
-   $dirname = $self->dirname( $path );
-
-Returns the L<directory name|File::Basename/dirname> of the passed path
 
 =head2 file_dataclass_schema
 
@@ -218,6 +194,13 @@ Find the source code for the given module
 
 Expose the methods in L<File::DataClass::IO>
 
+=head2 read_post_install_config
+
+   $picfg_hash_ref = $self->read_post_install_config;
+
+Returns a hash ref of the post installation config which was written to
+the control directory during the installation process
+
 =head2 status_for
 
    $stat_ref = $self->status_for( $path );
@@ -231,6 +214,12 @@ Return a hash for the given path containing it's inode status information
 Creates a symlink. If either C<$from> or C<$to> is a relative path then
 C<$base> is prepended to make it absolute. Returns a message indicating
 success or throws an exception on failure
+
+=head2 tempdir
+
+   $temporary_directory = $self->tempdir;
+
+Returns C<< $self->config->{tempdir} >> or L<File::Spec/tmpdir>
 
 =head2 tempfile
 

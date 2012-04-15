@@ -3,7 +3,7 @@
 package Class::Usul::Constants;
 
 use strict;
-use namespace::autoclean;
+use namespace::clean -except => 'meta';
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Moose;
@@ -12,8 +12,10 @@ use File::DataClass::Exception;
 
 with qw(File::DataClass::Constraints);
 
-class_has 'Assert'          => is => 'rw', isa => 'CodeRef'
-   default                  => sub {};
+class_has 'Assert'          => is => 'rw', isa => 'Maybe[CodeRef]';
+
+class_has 'Config_Extn'     => is => 'rw', isa => 'Str',
+   default                  => q(.xml);
 
 class_has 'Exception_Class' => is => 'rw', isa => 'F_DC_Exception',
    default                  => q(File::DataClass::Exception);
@@ -21,11 +23,13 @@ class_has 'Exception_Class' => is => 'rw', isa => 'F_DC_Exception',
 my @constants;
 
 BEGIN {
-   @constants = ( qw(ARRAY ASSERT BRK CODE DIGEST_ALGORITHMS ENCODINGS
-                     EXCEPTION_CLASS EXTNS FAILED FALSE HASH LANG
-                     LOCALIZE LOG_LEVELS LSB NO NUL OK PERMS PHASE
-                     PREFIX QUIT RSB SEP SPC TRUE UNTAINT_PATH_REGEX
-                     UUID_PATH WIDTH YES) );
+   @constants = ( qw(ARRAY ASSERT BRK CODE CONFIG_EXTN DEFAULT_DIR
+                     DEFAULT_ENCODING DEFAULT_L10N_DOMAIN
+                     DIGEST_ALGORITHMS ENCODINGS EVIL EXCEPTION_CLASS EXTNS
+                     FAILED FALSE HASH LANG LBRACE LOCALIZE LOG_LEVELS LSB
+                     NO NUL OK PERMS PHASE PREFIX QUIT RSB SEP SPC TRUE
+                     UNTAINT_IDENTIFIER UNTAINT_PATH_REGEX UUID_PATH
+                     WIDTH YES) );
 }
 
 use Sub::Exporter -setup => {
@@ -36,11 +40,13 @@ sub ARRAY      () { q(ARRAY)            }
 sub BRK        () { q(: )               }
 sub CODE       () { q(CODE)             }
 sub ENCODINGS  () { ( qw(ascii iso-8859-1 UTF-8 guess) ) }
+sub EVIL       () { q(MSWin32)          }
 sub EXTNS      () { ( qw(.pl .pm .t) )  }
 sub FAILED     () { 1                   }
 sub FALSE      () { 0                   }
 sub HASH       () { q(HASH)             }
 sub LANG       () { q(en)               }
+sub LBRACE     () { q({)                }
 sub LOCALIZE   () { q([_)               }
 sub LOG_LEVELS () { ( qw(alert debug error fatal info warn) ) }
 sub LSB        () { q([)                }
@@ -59,10 +65,15 @@ sub UUID_PATH  () { [ NUL, qw(proc sys kernel random uuid) ] }
 sub WIDTH      () { 80                  }
 sub YES        () { q(y)                }
 
-sub ASSERT             () { __PACKAGE__->Assert }
-sub DIGEST_ALGORITHMS  () { ( qw(SHA-512 SHA-256 SHA-1 MD5) ) }
-sub EXCEPTION_CLASS    () { __PACKAGE__->Exception_Class }
-sub UNTAINT_PATH_REGEX () { qr{ \A ([^\$%;|&><]+) \z }mx }
+sub ASSERT              () { __PACKAGE__->Assert || sub {} }
+sub CONFIG_EXTN         () { __PACKAGE__->Config_Extn }
+sub DEFAULT_DIR         () { [ NUL, qw(etc default) ] }
+sub DEFAULT_ENCODING    () { q(UTF-8) }
+sub DEFAULT_L10N_DOMAIN () { q(default) }
+sub DIGEST_ALGORITHMS   () { ( qw(SHA-512 SHA-256 SHA-1 MD5) ) }
+sub EXCEPTION_CLASS     () { __PACKAGE__->Exception_Class }
+sub UNTAINT_IDENTIFIER  () { qr{ \A ([a-zA-Z0-9_]+) \z }mx }
+sub UNTAINT_PATH_REGEX  () { qr{ \A ([^\$%;|&><]+) \z }mx }
 
 
 __PACKAGE__->meta->make_immutable;

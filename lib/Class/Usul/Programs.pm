@@ -3,96 +3,93 @@
 package Class::Usul::Programs;
 
 use strict;
+use attributes ();
 use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use Class::Usul::Config;
-use Class::Usul::Constants;
-use Class::Usul::I18N;
-use Class::Usul::Response::Meta;
 use Moose;
+use Class::Inspector;
+use Class::Usul::Constants;
+use Class::Usul::Response::Meta;
+use Class::Usul::Functions qw(app_prefix arg_list assert_directory class2appdir
+                              classdir elapsed env_prefix exception
+                              is_member prefix2class say split_on__ throw
+                              untaint_identifier untaint_path);
+use Cwd                    qw();
+use Encode                 qw(decode);
+use English                qw(-no_match_vars);
+use File::Basename         qw(basename);
+use File::Spec::Functions  qw(catdir catfile);
+use IO::Interactive        qw(is_interactive);
+use List::Util             qw(first);
+use Scalar::Util           qw(blessed);
 use Config;
 use Pod::Man;
-use TryCatch;
-use File::Spec;
 use Pod::Usage;
 use File::HomeDir;
 use Term::ReadKey;
 use Text::Autoformat;
-use File::DataClass::Schema;
-use Cwd             qw(abs_path);
-use Encode          qw(decode);
-use English         qw(-no_match_vars);
-use IO::Interactive qw(is_interactive);
-use List::Util      qw(first);
+use Try::Tiny;
 
 extends qw(Class::Usul);
 with    qw(MooseX::Getopt::Dashes);
 
 has 'debug',     => is => 'rw', isa => 'Bool',
-   documentation => 'Output debugging information',
+   documentation => 'Turn debugging on. Promps if interactive',
    traits        => [ 'Getopt' ], cmd_aliases => q(D), cmd_flag => 'debug';
 
 has 'help1'      => is => 'ro', isa => 'Bool', default => FALSE,
    documentation => 'Uses Pod::Usage to describe the program usage options',
-   traits        => [ 'Getopt' ], cmd_aliases => q(h), cmd_flag => 'some_help';
+   traits        => [ 'Getopt' ], cmd_aliases => q(h), cmd_flag => 'options';
 
 has 'help2'      => is => 'ro', isa => 'Bool', default => FALSE,
    documentation => 'Uses Pod::Man to display the program documentation',
-   traits        => [ 'Getopt' ], cmd_aliases => q(H), cmd_flag => 'more_help';
+   traits        => [ 'Getopt' ], cmd_aliases => q(H), cmd_flag => 'man_page';
 
-has 'home'       => is => 'ro', isa => 'F_DC_Directory', coerce => TRUE,
-   documentation => 'Directory containing the config file';
+has 'homedir'    => is => 'ro', isa => 'Str',
+   documentation => 'Directory containing the configuration file',
+   traits        => [ 'Getopt' ], cmd_flag => 'home';
 
 has 'language'   => is => 'ro', isa => 'Str', default => NUL,
-   documentation => 'Loads the message catalog for a given language',
+   documentation => 'Loads the specified language message catalog',
    traits        => [ 'Getopt' ], cmd_aliases => q(L), cmd_flag => 'language';
 
 has 'method'     => is => 'ro', isa => 'Str', default => NUL,
-   documentation => 'Name of the command to run',
+   documentation => 'Name of the method to call. Required',
    traits        => [ 'Getopt' ], cmd_aliases => q(c), cmd_flag => 'command';
 
+has 'nodebug'    => is => 'ro', isa => 'Bool',
+   documentation => 'Do not prompt for debugging',
+   traits        => [ 'Getopt' ], cmd_aliases => q(n), cmd_flag => 'nodebug';
+
 has 'params'     => is => 'ro', isa => 'HashRef', default => sub { {} },
-   documentation => 'Key/value pairs passed as arguments to the command',
+   documentation => 'Zero, one or more key/value pairs passed to the method call',
    traits        => [ 'Getopt' ], cmd_aliases => q(o), cmd_flag => 'option';
 
-has 'silent'     => is => 'rw', isa => 'Bool', default => FALSE,
-   documentation => 'Suppress the display of information messages',
-   traits        => [ 'Getopt' ], cmd_aliases => q(S), cmd_flag => 'silent';
+has 'quiet'      => is => 'ro', isa => 'Bool', default => FALSE,
+   documentation => 'Quiet the display of information messages',
+   traits        => [ 'Getopt' ], cmd_aliases => q(q), cmd_flag => 'quiet';
 
 has 'version'    => is => 'ro', isa => 'Bool', default => FALSE,
-   documentation => 'Displays the version of the C::U::Programs subclass',
+   documentation => 'Displays the version number of the program class',
    traits        => [ 'Getopt' ], cmd_aliases => q(V), cmd_flag => 'version';
 
 
-has '_appclass'  => is => 'ro', isa     => 'Str', init_arg => 'appclass',
-   reader        => 'appclass';
-
-has '_logname'   => is => 'ro', isa     => 'Str', init_arg => undef,
+has '_logname'   => is => 'ro', isa     => 'Str',     init_arg => undef,
    reader        => 'logname',  default => $ENV{USER} || $ENV{LOGNAME};
-
-has '_messages'  => is => 'rw', isa     => 'HashRef', init_arg => undef,
-   accessor      => 'messages', default => sub { {} };
-
-has '_name'      => is => 'rw', isa     => 'Str', init_arg => 'name',
-   reader        => 'name',     default => NUL;
 
 has '_os'        => is => 'rw', isa     => 'HashRef', init_arg => undef,
    accessor      => 'os',       default => sub { {} };
 
-with qw(Class::Usul::IPC);
+with qw(Class::Usul::File Class::Usul::IPC);
 
 around BUILDARGS => sub {
-   my ($orig, $class, @args) = @_;
+   my ($next, $class, @args) = @_; my $attr = $class->$next( @args );
 
-   my $attr = $class->$orig( @args );
-   my $prog = $class->basename( $PROGRAM_NAME, EXTNS );
-
-   $attr->{appclass} ||= $class->prefix2class    ( $prog );
-   $attr->{name    } ||= $class->get_program_name( $prog );
-   $attr->{home    } ||= $class->get_homedir     ( $attr );
-   $attr->{config  }   = $class->load_config     ( $attr );
-   $attr->{encoding}   = $class->apply_encoding  ( $attr );
+   $attr->{appclass} ||= prefix2class basename( $PROGRAM_NAME, EXTNS );
+   $attr->{home    } ||= $class->_get_homedir( $attr );
+   $attr->{config  } ||= $class->_load_config( $attr );
+   $attr->{encoding}   = __apply_encoding( $attr );
 
    return $attr;
 };
@@ -102,23 +99,24 @@ sub BUILD {
 
    autoflush STDOUT TRUE; autoflush STDERR TRUE;
 
-   $self->devel   and $self->udump( $self );
-   $self->help2   and $self->print_usage( 2 );
-   $self->help1   and $self->print_usage( 1 );
-   $self->version and $self->output_version;
+   $self->help2   and $self->_output_usage( 2 );
+   $self->help1   and $self->_output_usage( 1 );
+   $self->version and $self->_output_version;
 
-   $self->debug       ( $self->get_debug_option );
-   $self->lock->debug ( $self->debug            );
-   $self->SUPER::debug( $self->debug            );
-   $self->os          ( $self->load_os_depends  );
-   $self->messages    ( $self->load_messages    );
+   $self->debug       ( $self->_get_debug_option );
+   $self->lock->debug ( $self->debug             );
+   $self->SUPER::debug( $self->debug             );
+   $self->os          ( $self->_load_os_depends  );
    return;
 }
 
 sub add_leader {
-   my ($self, $text, $args) = @_; $text or return NUL; $args ||= {};
+   my ($self, $text, $args) = @_; $args ||= {};
 
-   my $leader = exists $args->{no_lead} ? NUL : (ucfirst $self->name).BRK;
+   $text = $self->loc( $text || '[no message]', $args->{args} || [] );
+
+   my $leader = exists $args->{no_lead}
+              ? NUL : (ucfirst $self->config->name).BRK;
 
    if ($args->{fill}) {
       my $width = $args->{width} || WIDTH;
@@ -133,120 +131,49 @@ sub add_leader {
 sub anykey {
    my ($self, $prompt) = @_; $prompt ||= 'Press any key to continue...';
 
-   return $self->prompt( -p => $prompt, -e => NUL, -1 => TRUE );
+   return __prompt( -p => $prompt, -e => NUL, -1 => TRUE );
 }
 
-sub apply_encoding {
-   my ($class, $args) = @_;
+sub can_call {
+   my ($self, $method) = @_;
 
-   my $enc = $args->{encoding} || $args->{config}->{encoding} || q(UTF-8);
-
-   $_ = decode( $enc , $_ )        for @ARGV;
-   binmode $_, ":encoding(${enc})" for (*STDIN, *STDOUT, *STDERR);
-   return $enc;
+   return (is_member $method, __list_methods_of( $self )) ? TRUE : FALSE;
 }
 
-sub data_dump {
-   my ($self, @rest) = @_; my $args = $self->arg_list( @rest );
-
-   return File::DataClass::Schema->new( $self )->dump( $args );
+sub debug_flag {
+   return $_[ 0 ]->debug ? q(-D) : q(-n);
 }
 
-sub data_load {
-   my ($self, @rest) = @_; my $args = $self->arg_list( @rest );
+sub dump_self : method {
+   my $self = shift;
 
-   $args = { path => $args->{path} || NUL,
-             storage_attributes => { _arrays => $args->{arrays} || {} } };
-
-   return File::DataClass::Schema->new( $self, $args )->load;
-}
-
-sub devel {
-   return $_[0]->debug
-       && $ENV{ $_[0]->env_prefix( $_[0]->appclass ).q(_DEVEL) };
-}
-
-sub dont_ask {
-   return $_[0]->help1 || $_[0]->help2 || ! is_interactive();
+   $self->dumper( $self ); $self->dumper( $self->config );
+   return OK;
 }
 
 sub error {
-   my ($self, $text, $args) = @_; $text ||= '[no message]'; $args ||= {};
+   my ($self, $err, $args) = @_;
 
-   $text = $self->loc( $text, @{ $args->{loc} || [] } );
+   $self->log_error( $_ ) for (split m{ \n }mx, NUL.$err);
 
-   $self->log_error( $_ ) for (split m{ \n }mx, $text);
-
-   $self->_print_fh( \*STDERR, $self->add_leader( $text, $args )."\n" );
+   __print_fh( \*STDERR, $self->add_leader( $err, $args )."\n" );
    return;
 }
 
 sub fatal {
-   my ($self, $text, $args) = @_; $text ||= '[no message]'; $args ||= {};
+   my ($self, $err, $args) = @_; my (undef, $file, $line) = caller 0;
 
-   $text = $self->loc( $text, @{ $args->{loc} || [] } );
+   $err ||= 'unknown'; my $posn = ' at '.Cwd::abs_path( $file )." line ${line}";
 
-   $self->log_alert( $_ ) for (split m{ \n }mx, $text);
+   $self->log_alert( $_ ) for (split m{ \n }mx, $err.$posn);
 
-   my (undef, $file, $line) = caller 0;
+   __print_fh( \*STDERR, $self->add_leader( $err, $args ).$posn."\n" );
 
-   $text  = $self->add_leader( $text, $args );
-   $text .= ' at '.abs_path( $file ).' line '.$line;
+   $err and blessed $err
+        and $err->can( q(stacktrace) )
+        and __print_fh( \*STDERR, $err->stacktrace."\n" );
 
-   $self->_print_fh( \*STDERR, $text."\n" );
-   exit 1;
-}
-
-sub get_debug_option {
-   my $self = shift;
-
-   defined $self->debug and return $self->debug;
-   $self->dont_ask      and return FALSE;
-
-   return $self->yorn( 'Do you want debugging turned on', FALSE, TRUE );
-}
-
-sub get_homedir {
-   my ($class, $args) = @_; my $app = $args->{appclass};
-
-   # 1. Environment variable
-   my $path = $ENV{ $class->env_prefix( $app ).q(_HOME) };
-
-   $path = $class->_assert_directory( $path ) and return $path;
-
-   # 2a. Users home directory
-   my $appdir   = $class->class2appdir( $app );
-   my $classdir = $class->classdir( $app );
-
-   $path = $class->catdir( File::HomeDir->my_home, $appdir );
-   $path = $class->catdir( $path, qw(default lib), $classdir );
-   $path = $class->_assert_directory( $path ) and return $path;
-
-   # 2b.
-   $path = $class->catdir( File::HomeDir->my_home, q(.).$appdir );
-   $path = $class->_assert_directory( $path ) and return $path;
-
-   # 3. Well known path
-   my $file       = $class->app_prefix( $app );
-   my $well_known = $class->catfile( NUL, qw(etc default), $file );
-
-   $path = $class->_read_path_from( $well_known );
-   $path = $class->_assert_directory( $path ) and return $path;
-
-   # 4. Default install prefix
-   $path = $class->catdir( @{ PREFIX() }, $appdir );
-   $path = $class->catdir( $path, qw(default lib), $classdir );
-   $path = $class->_assert_directory( $path ) and return $path;
-
-   # 5. Config file found in @INC
-   for my $dir (map { $class->catdir( abs_path( $_ ), $classdir ) } @INC) {
-      $path = $class->untaint_path( $class->catfile( $dir, $file.q(.xml) ) );
-
-      -f $path and return $class->dirname( $path );
-   }
-
-   # 6. Default to /tmp
-   return $class->untaint_path( File::Spec->tmpdir );
+   exit FAILED;
 }
 
 sub get_line {
@@ -270,10 +197,10 @@ sub get_line {
    my $prompt  = $left_prompt.SPC.$right_prompt;
       $prompt .= ($multiline ? "\n".$default : NUL).BRK;
    my $result  = $noecho
-               ? $self->prompt( -d => $default, -p => $prompt, -e => q(*) )
-               : $self->prompt( -d => $default, -p => $prompt );
+               ? __prompt( -d => $default, -p => $prompt, -e => q(*) )
+               : __prompt( -d => $default, -p => $prompt );
 
-   $quit and defined $result and lc $result eq QUIT and exit 1;
+   $quit and defined $result and lc $result eq QUIT and exit FAILED;
 
    return NUL.$result;
 }
@@ -281,182 +208,79 @@ sub get_line {
 sub get_meta {
    my ($self, $path) = @_; my $meta_class = q(Class::Usul::Response::Meta);
 
-   my @paths = ( $self->config->{appldir}->catfile( q(META.yml) ),
-                 $self->config->{ctrldir}->catfile( q(META.yml) ),
+   my @paths = ( $self->config->appldir->catfile( q(META.yml) ),
+                 $self->config->ctrldir->catfile( q(META.yml) ),
                  $self->io( q(META.yml) ) );
 
    $path and unshift @paths, $self->io( $path );
 
    return $meta_class->new( $_ ) for (grep { $_->is_file } @paths);
 
-   $self->throw( 'No META.yml file' );
+   throw 'No META.yml file';
    return;
 }
 
-sub get_program_name {
-   my ($class, $prog) = @_; return $class->split_on__( $prog, 1 ) || $prog;
+sub get_option {
+   my ($self, $question, $default, $quit, $width, $options) = @_;
+
+   $question ||= 'Select one option from the following list:';
+
+   $self->output( $question, { cl => TRUE } ); my $count = 1;
+
+   my $text = join "\n", map { $count++.q( - ).$_ } @{ $options };
+
+   $self->output( $text, { cl => TRUE, nl => TRUE } );
+
+   my $opt = $self->get_line( 'Select option', $default, $quit, $width );
+
+   $opt !~ m{ \A \d+ \z }mx and $opt = defined $default ? $default : 0;
+
+   return $opt - 1;
+}
+
+sub get_owner {
+   my ($self, $pi_cfg) = @_; $pi_cfg ||= {};
+
+   return ($self->params->{uid} || getpwnam( $pi_cfg->{owner} ) || 0,
+           $self->params->{gid} || getgrnam( $pi_cfg->{group} ) || 0);
 }
 
 sub info {
-   my ($self, $text, $args) = @_; $text ||= '[no message]'; $args ||= {};
+   my ($self, $err, $args) = @_;
 
-   $text = $self->loc( $text, @{ $args->{loc} || [] } );
+   $self->log_info( $_ ) for (split m{ [\n] }mx, $err);
 
-   $self->log_info( $_ ) for (split m{ \n }mx, $text);
-
-   $self->silent or $self->say( $self->add_leader( $text, $args ) );
+   $self->quiet or say $self->add_leader( $err, $args );
    return;
 }
 
-sub load_config {
-   my ($class, $args) = @_;
+sub interpolate_cmd {
+   my ($self, $cmd, @args) = @_;
 
-   my $config_class = delete $args->{config_class} || q(Class::Usul::Config);
+   my $ref = $self->can( q(_interpolate_).$cmd.q(_cmd) )
+      or return [ $cmd, @args ];
 
-   # Now we know where the config file should be we can try parsing it
-   return $config_class->new( $args );
+   return $self->$ref( $cmd, @args );
 }
 
-sub load_messages {
-   my $self = shift;
-   my $lang = $self->language or return {};
-   my $file = q(default_).$lang.q(.xml);
-   my $path = $self->config->{ctrldir}->catfile( $file );
-
-   -f $path or return {};
-
-   my $cfg  = $self->data_load( arrays => [ q(messages) ], path => $path );
-
-   return $cfg->{messages} || {};
+sub list_methods : method {
+   say __list_methods_of( shift ); return OK;
 }
 
-sub load_os_depends {
-   my $self = shift;
-   my $file = q(os_).$Config{osname}.q(.xml);
-   my $path = $self->config->{ctrldir}->catfile( $file );
-
-   -f $path or return {};
-
-   my $cfg  = $self->data_load( arrays => [ q(os) ], path => $path );
-
-   return $cfg->{os} || {};
-}
-
-*loc = \&localize;
-
-sub localize {
+sub loc {
    my ($self, @rest) = @_;
 
-   return Class::Usul::I18N->localize( $self->messages, @rest );
+   my $params = { lang => $self->language, ns => $self->config->name };
+
+   return $self->next::method( $params, @rest );
 }
 
 sub output {
-   my ($self, $text, $args) = @_; $text or return; $args ||= {};
+   my ($self, $text, $args) = @_; $args ||= {};
 
-   $self->silent and return;
-   $args->{cl} and $self->say;
-   $text = $self->loc( $text, @{ $args->{loc} || [] } );
-   $self->say( $self->add_leader( $text, $args ) );
-   $args->{nl} and $self->say;
-   return;
-}
+   $self->quiet and return; $args->{cl} and say;
 
-sub output_version {
-   my $self = shift; $self->output( 'Version '.$self->VERSION ); exit 0;
-}
-
-sub print_usage {
-   my ($self, $verbose) = @_; $verbose ||= 0;
-
-   my $path = NUL.$self->config->{pathname};
-
-   if ($verbose < 2) {
-      pod2usage( { -input   => $path,
-                   -message => SPC, -verbose => $verbose } );
-      exit 0; # Never reached
-   }
-
-   my $doc_title = $self->config->{doc_title} || NUL;
-   my $parser    = Pod::Man->new( center  => $doc_title,
-                                  name    => $self->appclass,
-                                  release => 'Version '.($self->VERSION || NUL),
-                                  section => q(3m) );
-   my $tempfile = $self->tempfile;
-   my $cmd      = q(cat ).$tempfile->pathname.q( | nroff -man);
-
-   $parser->parse_from_file( $path, $tempfile->pathname );
-   system $cmd;
-   exit 0;
-}
-
-sub prompt {
-   my ($self, @rest) = @_; my ($len, $newlines, $next, $text);
-
-   my $IN      = \*STDIN;
-   my $OUT     = \*STDOUT;
-   my $args    = $self->_map_prompt_args( $self->arg_list( @rest ) );
-   my $default = $args->{default};
-   my $echo    = $args->{echo   };
-   my $onechar = $args->{onechar};
-   my $input   = NUL;
-
-   unless (is_interactive()) {
-      return $default if ($ENV{PERL_MM_USE_DEFAULT});
-      return getc $IN if ($onechar);
-      return scalar <$IN>;
-   }
-
-   my ($cntl, %cntl) = $self->_get_control_chars( $IN );
-   local $SIG{INT}   = sub { $self->_restore_mode( $IN ); exit 1 };
-
-   $self->_print_fh( $OUT, $args->{prompt} );
-   $self->_raw_mode( $IN );
-
-   while (TRUE) {
-      if (defined ($next = getc $IN)) {
-         if ($next eq $cntl{INTERRUPT}) {
-            $self->_restore_mode( $IN );
-            exit 1;
-         }
-         elsif ($next eq $cntl{ERASE}) {
-            if ($len = length $input) {
-               $input = substr $input, 0, $len - 1;
-               $self->_print_fh( $OUT, "\b \b" );
-            }
-
-            next;
-         }
-         elsif ($next eq $cntl{EOF}) {
-            $self->_restore_mode( $IN );
-            close $IN
-               or $self->throw( error => 'IO error [_1]', args =>[ $ERRNO ] );
-            return $input;
-         }
-         elsif ($next !~ m{ $cntl }mx) {
-            $input .= $next;
-
-            if ($next eq "\n") {
-               if ($input eq "\n" and defined $default) {
-                  $text = defined $echo ? $echo x length $default : $default;
-                  $self->_print_fh( $OUT, "[${text}]\n" );
-                  $self->_restore_mode( $IN );
-
-                  return $onechar ? substr $default, 0, 1 : $default;
-               }
-
-               $newlines .= "\n";
-            }
-            else { $self->_print_fh( $OUT, defined $echo ? $echo : $next ) }
-         }
-         else { $input .= $next }
-      }
-
-      if ($onechar or not defined $next or $input =~ m{ \Q$RS\E \z }mx) {
-         chomp $input; $self->_restore_mode( $IN );
-         defined $newlines and $self->_print_fh( $OUT, $newlines );
-         return $onechar ? substr $input, 0, 1 : $input;
-      }
-   }
+   say $self->add_leader( $text, $args ); $args->{nl} and say;
 
    return;
 }
@@ -464,52 +288,55 @@ sub prompt {
 sub run {
    my $self = shift; my ($rv, $text);
 
-   my $method = $self->method or $self->print_usage( 0 );
+   my $method = $self->method or $self->_output_usage( 0 );
 
    $text  = 'Started by '.$self->logname.' Version '.$self->VERSION.SPC;
    $text .= 'Pid '.(abs $PID);
    $self->output( $text );
 
-   if ($self->can( $method )) {
-      umask oct ($self->config->{mode} || PERMS);
+   if ($self->can( $method ) and $self->can_call( $method )) {
+      umask $self->config->mode;
 
       my $params = exists $self->params->{ $method }
                  ? $self->params->{ $method } : [];
 
       try { defined ($rv = $self->$method( @{ $params } ))
-               or $self->throw( error => 'Method [_1] return value undefined',
-                                args  => [ $method ] );
+               or throw error => 'Method [_1] return value undefined',
+                        args  => [ $method ];
       }
-      catch ($error) {
-         my $e = $self->catch( $error );
+      catch {
+         my $e = exception $_;
 
-         $self->error( $e->as_string( $self->debug ), { loc => $e->args } );
+         $e->out and $self->output( $e->out );
+         $self->error( $e->error, { args => $e->args } );
+         $self->debug and __print_fh( \*STDERR, $e->stacktrace."\n" );
          $rv = $e->rv || -1;
-      }
+      };
 
       not defined $rv and $rv = -1
-         and $self->error( "Method $method error uncaught/rv undefined" );
+         and $self->error( "Method ${method} error uncaught/rv undefined" );
    }
    else {
-      $self->error( "Method $method not defined in class ".(ref $self) );
+      $self->error( "Method ${method} not defined in class ".(blessed $self) );
       $rv = -1;
    }
 
-   if (defined $rv and not $rv) { $self->output( 'Finished' ) }
-   else { $self->output( "Terminated code $rv" ) }
+   if (defined $rv and not $rv) {
+      $self->output( 'Finished in '.elapsed.' seconds' );
+   }
+   elsif (defined $rv) { $self->output( "Terminated code ${rv}" ) }
+   else { $self->output( 'Terminated with undefined rv' ); $rv = FAILED }
 
    $self->delete_tmp_files;
    return $rv || OK;
 }
 
 sub warning {
-   my ($self, $text, $args) = @_; $text ||= '[no message]'; $args ||= {};
+   my ($self, $err, $args) = @_;
 
-   $text = $self->loc( $text, @{ $args->{loc} || [] } );
+   $self->log_warn( $_ ) for (split m{ \n }mx, $err);
 
-   $self->log_warning( $_ ) for (split m{ \n }mx, $text);
-
-   $self->silent or $self->say( $self->add_leader( $text, $args ) );
+   $self->quiet or say $self->add_leader( $err, $args );
    return;
 }
 
@@ -521,14 +348,14 @@ sub yorn {
 
    $default = $default ? $yes : $no; $quit = $quit ? QUIT : NUL;
 
-   my $advice       = $quit ? "($yes/$no, $quit) " : "($yes/$no) ";
+   my $advice       = $quit ? "(${yes}/${no}, ${quit}) " : "(${yes}/${no}) ";
    my $right_prompt = $advice.q([).$default.q(]);
    my $left_prompt  = $question;
 
    if (defined $width) {
-      my $total    = $width || $self->config->{pwidth} || 40;
-      my $right_x  = length $right_prompt;
-      my $left_x   = $total - $right_x;
+      my $max_width = $width || $self->config->pwidth || 40;
+      my $right_x   = length $right_prompt;
+      my $left_x    = $max_width - $right_x;
 
       $left_prompt = sprintf '%-*s', $left_x, $question;
    }
@@ -537,11 +364,10 @@ sub yorn {
 
    $newline and $prompt .= "\n";
 
-   while ($result = $self->prompt( -d => $default, -p => $prompt )) {
-      exit   1     unless (defined $result);
-      exit   1     if     ($quit and $result =~ m{ \A (?: $quit | [\e] ) }imx);
-      return TRUE  if     ($result =~ m{ \A $yes }imx);
-      return FALSE if     ($result =~ m{ \A $no  }imx);
+   while ($result = __prompt( -d => $default, -p => $prompt )) {
+      $quit and $result =~ m{ \A (?: $quit | [\e] ) }imx and exit FAILED;
+      $result =~ m{ \A $yes }imx and return TRUE;
+      $result =~ m{ \A $no  }imx and return FALSE;
    }
 
    return;
@@ -549,46 +375,123 @@ sub yorn {
 
 # Private methods
 
-sub _assert_directory {
-   my ($class, $path) = @_; $path or return;
-
-   $path = $class->untaint_path( $path ) or return;
-
-   return -d $path ? $path : undef;
-}
-
-sub _get_control_chars {
-   my ($self, $handle) = @_; my %cntl = GetControlChars $handle;
-
-   return ((join q(|), values %cntl), %cntl);
+sub _dont_ask {
+   return $_[ 0 ]->help_flag || $_[ 0 ]->help1 || $_[ 0 ]->help2
+       || ! is_interactive();
 }
 
 sub _getopt_full_usage {
    # Required to stop MX::Getopt from printing usage
 }
 
-sub _map_prompt_args {
-   my ($self, $args) = @_;
+sub _get_debug_option {
+   my $self = shift;
 
-   my %map = ( qw(-1 onechar -d default -e echo -p prompt) );
+   $self->nodebug       and return FALSE;
+   defined $self->debug and return $self->debug;
+   $self->_dont_ask     and return FALSE;
 
-   for (keys %{ $args }) {
-      exists $map{ $_ } and $args->{ $map{ $_ } } = delete $args->{ $_ };
+   return $self->yorn( 'Do you want debugging turned on', FALSE, TRUE );
+}
+
+sub _get_homedir {
+  my ($self, $attr) = @_; my $class = $attr->{appclass}; my $path;
+
+   # 0. Pass the directory in
+   $path = assert_directory $attr->{homedir} and return $path;
+
+   # 1. Environment variable
+   $path = $ENV{ (env_prefix $class).q(_HOME) };
+   $path = assert_directory $path and return $path;
+
+   # 2a. Users home directory - application directory
+   my $appdir = class2appdir $class; my $classdir = classdir $class;
+
+   $path = catdir( File::HomeDir->my_home, $appdir );
+   $path = catdir( $path, qw(default lib), $classdir );
+   $path = assert_directory $path and return $path;
+
+   # 2b. Users home directory - dotfile
+   $path = catdir( File::HomeDir->my_home, q(.).$appdir );
+   $path = assert_directory $path and return $path;
+
+   # 3. Well known path
+   my $well_known = catfile( @{ DEFAULT_DIR() }, $appdir );
+
+   $path = $self->_read_path_from( $well_known );
+   $path and $path = catdir( $path, q(lib), $classdir );
+   $path = assert_directory $path and return $path;
+
+   # 4. Default install prefix
+   $path = catdir( @{ PREFIX() }, $appdir );
+   $path = catdir( $path, qw(default lib), $classdir );
+   $path = assert_directory $path and return $path;
+
+   # 5. Config file found in @INC
+   my $file = app_prefix $class;
+
+   for my $dir (map { catdir( Cwd::abs_path( $_ ), $classdir ) } @INC) {
+      $path = untaint_path catfile( $dir, $file.CONFIG_EXTN );
+
+      -f $path and return dirname( $path );
    }
 
-   return $args;
+   # 6. Default to /tmp
+   return untaint_path File::Spec->tmpdir;
 }
 
-sub _print_fh {
-   my ($self, $handle, $text) = @_;
+sub _load_config {
+   my ($self, $attr) = @_;
 
-   print {$handle} $text
-      or $self->throw( error => 'IO error [_1]', args =>[ $ERRNO ] );
-   return;
+   my $file   = (app_prefix $attr->{appclass} ).CONFIG_EXTN;
+   my $path   = catfile( $attr->{home}, $file );
+   # Now we know where the config file should be we can try parsing it
+   my $config = -f $path ? $self->data_load( path => $path ) : {};
+
+   return { %{ $attr }, %{ $config || {} } };
 }
 
-sub _raw_mode {
-   my ($self, $handle) = @_; ReadMode q(raw), $handle; return;
+sub _load_os_depends {
+   my $self = shift;
+   my $file = q(os_).$Config{osname}.$self->config->extension;
+   my $path = $self->config->ctrldir->catfile( $file );
+
+   $path->exists or return {};
+
+   my $cfg  = $self->data_load( arrays => [ q(os) ], path => $path ) || {};
+
+   return $cfg->{os} || {};
+}
+
+sub _man_page_from {
+   my ($self, $src) = @_; my $cfg = $self->config;
+
+   my $parser   = Pod::Man->new( center  => $cfg->doc_title || NUL,
+                                 name    => $cfg->script,
+                                 release => 'Version '.$self->version,
+                                 section => q(3m) );
+   my $tempfile = $self->tempfile;
+   my $cmd      = $cfg->man_page_cmd || [];
+
+   $parser->parse_from_file( NUL.$src->pathname, $tempfile->pathname );
+   say $self->run_cmd( [ @{ $cmd }, $tempfile->pathname ] )->out;
+   return OK;
+}
+
+sub _output_usage {
+   my ($self, $verbose) = @_; my $method = $ARGV[ 1 ];
+
+   $method and $self->can_call( $method ) and exit $self->_usage_for( $method );
+
+   $verbose > 1 and exit $self->_man_page_from( $self->config );
+
+   pod2usage( { -input   => NUL.$self->config->pathname, -message => SPC,
+                -verbose => $verbose } );
+   exit OK; # Never reached
+}
+
+sub _output_version {
+   my $self = shift; $self->output( 'Version '.$self->VERSION ); exit OK;
 }
 
 sub _read_path_from {
@@ -600,8 +503,146 @@ sub _read_path_from {
                    : undef;
 }
 
-sub _restore_mode {
-   my ($self, $handle) = @_; ReadMode q(restore), $handle; return;
+sub _usage_for {
+   my ($self, $method) = @_; my @classes = (blessed $self);
+
+   $method = untaint_identifier $method;
+
+   while (my $class = shift @classes) {
+      no strict q(refs);
+
+      if (defined &{ "${class}::${method}" }) {
+         my $selector = Pod::Select->new(); $selector->select( q(/).$method );
+         my $source   = $self->find_source( $class );
+         my $tempfile = $self->tempfile;
+
+         $selector->parse_from_file( $source, $tempfile->pathname );
+         return $self->_man_page_from( $tempfile );
+      }
+
+      push @classes, $_ for (@{ "${class}::ISA" });
+   }
+
+   return FAILED;
+}
+
+# Private functions
+
+sub __apply_encoding {
+   my $attr = shift || {}; $attr->{config} ||= {};
+   my $enc  = $attr->{encoding} || $attr->{config}->{encoding}
+           || DEFAULT_ENCODING;
+
+   $_ = decode( $enc , $_ )        for @ARGV;
+   binmode $_, ":encoding(${enc})" for (*STDIN, *STDOUT, *STDERR);
+   return $enc;
+}
+
+sub __get_control_chars {
+   my $handle = shift; my %cntl = GetControlChars $handle;
+
+   return ((join q(|), values %cntl), %cntl);
+}
+
+sub __list_methods_of {
+   my $arg = shift; my $class = blessed $arg || $arg;
+
+   return map  { s{ \A .+ :: }{}msx; $_ }
+          grep { my $x = $_;
+                 grep { $_ eq q(method) } attributes::get( \&{ $x } ) }
+              @{ Class::Inspector->methods( $class, 'full', 'public' ) };
+}
+
+sub __map_prompt_args {
+   my $args = shift; my %map = ( qw(-1 onechar -d default -e echo -p prompt) );
+
+   for (keys %{ $args }) {
+      exists $map{ $_ } and $args->{ $map{ $_ } } = delete $args->{ $_ };
+   }
+
+   return $args;
+}
+
+sub __print_fh {
+   my ($handle, $text) = @_;
+
+   print {$handle} $text or throw error => 'IO error: [_1]', args =>[ $ERRNO ];
+   return;
+}
+
+sub __prompt {
+   my $args    = __map_prompt_args( arg_list @_ );
+   my $default = $args->{default};
+   my $echo    = $args->{echo   };
+   my $onechar = $args->{onechar};
+   my $OUT     = \*STDOUT;
+   my $IN      = \*STDIN;
+   my $input   = NUL;
+
+   my ($len, $newlines, $next, $text);
+
+   unless (is_interactive()) {
+      $ENV{PERL_MM_USE_DEFAULT} and return $default;
+      $onechar and return getc $IN;
+      return scalar <$IN>;
+   }
+
+   my ($cntl, %cntl) = __get_control_chars( $IN );
+   local $SIG{INT}   = sub { __restore_mode( $IN ); exit FAILED };
+
+   __print_fh( $OUT, $args->{prompt} ); __raw_mode( $IN );
+
+   while (TRUE) {
+      if (defined ($next = getc $IN)) {
+         if ($next eq $cntl{INTERRUPT}) {
+            __restore_mode( $IN ); exit FAILED;
+         }
+         elsif ($next eq $cntl{ERASE}) {
+            if ($len = length $input) {
+               $input = substr $input, 0, $len - 1; __print_fh( $OUT, "\b \b" );
+            }
+
+            next;
+         }
+         elsif ($next eq $cntl{EOF}) {
+            __restore_mode( $IN );
+            close $IN or throw error => 'IO error: [_1]', args =>[ $ERRNO ];
+            return $input;
+         }
+         elsif ($next !~ m{ $cntl }mx) {
+            $input .= $next;
+
+            if ($next eq "\n") {
+               if ($input eq "\n" and defined $default) {
+                  $text = defined $echo ? $echo x length $default : $default;
+                  __print_fh( $OUT, "[${text}]\n" ); __restore_mode( $IN );
+
+                  return $onechar ? substr $default, 0, 1 : $default;
+               }
+
+               $newlines .= "\n";
+            }
+            else { __print_fh( $OUT, defined $echo ? $echo : $next ) }
+         }
+         else { $input .= $next }
+      }
+
+      if ($onechar or not defined $next or $input =~ m{ \Q$RS\E \z }mx) {
+         chomp $input; __restore_mode( $IN );
+         defined $newlines and __print_fh( $OUT, $newlines );
+         return $onechar ? substr $input, 0, 1 : $input;
+      }
+   }
+
+   return;
+}
+
+sub __raw_mode {
+   my $handle = shift; ReadMode q(raw), $handle; return;
+}
+
+sub __restore_mode {
+   my $handle = shift; ReadMode q(restore), $handle; return;
 }
 
 __PACKAGE__->meta->make_immutable;
@@ -717,7 +758,7 @@ Defaults to /opt/<application name>
 
 The name of the program. Defaults to the value returned by L<caller>
 
-=head3 silent
+=head3 quiet
 
 Boolean which if true suppresses the usual started/finished
 information messages. Defaults to false
@@ -726,7 +767,7 @@ information messages. Defaults to false
 
    $leader = $self->add_leader( $text, $args );
 
-Prepend C<< $self->name >> to each line of C<$text>. If
+Prepend C<< $self->config->name >> to each line of C<$text>. If
 C<< $args->{no_lead} >> exists then do nothing. Return C<$text> with
 leader prepended
 
@@ -738,21 +779,22 @@ Prompt string defaults to 'Press any key to continue...'. Calls and
 returns L<prompt|/prompt>. Requires the user to press any key on the
 keyboard (that generates a character response)
 
-=head2 apply_encoding
+=head2 can_call
 
-=head2 config
+   $bool = $self->can_call( $method );
 
-   $self = $self->config();
+Returns true if C<$self> has a method given by C<$method> that has defined
+the I<method> method attribute
 
-Return a reference to self
+=head2 debug_flag
 
-=head2 data_dump
+Returns the command line debug flag to match the current debug state
 
-=head2 data_load
+=head2 dump_self
 
-=head2 devel
+   $self->dump_self;
 
-=head2 dont_ask
+Dumps out the self referential object using L<Data::Dumper>
 
 =head2 error
 
@@ -771,16 +813,16 @@ the passed args. Logs the result at the alert level, then adds the
 program leader and prints the result to I<STDERR>. Exits with a return
 code of one
 
-=head2 get_debug_option
+=head2 _get_debug_option
 
-   $self->get_debug_option();
+   $self->_get_debug_option();
 
 If it is an interactive session prompts the user to turn debugging
 on. Returns true if debug is on. Also offers the option to quit
 
-=head2 get_homedir
+=head2 _get_homedir
 
-   $path = $self->get_homedir( $args );
+   $path = $self->_get_homedir( $args );
 
 Environment variable containing the path to a file which contains
 the application installation directory. Defaults to the environment
@@ -811,8 +853,6 @@ F<META.yml> file.  Optionally look in C<$dir> for the file instead of
 C<< $self->appldir >>. Returns a response object with accessors
 defined
 
-=head2 get_program_name
-
 =head2 info
 
    $self->info( $text, $args );
@@ -821,19 +861,11 @@ Calls L<Class::Usul::localize|Class::Usul/localize> with
 the passed args. Logs the result at the info level, then adds the
 program leader and prints the result to I<STDOUT>
 
-=head2 load_config
-
-=head2 load_messages
-
-=head2 load_os_depends
-
 =head2 loc
-
-=head2 localize
 
    $local_text = $self->localize( $key, $args );
 
-Localizes the message. Calls L<Class::Usul::I18N/localize>
+Localizes the message. Calls L<Class::Usul::L10N/localize>
 
 
 =head2 output
@@ -848,15 +880,9 @@ I<STDOUT>
 
 Prints out the version of the C::U::Programs subclass
 
-=head2 print_usage
+=head2 __prompt
 
-   $self->print_usage( $verbosity );
-
-Print out usage information from POD. The C<$verbosity> is; 0, 1 or 2
-
-=head2 prompt
-
-   $line = $self->prompt( 'key' => 'value', ... );
+   $line = __prompt( 'key' => 'value', ... );
 
 This was taken from L<IO::Prompt> which has an obscure bug in it. Much
 simplified the following keys are supported
@@ -888,6 +914,12 @@ Prompt string
 Call the method specified by the C<-c> option on the command
 line. Returns the exit code
 
+=head2 _output_usage
+
+   $self->_output_usage( $verbosity );
+
+Print out usage information from POD. The C<$verbosity> is; 0, 1 or 2
+
 =head2 warning
 
    $self->warning( $text, $args );
@@ -907,22 +939,22 @@ included in the prompt. If the C<$width> argument is defined then the
 string is formatted to the specified width which is C<$width> or
 C<< $self->pwdith >> or 40
 
-=head2 _get_control_chars
+=head2 __get_control_chars
 
-   ($cntrl, %cntrl) = $self->_get_control_chars( $handle );
+   ($cntrl, %cntrl) = __get_control_chars( $handle );
 
 Returns a string of pipe separated control characters and a hash of
 symbolic names and values
 
-=head2 _raw_mode
+=head2 __raw_mode
 
-   $self->_raw_mode( $handle );
+   __raw_mode( $handle );
 
 Puts the terminal in raw input mode
 
-=head2 _restore_mode
+=head2 __restore_mode
 
-   $self->_restore_mode( $handle );
+   __restore_mode( $handle );
 
 Restores line input mode to the terminal
 
@@ -939,8 +971,6 @@ Turning debug on produces some more output
 =over 3
 
 =item L<Class::Usul>
-
-=item L<Class::I18N>
 
 =item L<Class::Usul::InflateSymbols>
 

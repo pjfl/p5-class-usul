@@ -81,7 +81,7 @@ sub ACTION_distmeta {
       $self->_write_license_file( $cfg );
       $self->next::method();
    }
-   catch { $self->cli->fatal( $_ ) }
+   catch { $self->cli->fatal( $_ ) };
 
    return;
 }
@@ -90,8 +90,9 @@ sub ACTION_install {
    my $self = shift;
 
    try {
-      my $cfg = $self->_get_config; $self->_ask_questions( $cfg );
+      my $cfg = $self->_get_config;
 
+      $self->_ask_questions( $cfg );
       $self->_set_install_paths( $cfg );
       $cfg->{install} and $self->next::method();
 
@@ -103,7 +104,7 @@ sub ACTION_install {
       $self->_log_info( 'Installation complete' );
       $self->_post_install( $cfg );
    }
-   catch { $self->cli->fatal( $_ ) }
+   catch { $self->cli->fatal( $_ ) };
 
    return;
 }
@@ -118,7 +119,7 @@ sub ACTION_change_version {
       $self->depends_on( q(release)  );
       $self->_change_version( $self->_get_config );
    }
-   catch { $self->cli->fatal( $_ ) }
+   catch { $self->cli->fatal( $_ ) };
 
    return;
 }
@@ -130,7 +131,7 @@ sub ACTION_install_local_cpanm {
       $self->depends_on( q(install_local_lib) );
       $self->_install_local_cpanm( $self->_get_local_config );
    }
-   catch { $self->cli->fatal( $_ ) }
+   catch { $self->cli->fatal( $_ ) };
 
    return;
 }
@@ -147,7 +148,7 @@ sub ACTION_install_local_deps {
       $self->depends_on( q(install_local_cpanm) );
       $self->_install_local_deps( $cfg );
    }
-   catch { $self->cli->fatal( $_ ) }
+   catch { $self->cli->fatal( $_ ) };
 
    return;
 }
@@ -161,7 +162,7 @@ sub ACTION_install_local_lib {
       $self->_install_local_lib( $cfg );
       $self->_import_local_env ( $cfg );
    }
-   catch { $self->cli->fatal( $_ ) }
+   catch { $self->cli->fatal( $_ ) };
 
    return;
 }
@@ -173,7 +174,7 @@ sub ACTION_install_local_perl {
       $self->depends_on( q(install_local_perlbrew) );
       $self->_install_local_perl( $self->_get_local_config );
    }
-   catch { $self->cli->fatal( $_ ) }
+   catch { $self->cli->fatal( $_ ) };
 
    return;
 }
@@ -185,7 +186,7 @@ sub ACTION_install_local_perlbrew {
       $self->depends_on( q(install_local_lib) );
       $self->_install_local_perlbrew( $self->_get_local_config );
    }
-   catch { $self->cli->fatal( $_ ) }
+   catch { $self->cli->fatal( $_ ) };
 
    return;
 }
@@ -198,7 +199,7 @@ sub ACTION_local_archive {
 
       $self->make_tarball( $dir, $self->_get_archive_names( $dir )->[ 0 ] );
    }
-   catch { $self->cli->fatal( $_ ) }
+   catch { $self->cli->fatal( $_ ) };
 
    return;
 }
@@ -207,7 +208,7 @@ sub ACTION_prereq_diff {
    my $self = shift;
 
    try   { $self->_prereq_diff( $self->_get_config ) }
-   catch { $self->cli->fatal( $_ ) }
+   catch { $self->cli->fatal( $_ ) };
 
    return;
 }
@@ -218,7 +219,7 @@ sub ACTION_release {
    try {
       $self->depends_on( q(distmeta) );
       $self->_commit_release( 'release '.$self->_dist_version ) }
-   catch { $self->cli->fatal( $_ ) }
+   catch { $self->cli->fatal( $_ ) };
 
    return;
 }
@@ -231,7 +232,7 @@ sub ACTION_restore_local_archive {
 
       $self->_extract_tarball( $self->_get_archive_names( $dir ) );
    }
-   catch { $self->cli->fatal( $_ ) }
+   catch { $self->cli->fatal( $_ ) };
 
    return;
 }
@@ -244,7 +245,7 @@ sub ACTION_standalone {
       $self->depends_on( q(manifest) );
       $self->depends_on( q(dist) );
    }
-   catch { $self->cli->fatal( $_ ) }
+   catch { $self->cli->fatal( $_ ) };
 
    return;
 }
@@ -258,7 +259,7 @@ sub ACTION_uninstall {
       $self->_set_install_paths( $cfg );
       $self->_uninstall( $cfg );
    }
-   catch { $self->cli->fatal( $_ ) }
+   catch { $self->cli->fatal( $_ ) };
 
    return;
 }
@@ -272,7 +273,7 @@ sub ACTION_upload {
       $self->depends_on( q(dist) );
       $self->_cpan_upload;
    }
-   catch { $self->cli->fatal( $_ ) }
+   catch { $self->cli->fatal( $_ ) };
 
    return;
 }

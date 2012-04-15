@@ -4,27 +4,31 @@ package Class::Usul::Functions;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.6.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
-use Data::Printer alias => q(Dumper), colored => 1, indent => 3;
-use Digest        qw();
-use English       qw(-no_match_vars);
-use File::Basename  ();
-use List::Util    qw(first);
+use Data::Printer alias => q(Dumper), colored => 1, indent => 3,
+    filters => { 'File::DataClass::IO' => sub { $_[ 0 ]->pathname }, };
+use Cwd          qw();
+use Digest       qw();
+use English      qw(-no_match_vars);
+use File::Basename ();
+use File::Spec;
+use List::Util   qw(first);
 use Path::Class::Dir;
-use Scalar::Util  qw(openhandle);
+use Scalar::Util qw(openhandle);
 
 my @_functions;
 
 BEGIN {
-   @_functions = ( qw(app_prefix arg_list class2appdir create_token
-                      data_dumper distname elapsed env_prefix escape_TT
-                      exception fold home2appl is_arrayref is_hashref
-                      is_member merge_attributes my_prefix product say
-                      split_on__ squeeze strip_leader sub_name sum throw
-                      trim unescape_TT untaint_identifier untaint_path
-                      untaint_string) );
+   @_functions = ( qw(app_prefix arg_list assert_directory
+                      class2appdir classdir classfile create_token
+                      data_dumper distname elapsed env_prefix
+                      escape_TT exception fold home2appl is_arrayref
+                      is_hashref is_member merge_attributes my_prefix
+                      prefix2class product say split_on__ squeeze
+                      strip_leader sub_name sum throw trim unescape_TT
+                      untaint_identifier untaint_path untaint_string) );
 }
 
 use Sub::Exporter -setup => {
@@ -42,8 +46,22 @@ sub arg_list (;@) {
                                             : {};
 }
 
+sub assert_directory ($) {
+   my $y = shift; ($y and $y = Cwd::abs_path( untaint_path( $y ))) or return;
+
+   return -d $y ? $y : undef;
+}
+
 sub class2appdir ($) {
    return lc distname( $_[ 0 ] );
+}
+
+sub classdir ($) {
+   return File::Spec->catdir( split m{ :: }mx, $_[ 0 ] );
+}
+
+sub classfile ($) {
+   return File::Spec->catfile( split m{ :: }mx, $_[ 0 ].q(.pm) );
 }
 
 {  my $cache;
@@ -281,12 +299,34 @@ L<assert constant|CatalystX::Usul::Constants/ASSERT> can be set via
 an inherited class attribute to do something useful with whatever parameters
 are passed to it
 
+=head2 assert_directory
+
+   $untained_path = assert_directory $path_to_directory;
+
+Untaints directory path. Makes it an absolute path and returns it if it
+exists. Returns undef otherwise
+
 =head2 class2appdir
 
    $appdir = class2appdir __PACKAGE__;
 
 Returns lower cased L</distname>, e.g. C<App::Munchies> becomes
 C<app-munchies>
+
+=head2 classdir
+
+   $dir_path = classdir __PACKAGE__;
+
+Returns the path (directory) of a given class. Like L</classfile> but
+without the I<.pm> extenstion
+
+=head2 classfile
+
+   $file_path = classfile __PACKAGE__ ;
+
+Returns the path (file name plus extension) of a given class. Uses
+L<File::Spec> for portability, e.g. C<App::Munchies> becomes
+C<App/Munchies.pm>
 
 =head2 create_token
 

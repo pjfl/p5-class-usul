@@ -54,6 +54,8 @@ sub __inflate {
    local $_ = pop; s{ \A $KEY|[^ \t] }{}gmx; tr{ \t}{01}; return pack 'b*', $_;
 }
 
+no Moose::Role;
+
 1;
 
 =pod

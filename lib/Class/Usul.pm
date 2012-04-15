@@ -8,59 +8,98 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use 5.010;
 use Moose;
+use Class::MOP;
 use Class::Null;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(merge_attributes);
+use Class::Usul::Functions
+   qw(data_dumper is_arrayref is_hashref merge_attributes throw);
+use Class::Usul::L10N;
+use File::Basename qw(dirname);
 use IPC::SRLock;
 use Log::Handler;
 use Module::Pluggable::Object;
 use MooseX::ClassAttribute;
+use Scalar::Util qw(blessed);
+use Try::Tiny;
 
 with qw(Class::Usul::Constraints File::DataClass::Constraints);
 
-class_has 'Lock'   => is => 'rw', isa => 'F_DC_Lock';
+class_has 'Lock' => is => 'rw',    isa => 'F_DC_Lock';
 
-has '_config'    => is => 'ro',    isa => 'HashRef | Object',
-   reader        => 'config', init_arg => 'config', default => sub { {} };
+has '_config'    => is => 'ro',    isa => 'C_U_Config',  required => TRUE,
+   reader        => 'config', init_arg => 'config',       coerce  => TRUE;
 
-has 'debug'      => is => 'rw',    isa => 'Bool', default => FALSE;
+has 'debug'      => is => 'rw',    isa => 'Bool',         default => FALSE;
 
-has 'encoding'   => is => 'rw',    isa => 'C_U_Encoding', default => q(UTF-8),
+has 'encoding'   => is => 'ro',    isa => 'C_U_Encoding', default => q(UTF-8),
    documentation => 'Decode/encode input/output using this encoding';
+
+has '_l10n'      => is => 'ro',    isa => 'Object',    lazy_build => TRUE,
+   reader        => 'l10n',   init_arg => 'l10n';
 
 has '_lock'      => is => 'ro',    isa => 'F_DC_Lock', lazy_build => TRUE,
    reader        => 'lock',   init_arg => 'lock';
 
-has '_log'       => is => 'rw',    isa => 'C_U_Log', lazy_build => TRUE,
-   accessor      => 'log',    init_arg => 'log';
+has '_log'       => is => 'ro',    isa => 'C_U_Log',   lazy_build => TRUE,
+   reader        => 'log',    init_arg => 'log';
 
-with qw(Class::Usul::Base     Class::Usul::File
-        Class::Usul::Encoding Class::Usul::Crypt);
+with qw(Class::Usul::Encoding Class::Usul::Crypt);
 
 __PACKAGE__->mk_log_methods();
 
-sub build_subcomponents {
-   # Voodo by mst. Finds and loads component subclasses
-   my ($self, $base_class) = @_;
+sub dumper {
+   my $self = shift; return data_dumper( @_ ); # Damm handy for development
+}
 
-   my $my_class = blessed $self || $self; my $dir;
+sub ensure_class_loaded {
+   my ($self, $class, $opts) = @_; $opts ||= {};
 
-   ($dir = $self->find_source( $base_class )) =~ s{ \.pm \z }{}mx;
+   my $package_defined = sub { Class::MOP::is_class_loaded( $class ) };
 
-   for my $path (glob $self->catfile( $dir, q(*.pm) )) {
-      my $subcomponent = $self->basename( $path, q(.pm) );
-      my $component    = join q(::), $my_class,   $subcomponent;
-      my $base         = join q(::), $base_class, $subcomponent;
+   not $opts->{ignore_loaded} and $package_defined->() and return TRUE;
 
-      $self->load_component( $component, $base );
+   try { Class::MOP::load_class( $class ) } catch { throw $_ };
+
+   $package_defined->()
+      or throw error => 'Class [_1] loaded but package undefined',
+               args  => [ $class ];
+
+   return TRUE;
+}
+
+sub load_component {
+   my ($self, $child, @parents) = @_;
+
+   ## no critic
+   for my $parent (reverse @parents) {
+      $self->ensure_class_loaded( $parent );
+      {  no strict q(refs);
+
+         $child eq $parent or $child->isa( $parent )
+            or unshift @{ "${child}::ISA" }, $parent;
+      }
    }
 
+   exists $Class::C3::MRO{ $child } or eval "package $child; import Class::C3;";
+   ## critic
    return;
+}
+
+sub loc {
+   my ($self, $params, $key, @rest) = @_; my $car = $rest[ 0 ];
+
+   my $args = (is_hashref $car) ? { %{ $car } }
+            : { params => (is_arrayref $car) ? $car : [ @rest ] };
+
+   $args->{domain_names} = [ DEFAULT_L10N_DOMAIN, $params->{ns} ];
+   $args->{locale      } = $params->{lang};
+
+   return $self->l10n->localize( $key, $args );
 }
 
 sub setup_plugins {
    # Searches for and then load plugins in the search path
-   my ($class, $config) = @_;
+   my ($self, $config) = @_; my $class = blessed $self || $self;
 
    my $exclude = delete $config->{ exclude_pattern } || q(\A \z);
    my @paths   = @{ delete $config->{ search_paths } || [] };
@@ -70,39 +109,65 @@ sub setup_plugins {
    my @plugins = grep { not m{ $exclude }mx }
                  sort { length $a <=> length $b } $finder->plugins;
 
-   $class->load_component( $class, @plugins );
+   $self->load_component( $class, @plugins );
 
    return \@plugins;
 }
 
+sub supports {
+   my ($self, @spec) = @_; my $cursor = eval { $self->get_features } || {};
+
+   @spec == 1 and exists $cursor->{ $spec[ 0 ] } and return TRUE;
+
+   # Traverse the feature list
+   for (@spec) {
+      ref $cursor eq HASH or return FALSE; $cursor = $cursor->{ $_ };
+   }
+
+   ref $cursor or return $cursor; ref $cursor eq ARRAY or return FALSE;
+
+   # Check that all the keys required for a feature are in here
+   for (@{ $cursor }) { exists $self->{ $_ } or return FALSE }
+
+   return TRUE;
+}
+
 # Private methods
 
-sub _build_lock {
-   # There is only one lock object. Instantiate on first use
+sub _build__l10n {
    my $self = shift;
 
-   $self->Lock and return $self->Lock;
+   my $cfg  = $self->config; my $attrs = $cfg->{l10n_attributes} || {};
 
-   my $attrs = $self->config->{lock_attributes} || {};
+   merge_attributes $attrs, $self, {}, [ qw(debug lock log) ];
+   merge_attributes $attrs, $cfg,  {}, [ qw(localedir tempdir) ];
 
-   merge_attributes $attrs, $self, {}, [ qw(debug log tempdir) ];
+   return Class::Usul::L10N->new( $attrs );
+}
+
+sub _build__lock {
+   # There is only one lock object. Instantiate on first use
+   my $self  = shift; $self->Lock and return $self->Lock;
+
+   my $cfg   = $self->config; my $attrs = $cfg->{lock_attributes} || {};
+
+   merge_attributes $attrs, $self, {}, [ qw(debug log) ];
+   merge_attributes $attrs, $cfg,  {}, [ qw(tempdir) ];
 
    return $self->Lock( IPC::SRLock->new( $attrs ) );
 }
 
 sub _build__log {
    my $self    = shift;
-   my $attrs   = $self->config->{log_attributes} || {};
-   my $logfile = $attrs->{logfile} || $self->config->{logfile} || NUL;
-   my $dir     = $self->dirname( $logfile );
+   my $cfg     = $self->config;
+   my $attrs   = $cfg->{log_attributes} || {};
+   my $logfile = NUL.($attrs->{logfile} || $cfg->{logfile} || NUL);
+   my $level   = $self->debug ? 7 : $attrs->{log_level} || 6;
 
-   $logfile and -d $dir or return Class::Null->new;
+   ($logfile and -d dirname( $logfile )) or return Class::Null->new;
 
-   return Log::Handler->new
-      ( file      => {
-         filename => NUL.$logfile,
-         maxlevel => $self->debug ? 7 : $attrs->{log_level} || 6,
-         mode     => q(append), } );
+   return Log::Handler->new( file => {
+      filename => $logfile, maxlevel => $level, mode => q(append), } );
 }
 
 __PACKAGE__->meta->make_immutable;
@@ -179,12 +244,30 @@ The constructor applies these roles:
 
 =head1 Subroutines/Methods
 
-=head2 build_subcomponents
+=head2 dumper
 
-   __PACKAGE__->build_subcomponents( $base_class );
+   $self->dumper( $some_var );
 
-Class method that allows us to define components that inherit from the base
-class at runtime
+Use L<Data::Printer> to dump arguments for development purposes
+
+=head2 ensure_class_loaded
+
+   $self->ensure_class_loaded( $some_class );
+
+Require the requested class, throw an error if it doesn't load
+
+=head2 load_component
+
+   $self->load_component( $child, @parents );
+
+Ensures that each component is loaded then fixes @ISA for the child so that
+it inherits from the parents
+
+=head2 loc
+
+   $local_text = $self->loc( $args, $key, $params );
+
+Localizes the message. Calls L<Class::Usul::L10N/localize>
 
 =head2 setup_plugins
 
@@ -193,11 +276,12 @@ class at runtime
 Load the given list of plugins and have the supplied class inherit from them.
 Returns an array ref of available plugins
 
-=head2 udump
+=head2 supports
 
-   $self->udump( $object );
+   $bool = $self->supports( @spec );
 
-Calls L<Data::Dumper> with sane values for dumping objects for inspection
+Returns true if the hash returned by our I<get_features> attribute
+contains all the elements of the required specification
 
 =head2 _build_lock
 
@@ -232,6 +316,8 @@ debug level
 
 =over 3
 
+=item L<Class::MOP>
+
 =item L<Class::Usul::Base>
 
 =item L<Class::Usul::Encoding>
@@ -262,7 +348,7 @@ Larry Wall - For the Perl programming language
 
 =head1 License and Copyright
 
-Copyright (c) 2010 Peter Flanigan. All rights reserved
+Copyright (c) 2012 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

@@ -7,47 +7,65 @@ use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Moose;
-use English qw(-no_match_vars);
-use File::DataClass::Schema;
 use Class::Usul::Constants;
-use Sys::Hostname ();
-use File::Spec;
+use File::Gettext::Constants;
+use Class::Usul::Functions qw(app_prefix class2appdir home2appl untaint_path);
+use File::Spec::Functions  qw(canonpath catdir catfile rel2abs tmpdir);
+use File::Basename         qw(basename dirname);
+use English                qw(-no_match_vars);
+use Sys::Hostname            ();
 use Config;
 
-extends qw(Class::Usul);
-with    qw(File::DataClass::Constraints);
+with qw(File::DataClass::Constraints);
 
-has 'appclass'      => is => 'ro', isa => 'Str', required => TRUE;
+has 'appclass'      => is => 'ro', isa => 'Str',
+   required         => TRUE;
 
 has 'appldir'       => is => 'ro', isa => 'F_DC_Directory',
-   lazy_build       => TRUE, coerce    => TRUE;
+   lazy_build       => TRUE,    coerce => TRUE;
 
 has 'binsdir'       => is => 'ro', isa => 'F_DC_Path',
-   lazy_build       => TRUE, coerce    => TRUE;
+   lazy_build       => TRUE,    coerce => TRUE;
 
 has 'ctlfile'       => is => 'rw', isa => 'F_DC_Path',
-   lazy_build       => TRUE, coerce    => TRUE;
+   lazy_build       => TRUE,    coerce => TRUE;
 
 has 'ctrldir'       => is => 'rw', isa => 'F_DC_Path',
-   lazy_build       => TRUE, coerce    => TRUE;
+   lazy_build       => TRUE,    coerce => TRUE;
 
 has 'dbasedir'      => is => 'rw', isa => 'F_DC_Path',
-   lazy_build       => TRUE, coerce    => TRUE;
+   lazy_build       => TRUE,    coerce => TRUE;
+
+has 'doc_title'     => is => 'ro', isa => 'Str',
+   default          => 'User Contributed Documentation';
+
+has 'extension'     => is => 'ro', isa => 'Str',
+   default          => CONFIG_EXTN;
 
 has 'home'          => is => 'ro', isa => 'F_DC_Directory',
-   required         => TRUE, coerce    => TRUE;
+   documentation    => 'Directory containing the config file',
+   required         => TRUE,    coerce => TRUE;
 
 has 'hostname'      => is => 'ro', isa => 'Str',
    lazy_build       => TRUE;
 
+has 'localedir'     => is => 'ro', isa => 'F_DC_Directory',
+   default          => sub { DIRECTORIES->[ 0 ] }, coerce => TRUE;
+
 has 'logfile'       => is => 'rw', isa => 'F_DC_Path',
-   lazy_build       => TRUE, coerce    => TRUE;
+   lazy_build       => TRUE,    coerce => TRUE;
 
 has 'logsdir'       => is => 'rw', isa => 'F_DC_Directory',
-   lazy_build       => TRUE, coerce    => TRUE;
+   lazy_build       => TRUE,    coerce => TRUE;
+
+has 'man_page_cmd'  => is => 'ro', isa => 'ArrayRef',
+   default          => sub { [ qw(nroff -man) ] };
+
+has 'mode'          => is => 'rw', isa  => 'Int',
+   default          => PERMS;
 
 has 'name'          => is => 'ro', isa => 'Str',
-   required         => TRUE;
+   lazy_build       => TRUE;
 
 has 'no_thrash'     => is => 'rw', isa => 'Int',
    default          => 3;
@@ -56,7 +74,7 @@ has 'owner'         => is => 'rw', isa => 'Str',
    lazy_build       => TRUE;
 
 has 'pathname'      => is => 'rw', isa => 'F_DC_File',
-   lazy_build       => TRUE, coerce    => TRUE;
+   lazy_build       => TRUE,    coerce => TRUE;
 
 has 'phase'         => is => 'ro', isa => 'Int',
    lazy_build       => TRUE;
@@ -68,46 +86,35 @@ has 'pwidth'        => is => 'rw', isa => 'Int',
    default          => 60;
 
 has 'root'          => is => 'rw', isa => 'F_DC_Path',
-   lazy_build       => TRUE, coerce    => TRUE;
+   lazy_build       => TRUE,    coerce => TRUE;
 
 has 'rundir'        => is => 'rw', isa => 'F_DC_Path',
-   lazy_build       => TRUE, coerce    => TRUE;
+   lazy_build       => TRUE,    coerce => TRUE;
+
+has 'script'        => is => 'ro', isa => 'Str',
+   lazy_build       => TRUE;
 
 has 'secret'        => is => 'ro', isa => 'Str',
    lazy_build       => TRUE;
 
 has 'shell'         => is => 'rw', isa => 'F_DC_Path',
-   lazy_build       => TRUE, coerce    => TRUE;
+   lazy_build       => TRUE,    coerce => TRUE;
 
 has 'suid'          => is => 'ro', isa => 'F_DC_Path',
-   lazy_build       => TRUE, coerce    => TRUE;
+   lazy_build       => TRUE,    coerce => TRUE;
 
 has 'tempdir'       => is => 'rw', isa => 'F_DC_Directory',
-   lazy_build       => TRUE, coerce    => TRUE;
+   lazy_build       => TRUE,    coerce => TRUE;
 
 has 'vardir'        => is => 'rw', isa => 'F_DC_Path',
-   lazy_build       => TRUE, coerce    => TRUE;
+   lazy_build       => TRUE,    coerce => TRUE;
 
 # TODO: Move these away, a long way away
 has 'aliases_path'  => is => 'rw', isa => 'F_DC_Path',
-   lazy_build       => TRUE, coerce    => TRUE;
+   lazy_build       => TRUE,    coerce => TRUE;
 
 has 'profiles_path' => is => 'rw', isa => 'F_DC_Path',
-   lazy_build       => TRUE, coerce    => TRUE;
-
-around BUILDARGS => sub {
-   my ($orig, $class, @args) = @_;
-
-   my $attrs  = $class->$orig( @args );
-   my $file   = $class->app_prefix( $attrs->{appclass} ).q(.xml);
-   my $path   = $class->catfile( $attrs->{home}, $file );
-
-   -f $path or return $attrs;
-
-   my $config = File::DataClass::Schema->new->load( $path );
-
-   return { %{ $attrs }, %{ $config || {} } };
-};
+   lazy_build       => TRUE,    coerce => TRUE;
 
 sub BUILD {
    my $self = shift;
@@ -140,127 +147,127 @@ sub inflate {
 
    my @parts = ($self->$method(), split m{ / }mx, $path);
 
-   $path = $self->catdir( @parts );
-   -d $path or $path = $self->catfile( @parts );
+   $path = catdir( @parts ); -d $path or $path = catfile( @parts );
 
-   return $self->canonpath( $path );
+   return untaint_path canonpath( $path );
 }
 
 # Private methods
 
 sub _build_appldir {
-   my $self = shift; my $path = $self->dirname( $Config{sitelibexp} );
+   my $self = shift; my $path = dirname( $Config{sitelibexp} );
 
    if ($self->home =~ m{ \A $path }mx) {
-      $path = $self->class2appdir( $self->appclass );
-      $path = $self->catdir( NUL, qw(var www), $path, q(default) );
+      $path = class2appdir $self->appclass;
+      $path = catdir( NUL, qw(var www), $path, q(default) );
    }
-   else { $path = $self->home2appl( $self->home ) }
+   else { $path = home2appl $self->home }
 
-   return $self->rel2abs( $self->untaint_path( $path ) );
+   return rel2abs( untaint_path $path );
 }
 
 sub _build_binsdir {
-   my $self = shift; my $path = $self->dirname( $Config{sitelibexp} );
+   my $self = shift; my $path = dirname( $Config{sitelibexp} );
 
    if ($self->home =~ m{ \A $path }mx) { $path = $Config{scriptdir} }
-   else { $path = $self->catdir( $self->home2appl( $self->home ), q(bin) ) }
+   else { $path = catdir( home2appl $self->home, q(bin) ) }
 
-   return $self->rel2abs( $self->untaint_path( $path ) );
+   return rel2abs( untaint_path $path );
 }
 
 sub _build_ctlfile {
-   my $self = shift;
-   my $path = $self->inflate( q(ctrldir), $self->name.q(.xml) );
-
-   return $self->untaint_path( $path );
+   return $_[ 0 ]->inflate( q(ctrldir), $_[ 0 ]->name.$_[ 0 ]->extension );
 }
 
 sub _build_ctrldir {
-   return shift->inflate( qw(vardir etc) );
+   return $_[ 0 ]->inflate( qw(vardir etc) );
 }
 
 sub _build_dbasedir {
-   return shift->inflate( qw(vardir db) );
+   return $_[ 0 ]->inflate( qw(vardir db) );
 }
 
 sub _build_hostname {
    return Sys::Hostname::hostname();
 }
 
-sub _build_logfile {
-   my $self = shift;
-   my $path = $self->inflate( q(logsdir), $self->name.q(.log) );
+sub _build_localedir {
+   return $_[ 0 ]->inflate( qw(vardir locale) );
+}
 
-   return $self->untaint_path( $path );
+sub _build_logfile {
+   return $_[ 0 ]->inflate( q(logsdir), $_[ 0 ]->name.q(.log) );
 }
 
 sub _build_logsdir {
-   my $self = shift;
-   my $path = $self->inflate( qw(vardir logs) );
+   my $path = $_[ 0 ]->inflate( qw(vardir logs) );
 
-   return -d $path ? $path : $self->tempdir;
+   return -d $path ? $path : $_[ 0 ]->tempdir;
+}
+
+sub _build_name {
+   return basename( $_[ 0 ]->pathname, EXTNS );
 }
 
 sub _build_owner {
-   return shift->prefix || q(root);
+   return $_[ 0 ]->prefix || q(root);
 }
 
 sub _build_pathname {
-   return shift->rel2abs( $PROGRAM_NAME );
+   return rel2abs( $PROGRAM_NAME );
 }
 
 sub _build_prefix {
-   my $self = shift; return (split m{ :: }mx, lc $self->appclass)[-1];
+   return (split m{ :: }mx, lc $_[ 0 ]->appclass)[ -1 ];
 }
 
 sub _build_phase {
-   my $self    = shift;
-   my $dir     = $self->basename( $self->appldir );
+   my $dir     = basename( $_[ 0 ]->appldir );
    my ($phase) = $dir =~ m{ \A v \d+ \. \d+ p (\d+) \z }msx;
 
    return defined $phase ? $phase : PHASE;
 }
 
 sub _build_root {
-   return shift->inflate( qw(vardir root) );
+   return $_[ 0 ]->inflate( qw(vardir root) );
 }
 
 sub _build_rundir {
-   return shift->inflate( qw(vardir run) );
+   return $_[ 0 ]->inflate( qw(vardir run) );
+}
+
+sub _build_script {
+   return basename( $_[ 0 ]->pathname );
 }
 
 sub _build_secret {
-   return shift->prefix;
+   return $_[ 0 ]->prefix;
 }
 
 sub _build_shell {
-   return shift->catfile( NUL, qw(bin ksh) );
+   return catfile( NUL, qw(bin ksh) );
 }
 
 sub _build_suid {
-   my $self = shift;
-
-   return $self->inflate( q(binsdir), $self->prefix.q(_admin) );
+   return $_[ 0 ]->inflate( q(binsdir), $_[ 0 ]->prefix.q(_admin) );
 }
 
 sub _build_tempdir {
-   my $self = shift;
-   my $path = $self->inflate( qw(vardir tmp) );
+   my $path = $_[ 0 ]->inflate( qw(vardir tmp) );
 
-   return -d $path ? $path : $self->untaint_path( File::Spec->tmpdir );
+   return -d $path ? $path : untaint_path tmpdir;
 }
 
 sub _build_vardir {
-   return shift->inflate( qw(appldir var) );
+   return $_[ 0 ]->inflate( qw(appldir var) );
 }
 
 sub _build_aliases_path {
-   return shift->inflate( qw(ctrldir aliases) );
+   return $_[ 0 ]->inflate( qw(ctrldir aliases) );
 }
 
 sub _build_profiles_path {
-   return shift->inflate( qw(ctrldir user_profiles.xml) );
+   return $_[ 0 ]->inflate( q(ctrldir), q(user_profiles).$_[ 0 ]->extension );
 }
 
 __PACKAGE__->meta->make_immutable;

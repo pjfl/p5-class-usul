@@ -8,15 +8,21 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Moose::Role;
 use Class::Null;
+use Class::Usul::Config;
 use Class::Usul::Constants;
 use Moose::Util::TypeConstraints;
+
+enum 'C_U_Encoding' => ENCODINGS;
+enum 'C_U_Digest_Algorithm' => DIGEST_ALGORITHMS;
+
+subtype 'C_U_Config' => as   'Object';
+coerce  'C_U_Config' => from 'HashRef' => via {
+   return Class::Usul::Config->new( $_ );
+};
 
 subtype 'C_U_Log' => as 'Object' =>
    where   { $_->isa( q(Class::Null) ) or __has_log_level_methods( $_ ) } =>
    message { 'Object '.(blessed $_ || $_).' is missing a log level method' };
-
-enum 'C_U_Encoding' => ENCODINGS;
-enum 'C_U_Digest_Algorithm' => DIGEST_ALGORITHMS;
 
 sub __has_log_level_methods {
    my $obj = shift;

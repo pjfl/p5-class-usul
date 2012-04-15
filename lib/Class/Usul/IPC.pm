@@ -8,7 +8,7 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Moose::Role;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(is_arrayref throw);
+use Class::Usul::Functions qw(arg_list is_arrayref strip_leader throw);
 use Class::Usul::Response::IPC;
 use Class::Usul::Response::Table;
 use English qw(-no_match_vars);
@@ -17,7 +17,7 @@ use IO::Handle;
 use IO::Select;
 use IPC::Open3;
 use Module::Load::Conditional qw(can_load);
-use POSIX qw(:signal_h :errno_h :sys_wait_h);
+use POSIX qw(WIFEXITED WNOHANG);
 use Proc::ProcessTable;
 use Try::Tiny;
 
@@ -55,7 +55,7 @@ sub popen {
    my $err  = IO::Handle->new();
    my $out  = IO::Handle->new();
    my $in   = IO::Handle->new();
-   my $res  = CatalystX::Usul::IPC::Response->new();
+   my $res  = Class::Usul::Response::IPC->new();
 
    {  local ($CHILD_ERROR, $ERRNO, $WAITEDPID); local $ERROR = FALSE;
 
@@ -71,7 +71,7 @@ sub popen {
 
          $in->close;
       }
-      catch { $e = $_ }
+      catch { $e = $_ };
 
       not $e and $e = $ERROR and $e .= " - whilst executing ${cmd}";
    }
@@ -97,7 +97,7 @@ sub popen {
 sub process_exists {
    my ($self, @rest) = @_; my ($io, $file);
 
-   my $args = $self->arg_list( @rest ); my $pid = $args->{pid};
+   my $args = arg_list @rest; my $pid = $args->{pid};
 
    if ($file = $args->{file} and $io = $self->io( $file ) and $io->is_file) {
       $pid = $io->chomp->lock->getline;
@@ -111,7 +111,7 @@ sub process_exists {
 sub process_table {
    my ($self, @rest) = @_;
 
-   my $args  = $self->arg_list( @rest );
+   my $args  = arg_list @rest;
    my $pat   = $args->{pattern};
    my $ptype = $args->{type   };
    my $user  = $args->{user   };
@@ -149,12 +149,12 @@ sub process_table {
 sub run_cmd {
    my ($self, $cmd, @rest) = @_; $cmd or throw 'Run command not specified';
 
-   if (ref $cmd eq ARRAY) {
+   if (is_arrayref $cmd) {
       if (can_load( modules => { 'IPC::Run' => q(0.84) } )) {
          return $self->_run_cmd_using_ipc_run( $cmd, @rest );
       }
 
-      $cmd = join q( ), @{ $cmd };
+      $cmd = join SPC, @{ $cmd };
    }
 
    return $self->_run_cmd_using_system( $cmd, @rest );
@@ -175,7 +175,7 @@ sub signal_process {
 sub signal_process_as_root {
    my ($self, @rest) = @_; my ($file, $io);
 
-   my $args = $self->arg_list( @rest );
+   my $args = arg_list @rest;
    my $sig  = $args->{sig } || q(TERM);
    my $pids = $args->{pids} || [];
 
@@ -215,7 +215,7 @@ sub _list_pids_by_file_system {
 
    my $args = { err => q(null), expected_rv => 1 };
    # TODO: Make fuser OS dependent
-   my $data = $self->run_cmd( "fuser $fsystem", $args )->out || NUL;
+   my $data = $self->run_cmd( "fuser ${fsystem}", $args )->out || NUL;
 
    $data =~ s{ [^0-9\s] }{}gmx; $data =~ s{ \s+ }{ }gmx;
 
@@ -225,13 +225,13 @@ sub _list_pids_by_file_system {
 sub _run_cmd_filter_out {
    my ($self, $text) = @_;
 
-   return join "\n", map    { $self->strip_leader( $_ ) }
+   return join "\n", map    { strip_leader $_ }
                      grep   { not m{ (?: Started | Finished ) }msx }
                      split m{ [\n] }msx, $text;
 }
 
 sub _run_cmd_ipc_run_args {
-   my ($self, @rest) = @_; my $args = $self->arg_list( @rest );
+   my ($self, @rest) = @_; my $args = arg_list @rest;
 
    $args->{debug      } ||= $self->debug;
    $args->{expected_rv} ||= 0;
@@ -245,7 +245,7 @@ sub _run_cmd_ipc_run_args {
 }
 
 sub _run_cmd_system_args {
-   my ($self, @rest) = @_; my $args = $self->arg_list( @rest );
+   my ($self, @rest) = @_; my $args = arg_list @rest;
 
    $args->{debug      } ||= $self->debug;
    $args->{expected_rv} ||= 0;
@@ -287,11 +287,11 @@ sub _run_cmd_using_ipc_run {
    $args->{debug} and $self->log_debug( "Running ${cmd_str}" );
 
    try   { $rv = __ipc_run_harness( $cmd_ref, @cmd_args ) }
-   catch { throw $_ }
+   catch { throw $_ };
 
    $args->{debug} and $self->log_debug( "Run harness returned ${rv}\n" );
 
-   my $res = CatalystX::Usul::IPC::Response->new();
+   my $res = Class::Usul::Response::IPC->new();
 
    $res->sig( $rv & 127 ); $res->core( $rv & 128 ); $rv = $res->rv( $rv >> 8 );
 
@@ -360,7 +360,7 @@ sub _run_cmd_using_system {
       }
    }
 
-   my $res = CatalystX::Usul::IPC::Response->new();
+   my $res = Class::Usul::Response::IPC->new();
 
    $res->sig( $rv & 127 ); $res->core( $rv & 128 ); $rv = $res->rv( $rv >> 8 );
 
@@ -502,8 +502,8 @@ sub __partition_command {
       else { push @{ $aref }, $item }
    }
 
-   if ($aref->[0]) {
-      if ($command[0]) { push @command, $aref }
+   if ($aref->[ 0 ]) {
+      if ($command[ 0 ]) { push @command, $aref }
       else { @command = @{ $aref } }
    }
 
@@ -568,7 +568,7 @@ process ids
    $response = $self->popen( $cmd, @input );
 
 Uses L<IPC::Open3> to fork a command and pipe the lines of input into
-it. Returns a C<Class::Usul::IPC::Response> object. The response
+it. Returns a C<Class::Usul::Response::IPC> object. The response
 object's C<out> method returns the B<STDOUT> from the command. Throws
 in the event of an error
 
@@ -624,7 +624,7 @@ is used. Defaults to C<< $self->tempdir >>
 
 =back
 
-Returns a L<Class::Usul::IPC::Response> object or throws an
+Returns a L<Class::Usul::Response::IPC> object or throws an
 error. The response object has the following methods:
 
 =over 3
@@ -707,9 +707,9 @@ None
 
 =item L<Class::Usul::Constants>
 
-=item L<Class::Usul::IPC::Response>
+=item L<Class::Usul::Response::IPC>
 
-=item L<Class::Usul::Table>
+=item L<Class::Usul::Response::Table>
 
 =item L<IPC::Open3>
 

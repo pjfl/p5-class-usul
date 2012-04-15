@@ -4,10 +4,9 @@ package Class::Usul::Time;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.6.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Date::Format  ();
-use DateTime::Format::Epoch;
 use Time::HiRes qw(usleep);
 use Time::Local;
 use Time::Zone;
@@ -34,6 +33,9 @@ sub nap ($) {
 
 sub str2date_time ($;$) {
    my ($dstr, $zone) = @_;
+
+   require DateTime::Format::Epoch;
+
    my $dt            = DateTime->new( year => 1970, month => 1, day => 1, );
    my $formatter     = DateTime::Format::Epoch->new
       ( epoch             => $dt,

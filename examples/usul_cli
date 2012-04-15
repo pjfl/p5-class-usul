@@ -1,5 +1,4 @@
 #!/usr/bin/env perl
-
 # @(#)$Id$
 
 use strict;
@@ -29,13 +28,17 @@ usul_cli - A command line interface to OO methods
 
 =over 3
 
-=item B<usul_cli> B<-c> I<method> [B<-o> I<var=value,...>]
+=item B<usul_cli> B<-nc> I<method> [B<-o> I<var=value,...>]
 
-Execute named method
+Calls the named method
 
 =item B<usul_cli> B<-H>|B<-h>
 
 Display man page/usage string
+
+=item B<usul_cli> B<-nc> list_methods
+
+Displays a list of available methods
 
 =back
 
@@ -53,11 +56,11 @@ This program exposes the methods in the L<Class::Usul::Programs> module
 
 =item B<-c> I<method>
 
-Name of method to execute. Required
+Name of method to call. Required
 
 =item B<-D        >
 
-Turn debugging on. Defaults to prompting for debug if interactive
+Turn debugging on. Promps if interactive
 
 =item B<--encoding>
 
@@ -65,11 +68,11 @@ Decodes/encodes input/output using the value. Defaults to I<UTF-8>
 
 =item B<-h        >
 
-Display usage information
+Uses Pod::Usage to describe the program usage options
 
 =item B<-H        >
 
-Display manual page. Pipes through C<nroff>
+Uses Pod::Man to display the program documentation. Pipes through C<nroff>
 
 =item B<--home    >
 
@@ -77,19 +80,23 @@ Directory containing the configuration file
 
 =item B<-L        >
 
-Load a message catalog in the language
+Loads the specified language message catalog
 
-=item B<--nodebug >
+=item B<-n        >
 
 Do not prompt for debugging
 
 =item B<-o        >
 
-Zero, one or more key value pairs passed to the method call
+Zero, one or more key/value pairs passed to the method call
 
-=item B<-S        >
+=item B<-q        >
 
-Suppress information messages
+Quiet the display of information messages
+
+=item B<-V        >
+
+Displays the version number of the program class
 
 =back
 
@@ -133,7 +140,7 @@ Peter Flanigan, C<< <Support at RoxSoft.co.uk> >>
 
 =head1 LICENSE and COPYRIGHT
 
-Copyright (c) 2010 Peter Flanigan. All rights reserved
+Copyright (c) 2012 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>
