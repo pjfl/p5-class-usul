@@ -11,7 +11,9 @@ use Class::Usul::Constants;
 use Class::Usul::Functions qw(arg_list is_arrayref strip_leader throw);
 use Class::Usul::Response::IPC;
 use Class::Usul::Response::Table;
+use Class::Usul::Time qw(time2str);
 use English qw(-no_match_vars);
+use File::Basename qw(basename);
 use File::Spec;
 use IO::Handle;
 use IO::Select;
@@ -20,6 +22,8 @@ use Module::Load::Conditional qw(can_load);
 use POSIX qw(WIFEXITED WNOHANG);
 use Proc::ProcessTable;
 use Try::Tiny;
+
+requires qw(config debug io tempdir tempfile);
 
 our ($ERROR, $WAITEDPID);
 
@@ -166,7 +170,7 @@ sub signal_process {
    $sig  and push @{ $opts }, q(-o), "sig=$sig";
    $flag and push @{ $opts }, q(-o), q(flag=one);
 
-   my $cmd = [ $self->suid, qw(-n -c signal_process),
+   my $cmd = [ $self->config->suid, qw(-n -c signal_process),
                @{ $opts }, q(--), @{ $pids || [] } ];
 
    return $self->run_cmd( $cmd );
@@ -222,14 +226,6 @@ sub _list_pids_by_file_system {
    return sort { $a <=> $b } grep { defined && length } split SPC, $data;
 }
 
-sub _run_cmd_filter_out {
-   my ($self, $text) = @_;
-
-   return join "\n", map    { strip_leader $_ }
-                     grep   { not m{ (?: Started | Finished ) }msx }
-                     split m{ [\n] }msx, $text;
-}
-
 sub _run_cmd_ipc_run_args {
    my ($self, @rest) = @_; my $args = arg_list @rest;
 
@@ -239,7 +235,7 @@ sub _run_cmd_ipc_run_args {
    $args->{out        } ||= NUL;
    $args->{in         } ||= q(stdin);
 
-   ref $args->{in} eq ARRAY and $args->{in} = join "\n", @{ $args->{in} };
+   is_arrayref $args->{in} and $args->{in} = join "\n", @{ $args->{in} };
 
    return $args;
 }
@@ -296,7 +292,7 @@ sub _run_cmd_using_ipc_run {
    $res->sig( $rv & 127 ); $res->core( $rv & 128 ); $rv = $res->rv( $rv >> 8 );
 
    if ($out ne q(null) and $out ne q(stdout)) {
-      $res->out( $self->_run_cmd_filter_out( $res->stdout( $buf_out ) ) );
+      $res->out( __run_cmd_filter_out( $res->stdout( $buf_out ) ) );
    }
 
    if ($err eq q(out)) {
@@ -308,8 +304,7 @@ sub _run_cmd_using_ipc_run {
    else { $error = NUL }
 
    if ($rv > $args->{expected_rv}) {
-      $error ||= 'Unknown error';
-      $msg = "Return value ${rv} error ${error}";
+      $error ||= 'Unknown error'; $msg = "Return value ${rv} error ${error}";
       $args->{debug} and $self->log_debug( $msg );
       throw error => $error, rv => $rv;
    }
@@ -321,7 +316,7 @@ sub _run_cmd_using_system {
    my ($self, $cmd, @rest) = @_; my ($error, $msg, $rv);
 
    my $args = $self->_run_cmd_system_args( @rest );
-   my $prog = $self->basename( (split SPC, $cmd)[ 0 ] );
+   my $prog = basename( (split SPC, $cmd)[ 0 ] );
    my $null = File::Spec->devnull;
    my $err  = $args->{err};
    my $out  = $args->{out};
@@ -380,7 +375,7 @@ sub _run_cmd_using_system {
    if ($out ne q(stdout) and $out ne q(null) and -f $out) {
       my $text = $self->io( $out )->slurp;
 
-      $res->out( $self->_run_cmd_filter_out( $res->stdout( $text ) ) );
+      $res->out( __run_cmd_filter_out( $res->stdout( $text ) ) );
    }
 
    if ($err eq q(out)) {
@@ -392,8 +387,7 @@ sub _run_cmd_using_system {
    else { $error = NUL }
 
    if ($rv > $args->{expected_rv}) {
-      $error ||= 'Unknown error';
-      $msg = "Return value ${rv} error ${error}";
+      $error ||= 'Unknown error'; $msg = "Return value ${rv} error ${error}";
       $args->{debug} and $self->log_debug( $msg );
       throw error => $error, rv => $rv;
    }
@@ -404,15 +398,14 @@ sub _run_cmd_using_system {
 sub _set_fields {
    my ($self, $has, $p) = @_; my $flds = {};
 
-   $flds->{id   } = $has->{pid   } ? $p->pid                    : NUL;
-   $flds->{pid  } = $has->{pid   } ? $p->pid                    : NUL;
-   $flds->{ppid } = $has->{ppid  } ? $p->ppid                   : NUL;
-   $flds->{start} = $has->{start }
-                  ? $self->time2str( '%d/%m %H:%M', $p->start ) : NUL;
-   $flds->{state} = $has->{state } ? $p->state                  : NUL;
-   $flds->{tty  } = $has->{ttydev} ? $p->ttydev                 : NUL;
-   $flds->{time } = $has->{time  } ? int $p->time / 1_000_000   : NUL;
-   $flds->{uid  } = $has->{uid   } ? getpwuid $p->uid           : NUL;
+   $flds->{id   } = $has->{pid   } ? $p->pid                  : NUL;
+   $flds->{pid  } = $has->{pid   } ? $p->pid                  : NUL;
+   $flds->{ppid } = $has->{ppid  } ? $p->ppid                 : NUL;
+   $flds->{start} = $has->{start } ? time2str( '%d/%m %H:%M', $p->start ) : NUL;
+   $flds->{state} = $has->{state } ? $p->state                : NUL;
+   $flds->{tty  } = $has->{ttydev} ? $p->ttydev               : NUL;
+   $flds->{time } = $has->{time  } ? int $p->time / 1_000_000 : NUL;
+   $flds->{uid  } = $has->{uid   } ? getpwuid $p->uid         : NUL;
 
    if ($has->{ttydev} and $p->ttydev) {
       $flds->{tty} = $p->ttydev;
@@ -527,6 +520,12 @@ sub __pscomp {
 
 sub __read_all_from {
    my $fh = shift; local $RS = undef; return <$fh>;
+}
+
+sub __run_cmd_filter_out {
+   return join "\n", map    { strip_leader $_ }
+                     grep   { not m{ (?: Started | Finished ) }msx }
+                     split m{ [\n] }msx, $_[ 0 ];
 }
 
 no Moose::Role;

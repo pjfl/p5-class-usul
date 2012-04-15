@@ -43,7 +43,7 @@ has '_lock'      => is => 'ro',    isa => 'F_DC_Lock', lazy_build => TRUE,
 has '_log'       => is => 'ro',    isa => 'C_U_Log',   lazy_build => TRUE,
    reader        => 'log',    init_arg => 'log';
 
-with qw(Class::Usul::Encoding Class::Usul::Crypt);
+with qw(Class::Usul::Encoding);
 
 __PACKAGE__->mk_log_methods();
 

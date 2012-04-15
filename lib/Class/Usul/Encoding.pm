@@ -8,14 +8,15 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Moose::Role;
 use Class::Usul::Constants;
+use Class::Usul::Functions qw(is_arrayref is_hashref);
 use Encode;
 use Encode::Guess;
-use Moose::Util::TypeConstraints;
+use Scalar::Util qw(blessed);
 
 requires qw(encoding);
 
 sub mk_encoding_methods {
-   my ($self, @fields) = @_; my $class = ref $self || $self;
+   my ($self, @fields) = @_; my $class = blessed $self || $self;
 
    no strict q(refs); ## no critic
 
@@ -77,10 +78,10 @@ sub mk_log_methods {
 sub _decode_data {
    my ($self, $enc_name, $data) = @_; my $enc;
 
-   return                       unless (defined $data                    );
-   return $data                 if     (ref $data eq HASH                );
-   return $data                 unless ($enc = find_encoding( $enc_name ));
-   return $enc->decode( $data ) unless (ref $data eq ARRAY               );
+   defined $data                     or  return;
+   is_hashref $data                  and return $data;
+   $enc = find_encoding( $enc_name ) or  return $data;
+   is_arrayref $data                 or  return $enc->decode( $data );
 
    return [ map { $enc->decode( $_ ) } @{ $data } ];
 }
@@ -90,7 +91,7 @@ sub _guess_encoding {
 
    defined ($data = $caller->$field( @rest )) or return;
 
-   my $all = ref $data eq ARRAY ? join SPC, @{ $data } : $data;
+   my $all = (is_arrayref $data) ? join SPC, @{ $data } : $data;
    my $enc = guess_encoding( $all, grep { not m{ guess }mx } ENCODINGS );
 
    return $enc && ref $enc ? $self->_decode_data( $enc->name, $data ) : $data;
@@ -100,7 +101,6 @@ sub _method_name {
    (my $enc = lc shift) =~ s{ [-] }{_}gmx; return q(_).$enc.q(_encoding)
 }
 
-no Moose::Util::TypeConstraints;
 no Moose::Role;
 
 1;

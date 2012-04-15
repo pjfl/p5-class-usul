@@ -8,6 +8,7 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 818 $ =~ /\d+/gmx );
 
 use Moose;
 use Class::Usul::Constants;
+use File::Spec::Functions qw(catfile);
 use IPC::Cmd qw(can_run);
 
 extends qw(Class::Usul);
@@ -20,7 +21,7 @@ around BUILDARGS => sub {
 
    my $attrs = $class->$orig( @rest ); my $dir = $attrs->{project_dir};
 
-   if (-d $class->catfile( $dir, q(.git) )) {
+   if (-d catfile( $dir, q(.git) )) {
       can_run( q(git) ) or return $attrs; # Be nice to CPAN testing
 
       require Git::Class::Worktree;
@@ -30,7 +31,7 @@ around BUILDARGS => sub {
       return $attrs;
    }
 
-   $dir = $class->catfile( $attrs->{project_dir}, q(.svn) );
+   $dir = catfile( $attrs->{project_dir}, q(.svn) );
 
    if (-d $dir) {
       can_run( q(svn) ) or return $attrs; # Be nice to CPAN testing
