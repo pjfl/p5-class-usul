@@ -11,12 +11,15 @@ use Class::Usul::Constants;
 use Class::Usul::Functions
     qw(arg_list classfile create_token is_arrayref throw untaint_path);
 use English qw(-no_match_vars);
+use File::DataClass::Constants ();
 use File::DataClass::IO ();
 use File::DataClass::Schema;
 use File::Spec;
 use Scalar::Util qw(blessed);
 
 requires qw(config);
+
+File::DataClass::Constants->Exception_Class( EXCEPTION_CLASS );
 
 sub abs_path {
    my ($self, $base, $path) = @_; $base ||= NUL; $path or return NUL;
@@ -67,9 +70,7 @@ sub find_source {
 }
 
 sub io {
-   my ($self, @rest) = @_; my $io = File::DataClass::IO->new( @rest );
-
-   $io->exception_class( EXCEPTION_CLASS ); return $io;
+   my $self = shift; return File::DataClass::IO->new( @_ );
 }
 
 {  my $cache;
@@ -257,8 +258,6 @@ None
 
 =item L<Class::Usul::Constants>
 
-=item L<Digest>
-
 =item L<File::DataClass::IO>
 
 =item L<File::Temp>
@@ -281,7 +280,7 @@ Peter Flanigan, C<< <Support at RoxSoft.co.uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2011 Peter Flanigan. All rights reserved
+Copyright (c) 2012 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

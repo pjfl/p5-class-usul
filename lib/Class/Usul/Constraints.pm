@@ -6,22 +6,19 @@ use strict;
 use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use Moose::Role;
-use Class::Null;
-use Class::Usul::Config;
+use MooseX::Types -declare => [ qw(Config Encoding Log) ];
+use MooseX::Types::Moose qw(HashRef Object);
 use Class::Usul::Constants;
-use Moose::Util::TypeConstraints;
+use Class::Usul::Config;
+use Class::Null;
 
-enum 'C_U_Encoding' => ENCODINGS;
-enum 'C_U_Digest_Algorithm' => DIGEST_ALGORITHMS;
+enum Encoding, ENCODINGS;
 
-subtype 'C_U_Config' => as   'Object';
-coerce  'C_U_Config' => from 'HashRef' => via {
-   return Class::Usul::Config->new( $_ );
-};
+subtype Config, as   Object;
+coerce  Config, from HashRef, via { Class::Usul::Config->new( $_ ) };
 
-subtype 'C_U_Log' => as 'Object' =>
-   where   { $_->isa( q(Class::Null) ) or __has_log_level_methods( $_ ) } =>
+subtype Log,    as   Object,
+   where   { $_->isa( q(Class::Null) ) or __has_log_level_methods( $_ ) },
    message { 'Object '.(blessed $_ || $_).' is missing a log level method' };
 
 sub __has_log_level_methods {
@@ -31,9 +28,6 @@ sub __has_log_level_methods {
 
    return TRUE;
 }
-
-no Moose::Util::TypeConstraints;
-no Moose::Role;
 
 1;
 

@@ -525,6 +525,8 @@ None
 
 =item L<Data::Printer>
 
+=item L<Digest>
+
 =item L<List::Util>
 
 =item L<Path::Class::Dir>

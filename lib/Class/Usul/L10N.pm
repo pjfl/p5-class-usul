@@ -9,35 +9,37 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use Moose;
 use Class::Null;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(assert is_arrayref);
-use File::DataClass::Constraints;
+use Class::Usul::Constraints     qw(Log);
+use Class::Usul::Functions       qw(assert is_arrayref);
+use MooseX::Types::Moose         qw(Bool ArrayRef HashRef Object Str);
+use File::DataClass::Constraints qw(Directory Lock Path);
 use File::Gettext::Constants;
 use File::Gettext;
 use File::Spec;
 use Try::Tiny;
 
-has 'debug'             => is => 'ro', isa => 'Bool',
+has 'debug'             => is => 'ro', isa => Bool,
    default              => FALSE;
 
-has 'domain_attributes' => is => 'ro', isa => 'HashRef',
+has 'domain_attributes' => is => 'ro', isa => HashRef,
    default              => sub { {} };
 
-has 'domain_names'      => is => 'ro', isa => 'ArrayRef[Str]',
+has 'domain_names'      => is => 'ro', isa => ArrayRef[Str],
    default              => sub { [ q(messages) ] };
 
-has 'localedir'         => is => 'ro', isa => 'F_DC_Path',
+has 'localedir'         => is => 'ro', isa => Path,
    default              => sub { DIRECTORIES->[ 0 ] }, coerce => TRUE;
 
-has 'lock'              => is => 'ro', isa => 'F_DC_Lock',
+has 'lock'              => is => 'ro', isa => Lock,
    default              => sub { Class::Null->new };
 
-has 'log'               => is => 'ro', isa => 'Object',
+has 'log'               => is => 'ro', isa => Log,
    default              => sub { Class::Null->new };
 
-has 'tempdir'           => is => 'ro', isa => 'F_DC_Directory',
+has 'tempdir'           => is => 'ro', isa => Directory,
    default              => File::Spec->tmpdir, coerce => TRUE;
 
-has 'use_country'       => is => 'ro', isa => 'Bool',
+has 'use_country'       => is => 'ro', isa => Bool,
    default              => FALSE;
 
 sub BUILD {
@@ -172,18 +174,17 @@ Class::Usul::L10N - Localize text strings
    use Class::Usul::L10N;
 
    my $l10n = Class::Usul::L10N->new( {
-      debug        => $c->debug,
-      log          => $c->log,
-      tempdir      => File::Spec->tmpdir } );
+      localedir    => 'path_to_message_catalogs',
+      log          => Log::Handler->new, } );
 
-   $local_text = $l10n->localize( $key, {
-      domain_names => [ 'default', $c->action->namespace ],
+   $local_text = $l10n->localize( 'message_to_localize', {
+      domain_names => [ 'message_file', 'another_message_file' ],
       locale       => q(de_DE),
       params       => { name => 'value', }, } );
 
 =head1 Description
 
-Localize text strings
+Localize text strings by looking them up in a GNU Gettext PO message catalog
 
 =head1 Configuration and Environment
 
@@ -214,15 +215,16 @@ Returns a hash ref containing the keys and values of the PO header record
 
 Localizes the message. The message catalog is loaded from a GNU
 Gettext portable object file. Returns the C<$key> if the message is
-not in the catalog. Language is selected by the C<< $args->{locale} >>
-attribute. Expands positional parameters of the form C<< [_<n>] >> if
-C<< $args->{params} >> is an array ref of values to substitute. Otherwise
-expands named attributes of the form C<< {attr_name} >> using the C<$args>
-hash for substitution values. The attribute C<< $args->{count} >> is passed
-to the machine object files plural function which is used to select either
-the singular or plural form of the translation. If C<< $args->{context} >>
-is supplied it is prepended to the C<$key> before the lookup in the catalog
-takes place
+not in the catalog (and C<< $args->{no_default} is not true). Language
+is selected by the C<< $args->{locale} >> attribute. Expands
+positional parameters of the form C<< [_<n>] >> if C<< $args->{params}
+>> is an array ref of values to substitute. Otherwise expands named
+attributes of the form C<< {attr_name} >> using the C<$args> hash for
+substitution values. The attribute C<< $args->{count} >> is passed to
+the machine object files plural function which is used to select
+either the singular or plural form of the translation. If C<<
+$args->{context} >> is supplied it is prepended to the C<$key> before
+the lookup in the catalog takes place
 
 =head1 Diagnostics
 
@@ -233,6 +235,22 @@ Asserts that the I<locale> attribute is set
 =over 3
 
 =item L<Class::Usul::Constants>
+
+=item L<Class::Usul::Constraints>
+
+=item L<Class::Usul::Functions>
+
+=item L<File::DataClass::Constraints>
+
+=item L<File::Gettext>
+
+=item L<File::Gettext::Constants>
+
+=item L<Moose>
+
+=item L<MooseX::Types::Moose>
+
+=item L<Try::Tiny>
 
 =back
 

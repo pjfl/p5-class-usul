@@ -11,36 +11,40 @@ use Moose;
 use Class::MOP;
 use Class::Null;
 use Class::Usul::Constants;
+use Class::Usul::Constraints qw(Config Encoding Log);
 use Class::Usul::Functions
-   qw(data_dumper is_arrayref is_hashref merge_attributes throw);
+    qw(data_dumper is_arrayref is_hashref merge_attributes throw);
 use Class::Usul::L10N;
+use File::DataClass::Constraints qw(Lock);
 use File::Basename qw(dirname);
 use IPC::SRLock;
 use Log::Handler;
 use Module::Pluggable::Object;
 use MooseX::ClassAttribute;
+use MooseX::Types::Moose qw(Bool Object);
 use Scalar::Util qw(blessed);
 use Try::Tiny;
 
-with qw(Class::Usul::Constraints File::DataClass::Constraints);
+class_has 'Lock' => is => 'rw',    isa => Lock;
 
-class_has 'Lock' => is => 'rw',    isa => 'F_DC_Lock';
+has '_config'    => is => 'ro',    isa => Config,   required   => TRUE,
+   reader        => 'config', init_arg => 'config', coerce     => TRUE;
 
-has '_config'    => is => 'ro',    isa => 'C_U_Config',  required => TRUE,
-   reader        => 'config', init_arg => 'config',       coerce  => TRUE;
+has 'debug'      => is => 'rw',    isa => Bool,     default    => FALSE;
 
-has 'debug'      => is => 'rw',    isa => 'Bool',         default => FALSE;
-
-has 'encoding'   => is => 'ro',    isa => 'C_U_Encoding', default => q(UTF-8),
+has 'encoding'   => is => 'ro',    isa => Encoding, default    => q(UTF-8),
    documentation => 'Decode/encode input/output using this encoding';
 
-has '_l10n'      => is => 'ro',    isa => 'Object',    lazy_build => TRUE,
+has '_l10n'      => is => 'ro',    isa => Object,
+   lazy          => TRUE,      builder => '_build__l10n',
    reader        => 'l10n',   init_arg => 'l10n';
 
-has '_lock'      => is => 'ro',    isa => 'F_DC_Lock', lazy_build => TRUE,
+has '_lock'      => is => 'ro',    isa => Lock,
+   lazy          => TRUE,      builder => '_build__lock',
    reader        => 'lock',   init_arg => 'lock';
 
-has '_log'       => is => 'ro',    isa => 'C_U_Log',   lazy_build => TRUE,
+has '_log'       => is => 'ro',    isa => Log,
+   lazy          => TRUE,      builder => '_build__log',
    reader        => 'log',    init_arg => 'log';
 
 with qw(Class::Usul::Encoding);

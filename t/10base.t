@@ -8,6 +8,7 @@ use FindBin qw( $Bin );
 use lib catdir( $Bin, updir, q(lib) );
 
 use Module::Build;
+use English qw(-no_match_vars);
 use File::Basename qw(basename);
 use Test::More;
 use Test::Deep;
@@ -23,29 +24,36 @@ use Class::Usul::Programs;
 
 my $name = basename( $0, qw(.t) );
 my $prog = Class::Usul::Programs->new( appclass => q(Class::Usul),
-                                       debug    => 0 );
+                                       debug    => 0,
+                                       method   => q(dump_self),
+                                       quiet    => 1,
+                                       tempdir  => q(t), );
 
 cmp_deeply $prog, methods( encoding => q(UTF-8) ), 'Constructs default object';
 
-ok $prog->config->script eq $name.q(.t), 'Config->script';
+is $prog->config->script, $name.q(.t), 'Config->script';
 
-ok $prog->config->name eq $name, 'Config->name';
+is $prog->config->name, $name, 'Config->name';
 
-my $text = $prog->add_leader();
+is $prog->add_leader(), "${name}: [no message]", 'Default leader';
 
-ok $text eq "${name}: [no message]", 'Default leader';
+is $prog->add_leader( 'Dummy' ), '10base: Dummy', 'Text plus leader';
 
-$text = $prog->add_leader( 'Dummy' );
+is $prog->can_call( 'dump_self' ), 1, 'Can call true';
 
-ok $text eq '10base: Dummy', 'Text plus leader';
+is $prog->can_call( 'add_leader' ), 0, 'Can call false';
 
-my $bool = $prog->can_call( 'dump_self' ); ok $bool == 1, 'Can call true';
+is $prog->get_meta( q(META.yml) )->name, q(Class-Usul), 'Meta file class';
 
-$bool = $prog->can_call( 'add_leader' ); ok $bool == 0, 'Can call false';
+eval { $prog->io( 'Dummy' )->all }; my $e = $EVAL_ERROR || q();
 
-my $meta = $prog->get_meta( q(META.yml) );
+like $e, qr{ Dummy \s+ cannot \s+ open }mx, 'Non existant file';
 
-ok $meta->name eq q(Class-Usul), 'Meta file class';
+is ref $e, 'File::DataClass::Exception', 'File exception class';
+
+is $prog->io( [ qw(t test) ] )->chomp->getline, 'test data', 'Read file';
+
+is $prog->run, 0, 'Can run dump_self';
 
 done_testing;
 

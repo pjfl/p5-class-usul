@@ -9,15 +9,14 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use Moose;
 use MooseX::ClassAttribute;
 use File::DataClass::Exception;
-
-with qw(File::DataClass::Constraints);
+use File::DataClass::Constants ();
 
 class_has 'Assert'          => is => 'rw', isa => 'Maybe[CodeRef]';
 
 class_has 'Config_Extn'     => is => 'rw', isa => 'Str',
    default                  => q(.xml);
 
-class_has 'Exception_Class' => is => 'rw', isa => 'F_DC_Exception',
+class_has 'Exception_Class' => is => 'rw', isa => 'File::DataClass::Exception',
    default                  => q(File::DataClass::Exception);
 
 my @constants;
@@ -36,34 +35,31 @@ use Sub::Exporter -setup => {
    exports => [ @constants ], groups => { default => [ @constants ], },
 };
 
-sub ARRAY      () { q(ARRAY)            }
-sub BRK        () { q(: )               }
-sub CODE       () { q(CODE)             }
-sub ENCODINGS  () { ( qw(ascii iso-8859-1 UTF-8 guess) ) }
-sub EVIL       () { q(MSWin32)          }
-sub EXTNS      () { ( qw(.pl .pm .t) )  }
-sub FAILED     () { 1                   }
-sub FALSE      () { 0                   }
-sub HASH       () { q(HASH)             }
-sub LANG       () { q(en)               }
-sub LBRACE     () { q({)                }
-sub LOCALIZE   () { q([_)               }
-sub LOG_LEVELS () { ( qw(alert debug error fatal info warn) ) }
-sub LSB        () { q([)                }
-sub NO         () { q(n)                }
-sub NUL        () { q()                 }
-sub OK         () { 0                   }
-sub PERMS      () { oct q(0660)         }
-sub PHASE      () { 2                   }
-sub PREFIX     () { [ NUL, q(opt) ]     }
-sub QUIT       () { q(q)                }
-sub RSB        () { q(])                }
-sub SEP        () { q(/)                }
-sub SPC        () { q( )                }
-sub TRUE       () { 1                   }
-sub UUID_PATH  () { [ NUL, qw(proc sys kernel random uuid) ] }
-sub WIDTH      () { 80                  }
-sub YES        () { q(y)                }
+sub ARRAY    () { q(ARRAY)           }
+sub BRK      () { q(: )              }
+sub CODE     () { q(CODE)            }
+sub EVIL     () { q(MSWin32)         }
+sub EXTNS    () { ( qw(.pl .pm .t) ) }
+sub FAILED   () { 1                  }
+sub FALSE    () { 0                  }
+sub HASH     () { q(HASH)            }
+sub LANG     () { q(en)              }
+sub LBRACE   () { q({)               }
+sub LOCALIZE () { q([_)              }
+sub LSB      () { q([)               }
+sub NO       () { q(n)               }
+sub NUL      () { q()                }
+sub OK       () { 0                  }
+sub PERMS    () { oct q(0660)        }
+sub PHASE    () { 2                  }
+sub PREFIX   () { [ NUL, q(opt) ]    }
+sub QUIT     () { q(q)               }
+sub RSB      () { q(])               }
+sub SEP      () { q(/)               }
+sub SPC      () { q( )               }
+sub TRUE     () { 1                  }
+sub WIDTH    () { 80                 }
+sub YES      () { q(y)               }
 
 sub ASSERT              () { __PACKAGE__->Assert || sub {} }
 sub CONFIG_EXTN         () { __PACKAGE__->Config_Extn }
@@ -71,10 +67,12 @@ sub DEFAULT_DIR         () { [ NUL, qw(etc default) ] }
 sub DEFAULT_ENCODING    () { q(UTF-8) }
 sub DEFAULT_L10N_DOMAIN () { q(default) }
 sub DIGEST_ALGORITHMS   () { ( qw(SHA-512 SHA-256 SHA-1 MD5) ) }
+sub ENCODINGS           () { ( qw(ascii iso-8859-1 UTF-8 guess) ) }
 sub EXCEPTION_CLASS     () { __PACKAGE__->Exception_Class }
+sub LOG_LEVELS          () { ( qw(alert debug error fatal info warn) ) }
 sub UNTAINT_IDENTIFIER  () { qr{ \A ([a-zA-Z0-9_]+) \z }mx }
 sub UNTAINT_PATH_REGEX  () { qr{ \A ([^\$%;|&><]+) \z }mx }
-
+sub UUID_PATH           () { [ NUL, qw(proc sys kernel random uuid) ] }
 
 __PACKAGE__->meta->make_immutable;
 
