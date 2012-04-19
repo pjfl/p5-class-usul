@@ -19,7 +19,7 @@ Bob->new( {
       'Crypt::CBC'                => 2.30,
       'Date::Format'              => 2.22,
       'DateTime::Format::Epoch'   => 0.11,
-      'File::DataClass'           => q(0.8.0),
+      'File::DataClass'           => q(0.9.0),
       'Getopt::Mixed'             => 1.10,
       'Git::Class'                => 0.03,
       'IO::Interactive'           => q(0.0.5),
