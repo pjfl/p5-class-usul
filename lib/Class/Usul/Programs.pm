@@ -9,13 +9,15 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Moose;
 use Class::Inspector;
+use Class::Usul::IPC;
+use Class::Usul::File;
 use Class::Usul::Constants;
 use Class::Usul::Response::Meta;
 use Class::Usul::Functions qw(app_prefix arg_list assert_directory class2appdir
                               classdir elapsed env_prefix exception
                               is_member prefix2class say split_on__ throw
                               untaint_identifier untaint_path);
-use Cwd                    qw();
+use Cwd                    qw(abs_path);
 use Encode                 qw(decode);
 use English                qw(-no_match_vars);
 use File::Basename         qw(basename);
@@ -32,8 +34,7 @@ use Text::Autoformat;
 use Try::Tiny;
 
 extends qw(Class::Usul);
-with    qw(MooseX::Getopt::Dashes);
-with    qw(Class::Usul::Encoding Class::Usul::File Class::Usul::IPC);
+with    qw(MooseX::Getopt::Dashes Class::Usul::Encoding);
 
 __PACKAGE__->make_log_methods();
 
@@ -80,18 +81,26 @@ has 'version'      => is => 'ro', isa => 'Bool', default => FALSE,
    traits          => [ 'Getopt' ], cmd_aliases => q(V), cmd_flag => 'version';
 
 
+has '_file'    => is => 'ro', isa     => 'Object',  init_arg => undef,
+   reader      => 'file',     lazy    => TRUE,      builder  => '_build__file',
+   handles     => [ qw(io) ];
+
+has '_ipc'     => is => 'ro', isa     => 'Object',  init_arg => undef,
+   reader      => 'ipc',      lazy    => TRUE,      builder  => '_build__ipc',
+   handles     => [ qw(run_cmd) ];
+
 has '_logname' => is => 'ro', isa     => 'Str',     init_arg => undef,
    reader      => 'logname',  default => $ENV{USER} || $ENV{LOGNAME};
 
-has '_os'      => is => 'rw', isa     => 'HashRef', init_arg => undef,
-   accessor    => 'os',       lazy    => TRUE,      builder  => '_build__os';
+has '_os'      => is => 'ro', isa     => 'HashRef', init_arg => undef,
+   reader      => 'os',       lazy    => TRUE,      builder  => '_build__os';
 
 around BUILDARGS => sub {
    my ($next, $class, @args) = @_; my $attr = $class->$next( @args );
 
    $attr->{appclass} ||= prefix2class basename( $PROGRAM_NAME, EXTNS );
-   $attr->{home    } ||= $class->_get_homedir( $attr );
-   $attr->{config  } ||= $class->_load_config( $attr );
+   $attr->{home    } ||= __get_homedir( $attr );
+   $attr->{config  } ||= __load_config( $attr );
 
    return $attr;
 };
@@ -160,7 +169,7 @@ sub error {
 sub fatal {
    my ($self, $err, $args) = @_; my (undef, $file, $line) = caller 0;
 
-   $err ||= 'unknown'; my $posn = ' at '.Cwd::abs_path( $file )." line ${line}";
+   $err ||= 'unknown'; my $posn = ' at '.abs_path( $file )." line ${line}";
 
    $self->log_alert( $_ ) for (split m{ \n }mx, $err.$posn);
 
@@ -324,7 +333,7 @@ sub run {
    elsif (defined $rv) { $self->output( "Terminated code ${rv}" ) }
    else { $self->output( 'Terminated with undefined rv' ); $rv = FAILED }
 
-   $self->delete_tmp_files;
+   $self->file->delete_tmp_files;
    return $rv || OK;
 }
 
@@ -384,6 +393,21 @@ sub _apply_encoding {
    return;
 }
 
+sub _build__file {
+   my $self = shift;
+
+   return Class::Usul::File->new( { config => $self->config } );
+}
+
+sub _build__ipc {
+   my $self = shift;
+
+   return Class::Usul::IPC->new( { config => $self->config,
+                                   debug  => $self->debug,
+                                   file   => $self->file,
+                                   log    => $self->log } );
+}
+
 sub _build__os {
    my $self = shift;
    my $file = q(os_).$Config{osname}.$self->config->extension;
@@ -391,13 +415,18 @@ sub _build__os {
 
    $path->exists or return {};
 
-   my $cfg  = $self->data_load( arrays => [ q(os) ], path => $path ) || {};
+   my $cfg  = $self->file->data_load( arrays => [ q(os) ],
+                                      path   => $path ) || {};
 
    return $cfg->{os} || {};
 }
 
 sub _debug_set {
-   my ($self, $debug) = @_; $self->SUPER::debug( $debug ); return;
+   my ($self, $debug) = @_;
+
+   $self->SUPER::debug( $debug ); $self->ipc->debug( $debug );
+
+   return;
 }
 
 sub _dont_ask {
@@ -418,71 +447,14 @@ sub _get_debug_option {
    return $self->yorn( 'Do you want debugging turned on', FALSE, TRUE );
 }
 
-sub _get_homedir {
-  my ($class, $attr) = @_; my $appclass = $attr->{appclass}; my $path;
-
-   # 0. Pass the directory in
-   $path = assert_directory $attr->{homedir} and return $path;
-
-   # 1. Environment variable
-   $path = $ENV{ (env_prefix $appclass).q(_HOME) };
-   $path = assert_directory $path and return $path;
-
-   # 2a. Users home directory - application directory
-   my $appdir = class2appdir $appclass; my $classdir = classdir $appclass;
-
-   $path = catdir( File::HomeDir->my_home, $appdir );
-   $path = catdir( $path, qw(default lib), $classdir );
-   $path = assert_directory $path and return $path;
-
-   # 2b. Users home directory - dotfile
-   $path = catdir( File::HomeDir->my_home, q(.).$appdir );
-   $path = assert_directory $path and return $path;
-
-   # 3. Well known path
-   my $well_known = catfile( @{ DEFAULT_DIR() }, $appdir );
-
-   $path = $class->_read_path_from( $well_known );
-   $path and $path = catdir( $path, q(lib), $classdir );
-   $path = assert_directory $path and return $path;
-
-   # 4. Default install prefix
-   $path = catdir( @{ PREFIX() }, $appdir );
-   $path = catdir( $path, qw(default lib), $classdir );
-   $path = assert_directory $path and return $path;
-
-   # 5. Config file found in @INC
-   my $file = app_prefix $appclass;
-
-   for my $dir (map { catdir( Cwd::abs_path( $_ ), $classdir ) } @INC) {
-      $path = untaint_path catfile( $dir, $file.CONFIG_EXTN );
-
-      -f $path and return dirname( $path );
-   }
-
-   # 6. Default to /tmp
-   return untaint_path File::Spec->tmpdir;
-}
-
-sub _load_config {
-   my ($class, $attr) = @_;
-
-   my $file   = (app_prefix $attr->{appclass} ).CONFIG_EXTN;
-   my $path   = catfile( $attr->{home}, $file );
-   # Now we know where the config file should be we can try parsing it
-   my $config = -f $path ? $class->data_load( path => $path ) : {};
-
-   return { %{ $attr }, %{ $config || {} } };
-}
-
 sub _man_page_from {
    my ($self, $src) = @_; my $cfg = $self->config;
 
    my $parser   = Pod::Man->new( center  => $cfg->doc_title || NUL,
                                  name    => $cfg->script,
-                                 release => 'Version '.$self->version,
+                                 release => 'Version '.$self->VERSION,
                                  section => q(3m) );
-   my $tempfile = $self->tempfile;
+   my $tempfile = $self->file->tempfile;
    my $cmd      = $cfg->man_page_cmd || [];
 
    $parser->parse_from_file( NUL.$src->pathname, $tempfile->pathname );
@@ -506,15 +478,6 @@ sub _output_version {
    my $self = shift; $self->output( 'Version '.$self->VERSION ); exit OK;
 }
 
-sub _read_path_from {
-   my ($class, $path) = @_;
-
-   return -f $path ? first { length }
-                     grep  { not m{ \A \# }mx }
-                     $class->io( $path )->chomp->getlines
-                   : undef;
-}
-
 sub _usage_for {
    my ($self, $method) = @_; my @classes = (blessed $self);
 
@@ -525,8 +488,8 @@ sub _usage_for {
 
       if (defined &{ "${class}::${method}" }) {
          my $selector = Pod::Select->new(); $selector->select( q(/).$method );
-         my $source   = $self->find_source( $class );
-         my $tempfile = $self->tempfile;
+         my $source   = $self->file->find_source( $class );
+         my $tempfile = $self->file->tempfile;
 
          $selector->parse_from_file( $source, $tempfile->pathname );
          return $self->_man_page_from( $tempfile );
@@ -546,6 +509,52 @@ sub __get_control_chars {
    return ((join q(|), values %cntl), %cntl);
 }
 
+sub __get_homedir {
+  my $attr = shift; my $appclass = $attr->{appclass}; my $path;
+
+   # 0. Pass the directory in
+   $path = assert_directory $attr->{homedir} and return $path;
+
+   # 1. Environment variable
+   $path = $ENV{ (env_prefix $appclass).q(_HOME) };
+   $path = assert_directory $path and return $path;
+
+   # 2a. Users home directory - application directory
+   my $appdir = class2appdir $appclass; my $classdir = classdir $appclass;
+
+   $path = catdir( File::HomeDir->my_home, $appdir );
+   $path = catdir( $path, qw(default lib), $classdir );
+   $path = assert_directory $path and return $path;
+
+   # 2b. Users home directory - dotfile
+   $path = catdir( File::HomeDir->my_home, q(.).$appdir );
+   $path = assert_directory $path and return $path;
+
+   # 3. Well known path
+   my $well_known = catfile( @{ DEFAULT_DIR() }, $appdir );
+
+   $path = __read_path_from( $well_known );
+   $path and $path = catdir( $path, q(lib), $classdir );
+   $path = assert_directory $path and return $path;
+
+   # 4. Default install prefix
+   $path = catdir( @{ PREFIX() }, $appdir );
+   $path = catdir( $path, qw(default lib), $classdir );
+   $path = assert_directory $path and return $path;
+
+   # 5. Config file found in @INC
+   my $file = app_prefix $appclass;
+
+   for my $dir (map { catdir( abs_path( $_ ), $classdir ) } @INC) {
+      $path = untaint_path catfile( $dir, $file.CONFIG_EXTN );
+
+      -f $path and return dirname( $path );
+   }
+
+   # 6. Default to /tmp
+   return untaint_path File::Spec->tmpdir;
+}
+
 sub __list_methods_of {
    my $arg = shift; my $class = blessed $arg || $arg;
 
@@ -553,6 +562,16 @@ sub __list_methods_of {
           grep { my $x = $_;
                  grep { $_ eq q(method) } attributes::get( \&{ $x } ) }
               @{ Class::Inspector->methods( $class, 'full', 'public' ) };
+}
+
+sub __load_config {
+   my $attr   = shift;
+   my $file   = (app_prefix $attr->{appclass} ).CONFIG_EXTN;
+   my $path   = catfile( $attr->{home}, $file );
+   # Now we know where the config file should be we can try parsing it
+   my $config = -f $path ? Class::Usul::File->data_load( path => $path ) : {};
+
+   return { %{ $attr }, %{ $config || {} } };
 }
 
 sub __map_prompt_args {
@@ -641,6 +660,16 @@ sub __prompt {
 
 sub __raw_mode {
    my $handle = shift; ReadMode q(raw), $handle; return;
+}
+
+sub __read_path_from {
+   my $path = shift;
+
+   return -f $path ? first { length }
+                     map   { (split q(=), $_)[ 1 ] }
+                     grep  { m{ \A APPLDIR= }mx }
+                     Class::Usul::File->io( $path )->chomp->getlines
+                   : undef;
 }
 
 sub __restore_mode {

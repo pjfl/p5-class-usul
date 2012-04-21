@@ -47,13 +47,13 @@ is $prog->can_call( 'add_leader' ), 0, 'Can call false';
 
 is $prog->get_meta( q(META.yml) )->name, q(Class-Usul), 'Meta file class';
 
-eval { $prog->io( 'Dummy' )->all }; my $e = $EVAL_ERROR || q();
+eval { $prog->file->io( 'Dummy' )->all }; my $e = $EVAL_ERROR || q();
 
 like $e, qr{ Dummy \s+ cannot \s+ open }mx, 'Non existant file';
 
 is ref $e, 'File::DataClass::Exception', 'File exception class';
 
-unlink $logfile; my $io = $prog->io( $logfile ); $io->touch;
+unlink $logfile; my $io = $prog->file->io( $logfile ); $io->touch;
 
 ok -f $logfile, 'Create logfile'; $prog->info( 'Information' );
 

@@ -6,18 +6,19 @@ use strict;
 use warnings;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use Moose::Role;
+use Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions
-    qw(arg_list classfile create_token is_arrayref throw untaint_path);
-use English qw(-no_match_vars);
+use Class::Usul::Constraints qw(Config);
+use Class::Usul::Functions   qw(arg_list classfile create_token is_arrayref
+                                throw untaint_path);
+use English                  qw(-no_match_vars);
 use File::DataClass::Constants ();
-use File::DataClass::IO ();
+use File::DataClass::IO        ();
 use File::DataClass::Schema;
 use File::Spec;
-use Scalar::Util qw(blessed);
+use Scalar::Util             qw(blessed);
 
-requires qw(config);
+has 'config' => is => 'ro', isa => Config, required => TRUE;
 
 File::DataClass::Constants->Exception_Class( EXCEPTION_CLASS );
 
@@ -129,7 +130,9 @@ sub uuid {
    return $_[ 0 ]->io( $_[ 1 ] || UUID_PATH )->lock->chomp->getline;
 }
 
-no Moose::Role;
+__PACKAGE__->meta->make_immutable;
+
+no Moose;
 
 1;
 

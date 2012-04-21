@@ -6,28 +6,37 @@ use strict;
 use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use Moose::Role;
+use Moose;
+use Class::Null;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(arg_list is_arrayref strip_leader throw);
+use Class::Usul::Constraints  qw(Config Log);
+use Class::Usul::Functions    qw(arg_list is_arrayref strip_leader throw);
 use Class::Usul::Response::IPC;
 use Class::Usul::Response::Table;
-use Class::Usul::Time qw(time2str);
-use English           qw(-no_match_vars);
-use File::Basename    qw(basename);
+use Class::Usul::Time         qw(time2str);
+use English                   qw(-no_match_vars);
+use File::Basename            qw(basename);
 use File::Spec;
 use IO::Handle;
 use IO::Select;
 use IPC::Open3;
 use Module::Load::Conditional qw(can_load);
-use POSIX qw(WIFEXITED WNOHANG);
+use MooseX::Types::Moose      qw(Bool Object);
+use POSIX                     qw(WIFEXITED WNOHANG);
 use Proc::ProcessTable;
 use Try::Tiny;
-
-requires qw(config debug io tempdir tempfile);
 
 our ($ERROR, $WAITEDPID);
 
 my $SPECIAL_CHARS = do { my $x = join NUL, qw(< > | &); qr{ ([$x]) }mx };
+
+has 'config' => is => 'ro', isa => Config, required => TRUE;
+
+has 'debug'  => is => 'rw', isa => Bool,   default  => FALSE;
+
+has 'file'   => is => 'ro', isa => Object, required => TRUE;
+
+has 'log'    => is => 'ro', isa => Log,    default  => sub { Class::Null->new };
 
 sub child_list {
    my ($self, $pid, $procs) = @_; my ($child, $p, $t); my @pids = ();
@@ -103,11 +112,10 @@ sub process_exists {
 
    my $args = arg_list @rest; my $pid = $args->{pid};
 
-   if ($file = $args->{file} and $io = $self->io( $file ) and $io->is_file) {
-      $pid = $io->chomp->lock->getline;
-   }
+   $file = $args->{file} and $io = $self->file->io( $file ) and $io->is_file
+      and $pid = $io->chomp->lock->getline;
 
-   return FALSE if (not $pid or $pid !~ m{ \d+ }mx);
+   (not $pid or $pid !~ m{ \d+ }mx) and return FALSE;
 
    return CORE::kill 0, $pid ? TRUE : FALSE;
 }
@@ -185,7 +193,8 @@ sub signal_process_as_root {
 
    $args->{pid} and push @{ $pids }, $args->{pid};
 
-   if ($file = $args->{file} and $io = $self->io( $file ) and $io->is_file) {
+   if ($file = $args->{file}
+       and $io = $self->file->io( $file ) and $io->is_file) {
       push @{ $pids }, $io->chomp->lock->getlines;
       $sig eq q(TERM) and unlink $file;
    }
@@ -245,11 +254,11 @@ sub _run_cmd_system_args {
 
    $args->{debug      } ||= $self->debug;
    $args->{expected_rv} ||= 0;
-   $args->{tempdir    } ||= $self->tempdir;
+   $args->{tempdir    } ||= $self->file->tempdir;
    # Three different semi-random file names in the temp directory
-   $args->{err_ref    } ||= $self->tempfile( $args->{tempdir} );
-   $args->{out_ref    } ||= $self->tempfile( $args->{tempdir} );
-   $args->{pid_ref    } ||= $self->tempfile( $args->{tempdir} );
+   $args->{err_ref    } ||= $self->file->tempfile( $args->{tempdir} );
+   $args->{out_ref    } ||= $self->file->tempfile( $args->{tempdir} );
+   $args->{pid_ref    } ||= $self->file->tempfile( $args->{tempdir} );
    $args->{err        } ||= q(out) if ($args->{async});
    $args->{err        } ||= $args->{err_ref}->pathname;
    $args->{out        } ||= $args->{out_ref}->pathname;
@@ -280,12 +289,12 @@ sub _run_cmd_using_ipc_run {
    elsif ($err eq q(null))   { push @cmd_args, q(2>).$null      }
    elsif ($err ne q(stderr)) { push @cmd_args, q(2>), \$buf_err }
 
-   $args->{debug} and $self->log_debug( "Running ${cmd_str}" );
+   $args->{debug} and $self->log->debug( "Running ${cmd_str}" );
 
    try   { $rv = __ipc_run_harness( $cmd_ref, @cmd_args ) }
    catch { throw $_ };
 
-   $args->{debug} and $self->log_debug( "Run harness returned ${rv}\n" );
+   $args->{debug} and $self->log->debug( "Run harness returned ${rv}\n" );
 
    my $res = Class::Usul::Response::IPC->new();
 
@@ -305,7 +314,7 @@ sub _run_cmd_using_ipc_run {
 
    if ($rv > $args->{expected_rv}) {
       $error ||= 'Unknown error'; $msg = "Return value ${rv} error ${error}";
-      $args->{debug} and $self->log_debug( $msg );
+      $args->{debug} and $self->log->debug( $msg );
       throw error => $error, rv => $rv;
    }
 
@@ -332,7 +341,7 @@ sub _run_cmd_using_system {
 
    $cmd .= ' & echo $! 1>'.$args->{pid_ref}->pathname if ($args->{async});
 
-   $args->{debug} and $self->log_debug( "Running ${cmd}" );
+   $args->{debug} and $self->log->debug( "Running ${cmd}" );
 
    {  local ($CHILD_ERROR, $ERRNO, $EVAL_ERROR);
       local $WAITEDPID = 0; local $ERROR = OK;
@@ -343,7 +352,7 @@ sub _run_cmd_using_system {
 
       $msg = "System returned ${rv} waitedpid ${WAITEDPID} error ${ERROR}\n";
 
-      $args->{debug} and $self->log_debug( $msg );
+      $args->{debug} and $self->log->debug( $msg );
 #     On some systems the child handler reaps the child process so the system
 #     call returns -1 and sets $ERRNO to No child processes. This line and
 #     the child handler code fix the problem
@@ -373,7 +382,7 @@ sub _run_cmd_using_system {
    }
 
    if ($out ne q(stdout) and $out ne q(null) and -f $out) {
-      my $text = $self->io( $out )->slurp;
+      my $text = $self->file->io( $out )->slurp;
 
       $res->out( __run_cmd_filter_out( $res->stdout( $text ) ) );
    }
@@ -382,13 +391,13 @@ sub _run_cmd_using_system {
       $res->stderr( $res->stdout ); $error = $res->out; chomp $error;
    }
    elsif ($err ne q(stderr) and $err ne q(null) and -f $err) {
-      $res->stderr( $error = $self->io( $err )->slurp ); chomp $error;
+      $res->stderr( $error = $self->file->io( $err )->slurp ); chomp $error;
    }
    else { $error = NUL }
 
    if ($rv > $args->{expected_rv}) {
       $error ||= 'Unknown error'; $msg = "Return value ${rv} error ${error}";
-      $args->{debug} and $self->log_debug( $msg );
+      $args->{debug} and $self->log->debug( $msg );
       throw error => $error, rv => $rv;
    }
 
@@ -528,7 +537,9 @@ sub __run_cmd_filter_out {
                      split m{ [\n] }msx, $_[ 0 ];
 }
 
-no Moose::Role;
+__PACKAGE__->meta->make_immutable;
+
+no Moose;
 
 1;
 
@@ -610,7 +621,7 @@ Input to the command
 
 =item log
 
-Logging object. Defaults to C<< $self->log >>
+Logging object
 
 =item out
 
