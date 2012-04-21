@@ -33,55 +33,58 @@ use Try::Tiny;
 
 extends qw(Class::Usul);
 with    qw(MooseX::Getopt::Dashes);
+with    qw(Class::Usul::Encoding Class::Usul::File Class::Usul::IPC);
 
-has 'debug',     => is => 'rw', isa => 'Bool',
-   documentation => 'Turn debugging on. Promps if interactive',
-   traits        => [ 'Getopt' ], cmd_aliases => q(D), cmd_flag => 'debug';
+__PACKAGE__->make_log_methods();
 
-has 'help1'      => is => 'ro', isa => 'Bool', default => FALSE,
-   documentation => 'Uses Pod::Usage to describe the program usage options',
-   traits        => [ 'Getopt' ], cmd_aliases => q(h), cmd_flag => 'options';
+has 'debug',       => is => 'rw', isa => 'Bool', default => FALSE,
+   documentation   => 'Turn debugging on. Promps if interactive',
+   traits          => [ 'Getopt' ], cmd_aliases => q(D), cmd_flag => 'debug',
+   trigger         => \&_debug_set;
 
-has 'help2'      => is => 'ro', isa => 'Bool', default => FALSE,
-   documentation => 'Uses Pod::Man to display the program documentation',
-   traits        => [ 'Getopt' ], cmd_aliases => q(H), cmd_flag => 'man_page';
+has 'help_options' => is => 'ro', isa => 'Bool', default => FALSE,
+   documentation   => 'Uses Pod::Usage to describe the program usage options',
+   traits          => [ 'Getopt' ], cmd_aliases => q(h), cmd_flag => 'options';
 
-has 'homedir'    => is => 'ro', isa => 'Str',
-   documentation => 'Directory containing the configuration file',
-   traits        => [ 'Getopt' ], cmd_flag => 'home';
+has 'help_manual'  => is => 'ro', isa => 'Bool', default => FALSE,
+   documentation   => 'Uses Pod::Man to display the program documentation',
+   traits          => [ 'Getopt' ], cmd_aliases => q(H), cmd_flag => 'man_page';
 
-has 'language'   => is => 'ro', isa => 'Str', default => NUL,
-   documentation => 'Loads the specified language message catalog',
-   traits        => [ 'Getopt' ], cmd_aliases => q(L), cmd_flag => 'language';
+has 'homedir'      => is => 'ro', isa => 'Str',
+   documentation   => 'Directory containing the configuration file',
+   traits          => [ 'Getopt' ], cmd_flag => 'home';
 
-has 'method'     => is => 'ro', isa => 'Str', default => NUL,
-   documentation => 'Name of the method to call. Required',
-   traits        => [ 'Getopt' ], cmd_aliases => q(c), cmd_flag => 'command';
+has 'language'     => is => 'ro', isa => 'Str',  default => NUL,
+   documentation   => 'Loads the specified language message catalog',
+   traits          => [ 'Getopt' ], cmd_aliases => q(L), cmd_flag => 'language';
 
-has 'nodebug'    => is => 'ro', isa => 'Bool',
-   documentation => 'Do not prompt for debugging',
-   traits        => [ 'Getopt' ], cmd_aliases => q(n), cmd_flag => 'nodebug';
+has 'method'       => is => 'ro', isa => 'Str',  default => NUL,
+   documentation   => 'Name of the method to call. Required',
+   traits          => [ 'Getopt' ], cmd_aliases => q(c), cmd_flag => 'command';
 
-has 'params'     => is => 'ro', isa => 'HashRef', default => sub { {} },
-   documentation => 'Zero, one or more key/value pairs passed to the method call',
-   traits        => [ 'Getopt' ], cmd_aliases => q(o), cmd_flag => 'option';
+has 'nodebug'      => is => 'ro', isa => 'Bool', default => FALSE,
+   documentation   => 'Do not prompt for debugging',
+   traits          => [ 'Getopt' ], cmd_aliases => q(n), cmd_flag => 'nodebug';
 
-has 'quiet'      => is => 'ro', isa => 'Bool', default => FALSE,
-   documentation => 'Quiet the display of information messages',
-   traits        => [ 'Getopt' ], cmd_aliases => q(q), cmd_flag => 'quiet';
+has 'params'       => is => 'ro', isa => 'HashRef', default => sub { {} },
+   documentation   =>
+      'Zero, one or more key/value pairs passed to the method call',
+   traits          => [ 'Getopt' ], cmd_aliases => q(o), cmd_flag => 'option';
 
-has 'version'    => is => 'ro', isa => 'Bool', default => FALSE,
-   documentation => 'Displays the version number of the program class',
-   traits        => [ 'Getopt' ], cmd_aliases => q(V), cmd_flag => 'version';
+has 'quiet'        => is => 'ro', isa => 'Bool', default => FALSE,
+   documentation   => 'Quiet the display of information messages',
+   traits          => [ 'Getopt' ], cmd_aliases => q(q), cmd_flag => 'quiet';
+
+has 'version'      => is => 'ro', isa => 'Bool', default => FALSE,
+   documentation   => 'Displays the version number of the program class',
+   traits          => [ 'Getopt' ], cmd_aliases => q(V), cmd_flag => 'version';
 
 
-has '_logname'   => is => 'ro', isa     => 'Str',     init_arg => undef,
-   reader        => 'logname',  default => $ENV{USER} || $ENV{LOGNAME};
+has '_logname' => is => 'ro', isa     => 'Str',     init_arg => undef,
+   reader      => 'logname',  default => $ENV{USER} || $ENV{LOGNAME};
 
-has '_os'        => is => 'rw', isa     => 'HashRef', init_arg => undef,
-   accessor      => 'os',       default => sub { {} };
-
-with qw(Class::Usul::File Class::Usul::IPC);
+has '_os'      => is => 'rw', isa     => 'HashRef', init_arg => undef,
+   accessor    => 'os',       lazy    => TRUE,      builder  => '_build__os';
 
 around BUILDARGS => sub {
    my ($next, $class, @args) = @_; my $attr = $class->$next( @args );
@@ -89,24 +92,18 @@ around BUILDARGS => sub {
    $attr->{appclass} ||= prefix2class basename( $PROGRAM_NAME, EXTNS );
    $attr->{home    } ||= $class->_get_homedir( $attr );
    $attr->{config  } ||= $class->_load_config( $attr );
-   $attr->{encoding}   = __apply_encoding( $attr );
 
    return $attr;
 };
 
 sub BUILD {
-   my $self = shift;
+   my $self = shift; $self->_apply_encoding;
 
-   autoflush STDOUT TRUE; autoflush STDERR TRUE;
+   $self->help_manual  and $self->_output_usage( 2 );
+   $self->help_options and $self->_output_usage( 1 );
+   $self->version      and $self->_output_version;
 
-   $self->help2   and $self->_output_usage( 2 );
-   $self->help1   and $self->_output_usage( 1 );
-   $self->version and $self->_output_version;
-
-   $self->debug       ( $self->_get_debug_option );
-   $self->lock->debug ( $self->debug             );
-   $self->SUPER::debug( $self->debug             );
-   $self->os          ( $self->_load_os_depends  );
+   $self->debug( $self->_get_debug_option );
    return;
 }
 
@@ -375,9 +372,37 @@ sub yorn {
 
 # Private methods
 
+sub _apply_encoding {
+   my $self = shift; my $enc = $self->encoding;
+
+   autoflush STDOUT TRUE; autoflush STDERR TRUE;
+
+   binmode $_, ":encoding(${enc})" for (*STDIN, *STDOUT, *STDERR);
+
+   $_ = decode( $enc , $_ ) for @ARGV;
+
+   return;
+}
+
+sub _build__os {
+   my $self = shift;
+   my $file = q(os_).$Config{osname}.$self->config->extension;
+   my $path = $self->config->ctrldir->catfile( $file );
+
+   $path->exists or return {};
+
+   my $cfg  = $self->data_load( arrays => [ q(os) ], path => $path ) || {};
+
+   return $cfg->{os} || {};
+}
+
+sub _debug_set {
+   my ($self, $debug) = @_; $self->SUPER::debug( $debug ); return;
+}
+
 sub _dont_ask {
-   return $_[ 0 ]->help_flag || $_[ 0 ]->help1 || $_[ 0 ]->help2
-       || ! is_interactive();
+   return $_[ 0 ]->debug || $_[ 0 ]->help_flag || $_[ 0 ]->help_options
+       || $_[ 0 ]->help_manual || ! is_interactive();
 }
 
 sub _getopt_full_usage {
@@ -387,25 +412,24 @@ sub _getopt_full_usage {
 sub _get_debug_option {
    my $self = shift;
 
-   $self->nodebug       and return FALSE;
-   defined $self->debug and return $self->debug;
-   $self->_dont_ask     and return FALSE;
+   $self->nodebug   and return FALSE;
+   $self->_dont_ask and return $self->debug;
 
    return $self->yorn( 'Do you want debugging turned on', FALSE, TRUE );
 }
 
 sub _get_homedir {
-  my ($self, $attr) = @_; my $class = $attr->{appclass}; my $path;
+  my ($class, $attr) = @_; my $appclass = $attr->{appclass}; my $path;
 
    # 0. Pass the directory in
    $path = assert_directory $attr->{homedir} and return $path;
 
    # 1. Environment variable
-   $path = $ENV{ (env_prefix $class).q(_HOME) };
+   $path = $ENV{ (env_prefix $appclass).q(_HOME) };
    $path = assert_directory $path and return $path;
 
    # 2a. Users home directory - application directory
-   my $appdir = class2appdir $class; my $classdir = classdir $class;
+   my $appdir = class2appdir $appclass; my $classdir = classdir $appclass;
 
    $path = catdir( File::HomeDir->my_home, $appdir );
    $path = catdir( $path, qw(default lib), $classdir );
@@ -418,7 +442,7 @@ sub _get_homedir {
    # 3. Well known path
    my $well_known = catfile( @{ DEFAULT_DIR() }, $appdir );
 
-   $path = $self->_read_path_from( $well_known );
+   $path = $class->_read_path_from( $well_known );
    $path and $path = catdir( $path, q(lib), $classdir );
    $path = assert_directory $path and return $path;
 
@@ -428,7 +452,7 @@ sub _get_homedir {
    $path = assert_directory $path and return $path;
 
    # 5. Config file found in @INC
-   my $file = app_prefix $class;
+   my $file = app_prefix $appclass;
 
    for my $dir (map { catdir( Cwd::abs_path( $_ ), $classdir ) } @INC) {
       $path = untaint_path catfile( $dir, $file.CONFIG_EXTN );
@@ -441,26 +465,14 @@ sub _get_homedir {
 }
 
 sub _load_config {
-   my ($self, $attr) = @_;
+   my ($class, $attr) = @_;
 
    my $file   = (app_prefix $attr->{appclass} ).CONFIG_EXTN;
    my $path   = catfile( $attr->{home}, $file );
    # Now we know where the config file should be we can try parsing it
-   my $config = -f $path ? $self->data_load( path => $path ) : {};
+   my $config = -f $path ? $class->data_load( path => $path ) : {};
 
    return { %{ $attr }, %{ $config || {} } };
-}
-
-sub _load_os_depends {
-   my $self = shift;
-   my $file = q(os_).$Config{osname}.$self->config->extension;
-   my $path = $self->config->ctrldir->catfile( $file );
-
-   $path->exists or return {};
-
-   my $cfg  = $self->data_load( arrays => [ q(os) ], path => $path ) || {};
-
-   return $cfg->{os} || {};
 }
 
 sub _man_page_from {
@@ -479,7 +491,7 @@ sub _man_page_from {
 }
 
 sub _output_usage {
-   my ($self, $verbose) = @_; my $method = $ARGV[ 1 ];
+   my ($self, $verbose) = @_; my $method = $self->extra_argv->[ 0 ];
 
    $method and $self->can_call( $method ) and exit $self->_usage_for( $method );
 
@@ -495,11 +507,11 @@ sub _output_version {
 }
 
 sub _read_path_from {
-   my ($self, $path) = @_;
+   my ($class, $path) = @_;
 
    return -f $path ? first { length }
                      grep  { not m{ \A \# }mx }
-                     $self->io( $path )->chomp->getlines
+                     $class->io( $path )->chomp->getlines
                    : undef;
 }
 
@@ -527,16 +539,6 @@ sub _usage_for {
 }
 
 # Private functions
-
-sub __apply_encoding {
-   my $attr = shift || {}; $attr->{config} ||= {};
-   my $enc  = $attr->{encoding} || $attr->{config}->{encoding}
-           || DEFAULT_ENCODING;
-
-   $_ = decode( $enc , $_ )        for @ARGV;
-   binmode $_, ":encoding(${enc})" for (*STDIN, *STDOUT, *STDERR);
-   return $enc;
-}
 
 sub __get_control_chars {
    my $handle = shift; my %cntl = GetControlChars $handle;

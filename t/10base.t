@@ -22,12 +22,14 @@ BEGIN {
 
 use Class::Usul::Programs;
 
-my $name = basename( $0, qw(.t) );
-my $prog = Class::Usul::Programs->new( appclass => q(Class::Usul),
-                                       debug    => 0,
-                                       method   => q(dump_self),
-                                       quiet    => 1,
-                                       tempdir  => q(t), );
+my $name    = basename( $0, qw(.t) );
+my $logfile = catfile( qw(t test.log) );
+my $prog    = Class::Usul::Programs->new( appclass => q(Class::Usul),
+                                          logfile  => $logfile,
+                                          method   => q(dump_self),
+                                          nodebug  => 1,
+                                          quiet    => 1,
+                                          tempdir  => q(t), );
 
 cmp_deeply $prog, methods( encoding => q(UTF-8) ), 'Constructs default object';
 
@@ -51,9 +53,15 @@ like $e, qr{ Dummy \s+ cannot \s+ open }mx, 'Non existant file';
 
 is ref $e, 'File::DataClass::Exception', 'File exception class';
 
-is $prog->io( [ qw(t test) ] )->chomp->getline, 'test data', 'Read file';
+unlink $logfile; my $io = $prog->io( $logfile ); $io->touch;
 
-is $prog->run, 0, 'Can run dump_self';
+ok -f $logfile, 'Create logfile'; $prog->info( 'Information' );
+
+like $io->chomp->getline, qr{ \[INFO\] \s Information }mx, 'Read logfile';
+
+unlink $logfile;
+
+$prog->dump_self;
 
 done_testing;
 

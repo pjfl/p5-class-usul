@@ -11,18 +11,18 @@ use Moose;
 use Class::MOP;
 use Class::Null;
 use Class::Usul::Constants;
-use Class::Usul::Constraints qw(Config Encoding Log);
-use Class::Usul::Functions
-    qw(data_dumper is_arrayref is_hashref merge_attributes throw);
+use Class::Usul::Constraints     qw(Config Log);
+use Class::Usul::Functions       qw(data_dumper is_arrayref is_hashref
+                                    merge_attributes throw);
 use Class::Usul::L10N;
 use File::DataClass::Constraints qw(Lock);
-use File::Basename qw(dirname);
+use File::Basename               qw(dirname);
 use IPC::SRLock;
 use Log::Handler;
 use Module::Pluggable::Object;
 use MooseX::ClassAttribute;
-use MooseX::Types::Moose qw(Bool Object);
-use Scalar::Util qw(blessed);
+use MooseX::Types::Moose         qw(Bool Object);
+use Scalar::Util                 qw(blessed);
 use Try::Tiny;
 
 class_has 'Lock' => is => 'rw',    isa => Lock;
@@ -30,10 +30,8 @@ class_has 'Lock' => is => 'rw',    isa => Lock;
 has '_config'    => is => 'ro',    isa => Config,   required   => TRUE,
    reader        => 'config', init_arg => 'config', coerce     => TRUE;
 
-has 'debug'      => is => 'rw',    isa => Bool,     default    => FALSE;
-
-has 'encoding'   => is => 'ro',    isa => Encoding, default    => q(UTF-8),
-   documentation => 'Decode/encode input/output using this encoding';
+has 'debug'      => is => 'rw',    isa => Bool,     default    => FALSE,
+   trigger       => \&_debug_set;
 
 has '_l10n'      => is => 'ro',    isa => Object,
    lazy          => TRUE,      builder => '_build__l10n',
@@ -46,10 +44,6 @@ has '_lock'      => is => 'ro',    isa => Lock,
 has '_log'       => is => 'ro',    isa => Log,
    lazy          => TRUE,      builder => '_build__log',
    reader        => 'log',    init_arg => 'log';
-
-with qw(Class::Usul::Encoding);
-
-__PACKAGE__->mk_log_methods();
 
 sub dumper {
    my $self = shift; return data_dumper( @_ ); # Damm handy for development
@@ -125,10 +119,10 @@ sub supports {
 
    # Traverse the feature list
    for (@spec) {
-      ref $cursor eq HASH or return FALSE; $cursor = $cursor->{ $_ };
+      is_hashref $cursor or return FALSE; $cursor = $cursor->{ $_ };
    }
 
-   ref $cursor or return $cursor; ref $cursor eq ARRAY or return FALSE;
+   ref $cursor or return $cursor; is_arrayref $cursor or return FALSE;
 
    # Check that all the keys required for a feature are in here
    for (@{ $cursor }) { exists $self->{ $_ } or return FALSE }
@@ -172,6 +166,14 @@ sub _build__log {
 
    return Log::Handler->new( file => {
       filename => $logfile, maxlevel => $level, mode => q(append), } );
+}
+
+sub _debug_set {
+   my ($self, $debug) = @_;
+
+   $self->l10n->debug( $debug ); $self->lock->debug( $debug );
+
+   return;
 }
 
 __PACKAGE__->meta->make_immutable;

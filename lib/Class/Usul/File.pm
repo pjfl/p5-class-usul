@@ -51,10 +51,8 @@ sub delete_tmp_files {
 sub file_dataclass_schema {
    my ($self, $attr) = @_; $attr = { %{ $attr || {} } };
 
-   blessed $self and $attr->{ioc_obj} = $self;
-
-   delete $attr->{cache} or $attr->{cache_class} = q(none);
-   delete $attr->{lock } or $attr->{lock_class } = q(none);
+   if (blessed $self) { $attr->{ioc_obj} = $self }
+   else { $attr->{cache_class} = q(none); $attr->{lock_class} = q(none) }
 
    return File::DataClass::Schema->new( $attr );
 }

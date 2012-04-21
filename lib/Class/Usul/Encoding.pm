@@ -8,14 +8,17 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Moose::Role;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(is_arrayref is_hashref);
+use Class::Usul::Constraints qw(Encoding);
+use Class::Usul::Functions   qw(is_arrayref is_hashref);
 use Encode;
 use Encode::Guess;
 use Scalar::Util qw(blessed);
 
-requires qw(encoding);
+has 'encoding'   => is => 'ro', isa => Encoding,
+   documentation => 'Decode/encode input/output using this encoding',
+   lazy          => TRUE, builder => '_build_encoding';
 
-sub mk_encoding_methods {
+sub make_encoding_methods {
    my ($self, @fields) = @_; my $class = blessed $self || $self;
 
    no strict q(refs); ## no critic
@@ -44,7 +47,7 @@ sub mk_encoding_methods {
    return;
 }
 
-sub mk_log_message {
+sub make_log_message {
    my ($self, $s, $message) = @_; chomp $message;
 
    my $text  = (ucfirst $s->{leader} || NUL).LSB.($s->{user} || NUL);
@@ -53,16 +56,16 @@ sub mk_log_message {
    return $text;
 }
 
-sub mk_log_methods {
-   my $self = shift; my $class = ref $self || $self;
+sub make_log_methods {
+   my $self = shift; my $class = blessed $self || $self;
 
    no strict q(refs); ## no critic
 
    for my $level (LOG_LEVELS) {
       my $accessor = $class.q(::log_).$level;
 
-      defined &{ "$accessor" }
-         or *{ "$accessor" } = sub {
+      defined &{ "${accessor}" }
+         or *{ "${accessor}" } = sub {
                my ($self, $text) = @_; $text or return;
                $self->encoding and $text = encode( $self->encoding, $text );
                $self->log->$level( $text."\n" );
@@ -73,10 +76,14 @@ sub mk_log_methods {
    return;
 }
 
-# Private class methods
+# Private methods
+
+sub _build_encoding {
+   my $self = shift; return $self->config->{encoding} || DEFAULT_ENCODING;
+}
 
 sub _decode_data {
-   my ($self, $enc_name, $data) = @_; my $enc;
+   my ($class, $enc_name, $data) = @_; my $enc;
 
    defined $data                     or  return;
    is_hashref $data                  and return $data;
@@ -87,14 +94,14 @@ sub _decode_data {
 }
 
 sub _guess_encoding {
-   my ($self, $field, $caller, @rest) = @_; my $data;
+   my ($class, $field, $caller, @rest) = @_; my $data;
 
    defined ($data = $caller->$field( @rest )) or return;
 
    my $all = (is_arrayref $data) ? join SPC, @{ $data } : $data;
    my $enc = guess_encoding( $all, grep { not m{ guess }mx } ENCODINGS );
 
-   return $enc && ref $enc ? $self->_decode_data( $enc->name, $data ) : $data;
+   return $enc && ref $enc ? $class->_decode_data( $enc->name, $data ) : $data;
 }
 
 sub _method_name {
@@ -123,7 +130,7 @@ Class::Usul::Encoding - Create additional methods for different encodings
 
    with qw(Class::Usul::Encoding);
 
-   __PACKAGE__->mk_encoding_methods( qw(get_req_array get_req_value) );
+   __PACKAGE__->make_encoding_methods( qw(get_req_array get_req_value) );
 
    sub get_req_array {
       my ($self, $req, $field) = @_; my $value = $req->params->{ $field };
@@ -153,7 +160,7 @@ Class::Usul::Encoding - Create additional methods for different encodings
    $value = $self->get_req_value_utf_8_encoding(      $c->req, $field );
    $value = $self->get_req_value_guess_encoding(      $c->req, $field );
 
-   __PACKAGE__->mk_log_methods();
+   __PACKAGE__->make_log_methods();
 
    # Can now call the following
    $self->log_debug( $text );
@@ -164,13 +171,13 @@ Class::Usul::Encoding - Create additional methods for different encodings
 
 =head1 Description
 
-For each input method defined in your class L</mk_encoding_methods>
+For each input method defined in your class L</make_encoding_methods>
 defines additional methods; C<my_input_method_utf_8_encoding> and
 C<my_input_method_guess_encoding> for example
 
 =head1 Subroutines/Methods
 
-=head2 mk_encoding_methods
+=head2 make_encoding_methods
 
 Takes a list of method names in the calling package. For each of these
 a set of new methods are defined in the calling package. The method
@@ -178,9 +185,9 @@ set is defined by the list of values in the C<ENCODINGS>
 constant. Each of these newly defined methods calls C<_decode_data>
 with a different encoding name
 
-=head2 mk_log_message
+=head2 make_log_message
 
-=head2 mk_log_methods
+=head2 make_log_methods
 
 Creates a set of methods defined by the C<LEVELS> constant. The method
 expects C<< $self->log >> and C<< $self->encoding >> to be set.  It

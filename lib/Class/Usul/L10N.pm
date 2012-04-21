@@ -18,7 +18,7 @@ use File::Gettext;
 use File::Spec;
 use Try::Tiny;
 
-has 'debug'             => is => 'ro', isa => Bool,
+has 'debug'             => is => 'rw', isa => Bool,
    default              => FALSE;
 
 has 'domain_attributes' => is => 'ro', isa => HashRef,
