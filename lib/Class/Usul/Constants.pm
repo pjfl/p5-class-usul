@@ -25,8 +25,8 @@ BEGIN {
    @constants = ( qw(ARRAY ASSERT BRK CODE CONFIG_EXTN DEFAULT_DIR
                      DEFAULT_ENCODING DEFAULT_L10N_DOMAIN
                      DIGEST_ALGORITHMS ENCODINGS EVIL EXCEPTION_CLASS EXTNS
-                     FAILED FALSE HASH LANG LBRACE LOCALIZE LOG_LEVELS LSB
-                     NO NUL OK PERMS PHASE PREFIX QUIT RSB SEP SPC TRUE
+                     FAILED FALSE HASH LANG LBRACE LOCALIZE LOG_LEVELS
+                     NO NUL OK PERMS PHASE PREFIX QUIT SEP SPC TRUE
                      UNTAINT_IDENTIFIER UNTAINT_PATH_REGEX UUID_PATH
                      WIDTH YES) );
 }
@@ -46,7 +46,6 @@ sub HASH     () { q(HASH)            }
 sub LANG     () { q(en)              }
 sub LBRACE   () { q({)               }
 sub LOCALIZE () { q([_)              }
-sub LSB      () { q([)               }
 sub NO       () { q(n)               }
 sub NUL      () { q()                }
 sub OK       () { 0                  }
@@ -54,7 +53,6 @@ sub PERMS    () { oct q(0660)        }
 sub PHASE    () { 2                  }
 sub PREFIX   () { [ NUL, q(opt) ]    }
 sub QUIT     () { q(q)               }
-sub RSB      () { q(])               }
 sub SEP      () { q(/)               }
 sub SPC      () { q( )               }
 sub TRUE     () { 1                  }
@@ -107,7 +105,14 @@ Exports a list of subroutines each of which returns a constants value
 
 =head2 ARRAY
 
-String ARRAY
+String I<ARRAY>
+
+=head2 ASSERT
+
+Return a coderef which is imported by L<Class::Usul::Functions> into
+the callers namespace as the C<assert> function. By default this will
+be the empty subroutine, sub {}. Change this by setting the I<Assert>
+class attribute
 
 =head2 BRK
 
@@ -115,7 +120,25 @@ Separate leader (: ) from message
 
 =head2 CODE
 
-String CODE
+String I<CODE>
+
+=head2 CONFIG_EXTN
+
+The default configuration file extension, I<.xml>. Change this by
+setting the I<Config_Extn> class attribute
+
+=head2 DEFAULT_DIR
+
+An arrayref which if passed to L<catfile|File::Spec/catdir> is the directory
+which will contain the applications installation information
+
+=head2 DEFAULT_ENCODING
+
+String I<UTF-8>
+
+=head2 DEFAULT_L10N_DOMAIN
+
+String I<default>. The name of the default message catalog
 
 =head2 DIGEST_ALGORITHMS
 
@@ -124,6 +147,16 @@ List of algorithms to try as args to L<Digest>
 =head2 ENCODINGS
 
 List of supported IO encodings
+
+=head2 EVIL
+
+The L<Config> osname of the other operating system
+
+=head2 EXCEPTION_CLASS
+
+The name of the class used to throw exceptions. Defaults to
+L<File::DataClass::Exception> but can be changed by setting the
+I<Exception_Class> class attribute
 
 =head2 EXTNS
 
@@ -135,32 +168,32 @@ Non zero exit code indicating program failure
 
 =head2 FALSE
 
-Digit 0
+Digit I<0>
 
 =head2 HASH
 
-String HASH
+String I<HASH>
 
 =head2 LANG
 
-Default language code
+Default language code, I<en>
+
+=head2 LBRACE
+
+The left brace character, I<{>
 
 =head2 LOCALIZE
 
 The character sequence that introduces a localization substitution
-parameter
+parameter, I<[_>
 
 =head2 LOG_LEVELS
 
 List of methods the log object is expected to support
 
-=head2 LSB
-
-Left square bracket character
-
 =head2 NO
 
-The letter n
+The letter I<n>
 
 =head2 NUL
 
@@ -186,13 +219,9 @@ Array ref representing the default parent path for a normal install
 
 The character q
 
-=head2 RSB
-
-Right square bracket character
-
 =head2 SEP
 
-Slash (/) character
+Slash I</> character
 
 =head2 SPC
 
@@ -200,11 +229,20 @@ Space character
 
 =head2 TRUE
 
-Digit 1
+Digit I<1>
+
+=head2 UNTAINT_IDENTIFIER
+
+Regular expression used to untaint identifier strings
 
 =head2 UNTAINT_PATH_REGEX
 
 Regular expression used to untaint path strings
+
+=head2 UUID_PATH
+
+An arrayref which if passed to L<catfile|File::Spec/catdir> is the path
+which will return a unique identifier if opened and read
 
 =head2 WIDTH
 
@@ -226,6 +264,14 @@ None
 
 =over 3
 
+=item L<File::DataClass::Constants>
+
+=item L<File::DataClass::Exception>
+
+=item L<Moose>
+
+=item L<MooseX::ClassAttribute>
+
 =item L<Sub::Exporter>
 
 =back
@@ -246,7 +292,7 @@ Peter Flanigan, C<< <Support at RoxSoft.co.uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2010 Peter Flanigan. All rights reserved
+Copyright (c) 2012 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

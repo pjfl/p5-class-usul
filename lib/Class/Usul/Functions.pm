@@ -25,10 +25,11 @@ BEGIN {
                       class2appdir classdir classfile create_token
                       data_dumper distname elapsed env_prefix
                       escape_TT exception fold home2appl is_arrayref
-                      is_hashref is_member merge_attributes my_prefix
-                      prefix2class product say split_on__ squeeze
-                      strip_leader sub_name sum throw trim unescape_TT
-                      untaint_identifier untaint_path untaint_string) );
+                      is_hashref is_member make_log_message
+                      merge_attributes my_prefix prefix2class product
+                      say split_on__ squeeze strip_leader sub_name sum
+                      throw trim unescape_TT untaint_identifier
+                      untaint_path untaint_string) );
 }
 
 use Sub::Exporter -setup => {
@@ -37,7 +38,7 @@ use Sub::Exporter -setup => {
 };
 
 sub app_prefix ($) {
-   (my $y = lc $_[ 0 ]) =~ s{ :: }{_}gmx; return $y;
+   (my $y = lc $_[ 0 ] || q()) =~ s{ :: }{_}gmx; return $y;
 }
 
 sub arg_list (;@) {
@@ -89,7 +90,7 @@ sub data_dumper (;@) {
 }
 
 sub distname ($) {
-   (my $y = $_[ 0 ]) =~ s{ :: }{-}gmx; return $y;
+   (my $y = $_[ 0 ] || q()) =~ s{ :: }{-}gmx; return $y;
 }
 
 sub elapsed () {
@@ -150,6 +151,14 @@ sub is_member (;@) {
    return (first { $_ eq $candidate } @rest) ? 1 : 0;
 }
 
+sub make_log_message ($;$) {
+   my ($args, $x) = @_; $x ||= 'no message'; chomp $x;
+
+   my $y = (ucfirst $args->{leader} || q()).q([).($args->{user} || q()).q(] );
+
+   return $y.(ucfirst $x);
+}
+
 sub merge_attributes ($$$;$) {
    my ($dest, $src, $defaults, $attrs) = @_;
 
@@ -172,11 +181,11 @@ sub merge_attributes ($$$;$) {
 }
 
 sub my_prefix (;$) {
-   return split_on__( File::Basename::basename( $_[ 0 ] || q() ) );
+   return split_on__( File::Basename::basename( $_[ 0 ] || q(), EXTNS ) );
 }
 
-sub prefix2class ($) {
-   return join q(::), map { ucfirst } split m{ - }mx, split_on__( $_[ 0 ] );
+sub prefix2class (;$) {
+   return join q(::), map { ucfirst } split m{ - }mx, my_prefix( $_[ 0 ] );
 }
 
 sub product (;@) {
@@ -409,6 +418,13 @@ Tests to see if the scalar variable is a hash ref
 Tests to see if the first parameter is present in the list of
 remaining parameters
 
+=head2 make_log_message
+
+   $message = make_log_message $args, $text;
+
+Create a log message from C<< $args->{leader} >>, C<< $args->{user} >> and
+C<$text>
+
 =head2 merge_attributes
 
    $dest = merge_attributes $dest, $src, $defaults, $attr_list_ref;
@@ -422,8 +438,16 @@ may be an object in which case its accessor methods are called
 
    $prefix = my_prefix $PROGRAM_NAME;
 
-Takes the basename of the supplied arg and returns the first _ (underscore)
-separated field
+Takes the basename of the supplied arg and returns the first _
+(underscore) separated field. Supplies basename with
+L<extensions|Class::Usul::Constants/EXTNS>
+
+=head2 prefix2class
+
+   $class = prefix2class $PROGRAM_NAME;
+
+Calls L</my_prefix> with the supplied argument, splits the result on dash,
+C<ucfirst>s the list and then C<join>s that with I<::>
 
 =head2 product
 

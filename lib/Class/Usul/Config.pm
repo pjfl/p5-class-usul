@@ -11,13 +11,13 @@ use Class::Usul::Constants;
 use File::Gettext::Constants;
 use Moose::Util::TypeConstraints;
 use File::DataClass::Constraints qw(Directory File Path);
-use Class::Usul::Functions qw(app_prefix class2appdir home2appl untaint_path);
-use File::Spec::Functions  qw(canonpath catdir catfile rel2abs tmpdir);
-use MooseX::Types::Moose   qw(ArrayRef Int Str);
-use File::Basename         qw(basename dirname);
-use English                qw(-no_match_vars);
-use Scalar::Util           qw(blessed);
-use Sys::Hostname            ();
+use Class::Usul::Functions   qw(app_prefix class2appdir home2appl untaint_path);
+use File::Spec::Functions    qw(canonpath catdir catfile rel2abs tmpdir);
+use MooseX::Types::Moose     qw(ArrayRef Int Str);
+use File::Basename           qw(basename dirname);
+use English                  qw(-no_match_vars);
+use Scalar::Util             qw(blessed);
+use Sys::Hostname              ();
 use Config;
 
 has 'appclass'      => is => 'ro', isa => Str,
@@ -25,6 +25,9 @@ has 'appclass'      => is => 'ro', isa => Str,
 
 has 'doc_title'     => is => 'ro', isa => Str,
    default          => 'User Contributed Documentation';
+
+has 'encoding'      => is => 'ro', isa => Str,
+   default          => DEFAULT_ENCODING;
 
 has 'extension'     => is => 'ro', isa => Str,
    default          => CONFIG_EXTN;
@@ -45,11 +48,8 @@ has 'mode'          => is => 'ro', isa => Int,
 has 'no_thrash'     => is => 'ro', isa => Int,
    default          => 3;
 
-has 'pathname'      => is => 'ro', isa => File,      coerce => TRUE,
+has 'pathname'      => is => 'ro', isa => File, coerce => TRUE,
    default          => sub { rel2abs( $PROGRAM_NAME ) };
-
-has 'pwidth'        => is => 'ro', isa => Int,
-   default          => 60;
 
 
 has 'appldir'       => is => 'ro', isa => Directory, coerce => TRUE,
@@ -112,7 +112,6 @@ has 'script'        => is => 'ro', isa => Str,
 
 has 'secret'        => is => 'ro', isa => Str,
    lazy             => TRUE,   builder => '_build_secret';
-
 
 # TODO: Move these away, a long way away
 has 'aliases_path'  => is => 'ro', isa => Path, coerce => TRUE,

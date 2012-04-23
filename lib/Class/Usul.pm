@@ -11,7 +11,7 @@ use Moose;
 use Class::MOP;
 use Class::Null;
 use Class::Usul::Constants;
-use Class::Usul::Constraints     qw(Config Log);
+use Class::Usul::Constraints     qw(Config Encoding Log);
 use Class::Usul::Functions       qw(data_dumper is_arrayref is_hashref
                                     merge_attributes throw);
 use Class::Usul::L10N;
@@ -33,6 +33,10 @@ has '_config'    => is => 'ro',    isa => Config,   required   => TRUE,
 has 'debug'      => is => 'rw',    isa => Bool,     default    => FALSE,
    trigger       => \&_debug_set;
 
+has 'encoding'   => is => 'ro',    isa => Encoding,
+   documentation => 'Decode/encode input/output using this encoding',
+   lazy          => TRUE,      builder => '_build_encoding';
+
 has '_l10n'      => is => 'ro',    isa => Object,
    lazy          => TRUE,      builder => '_build__l10n',
    reader        => 'l10n',   init_arg => 'l10n';
@@ -44,6 +48,8 @@ has '_lock'      => is => 'ro',    isa => Lock,
 has '_log'       => is => 'ro',    isa => Log,
    lazy          => TRUE,      builder => '_build__log',
    reader        => 'log',    init_arg => 'log';
+
+with qw(Class::Usul::DoesLoggingLevels);
 
 sub dumper {
    my $self = shift; return data_dumper( @_ ); # Damm handy for development
@@ -132,6 +138,10 @@ sub supports {
 
 # Private methods
 
+sub _build_encoding {
+   my $self = shift; return $self->config->encoding;
+}
+
 sub _build__l10n {
    my $self = shift;
 
@@ -189,7 +199,7 @@ __END__
 
 =head1 Name
 
-Class::Usul - A base class for Catalyst MVC components
+Class::Usul - A base class for program components
 
 =head1 Version
 
@@ -226,10 +236,6 @@ Defaults to false
 
 Decode input and encode output. Defaults to I<UTF-8>
 
-=item exception_class
-
-The name of the class used to throw exceptions
-
 =back
 
 Defines the lock object. This is readonly and instantiates on first use
@@ -240,11 +246,7 @@ The constructor applies these roles:
 
 =over 3
 
-=item L<Class::Usul::Base>
-
-=item L<Class::Usul::Encoding>
-
-=item L<File::DataClass::Constraints>
+=item L<Class::Usul::DoesLoggingLevels>
 
 =back
 
@@ -324,13 +326,31 @@ debug level
 
 =item L<Class::MOP>
 
-=item L<Class::Usul::Base>
+=item L<Class::Null>
 
-=item L<Class::Usul::Encoding>
+=item L<Class::Usul::Constants>
+
+=item L<Class::Usul::Constraints>
+
+=item L<Class::Usul::Functions>
+
+=item L<Class::Usul::L10N>
+
+=item L<File::DataClass::Constraints>
 
 =item L<IPC::SRLock>
 
+=item L<Log::Handler>
+
 =item L<Module::Pluggable::Object>
+
+=item L<Moose>
+
+=item L<MooseX::ClassAttribute>
+
+=item L<MooseX::Types::Moose>
+
+=item L<Try::Tiny>
 
 =back
 

@@ -33,7 +33,7 @@ sub abs_path {
 sub data_dump {
    my ($self, @rest) = @_;
 
-   return $self->file_dataclass_schema->dump( arg_list @rest );
+   return $self->dataclass_schema->dump( arg_list @rest );
 }
 
 sub data_load {
@@ -42,20 +42,20 @@ sub data_load {
    $args = { path => $args->{path} || NUL,
              storage_attributes => { _arrays => $args->{arrays} || {} } };
 
-   return $self->file_dataclass_schema( $args )->load;
+   return $self->dataclass_schema( $args )->load;
 }
 
-sub delete_tmp_files {
-   return $_[ 0 ]->io( $_[ 1 ] || $_[ 0 ]->tempdir )->delete_tmp_files;
-}
-
-sub file_dataclass_schema {
+sub dataclass_schema {
    my ($self, $attr) = @_; $attr = { %{ $attr || {} } };
 
    if (blessed $self) { $attr->{ioc_obj} = $self }
    else { $attr->{cache_class} = q(none); $attr->{lock_class} = q(none) }
 
    return File::DataClass::Schema->new( $attr );
+}
+
+sub delete_tmp_files {
+   return $_[ 0 ]->io( $_[ 1 ] || $_[ 0 ]->tempdir )->delete_tmp_files;
 }
 
 sub find_source {
@@ -83,7 +83,7 @@ sub io {
       my $path  = File::Spec->catfile( $cfg->{ctrldir},
                                        $cfg->{pi_config_file} );
 
-      return $cache = $self->file_dataclass_schema( $attrs )->load( $path );
+      return $cache = $self->dataclass_schema( $attrs )->load( $path );
    }
 }
 
@@ -177,9 +177,9 @@ Prepends F<$base> to F<$path> unless F<$path> is an absolute path
 Delete this processes temporary files. Files are in the C<$dir> directory
 which defaults to C<< $self->tempdir >>
 
-=head2 file_dataclass_schema
+=head2 dataclass_schema
 
-   $f_dc_schema_obj = $self->file_dataclass_schema( $attrs );
+   $f_dc_schema_obj = $self->dataclass_schema( $attrs );
 
 Returns a L<File::DataClass::Schema> object. Object uses our
 C<exception_class>, no caching and no locking

@@ -20,7 +20,6 @@ use Class::Usul::Functions qw(app_prefix arg_list assert_directory class2appdir
 use Cwd                    qw(abs_path);
 use Encode                 qw(decode);
 use English                qw(-no_match_vars);
-use File::Basename         qw(basename);
 use File::Spec::Functions  qw(catdir catfile);
 use IO::Interactive        qw(is_interactive);
 use List::Util             qw(first);
@@ -34,9 +33,7 @@ use Text::Autoformat;
 use Try::Tiny;
 
 extends qw(Class::Usul);
-with    qw(MooseX::Getopt::Dashes Class::Usul::Encoding);
-
-__PACKAGE__->make_log_methods();
+with    qw(MooseX::Getopt::Dashes);
 
 has 'debug',       => is => 'rw', isa => 'Bool', default => FALSE,
    documentation   => 'Turn debugging on. Promps if interactive',
@@ -95,10 +92,13 @@ has '_logname' => is => 'ro', isa     => 'Str',     init_arg => undef,
 has '_os'      => is => 'ro', isa     => 'HashRef', init_arg => undef,
    reader      => 'os',       lazy    => TRUE,      builder  => '_build__os';
 
+has '_pwidth'  => is => 'rw', isa     => 'Int',     accessor => 'pwidth',
+   default     => 60;
+
 around BUILDARGS => sub {
    my ($next, $class, @args) = @_; my $attr = $class->$next( @args );
 
-   $attr->{appclass} ||= prefix2class basename( $PROGRAM_NAME, EXTNS );
+   $attr->{appclass} ||= prefix2class $PROGRAM_NAME;
    $attr->{home    } ||= __get_homedir( $attr );
    $attr->{config  } ||= __load_config( $attr );
 
@@ -194,7 +194,7 @@ sub get_line {
    my $left_prompt  = $question;
 
    if (defined $width) {
-      my $total  = $width || $self->pwidth || 60;
+      my $total  = $width || $self->pwidth;
       my $left_x = $total - (length $right_prompt);
 
       $left_prompt = sprintf '%-*s', $left_x, $question;
@@ -359,7 +359,7 @@ sub yorn {
    my $left_prompt  = $question;
 
    if (defined $width) {
-      my $max_width = $width || $self->config->pwidth || 40;
+      my $max_width = $width || $self->pwidth;
       my $right_x   = length $right_prompt;
       my $left_x    = $max_width - $right_x;
 
@@ -533,7 +533,7 @@ sub __get_homedir {
    # 3. Well known path
    my $well_known = catfile( @{ DEFAULT_DIR() }, $appdir );
 
-   $path = __read_path_from( $well_known );
+   $path = __read_variable( $well_known, q(APPLDIR) );
    $path and $path = catdir( $path, q(lib), $classdir );
    $path = assert_directory $path and return $path;
 
@@ -662,12 +662,12 @@ sub __raw_mode {
    my $handle = shift; ReadMode q(raw), $handle; return;
 }
 
-sub __read_path_from {
-   my $path = shift;
+sub __read_variable {
+   my ($path, $variable) = @_;
 
    return -f $path ? first { length }
                      map   { (split q(=), $_)[ 1 ] }
-                     grep  { m{ \A APPLDIR= }mx }
+                     grep  { m{ \A $variable [=] }mx }
                      Class::Usul::File->io( $path )->chomp->getlines
                    : undef;
 }
@@ -884,6 +884,10 @@ F<META.yml> file.  Optionally look in C<$dir> for the file instead of
 C<< $self->appldir >>. Returns a response object with accessors
 defined
 
+=head2 get_option
+
+=head2 get_owner
+
 =head2 info
 
    $self->info( $text, $args );
@@ -891,6 +895,15 @@ defined
 Calls L<Class::Usul::localize|Class::Usul/localize> with
 the passed args. Logs the result at the info level, then adds the
 program leader and prints the result to I<STDOUT>
+
+=head2 interpolate_cmd
+
+=head2 list_methods
+
+   $self->list_methods
+
+Lists the methods (marked by the I<method> subroutine attribute) that can
+be called via the L<run method|/run>
 
 =head2 loc
 

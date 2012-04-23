@@ -7,15 +7,17 @@ use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use MooseX::Types -declare => [ qw(Config Encoding Log) ];
-use MooseX::Types::Moose qw(HashRef Object);
+use MooseX::Types::Moose qw(HashRef Object Str);
 use Class::Usul::Constants;
+use Class::Usul::Functions;
 use Class::Usul::Config;
-use Class::Null;
 
-enum Encoding, ENCODINGS;
-
-subtype Config, as   Object;
+subtype Config, as Object;
 coerce  Config, from HashRef, via { Class::Usul::Config->new( $_ ) };
+
+subtype Encoding, as Str,
+   where   { is_member $_, ENCODINGS },
+   message { "String ${_} is not a valid encoding" };
 
 subtype Log,    as   Object,
    where   { $_->isa( q(Class::Null) ) or __has_log_level_methods( $_ ) },

@@ -8,15 +8,12 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Moose::Role;
 use Class::Usul::Constants;
-use Class::Usul::Constraints qw(Encoding);
-use Class::Usul::Functions   qw(is_arrayref is_hashref);
+use Class::Usul::Functions qw(is_arrayref is_hashref);
 use Encode;
 use Encode::Guess;
 use Scalar::Util qw(blessed);
 
-has 'encoding'   => is => 'ro', isa => Encoding,
-   documentation => 'Decode/encode input/output using this encoding',
-   lazy          => TRUE, builder => '_build_encoding';
+requires qw(config);
 
 sub make_encoding_methods {
    my ($self, @fields) = @_; my $class = blessed $self || $self;
@@ -28,9 +25,9 @@ sub make_encoding_methods {
 
       defined &{ "$accessor" }
          or *{ "$accessor" } = sub {
-               my ($self, $field, $caller, @rest) = @_;
+            my ($self, $field, $caller, @rest) = @_;
 
-               return $self->_decode_data( $enc, $caller->$field( @rest ) );
+            return $self->_decode_data( $enc, $caller->$field( @rest ) );
          };
    }
 
@@ -47,40 +44,7 @@ sub make_encoding_methods {
    return;
 }
 
-sub make_log_message {
-   my ($self, $s, $message) = @_; chomp $message;
-
-   my $text  = (ucfirst $s->{leader} || NUL).LSB.($s->{user} || NUL);
-      $text .= RSB.SPC.(ucfirst $message || 'no message');
-
-   return $text;
-}
-
-sub make_log_methods {
-   my $self = shift; my $class = blessed $self || $self;
-
-   no strict q(refs); ## no critic
-
-   for my $level (LOG_LEVELS) {
-      my $accessor = $class.q(::log_).$level;
-
-      defined &{ "${accessor}" }
-         or *{ "${accessor}" } = sub {
-               my ($self, $text) = @_; $text or return;
-               $self->encoding and $text = encode( $self->encoding, $text );
-               $self->log->$level( $text."\n" );
-               return;
-         };
-   }
-
-   return;
-}
-
 # Private methods
-
-sub _build_encoding {
-   my $self = shift; return $self->config->{encoding} || DEFAULT_ENCODING;
-}
 
 sub _decode_data {
    my ($class, $enc_name, $data) = @_; my $enc;
@@ -184,8 +148,6 @@ a set of new methods are defined in the calling package. The method
 set is defined by the list of values in the C<ENCODINGS>
 constant. Each of these newly defined methods calls C<_decode_data>
 with a different encoding name
-
-=head2 make_log_message
 
 =head2 make_log_methods
 

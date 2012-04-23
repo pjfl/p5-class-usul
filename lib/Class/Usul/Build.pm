@@ -12,7 +12,7 @@ use Class::Usul::Build::InstallActions;
 use Class::Usul::Build::Questions;
 use Class::Usul::Build::VCS;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(say throw);
+use Class::Usul::Functions qw(exception say throw);
 use Class::Usul::Programs;
 use Config;
 use Try::Tiny;
@@ -22,10 +22,11 @@ use Perl::Version;
 use Module::CoreList;
 use Module::Metadata;
 use Pod::Eventual::Simple;
-use English      qw(-no_match_vars);
-use File::Copy   qw(copy);
-use File::Find   qw(find);
-use Scalar::Util qw(blessed);
+use English        qw(-no_match_vars);
+use File::Basename qw(dirname);
+use File::Copy     qw(copy);
+use File::Find     qw(find);
+use Scalar::Util   qw(blessed);
 
 if ($ENV{AUTOMATED_TESTING}) {
    # Some CPAN testers set these. Breaks dependencies
@@ -290,7 +291,7 @@ sub cli {
 
    $self->{ $key }
       or $self->{ $key } = Class::Usul::Programs->new
-            ( { appclass => $self->module_name, debug => FALSE, n => TRUE } );
+            ( { appclass => $self->module_name, nodebug  => TRUE } );
 
    return $self->{ $key };
 }
@@ -397,7 +398,7 @@ sub _ask_questions {
    # Save the updated config for the install action to use
    my $args = { data => $cfg, path => $self->_get_config_path( $cfg ) };
 
-   $self->cli->file_dataclass_schema( $cfg->{config_attrs} )->dump( $args );
+   $cli->file->dataclass_schema( $cfg->{config_attrs} )->dump( $args );
    $cfg->{ask} and $cli->anykey;
    return;
 }
@@ -467,7 +468,7 @@ sub _copy_file {
    ($src and -f $src and (not $pattern or $src !~ $pattern)) or return;
 
    # Rebase the directory path
-   my $dir = File::Spec->catdir( $dest, $cli->dirname( $src ) );
+   my $dir = File::Spec->catdir( $dest, dirname( $src ) );
 
    # Ensure target directory exists
    -d $dir or $cli->io( $dir )->mkpath( oct q(02750) );
@@ -594,7 +595,7 @@ sub _get_archive_names {
      if (-f $path) {
         my $attrs = { storage_attributes => { force_array => $cfg->{arrays} } };
 
-        $cfg = $self->cli->file_dataclass_schema( $attrs )->load( $path );
+        $cfg = $self->cli->file->dataclass_schema( $attrs )->load( $path );
      }
 
      return $cache = $cfg;
@@ -625,7 +626,7 @@ sub _get_local_config {
    my $argv = $self->args->{ARGV}; my $cfg = $self->_get_config;
 
    $cfg->{perl_ver     } = $argv->[ 0 ] || $perl_ver;
-   $cfg->{appldir      } = $argv->[ 1 ] || $cli->config->{appldir};
+   $cfg->{appldir      } = $argv->[ 1 ] || $cli->config->appldir;
    $cfg->{perlbrew_root} = File::Spec->catdir ( $cfg->{appldir},
                                                 $cfg->{local_lib} );
    $cfg->{local_etc    } = File::Spec->catdir ( $cfg->{perlbrew_root}, q(etc) );
@@ -800,7 +801,7 @@ sub _run_bin_cmd {
 
    my ($prog, @args) = split SPC, $cmd;
    my $bind = $self->install_destination( q(bin) );
-   my $path = $cli->abs_path( $bind, $prog );
+   my $path = $cli->file->abs_path( $bind, $prog );
 
    -f $path or throw "Path ${path} not found";
 
@@ -814,7 +815,7 @@ sub _run_bin_cmd {
 }
 
 sub _say_diffs {
-   my ($self, $diffs) = @_; my $cli = $self->cli; __draw_line();
+   my ($self, $diffs) = @_; __draw_line();
 
    for my $table (sort keys %{ $diffs }) {
       say $table; __draw_line();
@@ -830,9 +831,7 @@ sub _say_diffs {
 }
 
 sub _set_install_paths {
-   my ($self, $cfg) = @_; my $cli = $self->cli;
-
-   $cfg->{base} or throw 'Config base path not set';
+   my ($self, $cfg) = @_; $cfg->{base} or throw 'Config base path not set';
 
    $self->_log_info( 'Base path '.$cfg->{base} );
    $self->install_base( $cfg->{base} );
@@ -843,17 +842,17 @@ sub _set_install_paths {
    return;
 }
 
-sub _setup_plugins {
-   # Load CX::U::Plugin::Build::* plugins. Can haz plugins for M::B!
-   my $self = shift; my $cli = $self->cli;
+{  my $cache;
 
-   exists $self->{_plugins} and return $self->{_plugins};
+   sub _setup_plugins {
+      # Load CX::U::Plugin::Build::* plugins. Can haz plugins for M::B!
+      my $self = shift; my $cli = $self->cli; defined $cache and return $cache;
 
-   my $config = { child_class  => blessed $self,
-                  search_paths => [ q(::Plugin::Build) ],
-                  %{ $cli->config->{ setup_plugins } || {} } };
+      my $config = { child_class  => blessed $self,
+                     search_paths => [ q(::Plugin::Build) ], };
 
-   return $self->{_plugins} = $cli->setup_plugins( $config );
+      return $cache = $cli->setup_plugins( $config );
+   }
 }
 
 sub _source_paths {
@@ -904,14 +903,14 @@ sub _update_version {
       $cmd   =  [ q(xargs), q(-i), $prog, q(-pi), q(-e), "'".$cmd."'", q({}) ];
    my $paths =  [ map { "$_\n" } @{ $self->_source_paths } ];
 
-   $cli->popen( $cmd, { err => q(out), in => $paths } );
+   $cli->file->popen( $cmd, { err => q(out), in => $paths } );
    return;
 }
 
 sub _vcs {
    my $self = shift; my $class = __PACKAGE__.q(::VCS); my $vcs;
 
-   my $dir  = ref $self ? $self->cli->config->{appldir} : File::Spec->curdir;
+   my $dir  = ref $self ? $self->cli->config->appldir : File::Spec->curdir;
 
    ref $self and $vcs = $self->{_vcs} and return $vcs;
 
@@ -925,7 +924,7 @@ sub _version_from_module {
 
    eval "no warnings; require ${module}; \$version = ${module}->VERSION;";
 
-   return $self->cli->catch || ! $version ? undef : $version;
+   return exception() || ! $version ? undef : $version;
 }
 
 sub _write_license_file {
@@ -981,6 +980,13 @@ sub __dist_from_module {
 
 sub __draw_line {
     return say q(-) x ($_[ 0 ] || 60);
+}
+
+sub __extract_statements_from {
+   my $line = shift;
+
+   return grep { length }
+          map  { s{ \A \s+ }{}mx; s{ \s+ \z }{}mx; $_ } split m{ ; }mx, $line;
 }
 
 sub __is_perl_script {
@@ -1069,9 +1075,7 @@ sub __looks_like_version {
 sub __parse_depends_line {
    my $line = shift; my $modules = [];
 
-   for my $stmt (grep   { length }
-                 map    { s{ \A \s+ }{}mx; s{ \s+ \z }{}mx; $_ }
-                 split m{ ; }mx, $line) {
+   for my $stmt (__extract_statements_from( $line )) {
       if ($stmt =~ m{ \A (?: use | require ) \s+ }mx) {
          my (undef, $module, $rest) = split m{ \s+ }mx, $stmt, 3;
 

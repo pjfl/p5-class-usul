@@ -215,7 +215,7 @@ Returns a hash ref containing the keys and values of the PO header record
 
 Localizes the message. The message catalog is loaded from a GNU
 Gettext portable object file. Returns the C<$key> if the message is
-not in the catalog (and C<< $args->{no_default} is not true). Language
+not in the catalog (and C<< $args->{no_default} >> is not true). Language
 is selected by the C<< $args->{locale} >> attribute. Expands
 positional parameters of the form C<< [_<n>] >> if C<< $args->{params}
 >> is an array ref of values to substitute. Otherwise expands named
