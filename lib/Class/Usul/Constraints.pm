@@ -6,20 +6,20 @@ use strict;
 use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use MooseX::Types -declare => [ qw(Config Encoding Log) ];
+use MooseX::Types -declare => [ qw(ConfigType EncodingType LogType) ];
 use MooseX::Types::Moose qw(HashRef Object Str);
 use Class::Usul::Constants;
 use Class::Usul::Functions;
 use Class::Usul::Config;
 
-subtype Config, as Object;
-coerce  Config, from HashRef, via { Class::Usul::Config->new( $_ ) };
+subtype ConfigType, as Object;
+coerce  ConfigType, from HashRef, via { Class::Usul::Config->new( $_ ) };
 
-subtype Encoding, as Str,
+subtype EncodingType, as Str,
    where   { is_member $_, ENCODINGS },
    message { "String ${_} is not a valid encoding" };
 
-subtype Log,    as   Object,
+subtype LogType, as Object,
    where   { $_->isa( q(Class::Null) ) or __has_log_level_methods( $_ ) },
    message { 'Object '.(blessed $_ || $_).' is missing a log level method' };
 

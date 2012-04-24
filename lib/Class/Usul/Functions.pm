@@ -16,7 +16,7 @@ use File::Basename ();
 use File::Spec;
 use List::Util   qw(first);
 use Path::Class::Dir;
-use Scalar::Util qw(openhandle);
+use Scalar::Util qw(blessed openhandle);
 
 my @_functions;
 
@@ -162,16 +162,16 @@ sub make_log_message ($;$) {
 sub merge_attributes ($$$;$) {
    my ($dest, $src, $defaults, $attrs) = @_;
 
-   if (is_hashref $src) {
+   if (blessed $src) {
       for (@{ $attrs || [] }) {
-         my $v = $src->{ $_ } || $defaults->{ $_ };
+         my $v = ($src->can( $_ ) ? $src->$_() : undef) || $defaults->{ $_ };
 
          defined $v and $dest->{ $_ } ||= $v;
       }
    }
    else {
       for (@{ $attrs || [] }) {
-         my $v = $src->$_() || $defaults->{ $_ };
+         my $v = $src->{ $_ } || $defaults->{ $_ };
 
          defined $v and $dest->{ $_ } ||= $v;
       }

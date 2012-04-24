@@ -9,16 +9,14 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use 5.010;
 use Moose;
 use Class::MOP;
-use Class::Null;
 use Class::Usul::Constants;
-use Class::Usul::Constraints     qw(Config Encoding Log);
+use Class::Usul::Constraints     qw(ConfigType EncodingType LogType);
 use Class::Usul::Functions       qw(data_dumper is_arrayref is_hashref
                                     merge_attributes throw);
 use Class::Usul::L10N;
+use Class::Usul::Log;
 use File::DataClass::Constraints qw(Lock);
-use File::Basename               qw(dirname);
 use IPC::SRLock;
-use Log::Handler;
 use Module::Pluggable::Object;
 use MooseX::ClassAttribute;
 use MooseX::Types::Moose         qw(Bool Object);
@@ -27,13 +25,13 @@ use Try::Tiny;
 
 class_has 'Lock' => is => 'rw',    isa => Lock;
 
-has '_config'    => is => 'ro',    isa => Config,   required   => TRUE,
-   reader        => 'config', init_arg => 'config', coerce     => TRUE;
+has '_config'    => is => 'ro',    isa => ConfigType, required   => TRUE,
+   reader        => 'config', init_arg => 'config',   coerce     => TRUE;
 
-has 'debug'      => is => 'rw',    isa => Bool,     default    => FALSE,
+has 'debug'      => is => 'rw',    isa => Bool,       default    => FALSE,
    trigger       => \&_debug_set;
 
-has 'encoding'   => is => 'ro',    isa => Encoding,
+has 'encoding'   => is => 'ro',    isa => EncodingType,
    documentation => 'Decode/encode input/output using this encoding',
    lazy          => TRUE,      builder => '_build_encoding';
 
@@ -45,11 +43,9 @@ has '_lock'      => is => 'ro',    isa => Lock,
    lazy          => TRUE,      builder => '_build__lock',
    reader        => 'lock',   init_arg => 'lock';
 
-has '_log'       => is => 'ro',    isa => Log,
+has '_log'       => is => 'ro',    isa => LogType,
    lazy          => TRUE,      builder => '_build__log',
    reader        => 'log',    init_arg => 'log';
-
-with qw(Class::Usul::DoesLoggingLevels);
 
 sub dumper {
    my $self = shift; return data_dumper( @_ ); # Damm handy for development
@@ -143,21 +139,14 @@ sub _build_encoding {
 }
 
 sub _build__l10n {
-   my $self = shift;
-
-   my $cfg  = $self->config; my $attrs = $cfg->{l10n_attributes} || {};
-
-   merge_attributes $attrs, $self, {}, [ qw(debug lock log) ];
-   merge_attributes $attrs, $cfg,  {}, [ qw(localedir tempdir) ];
-
-   return Class::Usul::L10N->new( $attrs );
+   my $self = shift; return Class::Usul::L10N->new( ioc => $self );
 }
 
 sub _build__lock {
    # There is only one lock object. Instantiate on first use
    my $self  = shift; $self->Lock and return $self->Lock;
 
-   my $cfg   = $self->config; my $attrs = $cfg->{lock_attributes} || {};
+   my $cfg   = $self->config; my $attrs = { %{ $cfg->lock_attributes } };
 
    merge_attributes $attrs, $self, {}, [ qw(debug log) ];
    merge_attributes $attrs, $cfg,  {}, [ qw(tempdir) ];
@@ -166,16 +155,7 @@ sub _build__lock {
 }
 
 sub _build__log {
-   my $self    = shift;
-   my $cfg     = $self->config;
-   my $attrs   = $cfg->{log_attributes} || {};
-   my $logfile = NUL.($attrs->{logfile} || $cfg->{logfile} || NUL);
-   my $level   = $self->debug ? 7 : $attrs->{log_level} || 6;
-
-   ($logfile and -d dirname( $logfile )) or return Class::Null->new;
-
-   return Log::Handler->new( file => {
-      filename => $logfile, maxlevel => $level, mode => q(append), } );
+   my $self = shift; return Class::Usul::Log->new( ioc => $self );
 }
 
 sub _debug_set {
@@ -241,14 +221,6 @@ Decode input and encode output. Defaults to I<UTF-8>
 Defines the lock object. This is readonly and instantiates on first use
 
 Defined the application context log. Defaults to a L<Class::Null> object
-
-The constructor applies these roles:
-
-=over 3
-
-=item L<Class::Usul::DoesLoggingLevels>
-
-=back
 
 =head1 Subroutines/Methods
 
@@ -325,8 +297,6 @@ debug level
 =over 3
 
 =item L<Class::MOP>
-
-=item L<Class::Null>
 
 =item L<Class::Usul::Constants>
 

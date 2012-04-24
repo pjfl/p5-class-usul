@@ -9,7 +9,7 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use Moose;
 use Class::Null;
 use Class::Usul::Constants;
-use Class::Usul::Constraints  qw(Config Log);
+use Class::Usul::Constraints  qw(ConfigType LogType);
 use Class::Usul::Functions    qw(arg_list is_arrayref strip_leader throw);
 use Class::Usul::Response::IPC;
 use Class::Usul::Response::Table;
@@ -30,13 +30,14 @@ our ($ERROR, $WAITEDPID);
 
 my $SPECIAL_CHARS = do { my $x = join NUL, qw(< > | &); qr{ ([$x]) }mx };
 
-has 'config' => is => 'ro', isa => Config, required => TRUE;
+has 'config' => is => 'ro', isa => ConfigType, required => TRUE;
 
-has 'debug'  => is => 'rw', isa => Bool,   default  => FALSE;
+has 'debug'  => is => 'rw', isa => Bool,       default  => FALSE;
 
-has 'file'   => is => 'ro', isa => Object, required => TRUE;
+has 'file'   => is => 'ro', isa => Object,     required => TRUE;
 
-has 'log'    => is => 'ro', isa => Log,    default  => sub { Class::Null->new };
+has 'log'    => is => 'ro', isa => LogType,
+   default   => sub { Class::Null->new };
 
 sub child_list {
    my ($self, $pid, $procs) = @_; my ($child, $p, $t); my @pids = ();

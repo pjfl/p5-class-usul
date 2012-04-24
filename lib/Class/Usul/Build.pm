@@ -742,7 +742,7 @@ sub _install_local_perlbrew {
 }
 
 sub _log_info {
-   return shift->log_info( map { chomp; "${_}\n" } @{ [ @_ ] } );
+   return shift->cli->log->info( map { chomp; "${_}\n" } @{ [ @_ ] } );
 }
 
 sub _post_install {

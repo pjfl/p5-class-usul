@@ -160,7 +160,7 @@ sub dump_self : method {
 sub error {
    my ($self, $err, $args) = @_;
 
-   $self->log_error( $_ ) for (split m{ \n }mx, NUL.$err);
+   $self->log->error( $_ ) for (split m{ \n }mx, NUL.$err);
 
    __print_fh( \*STDERR, $self->add_leader( $err, $args )."\n" );
    return;
@@ -171,7 +171,7 @@ sub fatal {
 
    $err ||= 'unknown'; my $posn = ' at '.abs_path( $file )." line ${line}";
 
-   $self->log_alert( $_ ) for (split m{ \n }mx, $err.$posn);
+   $self->log->alert( $_ ) for (split m{ \n }mx, $err.$posn);
 
    __print_fh( \*STDERR, $self->add_leader( $err, $args ).$posn."\n" );
 
@@ -254,7 +254,7 @@ sub get_owner {
 sub info {
    my ($self, $err, $args) = @_;
 
-   $self->log_info( $_ ) for (split m{ [\n] }mx, $err);
+   $self->log->info( $_ ) for (split m{ [\n] }mx, $err);
 
    $self->quiet or say $self->add_leader( $err, $args );
    return;
@@ -340,7 +340,7 @@ sub run {
 sub warning {
    my ($self, $err, $args) = @_;
 
-   $self->log_warn( $_ ) for (split m{ \n }mx, $err);
+   $self->log->warn( $_ ) for (split m{ \n }mx, $err);
 
    $self->quiet or say $self->add_leader( $err, $args );
    return;

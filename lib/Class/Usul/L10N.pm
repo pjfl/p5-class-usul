@@ -9,46 +9,52 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use Moose;
 use Class::Null;
 use Class::Usul::Constants;
-use Class::Usul::Constraints     qw(Log);
-use Class::Usul::Functions       qw(assert is_arrayref);
-use MooseX::Types::Moose         qw(Bool ArrayRef HashRef Object Str);
+use Class::Usul::Constraints     qw(LogType);
+use Class::Usul::Functions       qw(assert is_arrayref merge_attributes);
 use File::DataClass::Constraints qw(Directory Lock Path);
 use File::Gettext::Constants;
 use File::Gettext;
 use File::Spec;
+use MooseX::Types::Moose         qw(Bool ArrayRef HashRef Object Str Undef);
 use Try::Tiny;
 
-has 'debug'             => is => 'rw', isa => Bool,
-   default              => FALSE;
+has 'debug'           => is => 'rw', isa => Bool,
+   default            => FALSE;
 
-has 'domain_attributes' => is => 'ro', isa => HashRef,
-   default              => sub { {} };
+has 'l10n_attributes' => is => 'ro', isa => HashRef,
+   default            => sub { {} };
 
-has 'domain_names'      => is => 'ro', isa => ArrayRef[Str],
-   default              => sub { [ q(messages) ] };
+has 'domain_names'    => is => 'ro', isa => ArrayRef[Str],
+   default            => sub { [ q(messages) ] };
 
-has 'localedir'         => is => 'ro', isa => Path,
-   default              => sub { DIRECTORIES->[ 0 ] }, coerce => TRUE;
+has 'localedir'       => is => 'ro', isa => Path | Undef, coerce => TRUE;
 
-has 'lock'              => is => 'ro', isa => Lock,
-   default              => sub { Class::Null->new };
+has 'lock'            => is => 'ro', isa => Lock,
+   default            => sub { Class::Null->new };
 
-has 'log'               => is => 'ro', isa => Log,
-   default              => sub { Class::Null->new };
+has 'log'             => is => 'ro', isa => LogType,
+   default            => sub { Class::Null->new };
 
-has 'tempdir'           => is => 'ro', isa => Directory,
-   default              => File::Spec->tmpdir, coerce => TRUE;
+has 'source_name'     => is => 'ro', isa => Str,
+   builder            => '_build_source_name', lazy => TRUE;
 
-has 'use_country'       => is => 'ro', isa => Bool,
-   default              => FALSE;
+has 'tempdir'         => is => 'ro', isa => Directory, coerce => TRUE,
+   default            => File::Spec->tmpdir;
 
-sub BUILD {
-   my $self = shift; my $da = $self->domain_attributes;
+has 'use_country'     => is => 'ro', isa => Bool,
+   builder            => '_build_use_country', lazy => TRUE;
 
-   $da->{localedir} ||= $self->localedir; $da->{source_name} ||= q(po);
+around 'BUILDARGS' => sub {
+   my ($next, $class, @rest) = @_; my $attrs = $class->$next( @rest );
 
-   return;
-}
+   my $ioc = delete $attrs->{ioc} or return $attrs;
+
+   merge_attributes $attrs, $ioc,         {}, [ qw(debug lock log) ];
+   merge_attributes $attrs, $ioc->config, {},
+                    [ qw(l10n_attributes localedir tempdir) ];
+
+   return $attrs;
+};
 
 sub get_po_header {
    my ($self, $args) = @_;
@@ -86,6 +92,14 @@ sub localize {
 
 # Private methods
 
+sub _build_source_name {
+   my $self = shift; return $self->l10n_attributes->{source_name} || q(po);
+}
+
+sub _build_use_country {
+   my $self = shift; return $self->l10n_attributes->{use_country} || FALSE;
+}
+
 {  my $cache = {};
 
    sub _extract_lang_from {
@@ -116,7 +130,7 @@ sub _gettext {
 
    my $id   = defined $args->{context}
             ? $args->{context}.CONTEXT_SEP.$key : $key;
-   my $msgs = $domain->{ $self->domain_attributes->{source_name} } || {};
+   my $msgs = $domain->{ $self->source_name } || {};
    my $msg  = $msgs->{ $id } || {};
 
    return @{ $msg->{msgstr} || [] }[ $plural ] || $default;
@@ -137,7 +151,10 @@ sub _gettext {
 
       defined $cache->{ $key } and return $cache->{ $key };
 
-      my $attrs  = { %{ $self->domain_attributes }, ioc_obj => $self };
+      my $attrs  = { %{ $self->l10n_attributes }, ioc_obj => $self,
+                     source_name => $self->source_name };
+
+      defined $self->localedir and $attrs->{localedir} = $self->localedir;
 
       $locale    =~ m{ \A (?: [a-z][a-z] )
                           (?: (?:_[A-Z][A-Z] )? \. ( [-_A-Za-z0-9]+ )? )?

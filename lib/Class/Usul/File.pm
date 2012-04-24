@@ -8,7 +8,7 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Moose;
 use Class::Usul::Constants;
-use Class::Usul::Constraints qw(Config);
+use Class::Usul::Constraints qw(ConfigType);
 use Class::Usul::Functions   qw(arg_list classfile create_token is_arrayref
                                 throw untaint_path);
 use English                  qw(-no_match_vars);
@@ -18,7 +18,7 @@ use File::DataClass::Schema;
 use File::Spec;
 use Scalar::Util             qw(blessed);
 
-has 'config' => is => 'ro', isa => Config, required => TRUE;
+has 'config' => is => 'ro', isa => ConfigType, required => TRUE;
 
 File::DataClass::Constants->Exception_Class( EXCEPTION_CLASS );
 
@@ -80,7 +80,7 @@ sub io {
       my $cfg   = $self->config;
       my $attrs = { storage_attributes => {
                            force_array => $cfg->{pi_arrays} } };
-      my $path  = File::Spec->catfile( $cfg->{ctrldir},
+      my $path  = File::Spec->catfile( $cfg->ctrldir,
                                        $cfg->{pi_config_file} );
 
       return $cache = $self->dataclass_schema( $attrs )->load( $path );
@@ -107,7 +107,7 @@ sub symlink {
 }
 
 sub tempdir {
-   return untaint_path( $_[ 0 ]->config->{tempdir} || File::Spec->tmpdir );
+   return untaint_path( $_[ 0 ]->config->tempdir || File::Spec->tmpdir );
 }
 
 sub tempfile {
@@ -221,7 +221,7 @@ success or throws an exception on failure
 
    $temporary_directory = $self->tempdir;
 
-Returns C<< $self->config->{tempdir} >> or L<File::Spec/tmpdir>
+Returns C<< $self->config->tempdir >> or L<File::Spec/tmpdir>
 
 =head2 tempfile
 

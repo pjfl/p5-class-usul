@@ -1,30 +1,55 @@
 # @(#)$Id$
 
-package Class::Usul::DoesLoggingLevels;
+package Class::Usul::Log;
 
 use strict;
 use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use Moose::Role;
+use Moose;
+use Class::Null;
 use Class::Usul::Constants;
-use Scalar::Util qw(blessed);
+use Class::Usul::Constraints     qw(EncodingType LogType);
+use Class::Usul::Functions       qw(merge_attributes);
 use Encode;
+use File::Basename               qw(dirname);
+use File::DataClass::Constraints qw(Path);
+use Log::Handler;
+use MooseX::Types::Moose         qw(Bool HashRef Maybe);
+use Scalar::Util                 qw(blessed);
 
-requires qw(encoding log);
+has 'debug'          => is => 'ro', isa  => Bool,    default => FALSE;
 
-sub import {
+has 'encoding'       => is => 'ro', isa  => Maybe[EncodingType];
+
+has 'log'            => is => 'ro', isa  => LogType, lazy    => TRUE,
+   builder           => '_build_log';
+
+has 'log_attributes' => is => 'ro', isa  => HashRef, default => sub { {} };
+
+has 'logfile'        => is => 'ro', isa  => Maybe[Path];
+
+around 'BUILDARGS' => sub {
+   my ($next, $class, @rest) = @_; my $attrs = $class->$next( @rest );
+
+   my $ioc = delete $attrs->{ioc} or return $attrs;
+
+   merge_attributes $attrs, $ioc,         {}, [ qw(debug encoding) ];
+   merge_attributes $attrs, $ioc->config, {}, [ qw(log_attributes logfile) ];
+
+   return $attrs;
+};
+
+sub BUILD {
    my $self = shift; my $class = blessed $self || $self;
 
    my $meta = $class->meta; $meta->make_mutable;
 
-   for my $level (LOG_LEVELS) {
-      my $method = q(log_).$level;
-
+   for my $method (LOG_LEVELS) {
       $meta->has_method( $method ) or $meta->add_method( $method => sub {
          my ($self, $text) = @_; $text or return;
          $self->encoding and $text = encode( $self->encoding, $text );
-         $self->log->$level( $text."\n" );
+         $self->log->$method( $text."\n" );
          return;
       } );
    }
@@ -33,7 +58,26 @@ sub import {
    return;
 }
 
-no Moose::Role;
+# Private methods
+
+sub _build_log {
+   my $self    = shift;
+   my $attrs   = { %{ $self->log_attributes } };
+   my $logfile = NUL.($attrs->{filename} || $self->logfile);
+   my $level   = $self->debug ? 7 : $attrs->{maxlevel} || 6;
+
+   ($logfile and -d dirname( $logfile )) or return Class::Null->new;
+
+   $attrs->{filename} = $logfile; $attrs->{maxlevel} = $level;
+
+   $attrs->{mode} ||= q(append);
+
+   return Log::Handler->new( file => $attrs );
+}
+
+__PACKAGE__->meta->make_immutable;
+
+no Moose;
 
 1;
 
@@ -43,7 +87,7 @@ __END__
 
 =head1 Name
 
-Class::Usul::DoesLoggingLevels - Create methods for each logging level that encode their output
+Class::Usul::Log - Create methods for each logging level that encode their output
 
 =head1 Version
 
@@ -94,6 +138,8 @@ None
 =head1 Dependencies
 
 =over 3
+
+=item L<Class::Null>
 
 =item L<Class::Usul::Constants>
 
