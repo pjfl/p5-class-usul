@@ -61,8 +61,6 @@ like $io->chomp->getline, qr{ \[INFO\] \s Information }mx, 'Read logfile';
 
 unlink $logfile;
 
-$prog->dump_self;
-
 done_testing;
 
 # Local Variables:
