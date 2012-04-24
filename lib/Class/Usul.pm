@@ -25,10 +25,10 @@ use Try::Tiny;
 
 class_has 'Lock' => is => 'rw',    isa => Lock;
 
-has '_config'    => is => 'ro',    isa => ConfigType, required   => TRUE,
-   reader        => 'config', init_arg => 'config',   coerce     => TRUE;
+has '_config'    => is => 'ro',    isa => ConfigType, coerce   => TRUE,
+   reader        => 'config', init_arg => 'config',   required => TRUE;
 
-has 'debug'      => is => 'rw',    isa => Bool,       default    => FALSE,
+has 'debug'      => is => 'rw',    isa => Bool,       default  => FALSE,
    trigger       => \&_debug_set;
 
 has 'encoding'   => is => 'ro',    isa => EncodingType,

@@ -27,7 +27,7 @@ has 'l10n_attributes' => is => 'ro', isa => HashRef,
 has 'domain_names'    => is => 'ro', isa => ArrayRef[Str],
    default            => sub { [ q(messages) ] };
 
-has 'localedir'       => is => 'ro', isa => Path | Undef, coerce => TRUE;
+has 'localedir'       => is => 'ro', isa => Undef | Path, coerce => TRUE;
 
 has 'lock'            => is => 'ro', isa => Lock,
    default            => sub { Class::Null->new };
