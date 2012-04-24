@@ -16,13 +16,12 @@ requires qw(encoding log);
 sub import {
    my $self = shift; my $class = blessed $self || $self;
 
-   $class->meta->make_mutable;
+   my $meta = $class->meta; $meta->make_mutable;
 
    for my $level (LOG_LEVELS) {
       my $method = q(log_).$level;
 
-      $class->meta->has_method( $method ) and next;
-      $class->meta->add_method( $method => sub {
+      $meta->has_method( $method ) or $meta->add_method( $method => sub {
          my ($self, $text) = @_; $text or return;
          $self->encoding and $text = encode( $self->encoding, $text );
          $self->log->$level( $text."\n" );
@@ -30,7 +29,7 @@ sub import {
       } );
    }
 
-   $class->meta->make_immutable;
+   $meta->make_immutable;
    return;
 }
 
@@ -53,16 +52,21 @@ Class::Usul::DoesLoggingLevels - Create methods for each logging level that enco
 =head1 Synopsis
 
    use Moose;
+   use Log::Handler;
 
-   has 'encoding'   => is => 'ro',    isa => 'Str',
-      documentation => 'Decode/encode input/output using this encoding',
-      lazy          => TRUE,      builder => '_build_encoding';
+   has 'encoding' => is => 'ro', isa => 'Str', default => q(UTF-8);
 
-   has '_log'       => is => 'ro',    isa => 'Object',
-      lazy          => TRUE,      builder => '_build__log',
-      reader        => 'log',    init_arg => 'log';
+   has 'log'      => is => 'ro', isa => 'Object',
+      default     => sub { Log::Handler->new };
 
    with qw(Class::Usul::DoesLoggingLevels);
+
+   # Can now call the following
+   $self->log_debug( $text );
+   $self->log_info(  $text );
+   $self->log_warn(  $text );
+   $self->log_error( $text );
+   $self->log_fatal( $text );
 
 =head1 Description
 
@@ -78,7 +82,10 @@ This role requires the attributes; I<encoding> and I<log>
 
 =head2 import
 
-Called when the role is applied to a class
+Called when the role is applied to a class. It creates a set of
+methods defined by the C<LOG_LEVELS> constant. The method expects C<<
+$self->log >> and C<< $self->encoding >> to be set.  It encodes the
+output string prior calling the log method at the given level
 
 =head1 Diagnostics
 

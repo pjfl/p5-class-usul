@@ -9,45 +9,44 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use Moose::Role;
 use Class::Usul::Constants;
 use Class::Usul::Functions qw(is_arrayref is_hashref);
-use Encode;
+use Scalar::Util           qw(blessed);
 use Encode::Guess;
-use Scalar::Util qw(blessed);
+use Encode;
 
-requires qw(config);
+my $meta = __PACKAGE__->meta;
 
-sub make_encoding_methods {
+for my $enc_name (grep { not m{ guess }mx } ENCODINGS) {
+   my $method = __method_name( $enc_name );
+
+   $meta->has_method( $method ) or $meta->add_method( $method => sub {
+      my ($self, $field, $caller, @rest) = @_;
+
+      return $self->_decode_data( $enc_name, $caller->$field( @rest ) );
+   } );
+}
+
+sub import {
    my ($self, @fields) = @_; my $class = blessed $self || $self;
 
-   no strict q(refs); ## no critic
-
-   for my $enc (grep { not m{ guess }mx } ENCODINGS) {
-      my $accessor = __PACKAGE__.q(::)._method_name( $enc );
-
-      defined &{ "$accessor" }
-         or *{ "$accessor" } = sub {
-            my ($self, $field, $caller, @rest) = @_;
-
-            return $self->_decode_data( $enc, $caller->$field( @rest ) );
-         };
-   }
+   my $meta = $class->meta; $meta->make_mutable;
 
    for my $field (@fields) {
-      for my $method (map { _method_name( $_ ) } ENCODINGS) {
-         my $accessor = $class.q(::).$field.$method;
+      for my $method (map { __method_name( $_ ) } ENCODINGS) {
+         my $accessor = $field.$method;
 
-         defined &{ "$accessor" }
-            or *{ "$accessor" }
-                  = sub { return __PACKAGE__->$method( $field, @_ ) };
+         $meta->has_method( $accessor ) or $meta->add_method( $accessor => sub {
+            __PACKAGE__->$method( $field, @_ ) } );
       }
    }
 
+   $meta->make_immutable;
    return;
 }
 
 # Private methods
 
 sub _decode_data {
-   my ($class, $enc_name, $data) = @_; my $enc;
+   my ($self, $enc_name, $data) = @_; my $enc;
 
    defined $data                     or  return;
    is_hashref $data                  and return $data;
@@ -58,17 +57,19 @@ sub _decode_data {
 }
 
 sub _guess_encoding {
-   my ($class, $field, $caller, @rest) = @_; my $data;
+   my ($self, $field, $caller, @rest) = @_; my $data;
 
    defined ($data = $caller->$field( @rest )) or return;
 
    my $all = (is_arrayref $data) ? join SPC, @{ $data } : $data;
    my $enc = guess_encoding( $all, grep { not m{ guess }mx } ENCODINGS );
 
-   return $enc && ref $enc ? $class->_decode_data( $enc->name, $data ) : $data;
+   return $enc && ref $enc ? $self->_decode_data( $enc->name, $data ) : $data;
 }
 
-sub _method_name {
+# Private functions
+
+sub __method_name {
    (my $enc = lc shift) =~ s{ [-] }{_}gmx; return q(_).$enc.q(_encoding)
 }
 
@@ -92,9 +93,8 @@ Class::Usul::Encoding - Create additional methods for different encodings
 
    use Moose;
 
-   with qw(Class::Usul::Encoding);
-
-   __PACKAGE__->make_encoding_methods( qw(get_req_array get_req_value) );
+   __PACKAGE__->meta->apply_role( q(Class::Usul::Encoding),
+                                     qw(get_req_array get_req_value) );
 
    sub get_req_array {
       my ($self, $req, $field) = @_; my $value = $req->params->{ $field };
@@ -124,15 +124,6 @@ Class::Usul::Encoding - Create additional methods for different encodings
    $value = $self->get_req_value_utf_8_encoding(      $c->req, $field );
    $value = $self->get_req_value_guess_encoding(      $c->req, $field );
 
-   __PACKAGE__->make_log_methods();
-
-   # Can now call the following
-   $self->log_debug( $text );
-   $self->log_info(  $text );
-   $self->log_warn(  $text );
-   $self->log_error( $text );
-   $self->log_fatal( $text );
-
 =head1 Description
 
 For each input method defined in your class L</make_encoding_methods>
@@ -149,13 +140,6 @@ set is defined by the list of values in the C<ENCODINGS>
 constant. Each of these newly defined methods calls C<_decode_data>
 with a different encoding name
 
-=head2 make_log_methods
-
-Creates a set of methods defined by the C<LEVELS> constant. The method
-expects C<< $self->log >> and C<< $self->encoding >> to be set.  It
-encodes the output string prior calling the log method at the given
-level
-
 =head2 _decode_data
 
 Decodes the data passed using the given encoding name. Can handle both
@@ -167,7 +151,7 @@ If you really don't know what the source encoding is then this method
 will use L<Encode::Guess> to determine the encoding. If successful
 calls C<_decode_data> to get the job done
 
-=head2 _method_name
+=head2 __method_name
 
 Takes an encoding name and converts it to a private method name
 
@@ -183,9 +167,15 @@ None
 
 =over 3
 
+=item L<Class::Usul::Constants>
+
+=item L<Class::Usul::Functions>
+
 =item L<Encode>
 
 =item L<Encode::Guess>
+
+=item L<Moose::Role>
 
 =back
 
@@ -205,7 +195,7 @@ Peter Flanigan, C<< <Support at RoxSoft.co.uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2008 Peter Flanigan. All rights reserved
+Copyright (c) 2012 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

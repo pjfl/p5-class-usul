@@ -18,7 +18,7 @@ use Sub::Exporter -setup => {
 };
 
 my $CLEANER = '.*^\s*use\s+Acme::Bleach\s*;\r*\n';
-my $DATA    = do { local $RS = undef; <DATA> };
+my $SEED    = do { local $RS = undef; <DATA> };
 my $KEY     = " \t" x 8;
 
 sub decrypt (;$$) {
@@ -42,7 +42,7 @@ sub encrypt (;$$) {
 sub __keygen {
    my $args = shift; is_hashref $args or $args = { salt => $args || NUL };
 
-  (my $seed = __inflate( $args->{seed} || $DATA )) =~ s{ $CLEANER }{}msx;
+  (my $seed = __inflate( $args->{seed} || $SEED )) =~ s{ $CLEANER }{}msx;
    ## no critic
    return substr create_token( ( eval $seed ).$args->{salt} ), 0, 32;
    ## critic
