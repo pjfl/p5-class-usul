@@ -12,11 +12,10 @@ use Class::Usul::File;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Response::Meta;
-use Class::Usul::Functions qw(app_prefix arg_list assert_directory class2appdir
-                              classdir elapsed env_prefix exception
+use Class::Usul::Functions qw(abs_path app_prefix arg_list assert_directory
+                              class2appdir classdir elapsed env_prefix exception
                               is_member prefix2class say split_on__ throw
                               untaint_identifier untaint_path);
-use Cwd                    qw(abs_path);
 use Encode                 qw(decode);
 use English                qw(-no_match_vars);
 use File::Spec::Functions  qw(catdir catfile);

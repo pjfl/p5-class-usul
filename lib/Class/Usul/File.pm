@@ -8,22 +8,22 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Constraints qw(ConfigType);
-use Class::Usul::Functions   qw(arg_list classfile create_token is_arrayref
-                                throw untaint_path);
+use Class::Usul::Functions   qw(abs_path arg_list classfile create_token
+                                is_arrayref throw untaint_path);
 use English                  qw(-no_match_vars);
 use File::DataClass::Constants ();
 use File::DataClass::IO        ();
 use File::DataClass::Schema;
-use File::Spec;
+use File::Spec::Functions    qw(catdir catfile tmpdir);
 
 has 'config' => is => 'ro', isa => ConfigType, required => TRUE;
 
 File::DataClass::Constants->Exception_Class( EXCEPTION_CLASS );
 
-sub abs_path {
+sub absolute {
    my ($self, $base, $path) = @_; $base ||= NUL; $path or return NUL;
 
-   is_arrayref $base and $base = File::Spec->catdir( $base );
+   is_arrayref $base and $base = catdir( $base );
 
    return $self->io( $path )->absolute( $base );
 }
@@ -60,7 +60,7 @@ sub find_source {
    my ($self, $class) = @_; my $file = classfile $class;
 
    for (@INC) {
-      my $path = File::Spec->catfile( $_, $file ); -f $path and return $path;
+      my $path = abs_path( catfile( $_, $file ) ); -f $path and return $path;
    }
 
    return;
@@ -78,8 +78,7 @@ sub io {
       my $cfg   = $self->config;
       my $attrs = { storage_attributes => {
                            force_array => $cfg->{pi_arrays} } };
-      my $path  = File::Spec->catfile( $cfg->ctrldir,
-                                       $cfg->{pi_config_file} );
+      my $path  = catfile( $cfg->ctrldir, $cfg->{pi_config_file} );
 
       return $cache = $self->dataclass_schema( $attrs )->load( $path );
    }
@@ -93,7 +92,7 @@ sub symlink {
    my ($self, $base, $from, $to) = @_;
 
    $from or throw 'Symlink path from undefined';
-   $from = $self->abs_path( $base, $from );
+   $from = $self->absolute( $base, $from );
    $from->exists or
       throw error => 'Path [_1] does not exist', args => [ $from->pathname ];
    $to or throw 'Symlink path to undefined';
@@ -105,7 +104,7 @@ sub symlink {
 }
 
 sub tempdir {
-   return untaint_path( $_[ 0 ]->config->tempdir || File::Spec->tmpdir );
+   return untaint_path( $_[ 0 ]->config->tempdir || tmpdir() );
 }
 
 sub tempfile {
@@ -118,7 +117,7 @@ sub tempname {
    while (not $path or -f $path) {
       my $file = sprintf '%6.6d%s', $PID, (substr create_token, 0, 4);
 
-      $path = File::Spec->catfile( $dir || $self->tempdir, $file );
+      $path = catfile( $dir || $self->tempdir, $file );
    }
 
    return $path;
@@ -158,9 +157,9 @@ Provides file and directory methods to the application base class
 
 =head1 Subroutines/Methods
 
-=head2 abs_path
+=head2 absolute
 
-   $absolute_path = $self->_abs_path( $base, $path );
+   $absolute_path = $self->absolute( $base, $path );
 
 Prepends F<$base> to F<$path> unless F<$path> is an absolute path
 

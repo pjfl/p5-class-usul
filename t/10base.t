@@ -21,6 +21,7 @@ BEGIN {
 }
 
 use Class::Usul::Programs;
+use Class::Usul::Functions qw(say);
 
 my $name    = basename( $0, qw(.t) );
 my $logfile = catfile( qw(t test.log) );

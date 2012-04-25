@@ -23,8 +23,8 @@ sub copy_files {
    my ($self, $cfg) = @_; my $cli = $self->cli;
 
    for my $pair (@{ $cfg->{copy_files} }) {
-      my $from = $cli->abs_path( $self->base_dir, $pair->{from} );
-      my $to   = $cli->abs_path( $self->_get_dest_base( $cfg ), $pair->{to} );
+      my $from = $cli->absolute( $self->base_dir, $pair->{from} );
+      my $to   = $cli->absolute( $self->_get_dest_base( $cfg ), $pair->{to} );
 
       ($from->is_file and not -e $to->pathname) or next;
       $self->_log_info( "Copying ${from} to ${to}" );
@@ -40,7 +40,7 @@ sub create_dirs {
 
    my $base = $self->_get_dest_base( $cfg );
 
-   for my $io (map { $cli->abs_path( $base, $_ ) } @{ $cfg->{create_dirs} }) {
+   for my $io (map { $cli->absolute( $base, $_ ) } @{ $cfg->{create_dirs} }) {
       if ($io->is_dir) { $self->_log_info( "Directory ${io} exists" ) }
       else { $self->_log_info( "Creating ${io}" ); $io->mkpath( oct q(02750) ) }
    }
@@ -54,7 +54,7 @@ sub create_files {
 
    my $base = $self->_get_dest_base( $cfg );
 
-   for my $io (map { $cli->abs_path( $base, $_ ) } @{ $cfg->{create_files} }){
+   for my $io (map { $cli->absolute( $base, $_ ) } @{ $cfg->{create_files} }){
       unless ($io->is_file) { $self->_log_info( "Creating ${io}" ); $io->touch }
    }
 

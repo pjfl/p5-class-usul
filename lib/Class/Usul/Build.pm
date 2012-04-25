@@ -801,7 +801,7 @@ sub _run_bin_cmd {
 
    my ($prog, @args) = split SPC, $cmd;
    my $bind = $self->install_destination( q(bin) );
-   my $path = $cli->file->abs_path( $bind, $prog );
+   my $path = $cli->file->absolute( $bind, $prog );
 
    -f $path or throw "Path ${path} not found";
 

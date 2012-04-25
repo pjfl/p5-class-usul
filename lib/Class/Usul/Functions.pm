@@ -21,7 +21,7 @@ use Scalar::Util qw(blessed openhandle);
 my @_functions;
 
 BEGIN {
-   @_functions = ( qw(app_prefix arg_list assert_directory
+   @_functions = ( qw(abs_path app_prefix arg_list assert_directory
                       class2appdir classdir classfile create_token
                       data_dumper distname elapsed env_prefix
                       escape_TT exception fold home2appl is_arrayref
@@ -37,6 +37,10 @@ use Sub::Exporter -setup => {
    groups  => { default => [ qw(is_member) ], },
 };
 
+sub abs_path ($) {
+   return $_[ 0 ] ? Cwd::abs_path( untaint_path( $_[ 0 ] )) : $_[ 0 ];
+}
+
 sub app_prefix ($) {
    (my $y = lc $_[ 0 ] || q()) =~ s{ :: }{_}gmx; return $y;
 }
@@ -48,9 +52,7 @@ sub arg_list (;@) {
 }
 
 sub assert_directory ($) {
-   my $y = shift; ($y and $y = Cwd::abs_path( untaint_path( $y ))) or return;
-
-   return -d $y ? $y : undef;
+   my $y = abs_path( $_[ 0 ] ) or return; return -d $y ? $y : undef;
 }
 
 sub class2appdir ($) {
@@ -283,6 +285,12 @@ CatalystX::Usul::Functions - Globally accesible functions
 Provides global functions
 
 =head1 Subroutines/Methods
+
+=head2 abs_path
+
+   $absolute_untainted_path = abs_path $some_path;
+
+Untaints path. Makes it an absolute path and returns it. Returns undef otherwise
 
 =head2 app_prefix
 
