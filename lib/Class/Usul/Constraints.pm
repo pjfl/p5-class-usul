@@ -6,11 +6,11 @@ use strict;
 use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use MooseX::Types -declare => [ qw(ConfigType EncodingType LogType) ];
-use MooseX::Types::Moose qw(HashRef Object Str);
+use Class::Usul::Config;
 use Class::Usul::Constants;
 use Class::Usul::Functions;
-use Class::Usul::Config;
+use MooseX::Types -declare => [ qw(ConfigType EncodingType LogType) ];
+use MooseX::Types::Moose        qw(HashRef Object Str);
 
 subtype ConfigType, as Object;
 coerce  ConfigType, from HashRef, via { Class::Usul::Config->new( $_ ) };

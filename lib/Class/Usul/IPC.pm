@@ -3,11 +3,10 @@
 package Class::Usul::IPC;
 
 use strict;
-use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use Moose;
 use Class::Null;
+use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Constraints  qw(ConfigType LogType);
 use Class::Usul::Functions    qw(arg_list is_arrayref strip_leader throw);
@@ -21,7 +20,6 @@ use IO::Handle;
 use IO::Select;
 use IPC::Open3;
 use Module::Load::Conditional qw(can_load);
-use MooseX::Types::Moose      qw(Bool Object);
 use POSIX                     qw(WIFEXITED WNOHANG);
 use Proc::ProcessTable;
 use Try::Tiny;

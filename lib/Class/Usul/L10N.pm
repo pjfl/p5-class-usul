@@ -3,11 +3,10 @@
 package Class::Usul::L10N;
 
 use strict;
-use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use Moose;
 use Class::Null;
+use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Constraints     qw(LogType);
 use Class::Usul::Functions       qw(assert is_arrayref merge_attributes);
@@ -15,7 +14,6 @@ use File::DataClass::Constraints qw(Directory Lock Path);
 use File::Gettext::Constants;
 use File::Gettext;
 use File::Spec;
-use MooseX::Types::Moose         qw(Bool ArrayRef HashRef Object Str Undef);
 use Try::Tiny;
 
 has 'debug'           => is => 'rw', isa => Bool,

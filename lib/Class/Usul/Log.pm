@@ -3,11 +3,10 @@
 package Class::Usul::Log;
 
 use strict;
-use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use Moose;
 use Class::Null;
+use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Constraints     qw(EncodingType LogType);
 use Class::Usul::Functions       qw(merge_attributes);
@@ -15,8 +14,6 @@ use Encode;
 use File::Basename               qw(dirname);
 use File::DataClass::Constraints qw(Path);
 use Log::Handler;
-use MooseX::Types::Moose         qw(Bool HashRef Maybe);
-use Scalar::Util                 qw(blessed);
 
 has 'debug'          => is => 'ro', isa  => Bool,    default => FALSE;
 
@@ -29,7 +26,7 @@ has 'log_attributes' => is => 'ro', isa  => HashRef, default => sub { {} };
 
 has 'logfile'        => is => 'ro', isa  => Maybe[Path];
 
-around 'BUILDARGS' => sub {
+around BUILDARGS => sub {
    my ($next, $class, @rest) = @_; my $attrs = $class->$next( @rest );
 
    my $ioc = delete $attrs->{ioc} or return $attrs;

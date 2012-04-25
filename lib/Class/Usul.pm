@@ -3,12 +3,11 @@
 package Class::Usul;
 
 use strict;
-use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use 5.010;
-use Moose;
 use Class::MOP;
+use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Constraints     qw(ConfigType EncodingType LogType);
 use Class::Usul::Functions       qw(data_dumper is_arrayref is_hashref
@@ -19,8 +18,6 @@ use File::DataClass::Constraints qw(Lock);
 use IPC::SRLock;
 use Module::Pluggable::Object;
 use MooseX::ClassAttribute;
-use MooseX::Types::Moose         qw(Bool Object);
-use Scalar::Util                 qw(blessed);
 use Try::Tiny;
 
 class_has 'Lock' => is => 'rw',    isa => Lock;
@@ -29,7 +26,7 @@ has '_config'    => is => 'ro',    isa => ConfigType, coerce   => TRUE,
    reader        => 'config', init_arg => 'config',   required => TRUE;
 
 has 'debug'      => is => 'rw',    isa => Bool,       default  => FALSE,
-   trigger       => \&_debug_set;
+   trigger       => \&_debug_trigger;
 
 has 'encoding'   => is => 'ro',    isa => EncodingType,
    documentation => 'Decode/encode input/output using this encoding',
@@ -158,7 +155,7 @@ sub _build__log {
    my $self = shift; return Class::Usul::Log->new( ioc => $self );
 }
 
-sub _debug_set {
+sub _debug_trigger {
    my ($self, $debug) = @_;
 
    $self->l10n->debug( $debug ); $self->lock->debug( $debug );

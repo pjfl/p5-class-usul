@@ -3,10 +3,9 @@
 package Class::Usul::File;
 
 use strict;
-use warnings;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use Moose;
+use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Constraints qw(ConfigType);
 use Class::Usul::Functions   qw(arg_list classfile create_token is_arrayref
@@ -16,7 +15,6 @@ use File::DataClass::Constants ();
 use File::DataClass::IO        ();
 use File::DataClass::Schema;
 use File::Spec;
-use Scalar::Util             qw(blessed);
 
 has 'config' => is => 'ro', isa => ConfigType, required => TRUE;
 

@@ -4,13 +4,12 @@ package Class::Usul::Programs;
 
 use strict;
 use attributes ();
-use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use Moose;
 use Class::Inspector;
 use Class::Usul::IPC;
 use Class::Usul::File;
+use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Response::Meta;
 use Class::Usul::Functions qw(app_prefix arg_list assert_directory class2appdir
@@ -23,7 +22,6 @@ use English                qw(-no_match_vars);
 use File::Spec::Functions  qw(catdir catfile);
 use IO::Interactive        qw(is_interactive);
 use List::Util             qw(first);
-use Scalar::Util           qw(blessed);
 use Config;
 use Pod::Man;
 use Pod::Usage;
@@ -38,7 +36,7 @@ with    qw(MooseX::Getopt::Dashes);
 has 'debug',       => is => 'rw', isa => 'Bool', default => FALSE,
    documentation   => 'Turn debugging on. Promps if interactive',
    traits          => [ 'Getopt' ], cmd_aliases => q(D), cmd_flag => 'debug',
-   trigger         => \&_debug_set;
+   trigger         => \&_debug_trigger;
 
 has 'help_options' => is => 'ro', isa => 'Bool', default => FALSE,
    documentation   => 'Uses Pod::Usage to describe the program usage options',
@@ -421,7 +419,7 @@ sub _build__os {
    return $cfg->{os} || {};
 }
 
-sub _debug_set {
+sub _debug_trigger {
    my ($self, $debug) = @_;
 
    $self->SUPER::debug( $debug ); $self->ipc->debug( $debug );

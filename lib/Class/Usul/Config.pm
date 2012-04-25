@@ -3,10 +3,9 @@
 package Class::Usul::Config;
 
 use strict;
-use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use Moose;
+use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions       qw(app_prefix class2appdir
                                     home2appl untaint_path);
@@ -16,9 +15,6 @@ use File::Basename               qw(basename dirname);
 use File::DataClass::Constraints qw(Directory File Path);
 use File::Gettext::Constants;
 use File::Spec::Functions        qw(canonpath catdir catfile rel2abs tmpdir);
-use Moose::Util::TypeConstraints;
-use MooseX::Types::Moose         qw(ArrayRef HashRef Int Str);
-use Scalar::Util                 qw(blessed);
 use Sys::Hostname                  ();
 
 has 'appclass'        => is => 'ro', isa => Str,
