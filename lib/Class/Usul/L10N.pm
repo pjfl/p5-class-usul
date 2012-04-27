@@ -45,11 +45,12 @@ has 'use_country'     => is => 'ro', isa => Bool,
 around 'BUILDARGS' => sub {
    my ($next, $class, @rest) = @_; my $attrs = $class->$next( @rest );
 
-   my $ioc = delete $attrs->{ioc} or return $attrs;
+   my $builder = delete $attrs->{builder} or return $attrs;
+   my $config  = $builder->can( q(config) ) ? $builder->config : {};
 
-   merge_attributes $attrs, $ioc,         {}, [ qw(debug lock log) ];
-   merge_attributes $attrs, $ioc->config, {},
-                    [ qw(l10n_attributes localedir tempdir) ];
+   merge_attributes $attrs, $builder, {}, [ qw(debug lock log) ];
+   merge_attributes $attrs, $config,  {},
+      [ qw(l10n_attributes localedir tempdir) ];
 
    return $attrs;
 };

@@ -88,8 +88,8 @@ sub loc {
    my $args = (is_hashref $car) ? { %{ $car } }
             : { params => (is_arrayref $car) ? $car : [ @rest ] };
 
-   $args->{domain_names} = [ DEFAULT_L10N_DOMAIN, $params->{ns} ];
-   $args->{locale      } = $params->{lang};
+   $args->{domain_names} = [ DEFAULT_L10N_DOMAIN, $params->{namespace} ];
+   $args->{locale      } = $params->{language};
 
    return $self->l10n->localize( $key, $args );
 }
@@ -136,23 +136,23 @@ sub _build_encoding {
 }
 
 sub _build__l10n {
-   my $self = shift; return Class::Usul::L10N->new( ioc => $self );
+   my $self = shift; return Class::Usul::L10N->new( builder => $self );
 }
 
 sub _build__lock {
    # There is only one lock object. Instantiate on first use
-   my $self  = shift; $self->Lock and return $self->Lock;
+   my $self = shift; $self->Lock and return $self->Lock;
 
-   my $cfg   = $self->config; my $attrs = { %{ $cfg->lock_attributes } };
+   my $config = $self->config; my $attrs = { %{ $config->lock_attributes } };
 
-   merge_attributes $attrs, $self, {}, [ qw(debug log) ];
-   merge_attributes $attrs, $cfg,  {}, [ qw(tempdir) ];
+   merge_attributes $attrs, $self,   {}, [ qw(debug log) ];
+   merge_attributes $attrs, $config, {}, [ qw(tempdir) ];
 
    return $self->Lock( IPC::SRLock->new( $attrs ) );
 }
 
 sub _build__log {
-   my $self = shift; return Class::Usul::Log->new( ioc => $self );
+   my $self = shift; return Class::Usul::Log->new( builder => $self );
 }
 
 sub _debug_trigger {

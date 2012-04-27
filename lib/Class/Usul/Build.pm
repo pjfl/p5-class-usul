@@ -291,7 +291,7 @@ sub cli {
 
    $self->{ $key }
       or $self->{ $key } = Class::Usul::Programs->new
-            ( { appclass => $self->module_name, nodebug  => TRUE } );
+            ( { appclass => $self->module_name, nodebug => TRUE } );
 
    return $self->{ $key };
 }
@@ -763,7 +763,7 @@ sub _prereq_diff {
    my $depends = $self->_dependencies( $self->$filter( $self->_source_paths ) );
    my $used    = $self->_filter_dependents( $cfg, $depends );
 
-   $self->_say_diffs( __compare_prereqs_with_used( $field, $prereqs, $used ) );
+   __say_diffs( __compare_prereqs_with_used( $field, $prereqs, $used ) );
    return;
 }
 
@@ -814,22 +814,6 @@ sub _run_bin_cmd {
    return TRUE;
 }
 
-sub _say_diffs {
-   my ($self, $diffs) = @_; __draw_line();
-
-   for my $table (sort keys %{ $diffs }) {
-      say $table; __draw_line();
-
-      for (sort keys %{ $diffs->{ $table } }) {
-         say "'$_' => '".$diffs->{ $table }->{ $_ }."',";
-      }
-
-      __draw_line();
-   }
-
-   return;
-}
-
 sub _set_install_paths {
    my ($self, $cfg) = @_; $cfg->{base} or throw 'Config base path not set';
 
@@ -859,7 +843,7 @@ sub _source_paths {
    my $self = shift; my $cli = $self->cli;
 
    return [ grep { __is_perl_script( $cli, $_ ) }
-            map  { s{ \s+ }{ }gmx; (split SPC, $_)[0] }
+            map  { s{ \s+ }{ }gmx; (split SPC, $_)[ 0 ] }
             $cli->io( $CONFIG{manifest_file} )->chomp->getlines ];
 }
 
@@ -941,7 +925,7 @@ sub _write_license_file {
    return;
 }
 
-# Private subroutines
+# Private functions
 
 sub __compare_prereqs_with_used {
    my ($field, $prereqs, $used) = @_;
@@ -1137,6 +1121,22 @@ sub __run_perlbrew {
    $ENV{PERLBREW_PERL} = $cfg->{perl_ver     };
 
    return $cli->run_cmd( $cmd );
+}
+
+sub __say_diffs {
+   my $diffs = shift; __draw_line();
+
+   for my $table (sort keys %{ $diffs }) {
+      say $table; __draw_line();
+
+      for (sort keys %{ $diffs->{ $table } }) {
+         say "'$_' => '".$diffs->{ $table }->{ $_ }."',";
+      }
+
+      __draw_line();
+   }
+
+   return;
 }
 
 sub __tag_from_version {

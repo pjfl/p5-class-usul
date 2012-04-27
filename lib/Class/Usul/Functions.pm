@@ -162,21 +162,14 @@ sub make_log_message ($;$) {
 }
 
 sub merge_attributes ($$$;$) {
-   my ($dest, $src, $defaults, $attrs) = @_;
+   my ($dest, $src, $defaults, $attrs) = @_; my $class = blessed $src;
 
-   if (blessed $src) {
-      for (@{ $attrs || [] }) {
-         my $v = ($src->can( $_ ) ? $src->$_() : undef) || $defaults->{ $_ };
+   for (grep { not exists $dest->{ $_ } or not defined $dest->{ $_ } }
+        @{ $attrs || [] }) {
+      my $v = $class ? ($src->can( $_ ) ? $src->$_() : undef) : $src->{ $_ };
 
-         defined $v and $dest->{ $_ } ||= $v;
-      }
-   }
-   else {
-      for (@{ $attrs || [] }) {
-         my $v = $src->{ $_ } || $defaults->{ $_ };
-
-         defined $v and $dest->{ $_ } ||= $v;
-      }
+      defined $v  or $v = $defaults->{ $_ };
+      defined $v and $dest->{ $_ } = $v;
    }
 
    return $dest;

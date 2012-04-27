@@ -273,7 +273,8 @@ sub list_methods : method {
 sub loc {
    my ($self, @rest) = @_;
 
-   my $params = { lang => $self->language, ns => $self->config->name };
+   my $params = { language  => $self->language,
+                  namespace => $self->config->name };
 
    return $self->next::method( $params, @rest );
 }

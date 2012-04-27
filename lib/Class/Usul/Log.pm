@@ -29,10 +29,11 @@ has 'logfile'        => is => 'ro', isa  => Maybe[Path];
 around BUILDARGS => sub {
    my ($next, $class, @rest) = @_; my $attrs = $class->$next( @rest );
 
-   my $ioc = delete $attrs->{ioc} or return $attrs;
+   my $builder = delete $attrs->{builder} or return $attrs;
+   my $config  = $builder->can( q(config) ) ? $builder->config : {};
 
-   merge_attributes $attrs, $ioc,         {}, [ qw(debug encoding) ];
-   merge_attributes $attrs, $ioc->config, {}, [ qw(log_attributes logfile) ];
+   merge_attributes $attrs, $builder, {}, [ qw(debug encoding) ];
+   merge_attributes $attrs, $config,  {}, [ qw(log_attributes logfile) ];
 
    return $attrs;
 };
