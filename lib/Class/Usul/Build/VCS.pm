@@ -3,25 +3,22 @@
 package Class::Usul::Build::VCS;
 
 use strict;
-use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 818 $ =~ /\d+/gmx );
 
-use Moose;
+use Class::Usul::Moose;
 use Class::Usul::Constants;
-use File::Spec::Functions qw(catfile);
+use File::Spec;
 use IPC::Cmd qw(can_run);
-
-extends qw(Class::Usul);
 
 has 'type' => is => 'rw', isa => 'Str';
 has 'vcs'  => is => 'rw', isa => 'Object';
 
 around BUILDARGS => sub {
-   my ($orig, $class, @rest) = @_;
+   my ($next, $class, @rest) = @_; my $attrs = $class->$next( @rest );
 
-   my $attrs = $class->$orig( @rest ); my $dir = $attrs->{project_dir};
+   my $dir = $attrs->{project_dir};
 
-   if (-d catfile( $dir, q(.git) )) {
+   if (-d File::Spec->catfile( $dir, q(.git) )) {
       can_run( q(git) ) or return $attrs; # Be nice to CPAN testing
 
       require Git::Class::Worktree;
@@ -31,7 +28,7 @@ around BUILDARGS => sub {
       return $attrs;
    }
 
-   $dir = catfile( $attrs->{project_dir}, q(.svn) );
+   $dir = File::Spec->catfile( $attrs->{project_dir}, q(.svn) );
 
    if (-d $dir) {
       can_run( q(svn) ) or return $attrs; # Be nice to CPAN testing
@@ -77,9 +74,9 @@ sub tag {
    my $repo = $self->repository or return;
    my $from = $repo.SEP.q(trunk);
    my $to   = $repo.SEP.q(tags).SEP.$vtag;
-   my $msg  = "Tagging $vtag";
+   my $msg  = "Tagging ${vtag}";
 
-   return $self->vcs->svn_run( q(copy), [ q(-m), $msg ], "$from $to" );
+   return $self->vcs->svn_run( q(copy), [ q(-m), $msg ], "${from} ${to}" );
 }
 
 __PACKAGE__->meta->make_immutable;

@@ -7,12 +7,14 @@ use warnings;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
+use Class::Usul::Functions qw(throw);
 use Debian::Control;
 use Debian::Control::Stanza::Binary;
 use Debian::Dependency;
 use Debian::Rules;
 use Email::Date::Format qw(email_date);
 use English             qw(-no_match_vars);
+use File::Spec;
 use MRO::Compat;
 use Text::Format;
 use Try::Tiny;
@@ -132,8 +134,7 @@ sub _abs_prog_path {
 sub _add_debian_depends {
    my ($self, $cfg, $control) = @_; my $cli = $self->cli;
 
-   my $src = $control->source;
-   my $bin = $control->binary->Values( 0 );
+   my $src = $control->source; my $bin = $control->binary->Values( 0 );
 
    exists $cfg->{debian_depends}
       and $bin->Depends->add( $cfg->{debian_depends} );
@@ -159,16 +160,12 @@ sub _backup_path {
       $bak->is_dir ? $bak->rmtree : $bak->unlink;
    }
 
-   rename $path, $bak->pathname or $cli->throw( $ERRNO );
+   rename $path, $bak->pathname or throw $ERRNO;
    return;
 }
 
-sub _bin_dir {
-   return $_[ 0 ]->cli->catfile( $_[ 1 ]->{base}, q(bin) );
-}
-
 sub _bin_file {
-   return $_[ 0 ]->cli->abs_path( $_[ 0 ]->_bin_dir( $_[ 1 ] ), $_[ 2 ] );
+   return $_[ 0 ]->cli->file->absolute( __bin_dir( $_[ 1 ] ), $_[ 2 ] );
 }
 
 sub _create_debian_changelog {
@@ -190,7 +187,7 @@ sub _create_debian_copyright {
    my $year       = 1900 + (localtime)[ 5 ];
    my $maintainer = $control->source->Maintainer;
    my $license    = $cfg->{license_keys}->{ $cli->get_meta->license }
-      or $cli->throw( 'Unknown copyright license' );
+      or throw 'Unknown copyright license';
    my %fields     = ( Name       => $self->dist_name,
                       Maintainer => $maintainer,
                       Source     => $self->_get_cpan_url( $cfg ) );
@@ -225,7 +222,7 @@ sub _create_debian_copyright {
 sub _create_debian_maintainers {
    my ($self, $cfg) = @_; my $cli = $self->cli; $cfg ||= {};
 
-   $cfg->{base} or $cli->throw( 'Config base directory not set' );
+   $cfg->{base} or throw 'Config base directory not set';
 
    $cli->io     ( $self->_debian_file ( q(postinst) ), q(w) )
        ->println( $self->_shell_script( $cfg, $cfg->{post_install_cmd} ) )
@@ -241,15 +238,16 @@ sub _create_debian_maintainers {
 sub _create_debian_rules {
    my ($self, $cfg) = @_; my $cli = $self->cli;
 
-   my $source = $cli->catfile( @{ $cfg->{dh_share_dir} }, q(rules.dh7.tiny) );
+   my $source = File::Spec->catfile( @{ $cfg->{dh_share_dir} },
+                                     q(rules.dh7.tiny) );
    my $path   = $self->_debian_file( q(rules) );
    my $rules  = Debian::Rules->new( $path );
 
-   -e $source or $cli->throw( "Path $source does not exist" );
-   $self->_log_info( "Using rules $source" );
+   -e $source or throw "Path ${source} does not exist";
+   $self->_log_info( "Using rules ${source}" );
    $rules->read( $source );
    $rules->write;
-   chmod 0755, $path or $cli->throw( $ERRNO );
+   chmod 0755, $path or throw $ERRNO;
    return $rules;
 }
 
@@ -265,11 +263,11 @@ sub _create_debian_watch {
 }
 
 sub _debian_dir {
-   return $_[ 0 ]->cli->catfile( $_[ 0 ]->_main_dir, q(debian) );
+   return File::Spec->catdir( $_[ 0 ]->_main_dir, q(debian) );
 }
 
 sub _debian_file {
-   return $_[ 0 ]->cli->catfile( $_[ 0 ]->_debian_dir, $_[ 1 ] );
+   return File::Spec->catfile( $_[ 0 ]->_debian_dir, $_[ 1 ] );
 }
 
 sub _discover_debian_utility_deps {
@@ -307,8 +305,7 @@ sub _get_debian_author {
    # Set author name and email for the debian package.
    my $self = shift; my ($author_name, $author_mail);
 
-   my $dist_author = $self->dist_author->[ 0 ]
-      or $self->cli->throw( 'No dist author' );
+   my $dist_author = $self->dist_author->[ 0 ] or throw 'No dist author';
 
    if ($dist_author =~ m{ \s* (.+?) (?:(?: \s* , \s* C<<)?) \s* < (.+?) > }msx){
       $author_name = defined $1 ? $1 : $dist_author;
@@ -341,7 +338,7 @@ sub _license_content {
 }
 
 sub _main_dir {
-   return ref $_[ 0 ] ? $_[ 0 ]->cli->config->{appldir} : File::Spec->curdir;
+   return ref $_[ 0 ] ? $_[ 0 ]->cli->config->appldir : File::Spec->curdir;
 }
 
 sub _postrm_content {
@@ -353,9 +350,9 @@ sub _postrm_content {
    my $appd = $cli->dirname ( $cfg->{base} );
    my $papd = $cli->dirname ( $appd        );
 
-   length $appd < 2 and $cli->throw( "Insane uninstall directory: ${appd}" );
+   length $appd < 2 and throw "Insane uninstall directory: ${appd}";
    $subd !~ m{ v \d+ \. \d+ p \d+ }mx
-      and $cli->throw( "Path ${subd} does not match v\\d+\\.\\d+p\\d+" );
+      and throw "Path ${subd} does not match v\\d+\\.\\d+p\\d+";
 
    return [ "${cmd} && \\",
             "   cd ${appd} && \\",
@@ -438,7 +435,7 @@ sub _update_debian_file_list {
 
       my $io = $cli->io( $pkg_file );
 
-      for (@existing_content, @$new_content) {
+      for (@existing_content, @{ $new_content }) {
          exists $uniq_content{ $_ } or next;
          delete $uniq_content{ $_ };
          $io->println( $_ );
@@ -447,6 +444,13 @@ sub _update_debian_file_list {
 
    return;
 }
+
+# Private functions
+
+sub __bin_dir {
+   return File::Spec->catdir( $_[ 0 ]->{base}, q(bin) );
+}
+
 
 1;
 

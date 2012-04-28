@@ -3,10 +3,9 @@
 package Class::Usul::Build::Questions;
 
 use strict;
-use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use Moose;
+use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions qw(class2appdir throw);
 use File::Spec;
@@ -53,7 +52,7 @@ sub q_install {
 sub q_path_prefix {
    my ($self, $cfg) = @_; my $cli = $self->cli; my $text;
 
-   my $prefix = $cli->catdir( @{ $cfg->{path_prefix} || [] } ) || NUL;
+   my $prefix = File::Spec->catdir( @{ $cfg->{path_prefix} || [] } ) || NUL;
 
    $text  = 'Where in the filesystem should the application install to. ';
    $text .= 'Application name is automatically appended to the prefix';
@@ -73,7 +72,7 @@ sub q_phase {
    $cli->output( $text, $cfg->{paragraph} );
    $phase = $cli->get_line( 'Enter phase number', $phase, TRUE, 0 );
    $phase =~ m{ \A \d+ \z }mx
-      or $cli->throw( "Phase value ${phase} bad (not an integer)" );
+      or throw "Phase value ${phase} bad (not an integer)";
 
    return $phase;
 }
@@ -126,6 +125,10 @@ for one of it's attributes
 Always returns true. This dummy question is used to trigger the suppression
 of any further questions once the build phase is complete
 
+=head2 q_install
+
+
+
 =head2 q_path_prefix
 
 Prompt for the installation prefix. The application name and version
@@ -134,6 +137,10 @@ B<normal>, the all of the application will be installed to this
 path. The default is F</opt>. If the installation style is B<perl>
 then only the "var" data will be installed to this path. The default is
 F</var/www>
+
+=head2 q_post_install
+
+
 
 =head2 q_phase
 

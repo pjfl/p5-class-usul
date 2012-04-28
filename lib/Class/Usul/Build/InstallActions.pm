@@ -3,10 +3,9 @@
 package Class::Usul::Build::InstallActions;
 
 use strict;
-use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use Moose;
+use Class::Usul::Moose;
 use Class::Usul::Constants;
 use File::Spec;
 use Try::Tiny;
@@ -89,7 +88,7 @@ sub link_files {
    my $base = $self->_get_dest_base( $cfg ); my $msg;
 
    for my $link (@{ $cfg->{link_files} }) {
-      try   { $msg = $self->symlink( $base, $link->{from}, $link->{to} ) }
+      try   { $msg = $cli->file->symlink( $base, $link->{from}, $link->{to} ) }
       catch { $msg = NUL.$_ }
 
       $self->_log_info( $msg );
@@ -134,6 +133,10 @@ C<< $config->{create_dirs} >> if they do not exist
 
 Create the files specified in the list
 C<< $config->{create_files} >> if they do not exist
+
+=head2 edit_files
+
+
 
 =head2 link_files
 

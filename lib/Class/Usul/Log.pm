@@ -93,41 +93,42 @@ Class::Usul::Log - Create methods for each logging level that encode their outpu
 
 =head1 Synopsis
 
-   use Moose;
-   use Log::Handler;
+   use Class::Usul::Constraints qw(LogType);
+   use Class::Usul::Log;
 
-   has 'encoding' => is => 'ro', isa => 'Str', default => q(UTF-8);
+   has '_log' => is => 'ro', isa => LogType,
+      lazy    => TRUE,   builder => '_build__log',
+      reader  => 'log', init_arg => 'log';
 
-   has 'log'      => is => 'ro', isa => 'Object',
-      default     => sub { Log::Handler->new };
-
-   with qw(Class::Usul::DoesLoggingLevels);
+   sub _build__log {
+      my $self = shift; return Class::Usul::Log->new( builder => $self );
+   }
 
    # Can now call the following
-   $self->log_debug( $text );
-   $self->log_info(  $text );
-   $self->log_warn(  $text );
-   $self->log_error( $text );
-   $self->log_fatal( $text );
+   $self->log->debug( $text );
+   $self->log->info(  $text );
+   $self->log->warn(  $text );
+   $self->log->error( $text );
+   $self->log->fatal( $text );
 
 =head1 Description
 
-A L<Moose Role|Moose::Role> that creates methods for each logging
-level that encode their output. The logging levels are defined by the
+Creates methods for each logging level that encode their output. The
+logging levels are defined by the
 L<log levels|Class::Usul::Constants/LOG_LEVELS> constant
 
 =head1 Configuration and Environment
 
-This role requires the attributes; I<encoding> and I<log>
+
 
 =head1 Subroutines/Methods
 
-=head2 import
+=head2 BUILD
 
-Called when the role is applied to a class. It creates a set of
-methods defined by the C<LOG_LEVELS> constant. The method expects C<<
-$self->log >> and C<< $self->encoding >> to be set.  It encodes the
-output string prior calling the log method at the given level
+Creates a set of methods defined by the C<LOG_LEVELS> constant. The
+method expects C<< $self->log >> and C<< $self->encoding >> to be set.
+It encodes the output string prior calling the log method at the given
+level
 
 =head1 Diagnostics
 
@@ -141,9 +142,17 @@ None
 
 =item L<Class::Usul::Constants>
 
+=item L<Class::Usul::Constraints>
+
+=item L<Class::Usul::Functions>
+
+=item L<Class::Usul::Moose>
+
 =item L<Encode>
 
-=item L<Moose::Role>
+=item L<File::DataClass::Constraints>
+
+=item L<Log::Handler>
 
 =back
 
