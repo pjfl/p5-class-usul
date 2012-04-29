@@ -14,6 +14,7 @@ use Class::Usul::Build::VCS;
 use Class::Usul::Constants;
 use Class::Usul::Functions qw(exception say throw);
 use Class::Usul::Programs;
+use Class::Usul::Time      qw(time2str);
 use Config;
 use Try::Tiny;
 use File::Spec;
@@ -80,23 +81,26 @@ sub ACTION_distmeta {
 
       $self->_update_changelog( $cfg, $self->_dist_version );
       $self->_write_license_file( $cfg );
-      $self->next::method();
    }
    catch { $self->cli->fatal( $_ ) };
 
+   $self->next::method();
    return;
 }
 
 sub ACTION_install {
-   my $self = shift;
+   my $self = shift; my $cfg;
 
    try {
-      my $cfg = $self->_get_config;
-
+      $cfg = $self->_get_config;
       $self->_ask_questions( $cfg );
       $self->_set_install_paths( $cfg );
-      $cfg->{install} and $self->next::method();
+   }
+   catch { $self->cli->fatal( $_ ) };
 
+   $cfg->{install} and $self->next::method();
+
+   try {
       my $install = $self->_install_actions_class->new( builder => $self );
 
       # Call each of the defined installation actions

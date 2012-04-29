@@ -89,7 +89,7 @@ sub link_files {
 
    for my $link (@{ $cfg->{link_files} }) {
       try   { $msg = $cli->file->symlink( $base, $link->{from}, $link->{to} ) }
-      catch { $msg = NUL.$_ }
+      catch { $msg = NUL.$_ };
 
       $self->_log_info( $msg );
    }

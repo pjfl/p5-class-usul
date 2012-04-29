@@ -218,7 +218,7 @@ sub _build_path_to {
 }
 
 sub _build_phase {
-   my $dir     = basename( $_[ 0 ]->appldir );
+   my $dir     = basename( $_[ 1 ]->{appldir} );
    my ($phase) = $dir =~ m{ \A v \d+ \. \d+ p (\d+) \z }msx;
 
    return defined $phase ? $phase : PHASE;

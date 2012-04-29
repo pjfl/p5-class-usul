@@ -161,7 +161,7 @@ sub _gettext {
       $charset and $attrs->{charset} = $charset;
 
       try   { $data = File::Gettext->new( $attrs )->load( $lang, @names ) }
-      catch { $self->log->error( $_ ); return }
+      catch { $self->log->error( $_ ); return };
 
       return $cache->{ $key } = $data;
    }

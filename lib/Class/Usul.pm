@@ -96,10 +96,11 @@ sub loc {
 
 sub setup_plugins {
    # Searches for and then load plugins in the search path
-   my ($self, $config) = @_; my $class = blessed $self || $self;
+   my ($self, $config) = @_; $config ||= {};
 
-   my $exclude = delete $config->{ exclude_pattern } || q(\A \z);
-   my @paths   = @{ delete $config->{ search_paths } || [] };
+   my $class   = $config->{child_class} || blessed $self || $self;
+   my $exclude = delete $config->{exclude_pattern} || q(\A \z);
+   my @paths   = @{ delete $config->{search_paths} || [] };
    my $finder  = Module::Pluggable::Object->new
       ( search_path => [ map { m{ \A :: }mx ? __PACKAGE__.$_ : $_ } @paths ],
         %{ $config } );
