@@ -8,10 +8,12 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions qw(class2appdir throw);
-use File::Spec;
+use File::Spec::Functions  qw(catdir);
 
 has 'builder'           => is => 'ro', isa => 'Object', required => TRUE,
-   handles              => [ qw(cli) ];
+   handles              => { cli          => q(cli),
+                             dist_version => q(_dist_version),
+                             module_name  => q(module_name) };
 
 has 'config_attributes' => is => 'ro', isa => 'ArrayRef',
    default              => sub {
@@ -20,19 +22,13 @@ has 'config_attributes' => is => 'ro', isa => 'ArrayRef',
 has 'paragraph'         => is => 'ro', isa => 'HashRef',
    default              => sub { { cl => TRUE, fill => TRUE, nl => TRUE } };
 
-has 'prefix_normal'     => is => 'ro', isa => 'ArrayRef',
-   default              => sub { [ NUL, qw(opt) ] };
-
-has 'prefix_perl'       => is => 'ro', isa => 'ArrayRef',
-   default              => sub { [ NUL, qw(var www) ] };
-
 sub q_built {
    my ($self, $cfg) = @_; my $cli = $self->cli;
 
    my $prefix = $cfg->{path_prefix} or throw 'No path_prefix';
 
-   $cfg->{base} = File::Spec->catdir( $prefix, class2appdir $self->appclass,
-                                      q(v).$cfg->{ver}.q(p).$cfg->{phase} );
+   $cfg->{base} = catdir( $prefix, class2appdir $self->module_name,
+                          q(v).$cfg->{ver}.q(p).$cfg->{phase} );
    return TRUE;
 }
 
@@ -44,7 +40,7 @@ sub q_install {
    $text  = 'Running Module::Build install may require superuser privilege ';
    $text .= 'to create directories. Depends on the path prefix';
 
-   $cli->output( $text, $cfg->{paragraph} );
+   $cli->output( $text, $self->paragraph );
 
    return $cli->yorn( 'Run Module::Build install', $install, TRUE, 0 );
 }
@@ -52,12 +48,12 @@ sub q_install {
 sub q_path_prefix {
    my ($self, $cfg) = @_; my $cli = $self->cli; my $text;
 
-   my $prefix = File::Spec->catdir( @{ $cfg->{path_prefix} || [] } ) || NUL;
+   my $prefix = catdir( @{ $cfg->{path_prefix} || [] } ) || NUL;
 
    $text  = 'Where in the filesystem should the application install to. ';
    $text .= 'Application name is automatically appended to the prefix';
 
-   $cli->output( $text, $cfg->{paragraph} );
+   $cli->output( $text, $self->paragraph );
 
    return $cli->get_line( 'Enter install path prefix', $prefix, TRUE, 0 );
 }
@@ -69,7 +65,7 @@ sub q_phase {
 
    $text  = 'Phase number determines at run time the purpose of the ';
    $text .= 'application instance, e.g. live(1), test(2), development(3)';
-   $cli->output( $text, $cfg->{paragraph} );
+   $cli->output( $text, $self->paragraph );
    $phase = $cli->get_line( 'Enter phase number', $phase, TRUE, 0 );
    $phase =~ m{ \A \d+ \z }mx
       or throw "Phase value ${phase} bad (not an integer)";
@@ -84,7 +80,7 @@ sub q_post_install {
 
    $text  = 'Execute post installation commands. These may take ';
    $text .= 'several minutes to complete';
-   $cli->output( $text, $cfg->{paragraph} );
+   $cli->output( $text, $self->paragraph );
 
    return $cli->yorn( 'Post install commands', $run, TRUE, 0 );
 }

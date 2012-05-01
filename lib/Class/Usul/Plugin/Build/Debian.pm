@@ -12,39 +12,30 @@ use Debian::Control;
 use Debian::Control::Stanza::Binary;
 use Debian::Dependency;
 use Debian::Rules;
-use Email::Date::Format qw(email_date);
-use English             qw(-no_match_vars);
-use File::Spec;
+use Email::Date::Format    qw(email_date);
+use English                qw(-no_match_vars);
+use File::Basename         qw(basename dirname);
+use File::Spec::Functions  qw(catdir catfile);
 use MRO::Compat;
 use Text::Format;
 use Try::Tiny;
 
 my %CONFIG =
-   ( dh_clean_files  => [ qw(build-stamp install-stamp debian) ],
-     dh_format_spec  => q(Format-Specification: http://svn.debian.org/wsvn/dep/web/deps/dep5.mdwn?op=file&rev=135),
-     dh_share_dir    => [ NUL, qw(usr share dh-make-perl) ],
-     dh_stdversion   => q(3.9.1),
-     dh_ver          => 7,
-     dh_ver_extn     => q(-1),
-     license_keys    => {
-        perl         => 'Perl_5',
-        apache       => [ map { "Apache_$_" } qw(1_1 2_0) ],
-        artistic     => 'Artistic_1_0',
-        artistic_2   => 'Artistic_2_0',
-        lgpl         => [ map { "LGPL_$_" } qw(2_1 3_0) ],
-        bsd          => 'BSD',
-        gpl          => [ map { "GPL_$_" } qw(1 2 3) ],
-        mit          => 'MIT',
-        mozilla      => [ map { "Mozilla_$_" } qw(1_0 1_1) ], },
-     post_install    => FALSE, );
+   ( dh_clean_files => [ qw(build-stamp install-stamp debian) ],
+     dh_format_spec => q(Format-Specification: http://svn.debian.org/wsvn/dep/web/deps/dep5.mdwn?op=file&rev=135),
+     dh_share_dir   => [ NUL, qw(usr share dh-make-perl) ],
+     dh_stdversion  => q(3.9.1),
+     dh_ver         => 7,
+     dh_ver_extn    => q(-1),
+     post_install   => FALSE, );
 
 # Around these M::B actions
 
 sub ACTION_distclean {
    my $self = shift;
 
-   $self->depends_on( q(debianclean) );
-   $self->next::method();
+   $self->depends_on( q(debianclean) ); $self->next::method();
+
    return;
 }
 
@@ -53,18 +44,18 @@ sub ACTION_distclean {
 sub ACTION_debian  {
    my $self = shift;
 
-   $ENV{BUILDING_DEBIAN  } = TRUE;
-   $ENV{DEB_BUILD_OPTIONS} = q(nocheck);
-
-   $self->depends_on( q(debianclean) );
-   $self->depends_on( q(install_local_deps) );
-   $self->depends_on( q(manifest) );
-   $self->depends_on( q(build) );
-
    try {
       my $cfg = $self->_get_config;
 
-      $self->_ask_questions( $cfg ); $self->_build_debian_package( $cfg );
+      $ENV{BUILDING_DEBIAN  } = TRUE;
+      $ENV{DEB_BUILD_OPTIONS} = q(nocheck);
+
+      $self->depends_on( q(debianclean) );
+      $self->depends_on( q(install_local_deps) );
+      $self->depends_on( q(manifest) );
+      $self->depends_on( q(build) );
+      $self->_ask_questions( $cfg );
+      $self->_create_debian_package( $cfg );
    }
    catch { $self->cli->fatal( $_ ) };
 
@@ -80,9 +71,9 @@ sub ACTION_debianclean {
    return;
 }
 
-# Action methods
+# Private action methods
 
-sub _build_debian_package {
+sub _create_debian_package {
    my ($self, $cfg) = @_; my $cli = $self->cli;
 
    my $control = Debian::Control->new;
@@ -132,18 +123,18 @@ sub _abs_prog_path {
 }
 
 sub _add_debian_depends {
-   my ($self, $cfg, $control) = @_; my $cli = $self->cli;
+   my ($self, $cfg, $control) = @_;
 
    my $src = $control->source; my $bin = $control->binary->Values( 0 );
 
    exists $cfg->{debian_depends}
-      and $bin->Depends->add( $cfg->{debian_depends} );
+      and $bin->Depends->add( @{ $cfg->{debian_depends} } );
 
    exists $cfg->{debian_build_depends}
-      and $src->Build_Depends->add( $cfg->{debian_build_depends} );
+      and $src->Build_Depends->add( @{ $cfg->{debian_build_depends} } );
 
    exists $cfg->{debian_build_depends_indep}
-      and $src->Build_Depends_Indep->add( $cfg->{debian_build_depends_indep} );
+      and $src->Build_Depends_Indep->add( @{ $cfg->{debian_build_depends_indep} } );
 
    return;
 }
@@ -186,7 +177,7 @@ sub _create_debian_copyright {
    my $cli        = $self->cli;
    my $year       = 1900 + (localtime)[ 5 ];
    my $maintainer = $control->source->Maintainer;
-   my $license    = $cfg->{license_keys}->{ $cli->get_meta->license }
+   my $license    = $cfg->{meta_keys}->{ $cli->get_meta->license }
       or throw 'Unknown copyright license';
    my %fields     = ( Name       => $self->dist_name,
                       Maintainer => $maintainer,
@@ -238,8 +229,7 @@ sub _create_debian_maintainers {
 sub _create_debian_rules {
    my ($self, $cfg) = @_; my $cli = $self->cli;
 
-   my $source = File::Spec->catfile( @{ $cfg->{dh_share_dir} },
-                                     q(rules.dh7.tiny) );
+   my $source = catfile( @{ $cfg->{dh_share_dir} }, q(rules.dh7.tiny) );
    my $path   = $self->_debian_file( q(rules) );
    my $rules  = Debian::Rules->new( $path );
 
@@ -263,11 +253,11 @@ sub _create_debian_watch {
 }
 
 sub _debian_dir {
-   return File::Spec->catdir( $_[ 0 ]->_main_dir, q(debian) );
+   return catdir( $_[ 0 ]->_main_dir, q(debian) );
 }
 
 sub _debian_file {
-   return File::Spec->catfile( $_[ 0 ]->_debian_dir, $_[ 1 ] );
+   return catfile( $_[ 0 ]->_debian_dir, $_[ 1 ] );
 }
 
 sub _discover_debian_utility_deps {
@@ -342,13 +332,13 @@ sub _main_dir {
 }
 
 sub _postrm_content {
-   my ($self, $cfg) = @_; my $cli = $self->cli;
+   my ($self, $cfg) = @_;
 
    # TODO: Add the triggering of the reinstallation of the previous version
    my $cmd  = $self->_abs_prog_path( $cfg, $cfg->{uninstall_cmd} );
-   my $subd = $cli->basename( $cfg->{base} );
-   my $appd = $cli->dirname ( $cfg->{base} );
-   my $papd = $cli->dirname ( $appd        );
+   my $subd = basename( $cfg->{base} );
+   my $appd = dirname ( $cfg->{base} );
+   my $papd = dirname ( $appd        );
 
    length $appd < 2 and throw "Insane uninstall directory: ${appd}";
    $subd !~ m{ v \d+ \. \d+ p \d+ }mx
@@ -371,11 +361,14 @@ sub _set_debian_binary_data {
    my $binval = $bin->Values( 0 );
 
    $binval->Architecture( $arch );
-   $binval->short_description( $self->cli->get_meta->abstract );
 
-   # Only available if we have patched the PodParser
+   my $abstract = $self->dist_abstract or throw 'No dist abstract';
+
+   $binval->short_description( $abstract );
+
+   # Only available if we have patched M::B::PodParser
    my $ref  = $self->can( q(dist_description) );
-   my $desc = $ref ? $self->$ref() || [] : [];
+   my $desc = $ref ? $self->$ref() : [];
 
    $desc = join "\n", map { s{ [A-Z] [<] ([^>]*) [>] }{$1}gmx; $_ } @{ $desc };
    $desc and $binval->long_description( $desc );
@@ -383,7 +376,7 @@ sub _set_debian_binary_data {
 }
 
 sub _set_debian_package_defaults {
-   my ($self, $cfg, $control) = @_; my $cli = $self->cli;
+   my ($self, $cfg, $control) = @_;
 
    my $src = $control->source; my $pkgname = lc $self->dist_name.q(-perl);
 
@@ -416,7 +409,7 @@ sub _shell_script {
 }
 
 sub _update_debian_file_list {
-   my ($self, $cfg, $control, %p) = @_; my $cli = $self->cli;
+   my ($self, $cfg, $control, %p) = @_; my $cli0 = $self->cli;
 
    my $src = $control->source; my $pkgname = $src->Source;
 
@@ -448,7 +441,7 @@ sub _update_debian_file_list {
 # Private functions
 
 sub __bin_dir {
-   return File::Spec->catdir( $_[ 0 ]->{base}, q(bin) );
+   return catdir( $_[ 0 ]->{base}, q(bin) );
 }
 
 

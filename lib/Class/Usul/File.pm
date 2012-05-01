@@ -7,18 +7,19 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Constraints qw(ConfigType);
-use Class::Usul::Functions   qw(abs_path arg_list classfile create_token
-                                is_arrayref throw untaint_path);
-use English                  qw(-no_match_vars);
-use File::DataClass::Constants ();
-use File::DataClass::IO        ();
+use Class::Usul::Functions       qw(abs_path arg_list classfile create_token
+                                    is_arrayref throw untaint_path);
+use English                      qw(-no_match_vars);
+use File::DataClass::Constants     ();
+use File::DataClass::Constraints qw(Directory);
+use File::DataClass::IO            ();
 use File::DataClass::Schema;
-use File::Spec::Functions    qw(catdir catfile tmpdir);
-
-has 'config' => is => 'ro', isa => ConfigType, required => TRUE;
+use File::Spec::Functions        qw(catdir catfile tmpdir);
 
 File::DataClass::Constants->Exception_Class( EXCEPTION_CLASS );
+
+has 'tempdir' => is => 'ro', isa => Directory,
+   default    => sub { untaint_path( tmpdir() ) };
 
 sub absolute {
    my ($self, $base, $path) = @_; $base ||= NUL; $path or return NUL;
@@ -70,20 +71,6 @@ sub io {
    my $self = shift; return File::DataClass::IO->new( @_ );
 }
 
-{  my $cache;
-
-   sub read_post_install_config {
-      my $self  = shift; defined $cache and return $cache;
-
-      my $cfg   = $self->config;
-      my $attrs = { storage_attributes => {
-                           force_array => $cfg->{pi_arrays} } };
-      my $path  = catfile( $cfg->ctrldir, $cfg->{pi_config_file} );
-
-      return $cache = $self->dataclass_schema( $attrs )->load( $path );
-   }
-}
-
 sub status_for {
    return $_[ 0 ]->io( $_[ 1 ] )->stat;
 }
@@ -101,10 +88,6 @@ sub symlink {
       throw error => 'Path [_1] already exists', args => [ $to->pathname ];
    CORE::symlink $from->pathname, $to->pathname or throw $ERRNO;
    return "Symlinked ${from} to ${to}";
-}
-
-sub tempdir {
-   return untaint_path( $_[ 0 ]->config->tempdir || tmpdir() );
 }
 
 sub tempfile {
@@ -192,13 +175,6 @@ Find the source code for the given module
    $io_obj = $self->io( $pathname );
 
 Expose the methods in L<File::DataClass::IO>
-
-=head2 read_post_install_config
-
-   $picfg_hash_ref = $self->read_post_install_config;
-
-Returns a hash ref of the post installation config which was written to
-the control directory during the installation process
 
 =head2 status_for
 

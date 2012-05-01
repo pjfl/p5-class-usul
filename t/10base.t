@@ -21,16 +21,14 @@ BEGIN {
 }
 
 use Class::Usul::Programs;
-use Class::Usul::Functions qw(say);
 
 my $name    = basename( $0, qw(.t) );
 my $logfile = catfile( qw(t test.log) );
 my $prog    = Class::Usul::Programs->new( appclass => q(Class::Usul),
-                                          logfile  => $logfile,
+                                          config   => { tempdir => q(t), },
                                           method   => q(dump_self),
                                           nodebug  => 1,
-                                          quiet    => 1,
-                                          tempdir  => q(t), );
+                                          quiet    => 1, );
 
 cmp_deeply $prog, methods( encoding => q(UTF-8) ), 'Constructs default object';
 
@@ -63,6 +61,8 @@ like $io->chomp->getline, qr{ \[INFO\] \s Information }mx, 'Read logfile';
 unlink $logfile;
 
 done_testing;
+
+$prog->run;
 
 # Local Variables:
 # mode: perl

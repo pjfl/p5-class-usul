@@ -45,7 +45,7 @@ has 'help_manual'  => is => 'ro', isa => 'Bool', default => FALSE,
    documentation   => 'Uses Pod::Man to display the program documentation',
    traits          => [ 'Getopt' ], cmd_aliases => q(H), cmd_flag => 'man_page';
 
-has 'homedir'      => is => 'ro', isa => 'Str',
+has 'home'         => is => 'ro', isa => 'Str',
    documentation   => 'Directory containing the configuration file',
    traits          => [ 'Getopt' ], cmd_flag => 'home';
 
@@ -95,9 +95,7 @@ has '_pwidth'  => is => 'rw', isa     => 'Int',     accessor => 'pwidth',
 around BUILDARGS => sub {
    my ($next, $class, @args) = @_; my $attr = $class->$next( @args );
 
-   $attr->{appclass} ||= prefix2class $PROGRAM_NAME;
-   $attr->{home    } ||= __get_homedir( $attr );
-   $attr->{config  } ||= __load_config( $attr );
+   $attr->{config} = __get_config( $attr );
 
    return $attr;
 };
@@ -184,10 +182,10 @@ sub get_line {
    my ($self, $question, $default, $quit, $width, $multiline, $noecho) = @_;
 
    $question ||= 'Enter your answer';
-   $default    = defined $default ? q([).$default.q(]) : NUL;
+   $default    = defined $default ? $default : NUL;
 
    my $advice       = $quit ? '('.QUIT.' to quit)' : NUL;
-   my $right_prompt = $advice.($multiline ? NUL : SPC.$default);
+   my $right_prompt = $advice.($multiline ? NUL : SPC.q([).$default.q(]));
    my $left_prompt  = $question;
 
    if (defined $width) {
@@ -198,7 +196,7 @@ sub get_line {
    }
 
    my $prompt  = $left_prompt.SPC.$right_prompt;
-      $prompt .= ($multiline ? "\n".$default : NUL).BRK;
+      $prompt .= ($multiline ? "\n".q([).$default.q(]) : NUL).BRK;
    my $result  = $noecho
                ? __prompt( -d => $default, -p => $prompt, -e => q(*) )
                : __prompt( -d => $default, -p => $prompt );
@@ -287,6 +285,20 @@ sub output {
    say $self->add_leader( $text, $args ); $args->{nl} and say;
 
    return;
+}
+
+{  my $cache;
+
+   sub read_post_install_config {
+      my $self  = shift; defined $cache and return $cache;
+
+      my $cfg   = $self->config;
+      my $attrs = { storage_attributes => {
+                           force_array => $cfg->{pi_arrays} } };
+      my $path  = catfile( $cfg->ctrldir, $cfg->{pi_config_file} );
+
+      return $cache = $self->dataclass_schema( $attrs )->load( $path );
+   }
 }
 
 sub run {
@@ -392,18 +404,16 @@ sub _apply_encoding {
 }
 
 sub _build__file {
-   my $self = shift;
-
-   return Class::Usul::File->new( { config => $self->config } );
+   return Class::Usul::File->new( tempdir => $_[ 0 ]->config->tempdir );
 }
 
 sub _build__ipc {
    my $self = shift;
 
-   return Class::Usul::IPC->new( { config => $self->config,
-                                   debug  => $self->debug,
-                                   file   => $self->file,
-                                   log    => $self->log } );
+   return Class::Usul::IPC->new( config => $self->config,
+                                 debug  => $self->debug,
+                                 file   => $self->file,
+                                 log    => $self->log );
 }
 
 sub _build__os {
@@ -501,6 +511,22 @@ sub _usage_for {
 
 # Private functions
 
+sub __get_config {
+   my $attr = shift; my $cfg = $attr->{config} ||= {};
+
+   $cfg->{appclass} ||= delete $attr->{appclass} || prefix2class $PROGRAM_NAME;
+   $cfg->{home    } ||= __get_homedir( $cfg->{appclass}, $attr->{home} );
+   $cfg->{filename} ||= __get_configfile( $cfg );
+
+   return $cfg;
+}
+
+sub __get_configfile {
+   my $cfg = shift; my $file = (app_prefix $cfg->{appclass} ).CONFIG_EXTN;
+
+   return catfile( $cfg->{home}, $file );
+}
+
 sub __get_control_chars {
    my $handle = shift; my %cntl = GetControlChars $handle;
 
@@ -508,10 +534,10 @@ sub __get_control_chars {
 }
 
 sub __get_homedir {
-  my $attr = shift; my $appclass = $attr->{appclass}; my $path;
+   my ($appclass, $home) = @_; my $path;
 
    # 0. Pass the directory in
-   $path = assert_directory $attr->{homedir} and return $path;
+   $path = assert_directory $home and return $path;
 
    # 1. Environment variable
    $path = $ENV{ (env_prefix $appclass).q(_HOME) };
@@ -550,7 +576,7 @@ sub __get_homedir {
    }
 
    # 6. Default to /tmp
-   return untaint_path File::Spec->tmpdir;
+   return untaint_path( File::Spec->tmpdir );
 }
 
 sub __list_methods_of {
@@ -560,16 +586,6 @@ sub __list_methods_of {
           grep { my $x = $_;
                  grep { $_ eq q(method) } attributes::get( \&{ $x } ) }
               @{ Class::Inspector->methods( $class, 'full', 'public' ) };
-}
-
-sub __load_config {
-   my $attr   = shift;
-   my $file   = (app_prefix $attr->{appclass} ).CONFIG_EXTN;
-   my $path   = catfile( $attr->{home}, $file );
-   # Now we know where the config file should be we can try parsing it
-   my $config = -f $path ? Class::Usul::File->data_load( path => $path ) : {};
-
-   return { %{ $attr }, %{ $config || {} } };
 }
 
 sub __map_prompt_args {
@@ -948,6 +964,13 @@ The character to echo in place of the one typed
 Prompt string
 
 =back
+
+=head2 read_post_install_config
+
+   $picfg_hash_ref = $self->read_post_install_config;
+
+Returns a hash ref of the post installation config which was written to
+the control directory during the installation process
 
 =head2 run
 

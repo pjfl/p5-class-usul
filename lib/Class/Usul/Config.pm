@@ -5,17 +5,18 @@ package Class::Usul::Config;
 use strict;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
+use Class::Usul::File;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions       qw(app_prefix class2appdir
                                     home2appl untaint_path);
-use Config;
 use English                      qw(-no_match_vars);
 use File::Basename               qw(basename dirname);
 use File::DataClass::Constraints qw(Directory File Path);
 use File::Gettext::Constants;
 use File::Spec::Functions        qw(canonpath catdir catfile rel2abs tmpdir);
 use Sys::Hostname                  ();
+use Config;
 
 has 'appclass'        => is => 'ro', isa => Str,
    required           => TRUE;
@@ -127,21 +128,27 @@ has 'profiles_path'   => is => 'ro', isa => Path, coerce => TRUE,
    lazy               => TRUE,   builder => '_build_profiles_path';
 
 around BUILDARGS => sub {
-   my ($next, $class, @args) = @_; my $attrs = $class->$next( @args );
+   my ($next, $class, @args) = @_; my $attr = $class->$next( @args ); my $path;
 
-   for my $k (keys %{ $attrs }) {
-      defined $attrs->{ $k }
-         and $attrs->{ $k } =~ m{ \A __([^\(]+?)__ \z }mx
-         and $attrs->{ $k } = $class->_inflate( $attrs, $1, NUL );
+   if ($path = delete $attr->{filename} and -f $path) {
+      my $loaded = Class::Usul::File->data_load( path => $path );
+
+      $attr = { %{ $attr }, %{ $loaded || {} } };
    }
 
-   for my $k (keys %{ $attrs }) {
-      defined $attrs->{ $k }
-         and $attrs->{ $k } =~ m{ \A __(.+?)\((.+?)\)__ \z }mx
-         and $attrs->{ $k } = $class->_inflate( $attrs, $1, $2 );
+   for my $attr_name (keys %{ $attr }) {
+      defined $attr->{ $attr_name }
+          and $attr->{ $attr_name } =~ m{ \A __([^\(]+?)__ \z }mx
+          and $attr->{ $attr_name } = $class->_inflate_symbol( $attr, $1, NUL );
    }
 
-   return $attrs;
+   for my $attr_name (keys %{ $attr }) {
+      defined $attr->{ $attr_name }
+          and $attr->{ $attr_name } =~ m{ \A __(.+?)\((.+?)\)__ \z }mx
+          and $attr->{ $attr_name } = $class->_inflate_path( $attr, $1, $2 );
+   }
+
+   return $attr;
 };
 
 # Private methods
@@ -152,8 +159,7 @@ sub _build_appldir {
    my $path = dirname( $Config{sitelibexp} );
 
    if ($home =~ m{ \A $path }mx) {
-      $path = class2appdir $appclass;
-      $path = catdir( NUL, qw(var www), $path, q(default) );
+      $path = catdir( NUL, q(var), (class2appdir $appclass), q(default) );
    }
    else { $path = home2appl $home }
 
@@ -161,48 +167,49 @@ sub _build_appldir {
 }
 
 sub _build_binsdir {
-   my ($self, $appclass, $home) = __unpack( @_ );
+   my ($self, $attr) = @_;
 
-   my $path = dirname( $Config{sitelibexp} );
+   my $path = $self->_inflate_path( $attr, qw(appldir bin) );
 
-   if ($home =~ m{ \A $path }mx) { $path = $Config{scriptdir} }
-   else { $path = catdir( home2appl $home, q(bin) ) }
-
-   return rel2abs( untaint_path $path );
+   return -d $path ? $path : untaint_path $Config{installsitescript};
 }
 
 sub _build_ctlfile {
-   my ($self, $attrs) = @_;
+   my ($self, $attr) = @_; my $file = $self->name.$self->extension;
 
-   return $self->_inflate( $attrs, q(ctrldir), $self->name.$self->extension );
+   return $self->_inflate_path( $attr, q(ctrldir), $file );
 }
 
 sub _build_ctrldir {
-   return $_[ 0 ]->_inflate( $_[ 1 ], qw(vardir etc) );
+   return $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir etc) );
 }
 
 sub _build_dbasedir {
-   return $_[ 0 ]->_inflate( $_[ 1 ], qw(vardir db) );
+   return $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir db) );
 }
 
 sub _build_localedir {
-   my ($self, $attrs) = @_; my $dir;
+   my ($self, $attr) = @_;
 
-   $dir = $self->_inflate( $attrs, qw(vardir locale) ); -d $dir and return $dir;
+   my $dir = $self->_inflate_path( $attr, qw(vardir locale) );
+
+   -d $dir and return $dir;
 
    for (map { catdir( @{ $_ } ) } @{ DIRECTORIES() } ) { -d $_ and return $_ }
 
-   return $self->_inflate( $attrs, qw(tempdir) );
+   return $self->_inflate_path( $attr, qw(tempdir) );
 }
 
 sub _build_logfile {
-   return $_[ 0 ]->_inflate( $_[ 1 ], q(logsdir), $_[ 0 ]->name.q(.log) );
+   return $_[ 0 ]->_inflate_path( $_[ 1 ], q(logsdir), $_[ 0 ]->name.q(.log) );
 }
 
 sub _build_logsdir {
-   my $path = $_[ 0 ]->_inflate( $_[ 1 ], qw(vardir logs) );
+   my ($self, $attr) = @_;
 
-   return -d $path ? $path : $_[ 0 ]->tempdir;
+   my $path = $self->_inflate_path( $attr, qw(vardir logs) );
+
+   return -d $path ? $path : $self->_inflate_path( $attr, qw(tempdir) );
 }
 
 sub _build_name {
@@ -218,8 +225,11 @@ sub _build_path_to {
 }
 
 sub _build_phase {
-   my $dir     = basename( $_[ 1 ]->{appldir} );
-   my ($phase) = $dir =~ m{ \A v \d+ \. \d+ p (\d+) \z }msx;
+   my ($self, $attr) = @_;
+
+   my $appldir = blessed $self ? $self->appldir : $attr->{appldir};
+   my $verdir  = basename( $appldir );
+   my ($phase) = $verdir =~ m{ \A v \d+ \. \d+ p (\d+) \z }msx;
 
    return defined $phase ? $phase : PHASE;
 }
@@ -229,11 +239,11 @@ sub _build_prefix {
 }
 
 sub _build_root {
-   return $_[ 0 ]->_inflate( $_[ 1 ], qw(vardir root) );
+   return $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir root) );
 }
 
 sub _build_rundir {
-   return $_[ 0 ]->_inflate( $_[ 1 ], qw(vardir run) );
+   return $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir run) );
 }
 
 sub _build_script {
@@ -253,35 +263,39 @@ sub _build_shell {
 }
 
 sub _build_suid {
-   return $_[ 0 ]->_inflate( $_[ 1 ], q(binsdir), $_[ 0 ]->prefix.q(_admin) );
+   my ($self, $attr) = @_; my $file = $self->prefix.q(_admin);
+
+   return $self->_inflate_path( $attr, q(binsdir), $file );
 }
 
 sub _build_tempdir {
-   my $path = $_[ 0 ]->_inflate( $_[ 1 ], qw(vardir tmp) );
+   my $path = $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir tmp) );
 
    return -d $path ? $path : untaint_path tmpdir;
 }
 
 sub _build_vardir {
-   return $_[ 0 ]->_inflate( $_[ 1 ], qw(appldir var) );
+   my ($self, $attr) = @_;
+
+   my $path = $self->_inflate_path( $attr, qw(appldir var) );
+
+   return -d $path ? $path : catdir( NUL, q(var) );
 }
 
 sub _build_aliases_path {
-   return $_[ 0 ]->_inflate( $_[ 1 ], qw(ctrldir aliases) );
+   return $_[ 0 ]->_inflate_path( $_[ 1 ], qw(ctrldir aliases) );
 }
 
 sub _build_profiles_path {
-   return $_[ 0 ]->_inflate( $_[ 1 ], q(ctrldir),
-                             q(user_profiles).$_[ 0 ]->extension );
+   my ($self, $attr) = @_; my $file = q(user_profiles).$self->extension;
+
+   return $self->_inflate_path( $attr, q(ctrldir), $file );
 }
 
-sub _inflate {
-   my ($self, $attrs, $symbol, $relpath) = @_; $attrs ||= {}; $relpath ||= NUL;
+sub _inflate_path {
+   my ($self, $attr, $symbol, $relpath) = @_; $attr ||= {}; $relpath ||= NUL;
 
-   my $k     = lc $symbol; my $method = q(_build_).$k;
-
-   my $base  = defined $attrs->{ $k } && $attrs->{ $k } !~ m{ \A __ }mx
-             ? $attrs->{ $k } : $self->$method( $attrs );
+   my $base  = $self->_inflate_symbol( $attr, $symbol );
 
    my @parts = ($base, split m{ / }mx, $relpath);
 
@@ -290,14 +304,31 @@ sub _inflate {
    return untaint_path canonpath( $path );
 }
 
+sub _inflate_symbol {
+   my ($self, $attr, $symbol) = @_; $attr ||= {};
+
+   my $attr_name = lc $symbol; my $method = q(_build_).$attr_name;
+
+   return blessed $self                      ? $self->$attr_name()
+        : __is_inflated( $attr, $attr_name ) ? $attr->{ $attr_name }
+                                             : $self->$method( $attr );
+}
+
 # Private functions
 
+sub __is_inflated {
+   my ($attr, $attr_name) = @_;
+
+   return exists $attr->{ $attr_name } && defined $attr->{ $attr_name }
+       && $attr->{ $attr_name } !~ m{ \A __ }mx ? TRUE : FALSE;
+}
+
 sub __unpack {
-   my ($self, $attrs) = @_; $attrs ||= {};
+   my ($self, $attr) = @_; $attr ||= {};
 
    blessed $self and return ($self, $self->appclass, $self->home);
 
-   return ($self, $attrs->{appclass}, $attrs->{home});
+   return ($self, $attr->{appclass}, $attr->{home});
 }
 
 __PACKAGE__->meta->make_immutable;

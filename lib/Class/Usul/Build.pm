@@ -16,18 +16,18 @@ use Class::Usul::Functions qw(exception say throw);
 use Class::Usul::Programs;
 use Class::Usul::Time      qw(time2str);
 use Config;
-use Try::Tiny;
-use File::Spec;
-use MRO::Compat;
-use Perl::Version;
+use English                qw(-no_match_vars);
+use File::Basename         qw(dirname);
+use File::Copy             qw(copy);
+use File::Find             qw(find);
+use File::Spec::Functions  qw(catdir catfile updir);
 use Module::CoreList;
 use Module::Metadata;
+use MRO::Compat;
+use Perl::Version;
 use Pod::Eventual::Simple;
-use English        qw(-no_match_vars);
-use File::Basename qw(dirname);
-use File::Copy     qw(copy);
-use File::Find     qw(find);
-use Scalar::Util   qw(blessed);
+use Scalar::Util           qw(blessed);
+use Try::Tiny;
 
 if ($ENV{AUTOMATED_TESTING}) {
    # Some CPAN testers set these. Breaks dependencies
@@ -62,7 +62,6 @@ my %CONFIG =
         gpl        => [ map { "GPL_$_" } qw(1 2 3) ],
         mit        => 'MIT',
         mozilla    => [ map { "Mozilla_$_" } qw(1_0 1_1) ], },
-     paragraph     => { cl => TRUE, fill => TRUE, nl => TRUE },
      path_prefix   => [ NUL, qw(opt) ],
      phase         => 1,
      pwidth        => 50,
@@ -286,7 +285,7 @@ sub ACTION_upload {
 # Public object methods
 
 sub class_path {
-   return File::Spec->catfile( q(lib), split m{ :: }mx, $_[ 1 ].q(.pm) );
+   return catfile( q(lib), split m{ :: }mx, $_[ 1 ].q(.pm) );
 }
 
 sub cli {
@@ -307,11 +306,6 @@ sub dispatch {
 
 sub distname {
    my $distname = $_[ 1 ]; $distname =~ s{ :: }{-}gmx; return $distname;
-}
-
-sub dist_description {
-   # More meta data. Requires patching M::B::PodParser
-   return shift->_pod_parse( q(description) );
 }
 
 sub make_tarball {
@@ -380,11 +374,11 @@ sub skip_pattern {
 # Private methods
 
 sub _archive_dir {
-   return File::Spec->updir;
+   return updir();
 }
 
 sub _archive_file {
-   return File::Spec->catfile( $_[ 0 ]->_archive_dir, $_[ 1 ] );
+   return catfile( $_[ 0 ]->_archive_dir, $_[ 1 ] );
 }
 
 sub _ask_questions {
@@ -472,7 +466,7 @@ sub _copy_file {
    ($src and -f $src and (not $pattern or $src !~ $pattern)) or return;
 
    # Rebase the directory path
-   my $dir = File::Spec->catdir( $dest, dirname( $src ) );
+   my $dir = catdir( $dest, dirname( $src ) );
 
    # Ensure target directory exists
    -d $dir or $cli->io( $dir )->mkpath( oct q(02750) );
@@ -588,35 +582,35 @@ sub _get_archive_names {
    return \@archives;
 }
 
-{ my $cache;
+{  my $cache;
 
-  sub _get_config {
-     my ($self, $passed_cfg) = @_; $cache and return $cache;
+   sub _get_config {
+      my ($self, $passed_cfg) = @_; $cache and return $cache;
 
-     my $cfg  = { %CONFIG, %{ $passed_cfg || {} }, %{ $self->notes } };
-     my $path = $self->_get_config_path( $cfg );
+      my $cfg  = { %CONFIG, %{ $passed_cfg || {} }, %{ $self->notes } };
+      my $path = $self->_get_config_path( $cfg );
 
-     if (-f $path) {
-        my $attrs = { storage_attributes => { force_array => $cfg->{arrays} } };
+      if (-f $path) {
+         my $attrs = { storage_attributes => {
+                              force_array => $cfg->{arrays} } };
 
-        $cfg = $self->cli->file->dataclass_schema( $attrs )->load( $path );
-     }
+         $cfg = $self->cli->file->dataclass_schema( $attrs )->load( $path );
+      }
 
-     return $cache = $cfg;
-  }
+      return $cache = $cfg;
+   }
 }
 
 sub _get_config_path {
    my ($self, $cfg) = @_;
 
-   return File::Spec->catfile( $self->base_dir, $self->blib,
-                               @{ $cfg->{config_file} } );
+   return catfile( $self->base_dir, $self->blib, @{ $cfg->{config_file} } );
 }
 
 sub _get_dest_base {
    my ($self, $cfg) = @_;
 
-   return $self->destdir ? File::Spec->catdir( $self->destdir, $cfg->{base} )
+   return $self->destdir ? catdir( $self->destdir, $cfg->{base} )
                          : $cfg->{base};
 }
 
@@ -630,15 +624,12 @@ sub _get_local_config {
    my $argv = $self->args->{ARGV}; my $cfg = $self->_get_config;
 
    $cfg->{perl_ver     } = $argv->[ 0 ] || $perl_ver;
-   $cfg->{appldir      } = $argv->[ 1 ] || $cli->config->appldir;
-   $cfg->{perlbrew_root} = File::Spec->catdir ( $cfg->{appldir},
-                                                $cfg->{local_lib} );
-   $cfg->{local_etc    } = File::Spec->catdir ( $cfg->{perlbrew_root}, q(etc) );
-   $cfg->{local_libperl} = File::Spec->catdir ( $cfg->{perlbrew_root},
-                                                qw(lib perl5));
-   $cfg->{perlbrew_bin } = File::Spec->catdir ( $cfg->{perlbrew_root}, q(bin) );
-   $cfg->{perlbrew_cmnd} = File::Spec->catfile( $cfg->{perlbrew_bin },
-                                                q(perlbrew) );
+   $cfg->{appldir      } = $argv->[ 1 ] || NUL.$cli->config->appldir;
+   $cfg->{perlbrew_root} = catdir ( $cfg->{appldir}, $cfg->{local_lib} );
+   $cfg->{local_etc    } = catdir ( $cfg->{perlbrew_root}, q(etc) );
+   $cfg->{local_libperl} = catdir ( $cfg->{perlbrew_root}, qw(lib perl5));
+   $cfg->{perlbrew_bin } = catdir ( $cfg->{perlbrew_root}, q(bin) );
+   $cfg->{perlbrew_cmnd} = catfile( $cfg->{perlbrew_bin }, q(perlbrew) );
    $cfg->{local_lib_uri} = join SEP, $cfg->{cpan_authors}, $cfg->{ll_author},
                                      $cfg->{ll_ver_dir}.q(.tar.gz);
 
@@ -663,7 +654,7 @@ sub _install_local_cpanm {
    my ($self, $cfg) = @_; my $cli = $self->cli;
 
    my $cmd  = q(curl -s -L http://cpanmin.us | perl - App::cpanminus -L );
-   my $path = File::Spec->catfile( $cfg->{perlbrew_bin}, q(cpanm) );
+   my $path = catfile( $cfg->{perlbrew_bin}, q(cpanm) );
 
    -f $path and return;
 
@@ -823,10 +814,10 @@ sub _set_install_paths {
 
    $self->_log_info( 'Base path '.$cfg->{base} );
    $self->install_base( $cfg->{base} );
-   $self->install_path( bin   => File::Spec->catdir( $cfg->{base}, q(bin)   ) );
-   $self->install_path( lib   => File::Spec->catdir( $cfg->{base}, q(lib)   ) );
-   $self->install_path( var   => File::Spec->catdir( $cfg->{base}, q(var)   ) );
-   $self->install_path( local => File::Spec->catdir( $cfg->{base}, q(local) ) );
+   $self->install_path( bin   => catdir( $cfg->{base}, q(bin)   ) );
+   $self->install_path( lib   => catdir( $cfg->{base}, q(lib)   ) );
+   $self->install_path( var   => catdir( $cfg->{base}, q(var)   ) );
+   $self->install_path( local => catdir( $cfg->{base}, q(local) ) );
    return;
 }
 
@@ -1102,7 +1093,7 @@ sub __perl_version_is_installed {
 }
 
 sub __perlbrew_mirror_is_set {
-   return -f File::Spec->catfile( $_[ 0 ]->{perlbrew_root}, q(Conf.pm) );
+   return -f catfile( $_[ 0 ]->{perlbrew_root}, q(Conf.pm) );
 }
 
 sub __read_non_pod_lines {
