@@ -13,8 +13,8 @@ use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Response::Meta;
 use Class::Usul::Functions qw(abs_path app_prefix arg_list assert_directory
-                              class2appdir classdir elapsed env_prefix exception
-                              is_member prefix2class say split_on__ throw
+                              class2appdir classdir elapsed env_prefix
+                              exception is_member prefix2class say throw
                               untaint_identifier untaint_path);
 use Encode                 qw(decode);
 use English                qw(-no_match_vars);
@@ -93,9 +93,13 @@ has '_pwidth'  => is => 'rw', isa     => 'Int',     accessor => 'pwidth',
    default     => 60;
 
 around BUILDARGS => sub {
-   my ($next, $class, @args) = @_; my $attr = $class->$next( @args );
+   my ($next, $class, @args) = @_;
 
-   $attr->{config} = __get_config( $attr );
+   my $attr = $class->$next( @args ); my $cfg = $attr->{config} ||= {};
+
+   $cfg->{appclass} ||= delete $attr->{appclass} || prefix2class $PROGRAM_NAME;
+   $cfg->{home    } ||= __get_homedir    ( $cfg->{appclass}, $attr->{home} );
+   $cfg->{files   } ||= __get_configfiles( $cfg->{appclass},  $cfg->{home} );
 
    return $attr;
 };
@@ -291,13 +295,11 @@ sub output {
 
    sub read_post_install_config {
       my $self  = shift; defined $cache and return $cache;
-
       my $cfg   = $self->config;
-      my $attrs = { storage_attributes => {
-                           force_array => $cfg->{pi_arrays} } };
-      my $path  = catfile( $cfg->ctrldir, $cfg->{pi_config_file} );
+      my $path  = catfile( $cfg->ctrldir, $cfg->pi_config_file );
 
-      return $cache = $self->dataclass_schema( $attrs )->load( $path );
+      return $cache = Class::Usul::File->data_load
+         ( paths => [ $path ], storage_class => q(Any), );
    }
 }
 
@@ -423,8 +425,7 @@ sub _build__os {
 
    $path->exists or return {};
 
-   my $cfg  = $self->file->data_load( arrays => [ q(os) ],
-                                      path   => $path ) || {};
+   my $cfg  = $self->file->data_load( arrays => [ q(os) ], paths => [ $path ] );
 
    return $cfg->{os} || {};
 }
@@ -511,20 +512,19 @@ sub _usage_for {
 
 # Private functions
 
-sub __get_config {
-   my $attr = shift; my $cfg = $attr->{config} ||= {};
+sub __get_configfiles {
+   my ($appclass, $home) = @_;
 
-   $cfg->{appclass} ||= delete $attr->{appclass} || prefix2class $PROGRAM_NAME;
-   $cfg->{home    } ||= __get_homedir( $cfg->{appclass}, $attr->{home} );
-   $cfg->{filename} ||= __get_configfile( $cfg );
+   my $prefix = app_prefix $appclass; my $files = []; my $file;
 
-   return $cfg;
-}
+   for my $extn (keys %{ Class::Usul::File->extensions }) {
+      $file = untaint_path catfile( $home, $prefix.$extn );
+      -f $file and push @{ $files }, $file;
+      $file = untaint_path catfile( $home, $prefix.q(_local).$extn );
+      -f $file and push @{ $files }, $file;
+   }
 
-sub __get_configfile {
-   my $cfg = shift; my $file = (app_prefix $cfg->{appclass} ).CONFIG_EXTN;
-
-   return catfile( $cfg->{home}, $file );
+   return $files;
 }
 
 sub __get_control_chars {
@@ -567,12 +567,13 @@ sub __get_homedir {
    $path = assert_directory $path and return $path;
 
    # 5. Config file found in @INC
-   my $file = app_prefix $appclass;
+   my $prefix = app_prefix $appclass;
 
    for my $dir (map { catdir( abs_path( $_ ), $classdir ) } @INC) {
-      $path = untaint_path catfile( $dir, $file.CONFIG_EXTN );
-
-      -f $path and return dirname( $path );
+      for my $extn (keys %{ Class::Usul::File->extensions }) {
+         $path = untaint_path catfile( $dir, $prefix.$extn );
+         -f $path and return dirname( $path );
+      }
    }
 
    # 6. Default to /tmp

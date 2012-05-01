@@ -36,12 +36,13 @@ sub data_dump {
 }
 
 sub data_load {
-   my ($self, @rest) = @_; my $args = arg_list @rest;
+   my ($self, @rest) = @_; my $args = arg_list @rest; $args->{arrays} ||= [];
 
-   $args = { path => $args->{path} || NUL,
-             storage_attributes => { _arrays => $args->{arrays} || {} } };
+   my $attr = { storage_attributes => { force_array => $args->{arrays}, }, };
 
-   return $self->dataclass_schema( $args )->load;
+   $args->{storage_class} and $attr->{storage_class} = $args->{storage_class};
+
+   return $self->dataclass_schema( $attr )->load( @{ $args->{paths} || [] } );
 }
 
 sub dataclass_schema {
@@ -55,6 +56,10 @@ sub dataclass_schema {
 
 sub delete_tmp_files {
    return $_[ 0 ]->io( $_[ 1 ] || $_[ 0 ]->tempdir )->delete_tmp_files;
+}
+
+sub extensions {
+   return $_[ 0 ]->dataclass_schema->storage->extensions;
 }
 
 sub find_source {
@@ -163,6 +168,13 @@ which defaults to C<< $self->tempdir >>
 
 Returns a L<File::DataClass::Schema> object. Object uses our
 C<exception_class>, no caching and no locking
+
+=head2 extensions
+
+   $hash_ref = $self->extensions;
+
+Class method that returns the extensions supported by
+L<File::DataClass::Storage>
 
 =head2 find_source
 

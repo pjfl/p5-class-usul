@@ -21,11 +21,13 @@ BEGIN {
 }
 
 use Class::Usul::Programs;
+use Class::Usul::Functions qw(say);
 
 my $name    = basename( $0, qw(.t) );
-my $logfile = catfile( qw(t test.log) );
+my $logfile = catfile( q(t), $name.q(.log) );
 my $prog    = Class::Usul::Programs->new( appclass => q(Class::Usul),
-                                          config   => { tempdir => q(t), },
+                                          config   => { logsdir => q(t),
+                                                        tempdir => q(t), },
                                           method   => q(dump_self),
                                           nodebug  => 1,
                                           quiet    => 1, );

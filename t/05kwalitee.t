@@ -22,6 +22,8 @@ plan skip_all => 'Test::Kwalitee not installed' if ($EVAL_ERROR);
 
 Test::Kwalitee->import();
 
+unlink q(Debian_CPANTS.txt);
+
 # Local Variables:
 # mode: perl
 # tab-width: 3

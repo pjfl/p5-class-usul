@@ -48,3 +48,4 @@ Thumbs.db
 \bt/file-dataclass
 \bbuild.xml
 ^MYMETA\.json$
+\blib/Class/Usul/class_usul.json

@@ -9,7 +9,7 @@ use Class::Usul::File;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions       qw(app_prefix class2appdir
-                                    home2appl untaint_path);
+                                    home2appl split_on__ untaint_path);
 use English                      qw(-no_match_vars);
 use File::Basename               qw(basename dirname);
 use File::DataClass::Constraints qw(Directory File Path);
@@ -83,6 +83,9 @@ has 'logfile'         => is => 'ro', isa => Path,      coerce => TRUE,
 has 'logsdir'         => is => 'ro', isa => Directory, coerce => TRUE,
    lazy               => TRUE,   builder => '_build_logsdir';
 
+has 'pi_config_file'  => is => 'ro', isa => Path,      coerce => TRUE,
+   lazy               => TRUE,   builder => '_build_pi_config_file';
+
 has 'root'            => is => 'ro', isa => Path,      coerce => TRUE,
    lazy               => TRUE,   builder => '_build_root';
 
@@ -128,12 +131,13 @@ has 'profiles_path'   => is => 'ro', isa => Path, coerce => TRUE,
    lazy               => TRUE,   builder => '_build_profiles_path';
 
 around BUILDARGS => sub {
-   my ($next, $class, @args) = @_; my $attr = $class->$next( @args ); my $path;
+   my ($next, $class, @args) = @_; my $attr = $class->$next( @args ); my $paths;
 
-   if ($path = delete $attr->{filename} and -f $path) {
-      my $loaded = Class::Usul::File->data_load( path => $path );
+   if ($paths = delete $attr->{files} and $paths->[ 0 ]) {
+      my $loaded = Class::Usul::File->data_load
+         ( paths => $paths, storage_class => q(Any), );
 
-      $attr = { %{ $attr }, %{ $loaded || {} } };
+      $attr = { %{ $loaded || {} }, %{ $attr } };
    }
 
    for my $attr_name (keys %{ $attr }) {
@@ -213,11 +217,17 @@ sub _build_logsdir {
 }
 
 sub _build_name {
-   return basename( $_[ 0 ]->pathname, EXTNS );
+   my $prog = basename( $_[ 0 ]->pathname, EXTNS );
+
+   return (split_on__ $prog, 1) || $prog;
 }
 
 sub _build_owner {
    return $_[ 0 ]->prefix || q(root);
+}
+
+sub _build_pi_config_file {
+   return $_[ 0 ]->_inflate_path( $_[ 1 ], qw(ctrldir build.json) );
 }
 
 sub _build_path_to {
