@@ -59,7 +59,7 @@ sub delete_tmp_files {
 }
 
 sub extensions {
-   return $_[ 0 ]->dataclass_schema->storage->extensions;
+   return $_[ 0 ]->dataclass_schema->extensions;
 }
 
 sub find_source {

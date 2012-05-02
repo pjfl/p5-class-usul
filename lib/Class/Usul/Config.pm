@@ -133,7 +133,7 @@ has 'profiles_path'   => is => 'ro', isa => Path, coerce => TRUE,
 around BUILDARGS => sub {
    my ($next, $class, @args) = @_; my $attr = $class->$next( @args ); my $paths;
 
-   if ($paths = delete $attr->{files} and $paths->[ 0 ]) {
+   if ($paths = delete $attr->{cfgfiles} and $paths->[ 0 ]) {
       my $loaded = Class::Usul::File->data_load
          ( paths => $paths, storage_class => q(Any), );
 
@@ -143,7 +143,7 @@ around BUILDARGS => sub {
    for my $attr_name (keys %{ $attr }) {
       defined $attr->{ $attr_name }
           and $attr->{ $attr_name } =~ m{ \A __([^\(]+?)__ \z }mx
-          and $attr->{ $attr_name } = $class->_inflate_symbol( $attr, $1, NUL );
+          and $attr->{ $attr_name } = $class->_inflate_symbol( $attr, $1 );
    }
 
    for my $attr_name (keys %{ $attr }) {

@@ -7,7 +7,7 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(class2appdir throw);
+use Class::Usul::Functions qw(class2appdir say throw);
 use File::Spec::Functions  qw(catdir);
 
 has 'builder'           => is => 'ro', isa => 'Object', required => TRUE,
@@ -29,6 +29,7 @@ sub q_built {
 
    $cfg->{base} = catdir( $prefix, class2appdir $self->module_name,
                           q(v).$cfg->{ver}.q(p).$cfg->{phase} );
+   say;
    return TRUE;
 }
 

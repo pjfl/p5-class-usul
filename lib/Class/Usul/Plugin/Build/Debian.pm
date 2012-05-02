@@ -47,7 +47,7 @@ sub ACTION_debian  {
    try {
       my $cfg = $self->_get_config;
 
-      $ENV{BUILDING_DEBIAN  } = TRUE;
+      $ENV{BUILDING_DEBIAN} = TRUE;
       $ENV{DEB_BUILD_OPTIONS} = q(nocheck);
 
       $self->depends_on( q(debianclean) );
@@ -97,8 +97,7 @@ sub _create_debian_package {
 
    $self->_update_debian_file_list( $cfg, $control, docs => $docs );
 
-   my $dir  = $self->_main_dir;
-   my $cmd  = "fakeroot make -C ${dir} -f debian/rules binary";
+   my $dir  = $self->_main_dir; my $cmd = "fakeroot dh binary";
 
    $self->_log_info( $cli->run_cmd( $cmd, { err => q(out) } )->out );
    return;
@@ -236,7 +235,13 @@ sub _create_debian_rules {
    -e $source or throw "Path ${source} does not exist";
    $self->_log_info( "Using rules ${source}" );
    $rules->read( $source );
-   $rules->write;
+
+   my @lines = @{ $rules->lines }; my $line1 = shift @lines;
+
+   # Stop dh from re-running perl Build.PL and ./Build
+   unshift @lines, "\n", "override_dh_auto_configure:\n", "\n",
+      "override_dh_auto_build:\n", "\n", $line1;
+   $rules->lines( \@lines ); $rules->write;
    chmod 0755, $path or throw $ERRNO;
    return $rules;
 }
@@ -370,7 +375,8 @@ sub _set_debian_binary_data {
    my $ref  = $self->can( q(dist_description) );
    my $desc = $ref ? $self->$ref() : [];
 
-   $desc = join "\n", map { s{ [A-Z] [<] ([^>]*) [>] }{$1}gmx; $_ } @{ $desc };
+   $desc = join "\n", grep { not m{ \s+ }msx }
+                      map  { s{ [A-Z] [<] ([^>]*) [>] }{$1}gmx; $_ } @{ $desc };
    $desc and $binval->long_description( $desc );
    return $binval;
 }
@@ -409,7 +415,7 @@ sub _shell_script {
 }
 
 sub _update_debian_file_list {
-   my ($self, $cfg, $control, %p) = @_; my $cli0 = $self->cli;
+   my ($self, $cfg, $control, %p) = @_; my $cli = $self->cli;
 
    my $src = $control->source; my $pkgname = $src->Source;
 

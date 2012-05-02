@@ -99,7 +99,7 @@ around BUILDARGS => sub {
 
    $cfg->{appclass} ||= delete $attr->{appclass} || prefix2class $PROGRAM_NAME;
    $cfg->{home    } ||= __get_homedir    ( $cfg->{appclass}, $attr->{home} );
-   $cfg->{files   } ||= __get_configfiles( $cfg->{appclass},  $cfg->{home} );
+   $cfg->{cfgfiles} ||= __get_configfiles( $cfg->{appclass},  $cfg->{home} );
 
    return $attr;
 };
@@ -534,7 +534,7 @@ sub __get_control_chars {
 }
 
 sub __get_homedir {
-   my ($appclass, $home) = @_; my $path;
+   my ($appclass, $home) = @_; my ($file, $path);
 
    # 0. Pass the directory in
    $path = assert_directory $home and return $path;
@@ -543,21 +543,29 @@ sub __get_homedir {
    $path = $ENV{ (env_prefix $appclass).q(_HOME) };
    $path = assert_directory $path and return $path;
 
-   # 2a. Users home directory - application directory
-   my $appdir = class2appdir $appclass; my $classdir = classdir $appclass;
+   my $appdir   = class2appdir $appclass;
+   my $classdir = classdir     $appclass;
+   my $prefix   = app_prefix   $appclass;
 
+   # 2a. Users home directory - contains application directory
    $path = catdir( File::HomeDir->my_home, $appdir );
    $path = catdir( $path, qw(default lib), $classdir );
    $path = assert_directory $path and return $path;
 
-   # 2b. Users home directory - dotfile
+   # 2b. Users home directory - dot directory containing application
    $path = catdir( File::HomeDir->my_home, q(.).$appdir );
+   $path = catdir( $path, qw(default lib), $classdir );
    $path = assert_directory $path and return $path;
 
-   # 3. Well known path
-   my $well_known = catfile( @{ DEFAULT_DIR() }, $appdir );
+   # 2c. Users home directory - dot file containing shell env variable
+   $file = catfile( File::HomeDir->my_home, q(.).$prefix );
+   $path = __read_variable( $file, q(APPLDIR) );
+   $path and $path = catdir( $path, q(lib), $classdir );
+   $path = assert_directory $path and return $path;
 
-   $path = __read_variable( $well_known, q(APPLDIR) );
+   # 3. Well known path containing shell env file
+   $file = catfile( @{ DEFAULT_DIR() }, $appdir );
+   $path = __read_variable( $file, q(APPLDIR) );
    $path and $path = catdir( $path, q(lib), $classdir );
    $path = assert_directory $path and return $path;
 
@@ -567,12 +575,10 @@ sub __get_homedir {
    $path = assert_directory $path and return $path;
 
    # 5. Config file found in @INC
-   my $prefix = app_prefix $appclass;
-
-   for my $dir (map { catdir( abs_path( $_ ), $classdir ) } @INC) {
+   for $path (map { catdir( abs_path( $_ ), $classdir ) } @INC) {
       for my $extn (keys %{ Class::Usul::File->extensions }) {
-         $path = untaint_path catfile( $dir, $prefix.$extn );
-         -f $path and return dirname( $path );
+         $file = untaint_path catfile( $path, $prefix.$extn );
+         -f $file and return dirname( $file );
       }
    }
 
@@ -678,12 +684,12 @@ sub __raw_mode {
 }
 
 sub __read_variable {
-   my ($path, $variable) = @_;
+   my ($file, $variable) = @_;
 
-   return -f $path ? first { length }
+   return -f $file ? first { length }
                      map   { (split q(=), $_)[ 1 ] }
                      grep  { m{ \A $variable [=] }mx }
-                     Class::Usul::File->io( $path )->chomp->getlines
+                     Class::Usul::File->io( $file )->chomp->getlines
                    : undef;
 }
 

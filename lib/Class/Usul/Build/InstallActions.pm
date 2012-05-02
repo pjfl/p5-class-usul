@@ -7,7 +7,8 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use File::Spec;
+use Class::Usul::Functions qw(class2appdir);
+use File::Spec::Functions  qw(catdir);
 use Try::Tiny;
 
 has 'actions' => is => 'ro', isa => 'ArrayRef',
@@ -15,15 +16,17 @@ has 'actions' => is => 'ro', isa => 'ArrayRef',
                             edit_files) ] };
 
 has 'builder' => is => 'ro', isa => 'Object', required => TRUE,
-   handles    => [ qw(cli installation_destination module_name) ];
+   handles    => [ qw(base_dir cli _get_dest_base
+                      install_destination _log_info module_name) ];
 
 sub copy_files {
    # Copy some files without overwriting
    my ($self, $cfg) = @_; my $cli = $self->cli;
 
    for my $pair (@{ $cfg->{copy_files} }) {
-      my $from = $cli->absolute( $self->base_dir, $pair->{from} );
-      my $to   = $cli->absolute( $self->_get_dest_base( $cfg ), $pair->{to} );
+      my $from = $cli->file->absolute( $self->base_dir, $pair->{from} );
+      my $to   = $cli->file->absolute( $self->_get_dest_base( $cfg ),
+                                       $pair->{to} );
 
       ($from->is_file and not -e $to->pathname) or next;
       $self->_log_info( "Copying ${from} to ${to}" );
@@ -39,7 +42,8 @@ sub create_dirs {
 
    my $base = $self->_get_dest_base( $cfg );
 
-   for my $io (map { $cli->absolute( $base, $_ ) } @{ $cfg->{create_dirs} }) {
+   for my $io (map { $cli->file->absolute( $base, $_ ) }
+               @{ $cfg->{create_dirs} }) {
       if ($io->is_dir) { $self->_log_info( "Directory ${io} exists" ) }
       else { $self->_log_info( "Creating ${io}" ); $io->mkpath( oct q(02750) ) }
    }
@@ -53,7 +57,8 @@ sub create_files {
 
    my $base = $self->_get_dest_base( $cfg );
 
-   for my $io (map { $cli->absolute( $base, $_ ) } @{ $cfg->{create_files} }){
+   for my $io (map { $cli->file->absolute( $base, $_ ) }
+               @{ $cfg->{create_files} }){
       unless ($io->is_file) { $self->_log_info( "Creating ${io}" ); $io->touch }
    }
 
@@ -65,9 +70,9 @@ sub edit_files {
 
    # Fix hard coded path in suid program
    my $io   = $cli->io( [ $self->install_destination( q(bin) ),
-                          $cli->prefix.q(_admin) ] );
+                          $cli->config->prefix.q(_admin) ] );
    my $that = qr( \A use \s+ lib \s+ .* \z )msx;
-   my $this = 'use lib q('.File::Spec->catdir( $cfg->{base}, q(lib) ).");\n";
+   my $this = 'use lib q('.catdir( $cfg->{base}, q(lib) ).");\n";
 
    $io->is_file and $io->substitute( $that, $this )->chmod( 0555 );
 
