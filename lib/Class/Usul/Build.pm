@@ -36,15 +36,12 @@ if ($ENV{AUTOMATED_TESTING}) {
 }
 
 my %CONFIG =
-   ( arrays        => [ qw(actions arrays attrs copy_files create_dirs
-                           create_files credentials link_files
-                           post_install_cmds) ],
-     changes_file  => q(Changes),
+   ( changes_file  => q(Changes),
      change_token  => q({{ $NEXT }}),
      cpan_authors  => q(http://search.cpan.org/CPAN/authors/id),
      cpan_dists    => q(http://search.cpan.org/dist),
-     config_attrs  => { storage_attributes => { root_name => q(config) } },
-     config_file   => [ qw(var etc build.xml) ],
+     config_attrs  => { storage_class => q(JSON) },
+     config_file   => [ qw(var etc build.json) ],
      create_ugrps  => TRUE,
      edit_files    => TRUE,
      install       => TRUE,
@@ -268,8 +265,7 @@ sub ACTION_uninstall {
    return;
 }
 
-sub ACTION_upload {
-   # Upload the distribution to CPAN
+sub ACTION_upload { # Upload the distribution to CPAN
    my $self = shift;
 
    try {
@@ -288,19 +284,15 @@ sub class_path {
    return catfile( q(lib), split m{ :: }mx, $_[ 1 ].q(.pm) );
 }
 
-sub cli {
-   # Self initialising accessor for the command line interface object
-   my $self = shift; my $key = q(_command_line_interface);
+{  my $cache;
 
-   $self->{ $key }
-      or $self->{ $key } = Class::Usul::Programs->new
-            ( { appclass => $self->module_name, nodebug => TRUE } );
-
-   return $self->{ $key };
+   sub cli { # Self initialising accessor for the command line interface object
+      return $cache ||= Class::Usul::Programs->new
+         ( appclass => $_[ 0 ]->module_name, nodebug => TRUE );
+   }
 }
 
-sub dispatch {
-   # Now we can have M::B plugins
+sub dispatch { # Now we can have M::B plugins
    my $self = shift; $self->_setup_plugins; return $self->next::method( @_ );
 }
 
@@ -315,8 +307,7 @@ sub make_tarball {
    return $self->next::method( $dir, $self->_archive_file( $archive ) );
 }
 
-sub patch_file {
-   # Will apply a patch to a file only once
+sub patch_file { # Will apply a patch to a file only once
    my ($self, $path, $patch) = @_; my $cli = $self->cli;
 
    (not $path->is_file or -f $path.q(.orig)) and return;
@@ -346,13 +337,11 @@ sub process_files {
    return;
 }
 
-sub process_local_files {
-   # Will copy the local lib into the blib
+sub process_local_files { # Will copy the local lib into the blib
    my $self = shift; return $self->process_files( q(local) );
 }
 
-sub public_repository {
-   # Accessor for the public VCS repository information
+sub public_repository { # Accessor for the public VCS repository information
    my $class = shift; my $repo = $class->repository or return;
 
    return $repo !~ m{ \A file: }mx ? $repo : undef;
@@ -585,14 +574,12 @@ sub _get_archive_names {
 {  my $cache;
 
    sub _get_config {
-      my ($self, $passed_cfg) = @_; $cache and return $cache;
+      my ($self, $passed_cfg) = @_; $cache and return $cache; my $path;
 
-      my $cfg  = { %CONFIG, %{ $passed_cfg || {} }, %{ $self->notes } };
-      my $path = $self->_get_config_path( $cfg );
+      my $cfg = { %CONFIG, %{ $passed_cfg || {} }, %{ $self->notes } };
 
-      if (-f $path) {
-         my $attrs = { storage_attributes => {
-                              force_array => $cfg->{arrays} } };
+      if ($path = $self->_get_config_path( $cfg ) and -f $path) {
+         my $attrs = $cfg->{config_attrs};
 
          $cfg = $self->cli->file->dataclass_schema( $attrs )->load( $path );
       }
@@ -614,26 +601,27 @@ sub _get_dest_base {
                          : $cfg->{base};
 }
 
-sub _get_local_config {
-   my $self = shift; my $cli = $self->cli;
+{  my $cache;
 
-   $self->{_local_config_cache} and return $self->{_local_config_cache};
+   sub _get_local_config {
+      $cache and return $cache; my $self = shift; my $cli = $self->cli;
 
-  (my $perl_ver = $PERL_VERSION) =~ s{ \A v }{perl-}mx;
+      (my $perl_ver = $PERL_VERSION) =~ s{ \A v }{perl-}mx;
 
-   my $argv = $self->args->{ARGV}; my $cfg = $self->_get_config;
+      my $argv = $self->args->{ARGV}; my $cfg = $self->_get_config;
 
-   $cfg->{perl_ver     } = $argv->[ 0 ] || $perl_ver;
-   $cfg->{appldir      } = $argv->[ 1 ] || NUL.$cli->config->appldir;
-   $cfg->{perlbrew_root} = catdir ( $cfg->{appldir}, $cfg->{local_lib} );
-   $cfg->{local_etc    } = catdir ( $cfg->{perlbrew_root}, q(etc) );
-   $cfg->{local_libperl} = catdir ( $cfg->{perlbrew_root}, qw(lib perl5));
-   $cfg->{perlbrew_bin } = catdir ( $cfg->{perlbrew_root}, q(bin) );
-   $cfg->{perlbrew_cmnd} = catfile( $cfg->{perlbrew_bin }, q(perlbrew) );
-   $cfg->{local_lib_uri} = join SEP, $cfg->{cpan_authors}, $cfg->{ll_author},
-                                     $cfg->{ll_ver_dir}.q(.tar.gz);
+      $cfg->{perl_ver     } = $argv->[ 0 ] || $perl_ver;
+      $cfg->{appldir      } = $argv->[ 1 ] || NUL.$cli->config->appldir;
+      $cfg->{perlbrew_root} = catdir ( $cfg->{appldir}, $cfg->{local_lib} );
+      $cfg->{local_etc    } = catdir ( $cfg->{perlbrew_root}, q(etc) );
+      $cfg->{local_libperl} = catdir ( $cfg->{perlbrew_root}, qw(lib perl5));
+      $cfg->{perlbrew_bin } = catdir ( $cfg->{perlbrew_root}, q(bin) );
+      $cfg->{perlbrew_cmnd} = catfile( $cfg->{perlbrew_bin }, q(perlbrew) );
+      $cfg->{local_lib_uri} = join SEP, $cfg->{cpan_authors}, $cfg->{ll_author},
+                                        $cfg->{ll_ver_dir}.q(.tar.gz);
 
-   return $self->{_local_config_cache} ||= $cfg;
+      return $cache = $cfg;
+   }
 }
 
 sub _import_local_env {
@@ -767,9 +755,9 @@ sub _question_class {
 }
 
 sub _read_pauserc {
-   my $self = shift; my $cli = $self->cli;
+   my $self   = shift; my $cli = $self->cli;
 
-   my $dir  = $ENV{HOME} || File::Spec->curdir; my $args = {};
+   my $dir = $ENV{HOME} || File::Spec->curdir; my $args = {};
 
    for ($cli->io( [ $dir, q(.pause) ] )->chomp->getlines) {
       ($_ and $_ !~ m{ \A \s* \# }mx) or next;
@@ -825,12 +813,9 @@ sub _set_install_paths {
 
    sub _setup_plugins {
       # Load CX::U::Plugin::Build::* plugins. Can haz plugins for M::B!
-      my $self = shift; my $cli = $self->cli; defined $cache and return $cache;
-
-      my $config = { child_class  => blessed $self,
-                     search_paths => [ q(::Plugin::Build) ], };
-
-      return $cache = $cli->setup_plugins( $config );
+      return $cache ||= $_[ 0 ]->cli->setup_plugins
+         ( { child_class  => blessed $_[ 0 ],
+             search_paths => [ q(::Plugin::Build) ], } );
    }
 }
 

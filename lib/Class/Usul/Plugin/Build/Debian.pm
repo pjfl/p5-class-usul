@@ -97,7 +97,7 @@ sub _create_debian_package {
 
    $self->_update_debian_file_list( $cfg, $control, docs => $docs );
 
-   my $dir  = $self->_main_dir; my $cmd = "fakeroot dh binary";
+   my $cmd  = "fakeroot dh binary";
 
    $self->_log_info( $cli->run_cmd( $cmd, { err => q(out) } )->out );
    return;
