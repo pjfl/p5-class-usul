@@ -102,7 +102,7 @@ sub ACTION_install {
       # Call each of the defined installation actions
       $install->$_( $cfg ) for (grep { $cfg->{ $_ } } @{ $install->actions });
 
-      $self->_log_info( 'Installation complete' );
+      $self->cli_info( 'Installation complete' );
       $self->_post_install( $cfg );
    }
    catch { $self->cli->fatal( $_ ) };
@@ -278,7 +278,7 @@ sub ACTION_upload { # Upload the distribution to CPAN
    return;
 }
 
-# Public object methods
+# Public object methods in the M::B namespace
 
 sub class_path {
    return catfile( q(lib), split m{ :: }mx, $_[ 1 ].q(.pm) );
@@ -290,6 +290,10 @@ sub class_path {
       return $cache ||= Class::Usul::Programs->new
          ( appclass => $_[ 0 ]->module_name, nodebug => TRUE );
    }
+}
+
+sub cli_info {
+   return shift->cli->info( map { chomp; "${_}\n" } @{ [ @_ ] } );
 }
 
 sub dispatch { # Now we can have M::B plugins
@@ -312,11 +316,11 @@ sub patch_file { # Will apply a patch to a file only once
 
    (not $path->is_file or -f $path.q(.orig)) and return;
 
-   $self->_log_info( "Patching ${path}" ); $path->copy( $path.q(.orig) );
+   $self->cli_info( "Patching ${path}" ); $path->copy( $path.q(.orig) );
 
    my $cmd = [ qw(patch -p0), $path->pathname, $patch->pathname ];
 
-   $self->_log_info( $cli->run_cmd( $cmd, { err => q(out) } )->out );
+   $self->cli_info( $cli->run_cmd( $cmd, { err => q(out) } )->out );
    return;
 }
 
@@ -386,7 +390,6 @@ sub _ask_questions {
    my $args = { data => $cfg, path => $self->_get_config_path( $cfg ) };
 
    $cli->file->dataclass_schema( $cfg->{config_attrs} )->dump( $args );
-   $cfg->{ask} and $cli->anykey;
    return;
 }
 
@@ -594,13 +597,6 @@ sub _get_config_path {
    return catfile( $self->base_dir, $self->blib, @{ $cfg->{config_file} } );
 }
 
-sub _get_dest_base {
-   my ($self, $cfg) = @_;
-
-   return $self->destdir ? catdir( $self->destdir, $cfg->{base} )
-                         : $cfg->{base};
-}
-
 {  my $cache;
 
    sub _get_local_config {
@@ -646,7 +642,7 @@ sub _install_local_cpanm {
 
    -f $path and return;
 
-   $self->_log_info( 'Installing local copy of App::cpanminus...' );
+   $self->cli_info( 'Installing local copy of App::cpanminus...' );
    $cli->run_cmd( $cmd.$cfg->{perlbrew_root} );
    not -f $path and throw "Failed to install App::cpanminus to ${path}";
    return;
@@ -657,7 +653,7 @@ sub _install_local_deps {
 
    my $local_lib = $cfg->{perlbrew_root} or throw 'Local lib not set';
 
-   $self->_log_info( "Installing dependencies to ${local_lib}..." );
+   $self->cli_info( "Installing dependencies to ${local_lib}..." );
 
    my $cmd = [ qw(cpanm -L), $local_lib, qw(--installdeps .) ];
 
@@ -674,7 +670,7 @@ sub _install_local_lib {
    my $dir = $cfg->{ll_ver_dir}; -d $cfg->{local_lib} and return;
 
    chdir $cfg->{appldir};
-   $self->_log_info( 'Installing local::lib to '.$cfg->{perlbrew_root} );
+   $self->cli_info( 'Installing local::lib to '.$cfg->{perlbrew_root} );
    $cli->run_cmd( q(curl -s -L ).$cfg->{local_lib_uri}.q( | tar -xzf -) );
 
    (-d $dir and chdir $dir) or throw "Directory ${dir} cannot access";
@@ -695,12 +691,12 @@ sub _install_local_perl {
    unless (__perlbrew_mirror_is_set( $cfg )) {
       my $cmd = "echo 'm\n".$cfg->{perl_mirror}."' | perlbrew mirror";
 
-      $self->_log_info( 'Setting perlbrew mirror' );
+      $self->cli_info( 'Setting perlbrew mirror' );
       __run_perlbrew( $cli, $cfg, $cmd );
    }
 
    unless (__perl_version_is_installed( $cli, $cfg )) {
-      $self->_log_info( 'Installing '.$cfg->{perl_ver}.'...' );
+      $self->cli_info( 'Installing '.$cfg->{perl_ver}.'...' );
       __run_perlbrew( $cli, $cfg, q(perlbrew install ).$cfg->{perl_ver} );
    }
 
@@ -713,7 +709,7 @@ sub _install_local_perlbrew {
 
    -f $cfg->{perlbrew_cmnd} and return;
 
-   $self->_log_info( 'Installing local perlbrew...' );
+   $self->cli_info( 'Installing local perlbrew...' );
    $cli->run_cmd ( q(cpanm -L ).$cfg->{perlbrew_root}.q( App::perlbrew) );
    __run_perlbrew( $cli, $cfg, q(perlbrew init) );
    $cli->io      ( [ $cfg->{local_etc}, q(kshrc) ] )
@@ -724,15 +720,11 @@ sub _install_local_perlbrew {
    return;
 }
 
-sub _log_info {
-   return shift->cli->info( map { chomp; "${_}\n" } @{ [ @_ ] } );
-}
-
 sub _post_install {
    my ($self, $cfg) = @_;
 
    $cfg->{post_install} and $self->_run_bin_cmd( $cfg, q(post_install) )
-      and $self->_log_info( 'Post install complete' );
+      and $self->cli_info( 'Post install complete' );
 
    return;
 }
@@ -789,7 +781,7 @@ sub _run_bin_cmd {
    -f $path or throw "Path ${path} not found";
 
    $cmd = join SPC, $path, @args;
-   $self->_log_info( "Running ${cmd}" );
+   $self->cli_info( "Running ${cmd}" );
    $cli->run_cmd( $cmd, { err => q(stderr), out => q(stdout) } );
 
    my $ref; $ref = $self->can( q(hook_).$key ) and $self->$ref( $cfg );
@@ -800,7 +792,7 @@ sub _run_bin_cmd {
 sub _set_install_paths {
    my ($self, $cfg) = @_; $cfg->{base} or throw 'Config base path not set';
 
-   $self->_log_info( 'Base path '.$cfg->{base} );
+   $self->cli_info( 'Base path '.$cfg->{base} );
    $self->install_base( $cfg->{base} );
    $self->install_path( bin   => catdir( $cfg->{base}, q(bin)   ) );
    $self->install_path( lib   => catdir( $cfg->{base}, q(lib)   ) );
@@ -831,7 +823,7 @@ sub _uninstall {
    my ($self, $cfg) = @_;
 
    $self->_run_bin_cmd( $cfg, q(uninstall) )
-      and $self->_log_info( 'Uninstall complete' );
+      and $self->cli_info( 'Uninstall complete' );
 
    return;
 }
@@ -839,8 +831,7 @@ sub _uninstall {
 sub _update_changelog {
    my ($self, $cfg, $ver) = @_;
 
-   my $cli  = $self->cli;
-   my $io   = $cli->io( $cfg->{changes_file} );
+   my $io   = $self->cli->io( $cfg->{changes_file} );
    my $tok  = $cfg->{change_token};
    my $time = time2str( $cfg->{time_format} || NUL );
    my $line = sprintf $cfg->{line_format}, $ver->normal, $time;
@@ -871,16 +862,21 @@ sub _update_version {
    return;
 }
 
-sub _vcs {
-   my $self = shift; my $class = __PACKAGE__.q(::VCS); my $vcs;
+{  my $cache;
 
-   my $dir  = ref $self ? $self->cli->config->appldir : File::Spec->curdir;
+   sub _vcs {
+      $cache and return $cache; my $self = shift;
 
-   ref $self and $vcs = $self->{_vcs} and return $vcs;
+      my $is_blessed = blessed $self;
+      my $dir = $is_blessed ? $self->cli->config->appldir : File::Spec->curdir;
+      my $vcs = $self->_vcs_class->new( $dir );
 
-   $vcs = $class->new( $dir ); ref $self and $self->{_vcs} = $vcs;
+      return $is_blessed ? $cache = $vcs : $vcs;
+   }
+}
 
-   return $vcs;
+sub _vcs_class {
+   return __PACKAGE__.q(::VCS);
 }
 
 sub _version_from_module {
@@ -1260,15 +1256,21 @@ Called by the L</ACTION_build> method
 Returns an instance of L<Class::Usul::Programs>, the command line
 interface object
 
+=head2 cli_info
+
+   $builder->cli_info( @list_of_messages );
+
+Calls L<info|Class::Usul::Programs/info> on the L<client object|/cli>
+
 =head2 _commit_release
 
-   $builder->_commit_release( 'Release message for VCS log' );
+   $builder->_commit_release( $config, 'Release message for VCS log' );
 
 Commits the release to the VCS
 
-=head2 cpan_upload
+=head2 _cpan_upload
 
-   $builder->cpan_upload;
+   $builder->_cpan_upload;
 
 Called by L</ACTION_upload>. Uses L<CPAN::Uploader> (which it loads on
 demand) to do the lifting. Reads from the users F<.pause> in their

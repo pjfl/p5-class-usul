@@ -39,7 +39,7 @@ around BUILDARGS => sub {
 };
 
 sub BUILD {
-   my $self = shift; my $class = blessed $self || $self;
+   my $self = shift; my $class = blessed $self;
 
    my $meta = $class->meta; $meta->make_mutable;
 

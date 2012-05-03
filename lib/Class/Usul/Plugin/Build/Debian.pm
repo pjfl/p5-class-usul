@@ -99,7 +99,7 @@ sub _create_debian_package {
 
    my $cmd  = "fakeroot dh binary";
 
-   $self->_log_info( $cli->run_cmd( $cmd, { err => q(out) } )->out );
+   $self->cli_info( $cli->run_cmd( $cmd, { err => q(out) } )->out );
    return;
 }
 
@@ -143,10 +143,10 @@ sub _backup_path {
 
    my $cli = $self->cli; my $bak = $cli->io( $path.q(.bak) );
 
-   $self->_log_info( "Path exists moving to ${bak}" );
+   $self->cli_info( "Path exists moving to ${bak}" );
 
    if ($bak->exists) {
-      $self->_log_info( "Overwriting existing ${bak}" );
+      $self->cli_info( "Overwriting existing ${bak}" );
       $bak->is_dir ? $bak->rmtree : $bak->unlink;
    }
 
@@ -233,7 +233,7 @@ sub _create_debian_rules {
    my $rules  = Debian::Rules->new( $path );
 
    -e $source or throw "Path ${source} does not exist";
-   $self->_log_info( "Using rules ${source}" );
+   $self->cli_info( "Using rules ${source}" );
    $rules->read( $source );
 
    my @lines = @{ $rules->lines }; my $line1 = shift @lines;
@@ -398,10 +398,10 @@ sub _set_debian_package_defaults {
 
    my $binval = $self->_set_debian_binary_data( $control, $pkgname, q(any) );
 
-   $self->_log_info( sprintf "Found %s %s (%s arch=%s)\n",
+   $self->cli_info( sprintf "Found %s %s (%s arch=%s)\n",
                      $self->dist_name, $self->dist_version,
                      $pkgname, $binval->Architecture );
-   $self->_log_info( sprintf "Maintainer %s\n", $src->Maintainer );
+   $self->cli_info( sprintf "Maintainer %s\n", $src->Maintainer );
    return;
 }
 

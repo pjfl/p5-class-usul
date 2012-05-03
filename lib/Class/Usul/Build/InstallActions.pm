@@ -12,12 +12,11 @@ use File::Spec::Functions  qw(catdir);
 use Try::Tiny;
 
 has 'actions' => is => 'ro', isa => 'ArrayRef',
-   default    => sub { [ qw(create_dirs create_files copy_files link_files
-                            edit_files) ] };
+   default    => sub { [ qw(create_dirs create_files copy_files edit_files) ] };
 
 has 'builder' => is => 'ro', isa => 'Object', required => TRUE,
-   handles    => [ qw(base_dir cli _get_dest_base
-                      install_destination _log_info module_name) ];
+   handles    => [ qw(base_dir cli destdir install_destination
+                      cli_info module_name) ];
 
 sub copy_files {
    # Copy some files without overwriting
@@ -28,8 +27,8 @@ sub copy_files {
       my $to   = $cli->file->absolute( $self->_get_dest_base( $cfg ),
                                        $pair->{to} );
 
-      ($from->is_file and not -e $to->pathname) or next;
-      $self->_log_info( "Copying ${from} to ${to}" );
+      ($from->is_file and not $to->exists) or next;
+      $self->cli_info( "Copying ${from} to ${to}" );
       $from->copy( $to )->chmod( 0640 );
    }
 
@@ -44,8 +43,8 @@ sub create_dirs {
 
    for my $io (map { $cli->file->absolute( $base, $_ ) }
                @{ $cfg->{create_dirs} }) {
-      if ($io->is_dir) { $self->_log_info( "Directory ${io} exists" ) }
-      else { $self->_log_info( "Creating ${io}" ); $io->mkpath( oct q(02750) ) }
+      if ($io->is_dir) { $self->cli_info( "Directory ${io} exists" ) }
+      else { $self->cli_info( "Creating ${io}" ); $io->mkpath( oct q(02750) ) }
    }
 
    return;
@@ -59,7 +58,7 @@ sub create_files {
 
    for my $io (map { $cli->file->absolute( $base, $_ ) }
                @{ $cfg->{create_files} }){
-      unless ($io->is_file) { $self->_log_info( "Creating ${io}" ); $io->touch }
+      unless ($io->is_file) { $self->cli_info( "Creating ${io}" ); $io->touch }
    }
 
    return;
@@ -68,38 +67,37 @@ sub create_files {
 sub edit_files {
    my ($self, $cfg) = @_; my $cli = $self->cli;
 
+   my $base = $self->_get_dest_base( $cfg );
    # Fix hard coded path in suid program
-   my $io   = $cli->io( [ $self->install_destination( q(bin) ),
-                          $cli->config->prefix.q(_admin) ] );
+   my $io   = $cli->io( [ $base, q(bin), $cli->config->prefix.q(_admin) ] );
    my $that = qr( \A use \s+ lib \s+ .* \z )msx;
    my $this = 'use lib q('.catdir( $cfg->{base}, q(lib) ).");\n";
 
-   $io->is_file and $io->substitute( $that, $this )->chmod( 0555 );
+   if ($io->is_file) {
+      $self->cli_info( "Editing ${io}" );
+      $io->substitute( $that, $this )->chmod( 0555 );
+   }
 
    # Pointer to the application directory in /etc/default/<app dirname>
-   $io   = $cli->io( [ NUL, qw(etc default),
-                       class2appdir $self->module_name ] );
+   $io   = $cli->io( [ $base, qw(var etc etc_default) ] );
    $that = qr( \A APPLDIR= .* \z )msx;
    $this = q(APPLDIR=).$cfg->{base}."\n";
 
-   $io->is_file and $io->substitute( $that, $this )->chmod( 0644 );
-   return;
-}
-
-sub link_files {
-   # Link some files
-   my ($self, $cfg) = @_; my $cli = $self->cli;
-
-   my $base = $self->_get_dest_base( $cfg ); my $msg;
-
-   for my $link (@{ $cfg->{link_files} }) {
-      try   { $msg = $cli->file->symlink( $base, $link->{from}, $link->{to} ) }
-      catch { $msg = NUL.$_ };
-
-      $self->_log_info( $msg );
+   if ($io->is_file) {
+      $self->cli_info( "Editing ${io}" );
+      $io->substitute( $that, $this )->chmod( 0644 );
    }
 
    return;
+}
+
+# Private methods
+
+sub _get_dest_base {
+   my ($self, $cfg) = @_;
+
+   return $self->destdir ? catdir( $self->destdir, $cfg->{base} )
+                         : $cfg->{base};
 }
 
 1;

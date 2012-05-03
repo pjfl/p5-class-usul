@@ -98,8 +98,8 @@ around BUILDARGS => sub {
    my $attr = $class->$next( @args ); my $cfg = $attr->{config} ||= {};
 
    $cfg->{appclass} ||= delete $attr->{appclass} || prefix2class $PROGRAM_NAME;
-   $cfg->{home    } ||= __get_homedir    ( $cfg->{appclass}, $attr->{home} );
-   $cfg->{cfgfiles} ||= __get_configfiles( $cfg->{appclass},  $cfg->{home} );
+   $cfg->{home    } ||= __get_homedir ( $cfg->{appclass}, $attr->{home} );
+   $cfg->{cfgfiles} ||= __get_cfgfiles( $cfg->{appclass},  $cfg->{home} );
 
    return $attr;
 };
@@ -512,7 +512,7 @@ sub _usage_for {
 
 # Private functions
 
-sub __get_configfiles {
+sub __get_cfgfiles {
    my ($appclass, $home) = @_;
 
    my $prefix = app_prefix $appclass; my $files = []; my $file;

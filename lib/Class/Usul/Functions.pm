@@ -168,8 +168,7 @@ sub merge_attributes ($$$;$) {
         @{ $attrs || [] }) {
       my $v = $class ? ($src->can( $_ ) ? $src->$_() : undef) : $src->{ $_ };
 
-      defined $v  or $v = $defaults->{ $_ };
-      defined $v and $dest->{ $_ } = $v;
+      defined $v or $v = $defaults->{ $_ }; defined $v and $dest->{ $_ } = $v;
    }
 
    return $dest;
