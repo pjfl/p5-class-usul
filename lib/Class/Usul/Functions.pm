@@ -28,7 +28,7 @@ BEGIN {
                       is_hashref is_member make_log_message
                       merge_attributes my_prefix prefix2class product
                       say split_on__ squeeze strip_leader sub_name sum
-                      throw trim unescape_TT untaint_identifier
+                      throw trim unescape_TT untaint_cmdline untaint_identifier
                       untaint_path untaint_string) );
 }
 
@@ -235,12 +235,16 @@ sub unescape_TT (;$$) {
    return $y;
 }
 
+sub untaint_cmdline (;$) {
+   return untaint_string( UNTAINT_CMDLINE, $_[ 0 ] );
+}
+
 sub untaint_identifier (;$) {
    return untaint_string( UNTAINT_IDENTIFIER, $_[ 0 ] );
 }
 
 sub untaint_path (;$) {
-   return untaint_string( UNTAINT_PATH_REGEX, $_[ 0 ] );
+   return untaint_string( UNTAINT_PATH, $_[ 0 ] );
 }
 
 sub untaint_string ($;$) {

@@ -66,7 +66,8 @@ sub find_source {
    my ($self, $class) = @_; my $file = classfile $class;
 
    for (@INC) {
-      my $path = abs_path( catfile( $_, $file ) ); -f $path and return $path;
+      my $path = abs_path( catfile( $_, $file ) );
+      $path and -f $path and return $path;
    }
 
    return;

@@ -138,7 +138,7 @@ sub _gettext {
 {  my $cache = {};
 
    sub _load_domains {
-      my ($self, $args) = @_; my ($charset, $data);
+      my ($self, $args) = @_; my $charset;
 
       assert $self, sub { $args->{locale} }, 'No locale id';
 
@@ -160,10 +160,10 @@ sub _gettext {
                           (?: \@[-_A-Za-z0-9=;]+ )? \z }msx and $charset = $1;
       $charset and $attrs->{charset} = $charset;
 
-      try   { $data = File::Gettext->new( $attrs )->load( $lang, @names ) }
-      catch { $self->log->error( $_ ); return };
+      my $data   = try   { File::Gettext->new( $attrs )->load( $lang, @names ) }
+                   catch { $self->log->error( $_ ); return };
 
-      return $cache->{ $key } = $data;
+      return $data ? $cache->{ $key } = $data : undef;
    }
 }
 

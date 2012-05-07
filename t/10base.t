@@ -64,7 +64,7 @@ unlink $logfile;
 
 done_testing;
 
-$prog->run;
+#$prog->run;
 
 # Local Variables:
 # mode: perl

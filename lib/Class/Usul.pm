@@ -112,24 +112,6 @@ sub setup_plugins {
    return \@plugins;
 }
 
-sub supports {
-   my ($self, @spec) = @_; my $cursor = eval { $self->get_features } || {};
-
-   @spec == 1 and exists $cursor->{ $spec[ 0 ] } and return TRUE;
-
-   # Traverse the feature list
-   for (@spec) {
-      is_hashref $cursor or return FALSE; $cursor = $cursor->{ $_ };
-   }
-
-   ref $cursor or return $cursor; is_arrayref $cursor or return FALSE;
-
-   # Check that all the keys required for a feature are in here
-   for (@{ $cursor }) { exists $self->{ $_ } or return FALSE }
-
-   return TRUE;
-}
-
 # Private methods
 
 sub _build_encoding {
@@ -253,13 +235,6 @@ Localizes the message. Calls L<Class::Usul::L10N/localize>
 
 Load the given list of plugins and have the supplied class inherit from them.
 Returns an array ref of available plugins
-
-=head2 supports
-
-   $bool = $self->supports( @spec );
-
-Returns true if the hash returned by our I<get_features> attribute
-contains all the elements of the required specification
 
 =head2 _build_lock
 

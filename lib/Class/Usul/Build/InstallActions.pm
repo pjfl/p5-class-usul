@@ -9,7 +9,6 @@ use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions qw(class2appdir);
 use File::Spec::Functions  qw(catdir);
-use Try::Tiny;
 
 has 'actions' => is => 'ro', isa => 'ArrayRef',
    default    => sub { [ qw(create_dirs create_files copy_files edit_files) ] };

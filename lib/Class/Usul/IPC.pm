@@ -9,7 +9,8 @@ use Class::Null;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Constraints  qw(ConfigType LogType);
-use Class::Usul::Functions    qw(arg_list is_arrayref strip_leader throw);
+use Class::Usul::Functions    qw(arg_list is_arrayref merge_attributes
+                                 strip_leader throw);
 use Class::Usul::Response::IPC;
 use Class::Usul::Response::Table;
 use Class::Usul::Time         qw(time2str);
@@ -36,6 +37,16 @@ has 'file'   => is => 'ro', isa => Object,     required => TRUE;
 
 has 'log'    => is => 'ro', isa => LogType,
    default   => sub { Class::Null->new };
+
+around BUILDARGS => sub {
+   my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
+
+   my $builder = delete $attr->{builder}; $builder or return $attr;
+
+   merge_attributes $attr, $builder, {}, [ qw(config debug file log) ];
+
+   return $attr;
+};
 
 sub child_list {
    my ($self, $pid, $procs) = @_; my ($child, $p, $t); my @pids = ();

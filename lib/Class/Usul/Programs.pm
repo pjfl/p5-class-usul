@@ -30,67 +30,75 @@ use Text::Autoformat;
 use Try::Tiny;
 
 extends qw(Class::Usul);
-with    qw(MooseX::Getopt::Dashes);
+with    qw(Class::Usul::GetoptUntainted);
 
-has 'debug',       => is => 'rw', isa => 'Bool', default => FALSE,
+has 'debug',       => is => 'rw', isa => Bool, default => FALSE,
    documentation   => 'Turn debugging on. Promps if interactive',
    traits          => [ 'Getopt' ], cmd_aliases => q(D), cmd_flag => 'debug',
    trigger         => \&_debug_trigger;
 
-has 'help_options' => is => 'ro', isa => 'Bool', default => FALSE,
+has 'help_options' => is => 'ro', isa => Bool, default => FALSE,
    documentation   => 'Uses Pod::Usage to describe the program usage options',
-   traits          => [ 'Getopt' ], cmd_aliases => q(h), cmd_flag => 'options';
+   traits          => [ 'Getopt' ], cmd_aliases => q(h), cmd_flag => 'help_opt';
 
-has 'help_manual'  => is => 'ro', isa => 'Bool', default => FALSE,
+has 'help_manual'  => is => 'ro', isa => Bool, default => FALSE,
    documentation   => 'Uses Pod::Man to display the program documentation',
    traits          => [ 'Getopt' ], cmd_aliases => q(H), cmd_flag => 'man_page';
 
-has 'home'         => is => 'ro', isa => 'Str',
+has 'home'         => is => 'ro', isa => Str,
    documentation   => 'Directory containing the configuration file',
    traits          => [ 'Getopt' ], cmd_flag => 'home';
 
-has 'language'     => is => 'ro', isa => 'Str',  default => NUL,
+has 'language'     => is => 'ro', isa => Str,  default => NUL,
    documentation   => 'Loads the specified language message catalog',
    traits          => [ 'Getopt' ], cmd_aliases => q(L), cmd_flag => 'language';
 
-has 'method'       => is => 'ro', isa => 'Str',  default => NUL,
+has 'method'       => is => 'rw', isa => Str | Undef,  default => NUL,
    documentation   => 'Name of the method to call. Required',
    traits          => [ 'Getopt' ], cmd_aliases => q(c), cmd_flag => 'command';
 
-has 'nodebug'      => is => 'ro', isa => 'Bool', default => FALSE,
+has 'nodebug'      => is => 'ro', isa => Bool, default => FALSE,
    documentation   => 'Do not prompt for debugging',
    traits          => [ 'Getopt' ], cmd_aliases => q(n), cmd_flag => 'nodebug';
 
-has 'params'       => is => 'ro', isa => 'HashRef', default => sub { {} },
+has 'options'      => is => 'ro', isa => HashRef, default => sub { {} },
    documentation   =>
-      'Zero, one or more key/value pairs passed to the method call',
+      'Zero, one or more key/value pairs available to the method call',
    traits          => [ 'Getopt' ], cmd_aliases => q(o), cmd_flag => 'option';
 
-has 'quiet'        => is => 'ro', isa => 'Bool', default => FALSE,
+has 'quiet'        => is => 'ro', isa => Bool, default => FALSE,
    documentation   => 'Quiet the display of information messages',
    traits          => [ 'Getopt' ], cmd_aliases => q(q), cmd_flag => 'quiet';
 
-has 'version'      => is => 'ro', isa => 'Bool', default => FALSE,
+has 'version'      => is => 'ro', isa => Bool, default => FALSE,
    documentation   => 'Displays the version number of the program class',
    traits          => [ 'Getopt' ], cmd_aliases => q(V), cmd_flag => 'version';
 
 
-has '_file'    => is => 'ro', isa     => 'Object',  init_arg => undef,
-   reader      => 'file',     lazy    => TRUE,      builder  => '_build__file',
-   handles     => [ qw(io) ];
+has '_file'    => is => 'ro', isa     => Object,  init_arg => undef,
+   reader      => 'file',     lazy    => TRUE,     handles => [ qw(io) ],
+   builder     => '_build__file';
 
-has '_ipc'     => is => 'ro', isa     => 'Object',  init_arg => undef,
-   reader      => 'ipc',      lazy    => TRUE,      builder  => '_build__ipc',
-   handles     => [ qw(run_cmd) ];
+has '_ipc'     => is => 'ro', isa     => Object,  init_arg => undef,
+   reader      => 'ipc',      lazy    => TRUE,     handles => [ qw(run_cmd) ],
+   default     => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) };
 
-has '_logname' => is => 'ro', isa     => 'Str',     init_arg => undef,
-   reader      => 'logname',  default => $ENV{USER} || $ENV{LOGNAME};
+has '_logname' => is => 'ro', isa     => Str,     init_arg => undef,
+   reader      => 'logname',  lazy    => TRUE,
+   default     => sub { untaint_identifier( $ENV{USER} || $ENV{LOGNAME} ) };
 
-has '_os'      => is => 'ro', isa     => 'HashRef', init_arg => undef,
-   reader      => 'os',       lazy    => TRUE,      builder  => '_build__os';
+has '_mode'    => is => 'rw', isa     => Int,     init_arg => 'mode',
+   default     => sub { $_[ 0 ]->config->mode },  lazy     => TRUE,
+   accessor    => 'mode';
 
-has '_pwidth'  => is => 'rw', isa     => 'Int',     accessor => 'pwidth',
-   default     => 60;
+has '_os'      => is => 'ro', isa     => HashRef, init_arg => undef,
+   reader      => 'os',       lazy    => TRUE,    builder  => '_build__os';
+
+has '_params'  => is => 'ro', isa     => HashRef, init_arg => 'params',
+   reader      => 'params',   default => sub { {} };
+
+has '_pwidth'  => is => 'rw', isa     => Int,     init_arg => 'pwidth',
+   default     => 60,        accessor => 'pwidth';
 
 around BUILDARGS => sub {
    my ($next, $class, @args) = @_;
@@ -246,8 +254,8 @@ sub get_option {
 sub get_owner {
    my ($self, $pi_cfg) = @_; $pi_cfg ||= {};
 
-   return ($self->params->{uid} || getpwnam( $pi_cfg->{owner} ) || 0,
-           $self->params->{gid} || getgrnam( $pi_cfg->{group} ) || 0);
+   return ($self->options->{uid} || getpwnam( $pi_cfg->{owner} ) || 0,
+           $self->options->{gid} || getgrnam( $pi_cfg->{group} ) || 0);
 }
 
 sub info {
@@ -275,10 +283,9 @@ sub list_methods : method {
 sub loc {
    my ($self, @rest) = @_;
 
-   my $params = { language  => $self->language,
-                  namespace => $self->config->name };
+   my $attr = { language => $self->language, namespace => $self->config->name };
 
-   return $self->next::method( $params, @rest );
+   return $self->next::method( $attr, @rest );
 }
 
 sub output {
@@ -313,7 +320,7 @@ sub run {
    $self->output( $text );
 
    if ($self->can( $method ) and $self->can_call( $method )) {
-      umask $self->config->mode;
+      umask $self->mode;
 
       my $params = exists $self->params->{ $method }
                  ? $self->params->{ $method } : [];
@@ -409,15 +416,6 @@ sub _build__file {
    return Class::Usul::File->new( tempdir => $_[ 0 ]->config->tempdir );
 }
 
-sub _build__ipc {
-   my $self = shift;
-
-   return Class::Usul::IPC->new( config => $self->config,
-                                 debug  => $self->debug,
-                                 file   => $self->file,
-                                 log    => $self->log );
-}
-
 sub _build__os {
    my $self = shift;
    my $file = q(os_).$Config{osname}.$self->config->extension;
@@ -472,7 +470,9 @@ sub _man_page_from {
 }
 
 sub _output_usage {
-   my ($self, $verbose) = @_; my $method = $self->extra_argv->[ 0 ];
+   my ($self, $verbose) = @_;
+
+   my $method = $self->extra_argv ? $self->extra_argv->[ 0 ] : undef;
 
    $method and $self->can_call( $method ) and exit $self->_usage_for( $method );
 
@@ -587,19 +587,18 @@ sub __get_homedir {
 }
 
 sub __list_methods_of {
-   my $arg = shift; my $class = blessed $arg || $arg;
-
    return map  { s{ \A .+ :: }{}msx; $_ }
-          grep { my $x = $_;
-                 grep { $_ eq q(method) } attributes::get( \&{ $x } ) }
-              @{ Class::Inspector->methods( $class, 'full', 'public' ) };
+          grep { my $method = $_; grep { $_ eq q(method) }
+                                  attributes::get( \&{ $method } ) }
+              @{ Class::Inspector->methods
+                    ( blessed $_[ 0 ] || $_[ 0 ], 'full', 'public' ) };
 }
 
 sub __map_prompt_args {
    my $args = shift; my %map = ( qw(-1 onechar -d default -e echo -p prompt) );
 
-   for (keys %{ $args }) {
-      exists $map{ $_ } and $args->{ $map{ $_ } } = delete $args->{ $_ };
+   for (grep { exists $map{ $_ } } keys %{ $args }) {
+       $args->{ $map{ $_ } } = delete $args->{ $_ };
    }
 
    return $args;

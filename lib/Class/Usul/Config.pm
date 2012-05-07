@@ -92,6 +92,9 @@ has 'root'            => is => 'ro', isa => Path,      coerce => TRUE,
 has 'rundir'          => is => 'ro', isa => Path,      coerce => TRUE,
    lazy               => TRUE,   builder => '_build_rundir';
 
+has 'sessdir'         => is => 'ro', isa => Path,      coerce => TRUE,
+   lazy               => TRUE,   builder => '_build_sessdir';
+
 has 'shell'           => is => 'ro', isa => File,      coerce => TRUE,
    lazy               => TRUE,   builder => '_build_shell';
 
@@ -262,6 +265,10 @@ sub _build_script {
 
 sub _build_secret {
    return $_[ 0 ]->prefix;
+}
+
+sub _build_sessdir {
+   return $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir hist) );
 }
 
 sub _build_shell {

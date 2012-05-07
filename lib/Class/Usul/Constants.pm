@@ -27,8 +27,8 @@ BEGIN {
                      DIGEST_ALGORITHMS ENCODINGS EVIL EXCEPTION_CLASS EXTNS
                      FAILED FALSE HASH LANG LBRACE LOCALIZE LOG_LEVELS
                      NO NUL OK PERMS PHASE PREFIX QUIT SEP SPC TRUE
-                     UNTAINT_IDENTIFIER UNTAINT_PATH_REGEX UUID_PATH
-                     WIDTH YES) );
+                     UNTAINT_CMDLINE UNTAINT_IDENTIFIER UNTAINT_PATH
+                     UUID_PATH WIDTH YES) );
 }
 
 use Sub::Exporter -setup => {
@@ -68,8 +68,9 @@ sub DIGEST_ALGORITHMS   () { ( qw(SHA-512 SHA-256 SHA-1 MD5) ) }
 sub ENCODINGS           () { ( qw(ascii iso-8859-1 UTF-8 guess) ) }
 sub EXCEPTION_CLASS     () { __PACKAGE__->Exception_Class }
 sub LOG_LEVELS          () { ( qw(alert debug error fatal info warn) ) }
-sub UNTAINT_IDENTIFIER  () { qr{ \A ([a-zA-Z0-9_]+) \z }mx }
-sub UNTAINT_PATH_REGEX  () { qr{ \A ([^\$%;|&><]+) \z }mx }
+sub UNTAINT_CMDLINE     () { qr{ \A ([^\$%;|&><\*]+) \z }mx }
+sub UNTAINT_IDENTIFIER  () { qr{ \A ([a-zA-Z0-9_]+)  \z }mx }
+sub UNTAINT_PATH        () { qr{ \A ([^\$%;|&><\*]+) \z }mx }
 sub UUID_PATH           () { [ NUL, qw(proc sys kernel random uuid) ] }
 
 __PACKAGE__->meta->make_immutable;

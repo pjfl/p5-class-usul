@@ -15,16 +15,20 @@ use File::Basename               qw(dirname);
 use File::DataClass::Constraints qw(Path);
 use Log::Handler;
 
-has 'debug'          => is => 'ro', isa  => Bool,    default => FALSE;
+has '_debug_flag'     => is => 'ro', isa => Bool, init_arg => 'debug',
+   default            => FALSE;
 
-has 'encoding'       => is => 'ro', isa  => Maybe[EncodingType];
+has '_encoding'       => is => 'ro', isa => Maybe[EncodingType],
+   init_arg           => 'encoding';
 
-has 'log'            => is => 'ro', isa  => LogType, lazy    => TRUE,
-   builder           => '_build_log';
+has '_log'            => is => 'ro', isa => LogType, init_arg => 'log',
+   builder            => '_build__log', lazy => TRUE;
 
-has 'log_attributes' => is => 'ro', isa  => HashRef, default => sub { {} };
+has '_log_attributes' => is => 'ro', isa => HashRef,
+   init_arg           => 'log_attributes', default => sub { {} };
 
-has 'logfile'        => is => 'ro', isa  => Maybe[Path];
+has '_logfile'        => is => 'ro', isa => Path | Undef, coerce => TRUE,
+   init_arg           => 'logfile';
 
 around BUILDARGS => sub {
    my ($next, $class, @rest) = @_; my $attrs = $class->$next( @rest );
@@ -46,8 +50,8 @@ sub BUILD {
    for my $method (LOG_LEVELS) {
       $meta->has_method( $method ) or $meta->add_method( $method => sub {
          my ($self, $text) = @_; $text or return;
-         $self->encoding and $text = encode( $self->encoding, $text );
-         $self->log->$method( $text."\n" );
+         $self->_encoding and $text = encode( $self->_encoding, $text );
+         $self->_log->$method( $text."\n" );
          return;
       } );
    }
@@ -58,17 +62,17 @@ sub BUILD {
 
 # Private methods
 
-sub _build_log {
+sub _build__log {
    my $self    = shift;
-   my $attrs   = { %{ $self->log_attributes } };
-   my $logfile = NUL.($attrs->{filename} || $self->logfile);
-   my $level   = $self->debug ? 7 : $attrs->{maxlevel} || 6;
+   my $attrs   = { %{ $self->_log_attributes } };
+   my $logfile = NUL.($attrs->{filename} || $self->_logfile);
+   my $level   = $self->_debug_flag ? 7 : $attrs->{maxlevel} || 6;
 
    ($logfile and -d dirname( $logfile )) or return Class::Null->new;
 
-   $attrs->{filename} = $logfile; $attrs->{maxlevel} = $level;
-
-   $attrs->{mode} ||= q(append);
+   $attrs->{filename}   = $logfile;
+   $attrs->{maxlevel}   = $level;
+   $attrs->{mode    } ||= q(append);
 
    return Log::Handler->new( file => $attrs );
 }
