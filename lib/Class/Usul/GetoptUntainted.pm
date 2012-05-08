@@ -11,11 +11,11 @@ use Class::Usul::Functions qw(untaint_cmdline);
 with qw(MooseX::Getopt::Dashes);
 
 around _parse_argv => sub {
-   my ($next, $self, %params) = @_;
+   my ($next, $self, @args) = @_;
 
    @ARGV = map { untaint_cmdline $_ } @ARGV;
 
-   return $self->$next( %params );
+   return $self->$next( @args );
 };
 
 no Moose::Role;

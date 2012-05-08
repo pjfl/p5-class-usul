@@ -22,7 +22,7 @@ my $SEED    = do { local $RS = undef; <DATA> };
 my $KEY     = " \t" x 8;
 
 sub decrypt (;$$) {
-   my ($key, $encoded) = @_; $encoded or return; $key = __keygen( $key );
+   my ($args, $encoded) = @_; $encoded or return; my $key = __keygen( $args );
 
    my $cipher = Crypt::CBC->new( -cipher => q(Twofish), -key => $key );
 
@@ -30,7 +30,7 @@ sub decrypt (;$$) {
 }
 
 sub encrypt (;$$) {
-   my ($key, $plain) = @_; $plain or return; $key = __keygen( $key );
+   my ($args, $plain) = @_; $plain or return; my $key = __keygen( $args );
 
    my $cipher = Crypt::CBC->new( -cipher => q(Twofish), -key => $key );
 
