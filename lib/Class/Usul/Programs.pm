@@ -101,9 +101,9 @@ has '_pwidth'  => is => 'rw', isa     => Int,     init_arg => 'pwidth',
    default     => 60,        accessor => 'pwidth';
 
 around BUILDARGS => sub {
-   my ($next, $class, @args) = @_;
+   my ($next, $class, @args) = @_; my $attr = $class->$next( @args );
 
-   my $attr = $class->$next( @args ); my $cfg = $attr->{config} ||= {};
+   my $cfg = $attr->{config} ||= {};
 
    $cfg->{appclass} ||= delete $attr->{appclass} || prefix2class $PROGRAM_NAME;
    $cfg->{home    } ||= __get_homedir ( $cfg->{appclass}, $attr->{home} );
