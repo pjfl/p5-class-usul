@@ -12,37 +12,37 @@ use Class::Usul::Constants;
 use Class::Usul::Constraints     qw(ConfigType EncodingType LogType);
 use Class::Usul::Functions       qw(data_dumper is_arrayref is_hashref
                                     merge_attributes throw);
-use Class::Usul::L10N;
-use Class::Usul::Log;
 use File::DataClass::Constraints qw(Lock);
-use IPC::SRLock;
 use Module::Pluggable::Object;
 use MooseX::ClassAttribute;
 use Try::Tiny;
 
-class_has 'Lock' => is => 'rw',    isa => Lock;
+use Class::Usul::L10N;
+use Class::Usul::Log;
+use IPC::SRLock;
 
-has '_config'    => is => 'ro',    isa => ConfigType, coerce   => TRUE,
-   reader        => 'config', init_arg => 'config',   required => TRUE;
+class_has 'Lock' => is => 'rw',  isa => Lock;
 
-has 'debug'      => is => 'rw',    isa => Bool,       default  => FALSE,
+has '_config'    => is => 'ro',  isa => ConfigType, coerce => TRUE,
+   init_arg      => 'config', reader => 'config', required => TRUE;
+
+has 'debug'      => is => 'rw',  isa => Bool, default => FALSE,
    trigger       => \&_debug_trigger;
 
-has 'encoding'   => is => 'ro',    isa => EncodingType,
+has 'encoding'   => is => 'ro',  isa => EncodingType,
    documentation => 'Decode/encode input/output using this encoding',
-   lazy          => TRUE,      builder => '_build_encoding';
+   default       => sub { $_[ 0 ]->config->encoding }, lazy => TRUE;
 
-has '_l10n'      => is => 'ro',    isa => Object,
-   lazy          => TRUE,      builder => '_build__l10n',
-   reader        => 'l10n',   init_arg => 'l10n';
+has '_l10n'      => is => 'ro',  isa => Object,
+   default       => sub { Class::Usul::L10N->new( builder => $_[ 0 ] ) },
+   init_arg      => 'l10n', lazy => TRUE, reader => 'l10n';
 
-has '_lock'      => is => 'ro',    isa => Lock,
-   lazy          => TRUE,      builder => '_build__lock',
-   reader        => 'lock',   init_arg => 'lock';
+has '_lock'      => is => 'ro',  isa => Lock, builder => '_build__lock',
+   init_arg      => 'lock', lazy => TRUE, reader => 'lock';
 
-has '_log'       => is => 'ro',    isa => LogType,
-   lazy          => TRUE,      builder => '_build__log',
-   reader        => 'log',    init_arg => 'log';
+has '_log'       => is => 'ro',  isa => LogType,
+   default       => sub { Class::Usul::Log->new( builder => $_[ 0 ] ) },
+   init_arg      => 'log',  lazy => TRUE, reader => 'log',
 
 sub dumper {
    my $self = shift; return data_dumper( @_ ); # Damm handy for development
@@ -114,14 +114,6 @@ sub setup_plugins {
 
 # Private methods
 
-sub _build_encoding {
-   my $self = shift; return $self->config->encoding;
-}
-
-sub _build__l10n {
-   my $self = shift; return Class::Usul::L10N->new( builder => $self );
-}
-
 sub _build__lock {
    # There is only one lock object. Instantiate on first use
    my $self = shift; $self->Lock and return $self->Lock;
@@ -132,10 +124,6 @@ sub _build__lock {
    merge_attributes $attrs, $config, {}, [ qw(tempdir) ];
 
    return $self->Lock( IPC::SRLock->new( $attrs ) );
-}
-
-sub _build__log {
-   my $self = shift; return Class::Usul::Log->new( builder => $self );
 }
 
 sub _debug_trigger {
