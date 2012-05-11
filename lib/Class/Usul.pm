@@ -6,16 +6,13 @@ use strict;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use 5.010;
-use Class::MOP;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Constraints     qw(ConfigType EncodingType LogType);
 use Class::Usul::Functions       qw(data_dumper is_arrayref is_hashref
-                                    merge_attributes throw);
+                                    merge_attributes);
 use File::DataClass::Constraints qw(Lock);
-use Module::Pluggable::Object;
 use MooseX::ClassAttribute;
-use Try::Tiny;
 
 use Class::Usul::L10N;
 use Class::Usul::Log;
@@ -42,44 +39,10 @@ has '_lock'      => is => 'ro',  isa => Lock, builder => '_build__lock',
 
 has '_log'       => is => 'ro',  isa => LogType,
    default       => sub { Class::Usul::Log->new( builder => $_[ 0 ] ) },
-   init_arg      => 'log',  lazy => TRUE, reader => 'log',
+   init_arg      => 'log',  lazy => TRUE, reader => 'log';
 
 sub dumper {
    my $self = shift; return data_dumper( @_ ); # Damm handy for development
-}
-
-sub ensure_class_loaded {
-   my ($self, $class, $opts) = @_; $opts ||= {};
-
-   my $package_defined = sub { Class::MOP::is_class_loaded( $class ) };
-
-   not $opts->{ignore_loaded} and $package_defined->() and return TRUE;
-
-   try { Class::MOP::load_class( $class ) } catch { throw $_ };
-
-   $package_defined->()
-      or throw error => 'Class [_1] loaded but package undefined',
-               args  => [ $class ];
-
-   return TRUE;
-}
-
-sub load_component {
-   my ($self, $child, @parents) = @_;
-
-   ## no critic
-   for my $parent (reverse @parents) {
-      $self->ensure_class_loaded( $parent );
-      {  no strict q(refs);
-
-         $child eq $parent or $child->isa( $parent )
-            or unshift @{ "${child}::ISA" }, $parent;
-      }
-   }
-
-   exists $Class::C3::MRO{ $child } or eval "package $child; import Class::C3;";
-   ## critic
-   return;
 }
 
 sub loc {
@@ -92,24 +55,6 @@ sub loc {
    $args->{locale      } = $params->{language};
 
    return $self->l10n->localize( $key, $args );
-}
-
-sub setup_plugins {
-   # Searches for and then load plugins in the search path
-   my ($self, $config) = @_; $config ||= {};
-
-   my $class   = $config->{child_class} || blessed $self || $self;
-   my $exclude = delete $config->{exclude_pattern} || q(\A \z);
-   my @paths   = @{ delete $config->{search_paths} || [] };
-   my $finder  = Module::Pluggable::Object->new
-      ( search_path => [ map { m{ \A :: }mx ? __PACKAGE__.$_ : $_ } @paths ],
-        %{ $config } );
-   my @plugins = grep { not m{ $exclude }mx }
-                 sort { length $a <=> length $b } $finder->plugins;
-
-   $self->load_component( $class, @plugins );
-
-   return \@plugins;
 }
 
 # Private methods
@@ -155,7 +100,7 @@ Describes Class::Usul version 0.1.$Revision$
 
 =head1 Synopsis
 
-   use Moose;
+   use Class::Usul::Moose;
 
    extends qw(Class::Usul);
 
@@ -198,31 +143,11 @@ Defined the application context log. Defaults to a L<Class::Null> object
 
 Use L<Data::Printer> to dump arguments for development purposes
 
-=head2 ensure_class_loaded
-
-   $self->ensure_class_loaded( $some_class );
-
-Require the requested class, throw an error if it doesn't load
-
-=head2 load_component
-
-   $self->load_component( $child, @parents );
-
-Ensures that each component is loaded then fixes @ISA for the child so that
-it inherits from the parents
-
 =head2 loc
 
    $local_text = $self->loc( $args, $key, $params );
 
 Localizes the message. Calls L<Class::Usul::L10N/localize>
-
-=head2 setup_plugins
-
-   @plugins = $self->setup_plugins( $class, $config_ref );
-
-Load the given list of plugins and have the supplied class inherit from them.
-Returns an array ref of available plugins
 
 =head2 _build_lock
 
@@ -257,8 +182,6 @@ debug level
 
 =over 3
 
-=item L<Class::MOP>
-
 =item L<Class::Usul::Constants>
 
 =item L<Class::Usul::Constraints>
@@ -267,21 +190,15 @@ debug level
 
 =item L<Class::Usul::L10N>
 
+=item L<Class::Usul::Log>
+
+=item L<Class::Usul::Moose>
+
 =item L<File::DataClass::Constraints>
 
 =item L<IPC::SRLock>
 
-=item L<Log::Handler>
-
-=item L<Module::Pluggable::Object>
-
-=item L<Moose>
-
 =item L<MooseX::ClassAttribute>
-
-=item L<MooseX::Types::Moose>
-
-=item L<Try::Tiny>
 
 =back
 

@@ -54,6 +54,18 @@ sub BUILD {
          $self->_log->$method( $text."\n" );
          return;
       } );
+
+      my $msg_meth .= q(_message);
+
+      $meta->has_method( $msg_meth ) or $meta->add_method( $msg_meth => sub {
+         my ($self, $opts, $msg, $args) = @_; my $text;
+
+         $msg ||= NUL; $msg = NUL.$msg; chomp $msg;
+         $text  = (ucfirst $opts->{leader} || NUL).q([).($opts->{user} || NUL);
+         $text .= q(]).SPC.(ucfirst $msg || 'no message');
+         $self->$method( $text );
+         return;
+      } );
    }
 
    $meta->make_immutable;

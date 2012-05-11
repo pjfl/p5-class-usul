@@ -7,7 +7,7 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions       qw(abs_path arg_list classfile create_token
+use Class::Usul::Functions       qw(abs_path arg_list create_token
                                     is_arrayref throw untaint_path);
 use English                      qw(-no_match_vars);
 use File::DataClass::Constants     ();
@@ -60,17 +60,6 @@ sub delete_tmp_files {
 
 sub extensions {
    return $_[ 0 ]->dataclass_schema->extensions;
-}
-
-sub find_source {
-   my ($self, $class) = @_; my $file = classfile $class;
-
-   for (@INC) {
-      my $path = abs_path( catfile( $_, $file ) );
-      $path and -f $path and return $path;
-   }
-
-   return;
 }
 
 sub io {
@@ -176,12 +165,6 @@ C<exception_class>, no caching and no locking
 
 Class method that returns the extensions supported by
 L<File::DataClass::Storage>
-
-=head2 find_source
-
-   $path = $self->find_source( $module_name );
-
-Find the source code for the given module
 
 =head2 io
 

@@ -24,7 +24,7 @@ BEGIN {
    @_functions = ( qw(abs_path app_prefix arg_list assert_directory
                       class2appdir classdir classfile create_token
                       data_dumper distname elapsed env_prefix
-                      escape_TT exception fold home2appl is_arrayref
+                      escape_TT exception find_source fold home2appl is_arrayref
                       is_hashref is_member make_log_message
                       merge_attributes my_prefix prefix2class product
                       say split_on__ squeeze strip_leader sub_name sum
@@ -115,6 +115,17 @@ sub escape_TT (;$$) {
 
 sub exception (;@) {
    return EXCEPTION_CLASS->catch( @_ );
+}
+
+sub find_source ($) {
+   my $class = shift; my $file = classfile( $class ); my $path;
+
+   for (@INC) {
+      $path = abs_path( File::Spec->catfile( $_, $file ) )
+         and -f $path and return $path;
+   }
+
+   return;
 }
 
 sub fold (&) {
@@ -390,6 +401,12 @@ sequences too, so unescaping isn't absolutely necessary
 
 Expose the C<catch> method in the exception
 class L<CatalystX::Usul::Exception>. Returns a new error object
+
+=head2 find_source
+
+   $path = find_source $module_name;
+
+Find absolute path to the source code for the given module
 
 =head2 fold
 

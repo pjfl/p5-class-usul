@@ -14,8 +14,8 @@ use Class::Usul::Constants;
 use Class::Usul::Response::Meta;
 use Class::Usul::Functions qw(abs_path app_prefix arg_list assert_directory
                               class2appdir classdir elapsed env_prefix
-                              exception is_member prefix2class say throw
-                              untaint_identifier untaint_path);
+                              exception find_source is_member prefix2class
+                              say throw untaint_identifier untaint_path);
 use Encode                 qw(decode);
 use English                qw(-no_match_vars);
 use File::Spec::Functions  qw(catdir catfile);
@@ -31,6 +31,7 @@ use Try::Tiny;
 
 extends qw(Class::Usul);
 with    qw(Class::Usul::GetoptUntainted);
+with    qw(Class::Usul::ClassLoader);
 
 has 'debug',       => is => 'rw', isa => Bool, default => FALSE,
    documentation   => 'Turn debugging on. Promps if interactive',
@@ -497,10 +498,9 @@ sub _usage_for {
 
       if (defined &{ "${class}::${method}" }) {
          my $selector = Pod::Select->new(); $selector->select( q(/).$method );
-         my $source   = $self->file->find_source( $class );
          my $tempfile = $self->file->tempfile;
 
-         $selector->parse_from_file( $source, $tempfile->pathname );
+         $selector->parse_from_file( find_source $class, $tempfile->pathname );
          return $self->_man_page_from( $tempfile );
       }
 
