@@ -43,16 +43,16 @@ has 'use_country'     => is => 'ro', isa => Bool,
    builder            => '_build_use_country', lazy => TRUE;
 
 around 'BUILDARGS' => sub {
-   my ($next, $class, @rest) = @_; my $attrs = $class->$next( @rest );
+   my ($next, $class, @rest) = @_; my $attr = $class->$next( @rest );
 
-   my $builder = delete $attrs->{builder} or return $attrs;
+   my $builder = delete $attr->{builder}; $builder or return $attr;
    my $config  = $builder->can( q(config) ) ? $builder->config : {};
 
-   merge_attributes $attrs, $builder, {}, [ qw(debug lock log) ];
-   merge_attributes $attrs, $config,  {},
+   merge_attributes $attr, $builder, {}, [ qw(debug lock log) ];
+   merge_attributes $attr, $config,  {},
       [ qw(l10n_attributes localedir tempdir) ];
 
-   return $attrs;
+   return $attr;
 };
 
 sub get_po_header {
