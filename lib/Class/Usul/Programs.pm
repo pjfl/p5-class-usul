@@ -76,30 +76,30 @@ has 'version'      => is => 'ro', isa => Bool, default => FALSE,
    traits          => [ 'Getopt' ], cmd_aliases => q(V), cmd_flag => 'version';
 
 
-has '_file'    => is => 'ro', isa     => Object,  init_arg => undef,
-   reader      => 'file',     lazy    => TRUE,     handles => [ qw(io) ],
-   builder     => '_build__file';
+has '_file'    => is => 'ro', isa => Object, builder => '_build__file',
+   handles     => [ qw(io) ], init_arg => undef, lazy => TRUE, reader => 'file';
 
-has '_ipc'     => is => 'ro', isa     => Object,  init_arg => undef,
-   reader      => 'ipc',      lazy    => TRUE,     handles => [ qw(run_cmd) ],
-   default     => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) };
+has '_ipc'     => is => 'ro', isa => Object,
+   default     => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) },
+   handles     => [ qw(run_cmd) ], init_arg => undef, lazy => TRUE,
+   reader      => 'ipc';
 
-has '_logname' => is => 'ro', isa     => Str,     init_arg => undef,
-   reader      => 'logname',  lazy    => TRUE,
-   default     => sub { untaint_identifier( $ENV{USER} || $ENV{LOGNAME} ) };
+has '_logname' => is => 'ro', isa => Str,
+   default     => sub { untaint_identifier( $ENV{USER} || $ENV{LOGNAME} ) },
+   init_arg    => undef, lazy => TRUE, reader => 'logname';
 
-has '_mode'    => is => 'rw', isa     => Int,     init_arg => 'mode',
-   default     => sub { $_[ 0 ]->config->mode },  lazy     => TRUE,
-   accessor    => 'mode';
+has '_mode'    => is => 'rw', isa => Int, accessor => 'mode',
+   default     => sub { $_[ 0 ]->config->mode }, init_arg => 'mode',
+   lazy        => TRUE;
 
-has '_os'      => is => 'ro', isa     => HashRef, init_arg => undef,
-   reader      => 'os',       lazy    => TRUE,    builder  => '_build__os';
+has '_os'      => is => 'ro', isa => HashRef, builder => '_build__os',
+   init_arg    => undef, lazy => TRUE, reader => 'os';
 
-has '_params'  => is => 'ro', isa     => HashRef, init_arg => 'params',
-   reader      => 'params',   default => sub { {} };
+has '_params'  => is => 'ro', isa => HashRef, default => sub { {} },
+   init_arg    => 'params', reader => 'params';
 
-has '_pwidth'  => is => 'rw', isa     => Int,     init_arg => 'pwidth',
-   default     => 60,        accessor => 'pwidth';
+has '_pwidth'  => is => 'rw', isa => Int, accessor => 'pwidth',
+   default     => 60, init_arg => 'pwidth';
 
 around BUILDARGS => sub {
    my ($next, $class, @args) = @_; my $attr = $class->$next( @args );

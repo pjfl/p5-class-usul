@@ -6,6 +6,7 @@ use strict;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Null;
+use Class::Usul::File;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Constraints  qw(ConfigType LogType);
@@ -33,10 +34,11 @@ has 'config' => is => 'ro', isa => ConfigType, required => TRUE;
 
 has 'debug'  => is => 'rw', isa => Bool,       default  => FALSE;
 
-has 'file'   => is => 'ro', isa => Object,     required => TRUE;
-
 has 'log'    => is => 'ro', isa => LogType,
    default   => sub { Class::Null->new };
+
+has '_file'  => is => 'ro', isa => Object, builder => '_build__file',
+   handles   => [ qw(io) ], init_arg => undef, lazy => TRUE, reader => 'file';
 
 around BUILDARGS => sub {
    my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
@@ -122,7 +124,7 @@ sub process_exists {
 
    my $args = arg_list @rest; my $pid = $args->{pid};
 
-   $file = $args->{file} and $io = $self->file->io( $file ) and $io->is_file
+   $file = $args->{file} and $io = $self->io( $file ) and $io->is_file
       and $pid = $io->chomp->lock->getline;
 
    (not $pid or $pid !~ m{ \d+ }mx) and return FALSE;
@@ -204,7 +206,7 @@ sub signal_process_as_root {
    $args->{pid} and push @{ $pids }, $args->{pid};
 
    if ($file = $args->{file}
-       and $io = $self->file->io( $file ) and $io->is_file) {
+       and $io = $self->io( $file ) and $io->is_file) {
       push @{ $pids }, $io->chomp->lock->getlines;
       $sig eq q(TERM) and unlink $file;
    }
@@ -232,6 +234,10 @@ sub signal_process_as_root {
 }
 
 # Private methods
+
+sub _build__file {
+   return Class::Usul::File->new( tempdir => $_[ 0 ]->config->tempdir );
+}
 
 sub _list_pids_by_file_system {
    my ($self, $fsystem) = @_; $fsystem or return ();
@@ -392,7 +398,7 @@ sub _run_cmd_using_system {
    }
 
    if ($out ne q(stdout) and $out ne q(null) and -f $out) {
-      my $text = $self->file->io( $out )->slurp;
+      my $text = $self->io( $out )->slurp;
 
       $res->out( __run_cmd_filter_out( $res->stdout( $text ) ) );
    }
@@ -401,7 +407,7 @@ sub _run_cmd_using_system {
       $res->stderr( $res->stdout ); $error = $res->out; chomp $error;
    }
    elsif ($err ne q(stderr) and $err ne q(null) and -f $err) {
-      $res->stderr( $error = $self->file->io( $err )->slurp ); chomp $error;
+      $res->stderr( $error = $self->io( $err )->slurp ); chomp $error;
    }
    else { $error = NUL }
 
