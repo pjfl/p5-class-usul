@@ -11,6 +11,7 @@ use Class::Usul::Constants;
 use Class::Usul::Functions;
 use MooseX::Types -declare => [ qw(ConfigType EncodingType LogType) ];
 use MooseX::Types::Moose        qw(HashRef Object Str);
+use Scalar::Util                qw(blessed);
 
 subtype ConfigType, as Object;
 coerce  ConfigType, from HashRef, via { Class::Usul::Config->new( $_ ) };

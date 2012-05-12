@@ -31,15 +31,15 @@ has '_logfile'        => is => 'ro', isa => Path | Undef, coerce => TRUE,
    init_arg           => 'logfile';
 
 around BUILDARGS => sub {
-   my ($next, $class, @rest) = @_; my $attrs = $class->$next( @rest );
+   my ($next, $class, @rest) = @_; my $attr = $class->$next( @rest );
 
-   my $builder = delete $attrs->{builder} or return $attrs;
+   my $builder = delete $attr->{builder}; $builder or return $attr;
    my $config  = $builder->can( q(config) ) ? $builder->config : {};
 
-   merge_attributes $attrs, $builder, {}, [ qw(debug encoding) ];
-   merge_attributes $attrs, $config,  {}, [ qw(log_attributes logfile) ];
+   merge_attributes $attr, $builder, {}, [ qw(debug encoding) ];
+   merge_attributes $attr, $config,  {}, [ qw(log_attributes logfile) ];
 
-   return $attrs;
+   return $attr;
 };
 
 sub BUILD {
