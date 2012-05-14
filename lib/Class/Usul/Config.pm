@@ -15,7 +15,6 @@ use File::Basename               qw(basename dirname);
 use File::DataClass::Constraints qw(Directory File Path);
 use File::Gettext::Constants;
 use File::Spec::Functions        qw(canonpath catdir catfile rel2abs tmpdir);
-use Sys::Hostname                  ();
 use Config;
 
 has 'appclass'        => is => 'ro', isa => Str,
@@ -33,9 +32,6 @@ has 'extension'       => is => 'ro', isa => Str,
 has 'home'            => is => 'ro', isa => Directory, coerce => TRUE,
    documentation      => 'Directory containing the config file',
    required           => TRUE;
-
-has 'hostname'        => is => 'ro', isa => Str,
-   default            => sub { Sys::Hostname::hostname() };
 
 has 'l10n_attributes' => is => 'ro', isa => HashRef,
    default            => sub { {} };

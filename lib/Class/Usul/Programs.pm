@@ -284,7 +284,7 @@ sub list_methods : method {
 sub loc {
    my ($self, @rest) = @_;
 
-   my $attr = { language => $self->language, namespace => $self->config->name };
+   my $attr = { language => $self->language, ns => $self->config->name };
 
    return $self->next::method( $attr, @rest );
 }

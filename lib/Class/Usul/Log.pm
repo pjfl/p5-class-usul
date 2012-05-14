@@ -55,7 +55,7 @@ sub BUILD {
          return;
       } );
 
-      my $msg_meth .= q(_message);
+      my $msg_meth .= "${method}_message";
 
       $meta->has_method( $msg_meth ) or $meta->add_method( $msg_meth => sub {
          my ($self, $opts, $msg, $args) = @_; my $text;

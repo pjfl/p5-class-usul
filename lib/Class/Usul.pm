@@ -21,7 +21,8 @@ use IPC::SRLock;
 class_has 'Lock' => is => 'rw',  isa => Lock;
 
 has '_config'    => is => 'ro',  isa => ConfigType, coerce => TRUE,
-   init_arg      => 'config', reader => 'config', required => TRUE;
+   handles       => [ qw(prefix secret) ], init_arg => 'config',
+   reader        => 'config', required => TRUE;
 
 has 'debug'      => is => 'rw',  isa => Bool, default => FALSE,
    trigger       => \&_debug_trigger;
@@ -35,7 +36,7 @@ has '_l10n'      => is => 'ro',  isa => Object,
    init_arg      => 'l10n', lazy => TRUE, reader => 'l10n';
 
 has '_lock'      => is => 'ro',  isa => Lock, builder => '_build__lock',
-   init_arg      => 'lock', lazy => TRUE, reader => 'lock';
+   init_arg      => undef,  lazy => TRUE, reader => 'lock';
 
 has '_log'       => is => 'ro',  isa => LogType,
    default       => sub { Class::Usul::Log->new( builder => $_[ 0 ] ) },
@@ -51,7 +52,7 @@ sub loc {
    my $args = (is_hashref $car) ? { %{ $car } }
             : { params => (is_arrayref $car) ? $car : [ @rest ] };
 
-   $args->{domain_names} = [ DEFAULT_L10N_DOMAIN, $params->{namespace} ];
+   $args->{domain_names} = [ DEFAULT_L10N_DOMAIN, $params->{ns} ];
    $args->{locale      } = $params->{language};
 
    return $self->l10n->localize( $key, $args );
