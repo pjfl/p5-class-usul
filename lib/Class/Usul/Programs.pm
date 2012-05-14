@@ -30,8 +30,8 @@ use Text::Autoformat;
 use Try::Tiny;
 
 extends qw(Class::Usul);
-with    qw(Class::Usul::TraitFor::UntaintedGetopts);
 with    qw(Class::Usul::TraitFor::LoadingClasses);
+with    qw(Class::Usul::TraitFor::UntaintedGetopts);
 
 has 'debug',       => is => 'rw', isa => Bool, default => FALSE,
    documentation   => 'Turn debugging on. Promps if interactive',
