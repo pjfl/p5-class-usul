@@ -1,6 +1,6 @@
 # @(#)$Id$
 
-package Class::Usul::ClassLoader;
+package Class::Usul::TraitFor::LoadingClasses;
 
 use strict;
 use namespace::autoclean;
@@ -94,7 +94,7 @@ __END__
 
 =head1 Name
 
-Class::Usul::ClassLoader - Load classes at runtime
+Class::Usul::TraitFor::LoadingClasses - Load classes at runtime
 
 =head1 Version
 
@@ -104,7 +104,7 @@ Class::Usul::ClassLoader - Load classes at runtime
 
    use Class::Usul::Moose;
 
-   with qw(Class::Usul::ClassLoader);
+   with qw(Class::Usul::TraitFor::LoadingClasses);
 
 =head1 Description
 

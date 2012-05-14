@@ -1,6 +1,6 @@
 # @(#)$Id$
 
-package Class::Usul::GetoptUntainted;
+package Class::Usul::TraitFor::UntaintedGetopts;
 
 use strict;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
@@ -28,7 +28,7 @@ __END__
 
 =head1 Name
 
-<Module::Name> - <One-line description of module's purpose>
+Class::Usul::TraitFor::UntaintedGetopts - Untaints @ARGV before Getopts processes it
 
 =head1 Version
 
@@ -36,10 +36,9 @@ __END__
 
 =head1 Synopsis
 
-   use <Module::Name>;
-   # Brief but working code examples
-
 =head1 Description
+
+Untaints @ARGV before Getopts processes it
 
 =head1 Subroutines/Methods
 
