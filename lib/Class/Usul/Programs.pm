@@ -67,7 +67,7 @@ has 'options'      => is => 'ro', isa => HashRef, default => sub { {} },
       'Zero, one or more key/value pairs available to the method call',
    traits          => [ 'Getopt' ], cmd_aliases => q(o), cmd_flag => 'option';
 
-has 'quiet'        => is => 'ro', isa => Bool, default => FALSE,
+has 'quiet'        => is => 'rw', isa => Bool, default => FALSE,
    documentation   => 'Quiet the display of information messages',
    traits          => [ 'Getopt' ], cmd_aliases => q(q), cmd_flag => 'quiet';
 
@@ -76,7 +76,8 @@ has 'version'      => is => 'ro', isa => Bool, default => FALSE,
    traits          => [ 'Getopt' ], cmd_aliases => q(V), cmd_flag => 'version';
 
 
-has '_file'    => is => 'ro', isa => Object, builder => '_build__file',
+has '_file'    => is => 'ro', isa => Object,
+   default     => sub { Class::Usul::File->new( builder => $_[ 0 ] ) },
    handles     => [ qw(io) ], init_arg => undef, lazy => TRUE, reader => 'file';
 
 has '_ipc'     => is => 'ro', isa => Object,
@@ -413,10 +414,6 @@ sub _apply_encoding {
    return;
 }
 
-sub _build__file {
-   return Class::Usul::File->new( tempdir => $_[ 0 ]->config->tempdir );
-}
-
 sub _build__os {
    my $self = shift;
    my $file = q(os_).$Config{osname}.$self->config->extension;
@@ -430,11 +427,7 @@ sub _build__os {
 }
 
 sub _debug_trigger {
-   my ($self, $debug) = @_;
-
-   $self->SUPER::debug( $debug ); $self->ipc->debug( $debug );
-
-   return;
+   my ($self, $debug) = @_; $self->SUPER::debug( $debug ); return;
 }
 
 sub _dont_ask {
@@ -731,22 +724,9 @@ This document describes Class::Usul::Programs version 0.1.$Revision$
 This base class provides methods common to command line programs. The
 constructor can initialise a multi-lingual message catalog if required
 
-=head1 Subroutines/Methods
+=head1 Configuration and Environment
 
-=head2 BUILDARGS
-
-=head2 BUILD
-
-=head3 applclass
-
-The name of the application to which the program using this class
-belongs. It is used to find the application installation directory
-which will contain the configuration XML file
-
-=head3 arglist
-
-Additional L<Getopts::Mixed> command line initialisation arguments are
-appended to the default list shown below:
+Supports the list of command line options
 
 =over 3
 
@@ -780,11 +760,19 @@ Do not prompt to turn debugging on
 The method that is dispatched to can access the key/value pairs
 from the C<< $self->vars >> hash ref
 
-=item S
+=item q
 
-Suppresses the usual started/finished information messages
+Quietens the usual started/finished information messages
 
 =back
+
+=head1 Subroutines/Methods
+
+=head3 applclass
+
+The name of the application to which the program using this class
+belongs. It is used to find the application installation directory
+which will contain the configuration file
 
 =head3 debug
 
@@ -813,6 +801,10 @@ The name of the program. Defaults to the value returned by L<caller>
 
 Boolean which if true suppresses the usual started/finished
 information messages. Defaults to false
+
+=head2 BUILDARGS
+
+=head2 BUILD
 
 =head2 add_leader
 
@@ -1029,10 +1021,6 @@ Puts the terminal in raw input mode
 
 Restores line input mode to the terminal
 
-=head1 Configuration and Environment
-
-None
-
 =head1 Diagnostics
 
 Turning debug on produces some more output
@@ -1073,7 +1061,7 @@ Peter Flanigan, C<< <Support at RoxSoft.co.uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2010 Peter Flanigan. All rights reserved
+Copyright (c) 2012 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

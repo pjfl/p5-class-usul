@@ -8,23 +8,18 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use 5.010;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Constraints     qw(ConfigType EncodingType LogType);
-use Class::Usul::Functions       qw(data_dumper is_arrayref is_hashref
-                                    merge_attributes);
-use File::DataClass::Constraints qw(Lock);
-use MooseX::ClassAttribute;
-
+use Class::Usul::Constraints qw(ConfigType EncodingType LogType);
+use Class::Usul::Functions   qw(data_dumper is_arrayref is_hashref
+                                merge_attributes);
 use Class::Usul::L10N;
 use Class::Usul::Log;
 use IPC::SRLock;
-
-class_has 'Lock' => is => 'rw',  isa => Lock;
 
 has '_config'    => is => 'ro',  isa => ConfigType, coerce => TRUE,
    handles       => [ qw(prefix secret) ], init_arg => 'config',
    reader        => 'config', required => TRUE;
 
-has 'debug'      => is => 'rw',  isa => Bool, default => FALSE,
+has 'debug',     => is => 'rw',  isa => Bool, default => FALSE,
    trigger       => \&_debug_trigger;
 
 has 'encoding'   => is => 'ro',  isa => EncodingType,
@@ -34,9 +29,6 @@ has 'encoding'   => is => 'ro',  isa => EncodingType,
 has '_l10n'      => is => 'ro',  isa => Object,
    default       => sub { Class::Usul::L10N->new( builder => $_[ 0 ] ) },
    init_arg      => 'l10n', lazy => TRUE, reader => 'l10n';
-
-has '_lock'      => is => 'ro',  isa => Lock, builder => '_build__lock',
-   init_arg      => undef,  lazy => TRUE, reader => 'lock';
 
 has '_log'       => is => 'ro',  isa => LogType,
    default       => sub { Class::Usul::Log->new( builder => $_[ 0 ] ) },
@@ -58,19 +50,21 @@ sub loc {
    return $self->l10n->localize( $key, $args );
 }
 
-# Private methods
+{  my $cache;
 
-sub _build__lock {
-   # There is only one lock object. Instantiate on first use
-   my $self = shift; $self->Lock and return $self->Lock;
+   sub lock { # There is only one lock object. Instantiate on first use
+      $cache and return $cache; my $self = shift; my $config = $self->config;
 
-   my $config = $self->config; my $attrs = { %{ $config->lock_attributes } };
+      my $attr = { %{ $config->lock_attributes } };
 
-   merge_attributes $attrs, $self,   {}, [ qw(debug log) ];
-   merge_attributes $attrs, $config, {}, [ qw(tempdir) ];
+      merge_attributes $attr, $self,   {}, [ qw(debug log) ];
+      merge_attributes $attr, $config, {}, [ qw(tempdir) ];
 
-   return $self->Lock( IPC::SRLock->new( $attrs ) );
+      return $cache = IPC::SRLock->new( $attr );
+   }
 }
+
+# Private methods
 
 sub _debug_trigger {
    my ($self, $debug) = @_;
@@ -82,7 +76,6 @@ sub _debug_trigger {
 
 __PACKAGE__->meta->make_immutable;
 
-no MooseX::ClassAttribute;
 no Moose;
 
 1;

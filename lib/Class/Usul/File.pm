@@ -7,19 +7,19 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions       qw(abs_path arg_list create_token
-                                    is_arrayref throw untaint_path);
-use English                      qw(-no_match_vars);
-use File::DataClass::Constants     ();
-use File::DataClass::Constraints qw(Directory);
-use File::DataClass::IO            ();
+use Class::Usul::Functions   qw(abs_path arg_list create_token is_arrayref
+                                merge_attributes throw untaint_path);
+use English                  qw(-no_match_vars);
+use File::DataClass::Constants ();
+use File::DataClass::IO        ();
 use File::DataClass::Schema;
-use File::Spec::Functions        qw(catdir catfile tmpdir);
+use File::Spec::Functions    qw(catdir catfile);
 
 File::DataClass::Constants->Exception_Class( EXCEPTION_CLASS );
 
-has 'tempdir' => is => 'ro', isa => Directory,
-   default    => sub { untaint_path( tmpdir() ) };
+has '_usul' => is => 'ro', isa => Object,
+   handles  => [ qw(config debug lock log) ], init_arg => 'builder',
+   reader   => 'usul', required => TRUE, weak_ref => TRUE;
 
 sub absolute {
    my ($self, $base, $path) = @_; $base ||= NUL; $path or return NUL;
@@ -48,7 +48,7 @@ sub data_load {
 sub dataclass_schema {
    my ($self, $attr) = @_; $attr = { %{ $attr || {} } };
 
-   if (blessed $self) { $attr->{ioc_obj} = $self }
+   if (blessed $self) { $attr->{ioc_obj} = $self->usul }
    else { $attr->{cache_class} = q(none); $attr->{lock_class} = q(none) }
 
    return File::DataClass::Schema->new( $attr );
@@ -83,6 +83,10 @@ sub symlink {
       throw error => 'Path [_1] already exists', args => [ $to->pathname ];
    CORE::symlink $from->pathname, $to->pathname or throw $ERRNO;
    return "Symlinked ${from} to ${to}";
+}
+
+sub tempdir {
+   return $_[ 0 ]->config->tempdir;
 }
 
 sub tempfile {

@@ -9,7 +9,6 @@ use Class::Null;
 use Class::Usul::File;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Constraints  qw(ConfigType LogType);
 use Class::Usul::Functions    qw(arg_list is_arrayref merge_attributes
                                  strip_leader throw);
 use Class::Usul::Response::IPC;
@@ -30,25 +29,13 @@ our ($ERROR, $WAITEDPID);
 
 my $SPECIAL_CHARS = do { my $x = join NUL, qw(< > | &); qr{ ([$x]) }mx };
 
-has 'config' => is => 'ro', isa => ConfigType, required => TRUE;
+has '_file' => is => 'ro', isa => Object,
+   default  => sub { Class::Usul::File->new( builder => $_[ 0 ]->usul ) },
+   handles  => [ qw(io) ], init_arg => undef, lazy => TRUE, reader => 'file';
 
-has 'debug'  => is => 'rw', isa => Bool,       default  => FALSE;
-
-has 'log'    => is => 'ro', isa => LogType,
-   default   => sub { Class::Null->new };
-
-has '_file'  => is => 'ro', isa => Object, builder => '_build__file',
-   handles   => [ qw(io) ], init_arg => undef, lazy => TRUE, reader => 'file';
-
-around BUILDARGS => sub {
-   my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
-
-   my $builder = delete $attr->{builder}; $builder or return $attr;
-
-   merge_attributes $attr, $builder, {}, [ qw(config debug file log) ];
-
-   return $attr;
-};
+has '_usul' => is => 'ro', isa => Object,
+   handles  => [ qw(config debug lock log) ], init_arg => 'builder',
+   reader   => 'usul', required => TRUE, weak_ref => TRUE;
 
 sub child_list {
    my ($self, $pid, $procs) = @_; my ($child, $p, $t); my @pids = ();
@@ -235,10 +222,6 @@ sub signal_process_as_root {
 
 # Private methods
 
-sub _build__file {
-   return Class::Usul::File->new( tempdir => $_[ 0 ]->config->tempdir );
-}
-
 sub _list_pids_by_file_system {
    my ($self, $fsystem) = @_; $fsystem or return ();
 
@@ -369,9 +352,9 @@ sub _run_cmd_using_system {
       $msg = "System returned ${rv} waitedpid ${WAITEDPID} error ${ERROR}\n";
 
       $args->{debug} and $self->log->debug( $msg );
-#     On some systems the child handler reaps the child process so the system
-#     call returns -1 and sets $ERRNO to No child processes. This line and
-#     the child handler code fix the problem
+      # On some systems the child handler reaps the child process so the system
+      # call returns -1 and sets $ERRNO to No child processes. This line and
+      # the child handler code fix the problem
       $rv == -1 and $WAITEDPID > 0 and $rv = $ERROR;
 
       if ($rv == -1) {

@@ -24,12 +24,12 @@ BEGIN {
    @_functions = ( qw(abs_path app_prefix arg_list assert_directory
                       class2appdir classdir classfile create_token
                       data_dumper distname elapsed env_prefix
-                      escape_TT exception find_source fold home2appl is_arrayref
-                      is_hashref is_member make_log_message
+                      escape_TT exception find_source fold home2appl
+                      is_arrayref is_coderef is_hashref is_member
                       merge_attributes my_prefix prefix2class product
                       say split_on__ squeeze strip_leader sub_name sum
-                      throw trim unescape_TT untaint_cmdline untaint_identifier
-                      untaint_path untaint_string) );
+                      throw trim unescape_TT untaint_cmdline
+                      untaint_identifier untaint_path untaint_string) );
 }
 
 use Sub::Exporter -setup => {
@@ -152,6 +152,10 @@ sub is_arrayref (;$) {
    return $_[ 0 ] && ref $_[ 0 ] eq q(ARRAY) ? 1 : 0;
 }
 
+sub is_coderef (;$) {
+   return $_[ 0 ] && ref $_[ 0 ] eq q(CODE) ? 1 : 0;
+}
+
 sub is_hashref (;$) {
    return $_[ 0 ] && ref $_[ 0 ] eq q(HASH) ? 1 : 0;
 }
@@ -162,14 +166,6 @@ sub is_member (;@) {
    is_arrayref $rest[ 0 ] and @rest = @{ $rest[ 0 ] };
 
    return (first { $_ eq $candidate } @rest) ? 1 : 0;
-}
-
-sub make_log_message ($;$) {
-   my ($args, $x) = @_; $x ||= 'no message'; chomp $x;
-
-   my $y = (ucfirst $args->{leader} || q()).q([).($args->{user} || q()).q(] );
-
-   return $y.(ucfirst $x);
 }
 
 sub merge_attributes ($$$;$) {
@@ -438,13 +434,6 @@ Tests to see if the scalar variable is a hash ref
 
 Tests to see if the first parameter is present in the list of
 remaining parameters
-
-=head2 make_log_message
-
-   $message = make_log_message $args, $text;
-
-Create a log message from C<< $args->{leader} >>, C<< $args->{user} >> and
-C<$text>
 
 =head2 merge_attributes
 
