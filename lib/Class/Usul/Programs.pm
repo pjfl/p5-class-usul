@@ -261,11 +261,11 @@ sub get_owner {
 }
 
 sub info {
-   my ($self, $err, $args) = @_;
+   my ($self, $msg, $args) = @_;
 
-   $self->log->info( $_ ) for (split m{ [\n] }mx, $err);
+   $self->log->info( $_ ) for (split m{ [\n] }mx, $msg);
 
-   $self->quiet or say $self->add_leader( $err, $args );
+   $self->quiet or say $self->add_leader( $msg, $args );
    return;
 }
 

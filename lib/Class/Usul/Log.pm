@@ -49,7 +49,7 @@ sub BUILD {
 
    for my $method (LOG_LEVELS) {
       $meta->has_method( $method ) or $meta->add_method( $method => sub {
-         my ($self, $text) = @_; $text or return;
+         my ($self, $text) = @_; $text or return; chomp $text;
          $self->_encoding and $text = encode( $self->_encoding, $text );
          $self->_log->$method( $text."\n" );
          return;
