@@ -30,23 +30,28 @@ sub absolute {
 }
 
 sub data_dump {
-   my ($self, @rest) = @_;
+   my ($self, @rest) = @_; my $args = arg_list @rest; my $attr = {};
 
-   return $self->dataclass_schema->dump( arg_list @rest );
+   defined $args->{storage_class}
+      and $attr->{storage_class} = delete $args->{storage_class};
+
+   return $self->dataclass_schema( $attr )->dump( $args );
 }
 
 sub data_load {
-   my ($self, @rest) = @_; my $args = arg_list @rest; $args->{arrays} ||= [];
+   my ($self, @rest) = @_; my $args = arg_list @rest; my $attr = {};
 
-   my $attr = { storage_attributes => { force_array => $args->{arrays}, }, };
+   defined $args->{arrays}
+      and $attr->{storage_attributes}->{force_array} = $args->{arrays};
 
-   $args->{storage_class} and $attr->{storage_class} = $args->{storage_class};
+   defined $args->{storage_class}
+      and $attr->{storage_class} = $args->{storage_class};
 
    return $self->dataclass_schema( $attr )->load( @{ $args->{paths} || [] } );
 }
 
 sub dataclass_schema {
-   my ($self, $attr) = @_; $attr = { %{ $attr || {} } };
+   my ($self, @rest) = @_; my $attr = arg_list @rest;
 
    if (blessed $self) { $attr->{ioc_obj} = $self->usul }
    else { $attr->{cache_class} = q(none); $attr->{lock_class} = q(none) }

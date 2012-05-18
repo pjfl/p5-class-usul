@@ -300,18 +300,6 @@ sub output {
    return;
 }
 
-{  my $cache;
-
-   sub read_post_install_config {
-      my $self  = shift; defined $cache and return $cache;
-      my $cfg   = $self->config;
-      my $path  = catfile( $cfg->ctrldir, $cfg->pi_config_file );
-
-      return $cache = Class::Usul::File->data_load
-         ( paths => [ $path ], storage_class => q(Any), );
-   }
-}
-
 sub run {
    my $self = shift; my ($rv, $text);
 
@@ -962,13 +950,6 @@ The character to echo in place of the one typed
 Prompt string
 
 =back
-
-=head2 read_post_install_config
-
-   $picfg_hash_ref = $self->read_post_install_config;
-
-Returns a hash ref of the post installation config which was written to
-the control directory during the installation process
 
 =head2 run
 
