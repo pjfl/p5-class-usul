@@ -26,7 +26,7 @@ Bob->new( {
       'DateTime::Format::Epoch'       => 0.11,
       'Digest::SHA1'                  => 2.11,
       'Email::Date::Format'           => 1.002,
-      'File::DataClass'               => q(0.9.0),
+      'File::DataClass'               => q(0.10.0),
       'Getopt::Mixed'                 => 1.10,
       'Git::Class'                    => 0.03,
       'IO::Interactive'               => q(0.0.5),
