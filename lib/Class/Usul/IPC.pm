@@ -293,7 +293,7 @@ sub _run_cmd_using_ipc_run {
    try   { $rv = __ipc_run_harness( $cmd_ref, @cmd_args ) }
    catch { throw $_ };
 
-   $args->{debug} and $self->log->debug( "Run harness returned ${rv}\n" );
+   $args->{debug} and $self->log->debug( "Run harness returned ${rv}" );
 
    my $res = Class::Usul::Response::IPC->new();
 
@@ -349,7 +349,7 @@ sub _run_cmd_using_system {
 
       $EVAL_ERROR and throw $EVAL_ERROR;
 
-      $msg = "System returned ${rv} waitedpid ${WAITEDPID} error ${ERROR}\n";
+      $msg = "System returned ${rv} waitedpid ${WAITEDPID} error ${ERROR}";
 
       $args->{debug} and $self->log->debug( $msg );
       # On some systems the child handler reaps the child process so the system
@@ -471,7 +471,7 @@ sub __handler {
 }
 
 sub __ipc_run_harness {
-   my $h = IPC::Run::harness( @_ ); $h->run; return $h->full_result;
+   my $h = IPC::Run::harness( @_ ); $h->run; return $h->full_result || 0;
 }
 
 sub __new_process_table {
