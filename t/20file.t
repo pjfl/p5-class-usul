@@ -18,73 +18,79 @@ BEGIN {
 
    $current and $current->notes->{stop_tests}
             and plan skip_all => $current->notes->{stop_tests};
-
-   plan tests => 19;
 }
 
-use_ok 'CatalystX::Usul';
+{  package Logger;
 
-my $cu = CatalystX::Usul->new( Class::Null->new, { tempdir => q(t) } );
+   sub new   { return bless {}, __PACKAGE__ }
+   sub alert { warn '[ALERT] '.$_[ 1 ] }
+   sub debug { warn '[DEBUG] '.$_[ 1 ] }
+   sub error { warn '[ERROR] '.$_[ 1 ] }
+   sub fatal { warn '[ALERT] '.$_[ 1 ] }
+   sub info  { warn '[ALERT] '.$_[ 1 ] }
+   sub warn  { warn '[WARNING] '.$_[ 1 ] }
+}
 
-isa_ok $cu, 'CatalystX::Usul'; is $cu->tempdir, q(t), 'tempdir';
+use Class::Usul;
+use Class::Usul::File;
+
+my $cu = Class::Usul->new( config       => {
+                              appclass  => q(Class::Usul),
+                              home      => catdir( qw(lib Class Usul) ),
+                              localedir => catdir( qw(t locale) ),
+                              tempdir   => q(t), },
+                           debug        => 0,
+                           log          => Logger->new, );
+
+my $cuf = Class::Usul::File->new( builder => $cu );
+
+isa_ok $cuf, 'Class::Usul::File'; is $cuf->tempdir, q(t), 'tempdir';
 
 my $tf = [ qw(t test.xml) ];
 
-ok( (grep { m{ name }msx } $cu->io( $tf )->getlines)[ 0 ] =~ m{ library }msx,
+ok( (grep { m{ name }msx } $cuf->io( $tf )->getlines)[ 0 ] =~ m{ library }msx,
     'io' );
 
-ok -d $cu->abs_path( $Bin, catdir( updir, q(lib) ) ), 'abs_path';
-
-is $cu->basename( $cu->tempdir ), q(t), 'basename';
-
-ok -d $cu->catdir( qw(t locale) ), 'catdir';
-
-ok -f $cu->catfile( @{ $tf } ), 'catfile';
-
-ok $cu->classfile( 'CatalystX::Usul' ) =~ m{ Usul\.pm }msx, 'classfile';
-
-is $cu->dirname( $tf ), q(t), 'dirname';
-
-my $fdcs = $cu->file_dataclass_schema->load( $tf );
+my $fdcs = $cuf->dataclass_schema->load( $tf );
 
 is $fdcs->{credentials}->{library}->{driver}, q(mysql), 'file_dataclass_schema';
 
 unlink catfile( qw(t ipc_srlock.lck) );
 unlink catfile( qw(t ipc_srlock.shm) );
 
-ok $cu->find_source( 'CatalystX::Usul' ) =~ m{ Usul\.pm \z }msx, 'find_source';
-
-is $cu->status_for( $tf )->{size}, 237, 'status_for';
+is $cuf->status_for( $tf )->{size}, 237, 'status_for';
 
 my $symlink = catfile( qw(t symlink) );
 
-$cu->symlink( q(t), q(test.xml), [ qw(t symlink) ] );
+$cuf->symlink( q(t), q(test.xml), [ qw(t symlink) ] );
 
 ok -e $symlink, 'symlink'; -e _ and unlink $symlink;
 
-my $tempfile = $cu->tempfile;
+my $tempfile = $cuf->tempfile;
 
 ok( $tempfile, q(call/tempfile) );
 
 is ref $tempfile->io_handle, q(File::Temp), 'tempfile';
 
-$cu->io( $tempfile->pathname )->touch;
+$cuf->io( $tempfile->pathname )->touch;
 
 ok( -f $tempfile->pathname, q(touch/tempfile) );
 
-$cu->delete_tmp_files;
+$cuf->delete_tmp_files;
 
 ok( ! -f $tempfile->pathname, q(delete_tmp_files) );
 
-ok $cu->tempname =~ m{ $PID .{4} }msx, 'tempname';
+ok $cuf->tempname =~ m{ $PID .{4} }msx, 'tempname';
 
-my $io = $ref->io( q(t) ); my $entry;
+my $io = $cuf->io( q(t) ); my $entry;
 
 while (defined ($entry = $io->next)) {
    $entry->filename eq q(10functions.t) and last;
 }
 
 ok defined $entry && $entry->filename eq q(10functions.t), 'IO::next';
+
+done_testing;
 
 # Local Variables:
 # mode: perl

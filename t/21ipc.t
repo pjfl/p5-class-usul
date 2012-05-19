@@ -19,30 +19,27 @@ BEGIN {
             and plan skip_all => $current->notes->{stop_tests};
 }
 
+{  package Logger;
+
+   sub new   { return bless {}, __PACKAGE__ }
+   sub alert { warn '[ALERT] '.$_[ 1 ] }
+   sub debug { warn '[DEBUG] '.$_[ 1 ] }
+   sub error { warn '[ERROR] '.$_[ 1 ] }
+   sub fatal { warn '[ALERT] '.$_[ 1 ] }
+   sub info  { warn '[ALERT] '.$_[ 1 ] }
+   sub warn  { warn '[WARNING] '.$_[ 1 ] }
+}
+
 use Class::Usul::Programs;
 use Class::Usul::Constants qw(EXCEPTION_CLASS);
 
-{  package Logger;
-
-   sub new {
-      return bless {}, q(Logger);
-   }
-
-   sub AUTOLOAD {
-      my $self = shift; warn ''.(join ' ', @_);
-   }
-
-   sub DESTROY {}
-}
-
 my $perl = $EXECUTABLE_NAME;
-my $prog = CatalystX::Usul::Programs->new( {
-   config  => { appldir   => File::Spec->curdir,
-                localedir => catdir( qw(t locale) ),
-                tempdir   => q(t), },
-   homedir => q(t),
-   log     => Logger->new,
-   n       => 1, } );
+my $prog = Class::Usul::Programs->new( appclass => q(Class::Usul),
+                                       config   => { logsdir => q(t),
+                                                     tempdir => q(t), },
+                                       method   => q(dump_self),
+                                       nodebug  => 1,
+                                       quiet    => 1, );
 my $cmd  = "${perl} -e 'print \"Hello World\"'";
 
 is $prog->run_cmd( $cmd )->out, q(Hello World), 'run_cmd system';
@@ -72,10 +69,6 @@ ok $prog->run_cmd( [ $perl, '-e', 'exit 1' ], { expected_rv => 1 } ),
 #eval { $prog->run_cmd( "unknown_command_xa23sd3", { debug => 1 } ) };
 
 #ok $EVAL_ERROR =~ m{ unknown_command }mx, 'unknown command';
-
-my $path = catfile( $prog->tempdir, basename( $PROGRAM_NAME, q(.t) ).q(.log) );
-
--f $path and unlink $path;
 
 done_testing;
 

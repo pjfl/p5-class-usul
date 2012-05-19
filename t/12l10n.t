@@ -17,11 +17,7 @@ BEGIN {
 
    $current and $current->notes->{stop_tests}
             and plan skip_all => $current->notes->{stop_tests};
-
-   plan tests => 8;
 }
-
-use_ok q(Class::Usul::L10N);
 
 {  package Logger;
 
@@ -33,6 +29,8 @@ use_ok q(Class::Usul::L10N);
    sub info  { warn '[ALERT] '.$_[ 1 ] }
    sub warn  { warn '[WARNING] '.$_[ 1 ] }
 }
+
+use Class::Usul::L10N;
 
 my $l10n = Class::Usul::L10N->new( debug        => 0,
                                    domain_names => [ q(default) ],
@@ -67,6 +65,8 @@ ok $header->{project_id_version} eq q(libintl-perl-text 1.12),
    'get_po_header';
 
 unlink catfile( qw(t file-dataclass-schema.dat) );
+
+done_testing;
 
 # Local Variables:
 # coding: utf-8
