@@ -11,6 +11,8 @@ Bob->new( {
    home_page  => q(http://www.roxsoft.co.uk),
    requires   => {
       'perl'                          => 5.010,
+      'bareword::filehandles'         => 0.003,
+      'multidimensional'              => 0.010,
       'namespace::autoclean'          => 0.09,
       'namespace::clean'              => 0.11,
       'parent'                        => 0.221,
