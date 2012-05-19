@@ -58,10 +58,16 @@ Bob->new( {
       'Time::Zone'                    => 2.22,
       'Try::Tiny'                     => 0.09,
       'YAML::Syck'                    => 1.05, },
-   recommends         => { 'App::cpanminus'    => 1.4004, },
-   configure_requires => { 'version'           => 0.77,
-                           'Module::Build'     => 0.38, },
-   build_requires     => { 'Test::More'        => 0.74, },
+   recommends            => {
+      'App::cpanminus'   => 1.4004, },
+   configure_requires    => {
+      'version'          => 0.77,
+      'Module::Build'    => 0.38, },
+   build_requires        => {
+      'Class::Null'      => 1.09,
+      'Exception::Class' => 1.23,
+      'Math::BigInt'     => 1.89,
+      'Test::More'       => 0.74, },
 } )->create_build_script; # Goal!
 
 # Local Variables:

@@ -215,7 +215,9 @@ sub strip_leader (;$) {
 }
 
 sub sub_name (;$) {
-   my $x = $_[ 0 ] || 0; return (split m{ :: }mx, (caller ++$x)[ 3 ])[ -1 ];
+   my $x = $_[ 0 ] || 0;
+
+   return (split m{ :: }mx, ((caller ++$x)[ 3 ]) || q(main))[ -1 ];
 }
 
 sub sum (;@) {
