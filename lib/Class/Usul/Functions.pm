@@ -424,6 +424,12 @@ Strips the trailing C<lib/my_package> from the supplied directory path
 
 Tests to see if the scalar variable is an array ref
 
+=head2 is_coderef
+
+   $bool = is_coderef $scalar_variable
+
+Tests to see if the scalar variable is a code ref
+
 =head2 is_hashref
 
    $bool = is_hashref $scalar_variable
@@ -524,6 +530,13 @@ Remove leading and trailing whitespace
    $text = unescape_TT q(<% some_stash_key %>);
 
 Do the reverse of C<escape_TT>
+
+=head2 untaint_cmdline
+
+   $untainted_cmdline = untaint_cmdline $maybe_tainted_cmdline;
+
+Returns an untainted command line string. Calls L</untaint_string> with the
+matching regex from L<CatalystX::Usul::Constants>
 
 =head2 untaint_identifier
 

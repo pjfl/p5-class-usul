@@ -232,11 +232,15 @@ Space character
 
 Digit I<1>
 
+=head2 UNTAINT_CMDLINE
+
+Regular expression used to untaint command line strings
+
 =head2 UNTAINT_IDENTIFIER
 
 Regular expression used to untaint identifier strings
 
-=head2 UNTAINT_PATH_REGEX
+=head2 UNTAINT_PATH
 
 Regular expression used to untaint path strings
 

@@ -1212,6 +1212,36 @@ actions required to install the application. Configuration options are
 read from the file F<build.xml>. The L</actions> method returns the
 list of steps required to install the application
 
+=head2 ACTION_install_local_cpanm
+
+=head2 install_local_cpanm
+
+Install L<App::Cpanminus> to the local lib
+
+=head2 ACTION_install_local_deps
+
+=head2 install_local_deps
+
+Installs dependencies to the local lib
+
+=head2 ACTION_install_local_lib
+
+=head2 install_local_lib
+
+Install L<local::lib> locally
+
+=head2 ACTION_install_local_perl
+
+=head2 install_local_perl
+
+Install a specific Perl version to the local Perlbrew area
+
+=head2 ACTION_install_local_perlbrew
+
+=head2 install_local_perlbrew
+
+Installs L<Perlbrew> locally
+
 =head2 ACTION_installdeps
 
 =head2 installdeps
@@ -1219,15 +1249,42 @@ list of steps required to install the application
 Iterates over the I<requires> attributes calling L<CPAN> each time to
 install the dependent module
 
-=head2 ACTION_prereq_update
+=head2 ACTION_local_archive
 
-=head2 prereq_update
+=head2 local_archive
+
+Creates a tarball of the local lib directory
+
+=head2 ACTION_prereq_diff
+
+=head2 prereq_diff
+
+Creates a report showing the difference between what C<Build.PL> has in it
+and what it should have in it
 
 =head2 ACTION_release
 
 =head2 release
 
 Commits the current working copy as the next release
+
+=head2 ACTION_restore_local_archive
+
+=head2 restore_local_archive
+
+Unpacks an archive tarball of the local lib directory
+
+=head2 ACTION_standalone
+
+=head2 standalone
+
+Locally installs local lib and all dependencies
+
+=head2 ACTION_uninstall
+
+=head2 uninstall
+
+Uninstalls the application
 
 =head2 ACTION_upload
 
@@ -1279,10 +1336,15 @@ Called by L</ACTION_upload>. Uses L<CPAN::Uploader> (which it loads on
 demand) to do the lifting. Reads from the users F<.pause> in their
 C<$ENV{HOME}> directory
 
+=head2 dispatch
 
 =head2 distname
 
 =head2 install_actions_class
+
+=head2 make_tarball
+
+=head2 patch_file
 
 =head2 post_install
 
@@ -1300,6 +1362,8 @@ select only those files that should be processed.  Copies files from
 source to destination, creating the destination directories as
 required. Source can be a single file or a directory. The destination
 is optional and defaults to B<blib>
+
+=head2 process_local_files
 
 =head2 public_repository
 

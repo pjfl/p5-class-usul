@@ -86,7 +86,7 @@ __END__
 
 =head1 Name
 
-Class::Usul - A base class for program components
+Class::Usul - A base class other packages
 
 =head1 Version
 
@@ -100,7 +100,7 @@ Describes Class::Usul version 0.1.$Revision$
 
 =head1 Description
 
-These modules provide a set of base classes for a Perl applications
+These modules provide a set of base classes for Perl applications
 
 =head1 Configuration and Environment
 
@@ -125,8 +125,6 @@ Decode input and encode output. Defaults to I<UTF-8>
 
 =back
 
-Defines the lock object. This is readonly and instantiates on first use
-
 Defined the application context log. Defaults to a L<Class::Null> object
 
 =head1 Subroutines/Methods
@@ -139,16 +137,18 @@ Use L<Data::Printer> to dump arguments for development purposes
 
 =head2 loc
 
-   $local_text = $self->loc( $args, $key, $params );
+   $local_text = $self->loc( $params, $key, $args );
 
 Localizes the message. Calls L<Class::Usul::L10N/localize>
 
-=head2 _build_lock
+=head2 lock
+
+Defines the lock object. This instantiates on first use
 
 An L<IPC::SRLock> object which is used to single thread the
 application where required. This is a singleton object.  Provides
 defaults for and returns a new L<IPC::SRLock> object. The keys of the
-C<< $self->lock_attributes >> hash are:
+C<< $self->config->lock_attributes >> hash are:
 
 =over 3
 
@@ -163,7 +163,7 @@ Logging object. Defaults to C<< $self->log >>
 =item tempdir
 
 Directory used to store the lock file and lock table if the C<fcntl> backend
-is used. Defaults to C<< $self->tempdir >>
+is used. Defaults to C<< $self->config->tempdir >>
 
 =back
 
@@ -188,11 +188,7 @@ debug level
 
 =item L<Class::Usul::Moose>
 
-=item L<File::DataClass::Constraints>
-
 =item L<IPC::SRLock>
-
-=item L<MooseX::ClassAttribute>
 
 =back
 
