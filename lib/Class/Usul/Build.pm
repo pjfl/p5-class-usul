@@ -67,20 +67,23 @@ my %CONFIG =
 # Around these M::B actions
 
 sub ACTION_distmeta {
-   my $self = shift;
+   my $self = shift; my $cfg;
 
    try {
-      my $cfg = $self->_get_config;
+      $cfg = $self->_get_config;
       # Optionally create a README.pod file
       $self->notes->{create_readme_pod} and podselect( {
          -output => q(README.pod) }, $self->dist_version_from );
 
       $self->_update_changelog( $cfg, $self->_dist_version );
-      $self->_write_license_file( $cfg );
    }
    catch { $self->cli->fatal( $_ ) };
 
    $self->next::method();
+
+   try   { $self->_write_license_file( $cfg ) }
+   catch { $self->cli->fatal( $_ ) };
+
    return;
 }
 
@@ -533,7 +536,7 @@ sub _extract_tarball {
 sub _filter_dependents {
    my ($self, $cfg, $used) = @_;
 
-   my $perl_version = $used->{perl} || $cfg->{min_perl_ver};
+   my $perl_version = $used->{perl} || $self->requires->{perl};
    my $core_modules = $Module::CoreList::version{ $perl_version };
    my $provides     = $self->cli->get_meta->provides;
 
