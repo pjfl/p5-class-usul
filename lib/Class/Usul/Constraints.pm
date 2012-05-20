@@ -6,19 +6,18 @@ use strict;
 use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use Class::Usul::Config;
 use Class::Usul::Constants;
 use Class::Usul::Functions;
 use MooseX::Types -declare => [ qw(ConfigType EncodingType LogType) ];
-use MooseX::Types::Moose        qw(HashRef Object Str);
+use MooseX::Types::Moose        qw(HashRef Object Str Undef);
 use Scalar::Util                qw(blessed);
 
 subtype ConfigType, as Object;
-coerce  ConfigType, from HashRef, via { Class::Usul::Config->new( $_ ) };
 
 subtype EncodingType, as Str,
    where   { is_member $_, ENCODINGS },
    message { "String ${_} is not a valid encoding" };
+coerce  EncodingType, from Undef, via { DEFAULT_ENCODING };
 
 subtype LogType, as Object,
    where   { $_->isa( q(Class::Null) ) or __has_log_level_methods( $_ ) },

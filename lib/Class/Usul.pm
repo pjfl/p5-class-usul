@@ -7,6 +7,7 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use 5.010;
 use Class::Usul::Moose;
+use Class::Usul::Config;
 use Class::Usul::Constants;
 use Class::Usul::Constraints qw(ConfigType EncodingType LogType);
 use Class::Usul::Functions   qw(data_dumper is_arrayref is_hashref
@@ -15,6 +16,8 @@ use Class::Usul::L10N;
 use Class::Usul::Log;
 use IPC::SRLock;
 
+coerce ConfigType, from HashRef, via { Class::Usul::Config->new( $_ ) };
+
 has '_config'    => is => 'ro',  isa => ConfigType, coerce => TRUE,
    handles       => [ qw(prefix secret) ], init_arg => 'config',
    reader        => 'config', required => TRUE;
@@ -22,7 +25,7 @@ has '_config'    => is => 'ro',  isa => ConfigType, coerce => TRUE,
 has 'debug',     => is => 'rw',  isa => Bool, default => FALSE,
    trigger       => \&_debug_trigger;
 
-has 'encoding'   => is => 'ro',  isa => EncodingType,
+has 'encoding'   => is => 'ro',  isa => EncodingType, coerce => TRUE,
    documentation => 'Decode/encode input/output using this encoding',
    default       => sub { $_[ 0 ]->config->encoding }, lazy => TRUE;
 

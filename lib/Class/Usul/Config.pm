@@ -8,6 +8,7 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use Class::Usul::File;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
+use Class::Usul::Constraints     qw(EncodingType);
 use Class::Usul::Functions       qw(app_prefix class2appdir
                                     home2appl split_on__ untaint_path);
 use English                      qw(-no_match_vars);
@@ -23,7 +24,7 @@ has 'appclass'        => is => 'ro', isa => Str,
 has 'doc_title'       => is => 'ro', isa => Str,
    default            => 'User Contributed Documentation';
 
-has 'encoding'        => is => 'ro', isa => Str,
+has 'encoding'        => is => 'ro', isa => EncodingType, coerce => TRUE,
    default            => DEFAULT_ENCODING;
 
 has 'extension'       => is => 'ro', isa => Str,
