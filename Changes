@@ -1,6 +1,6 @@
 Revision history for Class::Usul
 
-{{ $NEXT }}
+0.1.159  2012-05-20
          - Updated inc::Bob to 1.3
          - Updated Moose / Class::MOP / MRO::Compat dependencies
 
