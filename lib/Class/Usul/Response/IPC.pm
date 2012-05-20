@@ -36,9 +36,9 @@ Class::Usul::Response::IPC - Response class for running external programs
 
 =head1 Synopsis
 
-   use Class::Usul::IPC::Response;
+   use Class::Usul::Response::IPC;
 
-   my $result = Class::Usul::IPC::Response->new();
+   my $result = Class::Usul::Response::IPC->new();
 
 =head1 Description
 
@@ -75,9 +75,7 @@ The standard output from the command
 
 =head1 Subroutines/Methods
 
-=head2 new
-
-Basic constructor
+None
 
 =head1 Diagnostics
 
@@ -87,7 +85,7 @@ None
 
 =over 3
 
-=item L<Class::Usul::Base>
+=item L<Moose>
 
 =back
 
@@ -107,7 +105,7 @@ Peter Flanigan, C<< <Support at RoxSoft.co.uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2010 Peter Flanigan. All rights reserved
+Copyright (c) 2012 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

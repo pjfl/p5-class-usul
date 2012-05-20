@@ -141,7 +141,11 @@ Returns an array ref of available plugins
 
 =head1 Configuration and Environment
 
+None
+
 =head1 Diagnostics
+
+None
 
 =head1 Dependencies
 

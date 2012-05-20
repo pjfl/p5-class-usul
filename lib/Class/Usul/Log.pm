@@ -135,7 +135,32 @@ L<log levels|Class::Usul::Constants/LOG_LEVELS> constant
 
 =head1 Configuration and Environment
 
+Defines the following attributes
 
+=over 3
+
+=item debug
+
+Debug flag defaults to FALSE
+
+=item encoding
+
+Optional output encoding. If present output to the logfile is encoded
+
+=item log
+
+Optional log object. Will instantiate an instance of L<Log::Handler> if this
+is not provided
+
+=item log_attributes
+
+Attributes used to create the log object
+
+=item logfile
+
+Path to the logfile
+
+=back
 
 =head1 Subroutines/Methods
 

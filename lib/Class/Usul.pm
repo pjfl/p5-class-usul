@@ -100,7 +100,7 @@ Describes Class::Usul version 0.1.$Revision$
 
 =head1 Description
 
-These modules provide a set of base classes for Perl applications
+These modules provide a set of base classes for Perl packages and applications
 
 =head1 Configuration and Environment
 

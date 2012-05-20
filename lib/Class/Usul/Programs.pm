@@ -698,7 +698,7 @@ This document describes Class::Usul::Programs version 0.1.$Revision$
 =head1 Synopsis
 
    # In YourClass.pm
-   use Moose;
+   use Class::Usul::Moose;
 
    extends qw(Class::Usul::Programs);
 
@@ -714,7 +714,7 @@ constructor can initialise a multi-lingual message catalog if required
 
 =head1 Configuration and Environment
 
-Supports the list of command line options
+Supports this list of command line options
 
 =over 3
 
@@ -756,43 +756,15 @@ Quietens the usual started/finished information messages
 
 =head1 Subroutines/Methods
 
-=head3 applclass
-
-The name of the application to which the program using this class
-belongs. It is used to find the application installation directory
-which will contain the configuration file
-
-=head3 debug
-
-Boolean which if true causes program debug output to be
-generated. Defaults to false
-
-=head3 install
-
-The path to a file which contains the application installation
-directory.
-
-=head3 n
-
-Boolean which if true will stop the constructor from prompting the
-user to turn debugging on. Defaults to false
-
-=head3 prefix
-
-Defaults to /opt/<application name>
-
-=head3 script
-
-The name of the program. Defaults to the value returned by L<caller>
-
-=head3 quiet
-
-Boolean which if true suppresses the usual started/finished
-information messages. Defaults to false
-
 =head2 BUILDARGS
 
+Called just before the object is constructed this method modifier determines
+the location of the config file
+
 =head2 BUILD
+
+Called just after the object is constructed this methos handles dispatching
+to the help methods and prompting for the debug state
 
 =head2 add_leader
 
@@ -818,6 +790,8 @@ Returns true if C<$self> has a method given by C<$method> that has defined
 the I<method> method attribute
 
 =head2 debug_flag
+
+   $cmd_line_option = $self->debug_flag
 
 Returns the command line debug flag to match the current debug state
 
@@ -886,7 +860,16 @@ defined
 
 =head2 get_option
 
+   $option = $self->get_option( $question, $default, $quit, $width, $options );
+
+Returns the selected option number from the list of possible options passed
+in the C<$question> argument
+
 =head2 get_owner
+
+   ($uid, $gid) = $self->get_owner( $post_install_config );
+
+Returns the application owner and group ids
 
 =head2 info
 
@@ -897,6 +880,11 @@ the passed args. Logs the result at the info level, then adds the
 program leader and prints the result to I<STDOUT>
 
 =head2 interpolate_cmd
+
+   $cmd = $self->interpolate_cmd( $cmd, @args );
+
+Calls C<_interpolate_${cmd}_cmd> to apply the arguments to the command in a
+command specific way
 
 =head2 list_methods
 
@@ -911,7 +899,6 @@ be called via the L<run method|/run>
 
 Localizes the message. Calls L<Class::Usul::L10N/localize>
 
-
 =head2 output
 
    $self->output( $text, $args );
@@ -920,9 +907,11 @@ Calls L<Class::Usul::localize|Class::Usul/localize> with
 the passed args. Adds the program leader and prints the result to
 I<STDOUT>
 
-=head2 output_version
+=head2 _output_version
 
-Prints out the version of the C::U::Programs subclass
+   $self->_output_version
+
+Prints out the version of the C::U::Programs subclass and the exits
 
 =head2 __prompt
 

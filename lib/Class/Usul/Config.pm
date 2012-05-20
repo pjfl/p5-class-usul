@@ -366,23 +366,155 @@ Describes Class::Usul::Config version 0.1.$Revision$
 
 =head1 Description
 
+Defines the following list of attributes
+
 =over 3
 
-=item secret
+=item appclass
 
-This applications secret key as set by the administrators in the
-configuration. It is used to perturb the encryption methods. Defaults to
-the I<prefix> attribute value
+Required string. The classname of the application for which this is the
+configuration class
+
+=item doc_title
+
+String defaults to 'User Contributed Documentation'. Used in the Unix man
+pages
+
+=item encoding
+
+String default to the constant I<DEFAULT_ENCODING>
+
+=item extension
+
+String defaults to the constant I<CONFIG_EXTN>
+
+=item home
+
+Directory containing the config file. Required
+
+=item l10n_attributes
+
+Hash ref of attributes used to construct a L<Class::Usul::L10N> object
+
+=item lock_attributes
+
+Hash ref of attributes used to construct an L<IPC::SRLock> object
+
+=item log_attributes
+
+Hash ref of attributes used to construct a L<Class::Usul::Log> object
+
+=item man_page_cmd
+
+Array ref containing the command and options to produce a man page. Defaults
+to I<man -nroff>
+
+=item mode
+
+Integer defaults to the constant I<PERMS>. The default file creation mask
+
+=item no_thrash
+
+Interger default to 3. Number of seconds to sleep in a polling loop to
+avoid processor thrash
+
+=item pathname
+
+File defaults to the absolute path to the I<PROGRAM_NAME> system constant
+
+=item appldir
+
+Directory. Defaults to the application's install directory
+
+=item binsdir
+
+Directory. Defaults to the application's I<bin> directory
+
+=item ctlfile
+
+File in the I<ctrldir> directory that contains this programs control data
+
+=item ctrldir
+
+Directory containing the per program configuration files
+
+=item dbasedir
+
+Directory containing the data file used to create the applications database
+
+=item localedir
+
+Directory containing the GNU Gettext portable object files used to translate
+messages into different languages
+
+=item logfile
+
+File in the I<logsdir> to which this program will log
+
+=item logsdir
+
+Directory containg the application log files
+
+=item pi_config_file
+
+File. Post installation configuration file
+
+=item root
+
+Directory. Path to the web applications document root
+
+=item rundir
+
+Directory. Contains a running programs PID file
+
+=item sessdir
+
+Directory. The session directory
+
+=item shell
+
+File. The default shell used to create new OS users
 
 =item suid
 
-Name of the setuid root program in the I<bin> directory. Defaults to
+File. Name of the setuid root program in the I<bin> directory. Defaults to
 the I<prefix>_admin
 
 =item tempdir
 
-Supplied by the config hash, it is the location of any temporary files
-created by the application. Defaults to the L<File::Spec> tempdir
+Directory. It is the location of any temporary files created by the
+application. Defaults to the L<File::Spec> tempdir
+
+=item vardir
+
+Directory. Contains all of the non program code directories
+
+=item name
+
+String. Name of the program
+
+=item owner
+
+String. Name of the application file owner
+
+=item phase
+
+Integer. Phase number indicates the type of install, e.g. 1 live, 2 test,
+3 development
+
+=item prefix
+
+String. Program prefix
+
+=item script
+
+String. The basename of the I<pathname> attribute
+
+=item secret
+
+String. This applications secret key as set by the administrators . It
+is used to perturb the encryption methods. Defaults to the I<prefix>
+attribute value
 
 =back
 
@@ -390,9 +522,17 @@ created by the application. Defaults to the L<File::Spec> tempdir
 
 =head2 BUILDARGS
 
-=head2 BUILD
+Loads the configuration files if specified. Calls L</inflate_symbol>
+and L</inflate_path>
 
-=head2 inflate
+=head2 _inflate_path
+
+Infates the I<__symbol( relative_path )__> values to their actual runtime
+values
+
+=head2 _inflate_symbol
+
+Inflates the I<__SYMBOL__> values to their actual runtime values
 
 =head1 Configuration and Environment
 
@@ -426,7 +566,7 @@ Peter Flanigan, C<< <Support at RoxSoft.co.uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2010 Peter Flanigan. All rights reserved
+Copyright (c) 2012 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

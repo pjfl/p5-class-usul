@@ -117,6 +117,8 @@ Describes Class::Usul::Build::InstallActions version 0.1.$Revision$
 
 =head1 Description
 
+Additional actions to perform as part of the application installation
+
 =head1 Subroutines/Methods
 
 All action methods are passed C<$config>
@@ -138,17 +140,17 @@ C<< $config->{create_files} >> if they do not exist
 
 =head2 edit_files
 
-
+Fix a couple of hard coded paths to point to the current install path
 
 =head2 link_files
 
 Creates some symbolic links
 
-=head1 Diagnostics
+=head1 Configuration and Environment
 
 None
 
-=head1 Configuration and Environment
+=head1 Diagnostics
 
 None
 
@@ -156,7 +158,7 @@ None
 
 =over 3
 
-=item L<Class::Usul::Build>
+=item L<Class::Usul::Moose>
 
 =back
 

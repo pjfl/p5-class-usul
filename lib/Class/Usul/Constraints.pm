@@ -40,7 +40,7 @@ __END__
 
 =head1 Name
 
-Class::Usul::Constraints -  Role defining package constraints
+Class::Usul::Constraints - Defines Moose type constraints
 
 =head1 Version
 
@@ -48,26 +48,51 @@ This document describes Class::Usul::Constraints version 0.1.$Revision$
 
 =head1 Synopsis
 
-   use Moose;
-
-   extends qw(Class::Usul);
+   use Class::Usul::Constraints qw(ConfigType EncodingType LogType);
 
 =head1 Description
 
-=head1 Configuration and Environment
+Defines the following type constraints
+
+=over 3
+
+=item ConfigType
+
+Subtype of I<Object> can be coerced from a hash ref
+
+=item EncodingType
+
+Subtype of I<Str> which has to be one of the list of encodings in the
+I<ENCODINGS> constant
+
+=item LogType
+
+Subtype of I<Object> which has to implement all of the methods in the
+I<LOG_LEVELS> constant
+
+=back
 
 =head1 Subroutines/Methods
 
+None
+
+=head1 Configuration and Environment
+
+None
+
 =head1 Diagnostics
 
-Setting the I<debug> attribute to true causes messages to be logged at the
-debug level
+None
 
 =head1 Dependencies
 
 =over 3
 
 =item L<Class::Usul::Constants>
+
+=item L<MooseX::Types>
+
+=item L<MooseX::Types::Moose>
 
 =back
 
@@ -91,7 +116,7 @@ Larry Wall - For the Perl programming language
 
 =head1 License and Copyright
 
-Copyright (c) 2010 Peter Flanigan. All rights reserved
+Copyright (c) 2012 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

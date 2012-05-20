@@ -700,11 +700,11 @@ This interrupt handler traps the pipe signal
 
 This interrupt handler traps the child signal
 
-=head1 Diagnostics
+=head1 Configuration and Environment
 
 None
 
-=head1 Configuration and Environment
+=head1 Diagnostics
 
 None
 
@@ -729,6 +729,8 @@ None
 =item L<POSIX>
 
 =item L<Proc::ProcessTable>
+
+=item L<Try::Tiny>
 
 =back
 

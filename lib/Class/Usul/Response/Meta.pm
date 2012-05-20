@@ -40,9 +40,18 @@ This document describes Class::Usul::Response::Meta version 0.1.$Revision$
 
 =head1 Synopsis
 
+   use Class::Usul::Response::Meta;
+
+   Class::Usul::Response::Meta->new( $path_to_meta_yaml_file );
+
 =head1 Description
 
+Uses L<YAML::Syck> to load the specified YAML file and returns on object
+which define accessors for it's attributes
+
 =head1 Subroutines/Methods
+
+None
 
 =head1 Configuration and Environment
 
@@ -50,11 +59,15 @@ None
 
 =head1 Diagnostics
 
+None
+
 =head1 Dependencies
 
 =over 3
 
-=item L<Class::Usul>
+=item L<Moose>
+
+=item L<YAML::Syck>
 
 =back
 

@@ -40,15 +40,18 @@ Class::Usul::Response::Table - Data structure for the table widget
 
 =head1 Synopsis
 
+   use Class::Usul::Response;
+
+   $table_object = Class::Usul::Response->new;
+
 =head1 Description
 
-Response class for the table widget in L<HTML::FormWidgets>
+Response class for the table widget in L<HTML::FormWidgets>. Defines a list
+of mutable attributes
 
 =head1 Subroutines/Methods
 
-=head2 new
-
-Create and return a new instance of this class
+None
 
 =head1 Diagnostics
 

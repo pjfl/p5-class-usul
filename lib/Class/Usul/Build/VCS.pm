@@ -91,7 +91,7 @@ __END__
 
 =head1 Name
 
-Class::Usul::Build::VCS - Version control
+Class::Usul::Build::VCS - Version control system
 
 =head1 Version
 
@@ -99,27 +99,58 @@ This document describes Class::Usul::Build::VCS version 0.1.$Revision: 818 $
 
 =head1 Synopsis
 
+   use Class::Usul::Build::VCS;
+
+   $vcs_object = Class::Usul::Build::VCS->new;
+
 =head1 Description
+
+Proxies methods for either L<SVN::Class> or L<Git::Class::Worktree>
+depending on which is being used by the application
 
 =head1 Subroutines/Methods
 
 =head2 commit
 
+   $result = $self->commit( $message );
+
+Commits all outstanding updates with the supplied message
+
 =head2 error
+
+   $error = $self->error;
+
+Returns the last VCS error
 
 =head2 repository
 
+   $uri = $self->repository;
+
+Returns the URI of the VCS repository
+
 =head2 tag
+
+   $self->tag( $tag )
+
+Creates a tagged copy of trunk
+
+=head1 Configuration and Environment
+
+None
 
 =head1 Diagnostics
 
 None
 
-=head1 Configuration and Environment
-
 =head1 Dependencies
 
 =over 3
+
+=item L<Git::Class::Worktree>
+
+=item L<IPC::Cmd>
+
+=item L<SVN::Class>
 
 =back
 
@@ -139,7 +170,7 @@ Peter Flanigan, C<< <Support at RoxSoft.co.uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2010 Peter Flanigan. All rights reserved
+Copyright (c) 2012 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

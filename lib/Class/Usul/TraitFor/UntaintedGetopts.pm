@@ -36,21 +36,36 @@ Class::Usul::TraitFor::UntaintedGetopts - Untaints @ARGV before Getopts processe
 
 =head1 Synopsis
 
+   use Class::Usul::Moose;
+
+   with 'Class::Usul::TraitFor::UntaintedGetopts';
+
 =head1 Description
 
 Untaints @ARGV before Getopts processes it
 
 =head1 Subroutines/Methods
 
+=head2 _parse_argv
+
+Modifies this method in L<MooseX::Getopt>. Untaints the values of the
+I<@ARGV> array before the are parsed by L<MooseX::Getopt>
+
 =head1 Configuration and Environment
 
+None
+
 =head1 Diagnostics
+
+None
 
 =head1 Dependencies
 
 =over 3
 
-=item L<Moose>
+=item L<Moose::Role>
+
+=item L<MooseX::Getopt::Dashes>
 
 =back
 

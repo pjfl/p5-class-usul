@@ -287,7 +287,7 @@ CatalystX::Usul::Functions - Globally accesible functions
 
 =head1 Description
 
-Provides global functions
+Provides globally accessible functions
 
 =head1 Subroutines/Methods
 

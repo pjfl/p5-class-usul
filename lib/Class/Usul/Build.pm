@@ -1166,22 +1166,12 @@ This document describes Class::Usul::Build version 0.1.$Revision$
 
 =head1 Description
 
-Subclasses L<Module::Build>. Ask questions during the build phase and stores
-the answers for use during the install phase. The answers to the questions
-determine where the application will be installed and which additional
-actions will take place. Should be generic enough for any web application
+Subclasses L<Module::Build>. Ask questions during the install
+phase. The answers to the questions determine where the application
+will be installed and which additional actions will take place. Should
+be generic enough for any web application
 
 =head1 ACTIONS
-
-=head2 ACTION_build
-
-=head2 build
-
-When called by it's subclass this method prompts the user for
-information about how this installation is to be performed. User
-responses are saved to the F<build.xml> file. The
-L<Class::Usul::Build::Questions/config_attributes> returns the list of
-questions to ask
 
 =head2 ACTION_change_version
 
@@ -1195,21 +1185,13 @@ Changes the C<$VERSION> strings in all of the projects files
 
 Updates license file and changelog
 
-=head2 ACTION_extract_use
-
-=head2 extract_use
-
-Dumps out a list of module names and version numbers of all the
-modules used in the project. Useful for maintaining the I<REQUIRES>
-hash in the F<Build.PL> file
-
 =head2 ACTION_install
 
 =head2 install
 
 When called from it's subclass this method performs the sequence of
 actions required to install the application. Configuration options are
-read from the file F<build.xml>. The L</actions> method returns the
+written from the file F<build.xml>. The L</actions> method returns the
 list of steps required to install the application
 
 =head2 ACTION_install_local_cpanm
@@ -1294,20 +1276,11 @@ Upload distribution to CPAN
 
 =head1 Subroutines/Methods
 
-=head2 actions
-
-   $current_list_of_actions = $builder->actions( $new_list_of_actions );
-
-This accessor/mutator method defaults to the list defined in the C<$ACTIONS>
-package variable
-
-=head2 ask_questions
-
-   $builder->ask_questions( $config );
-
-Called by the L</ACTION_build> method
-
 =head2 class_path
+
+   $path = $builder->class_path( $class_name );
+
+Returns the relative path to the specified class
 
 =head2 cli
 
@@ -1338,13 +1311,25 @@ C<$ENV{HOME}> directory
 
 =head2 dispatch
 
+Overloads the M::B method. Calls L</_setup_plugins> then the parent method
+
 =head2 distname
+
+Turns a class name into a distribution name
 
 =head2 install_actions_class
 
+Returns the class name of the class which contains the additional actions
+that are performed when the application is installed
+
 =head2 make_tarball
 
+Overloads the M::B method. Changes the directory which will contain the
+distribution tarball then calls the parent method
+
 =head2 patch_file
+
+Runs the I<patch> utility on the specifed source file
 
 =head2 post_install
 
@@ -1365,12 +1350,17 @@ is optional and defaults to B<blib>
 
 =head2 process_local_files
 
+Calls L</process_file> setting the source to I<local>
+
 =head2 public_repository
 
 Return the URI of the SVN repository for this project. Return undef
 if we are not using svn or the repository is a local file path
 
 =head2 question_class
+
+Returns the class name of the class which contains the questions that are
+asked when the application is installed
 
 =head2 replace
 
@@ -1381,8 +1371,6 @@ Substitutes C<$this> string for C<$that> string in the file F<$path>
 =head2 repository
 
 Returns the URI of the VCS repository for this project
-
-=head2 resources
 
 =head2 set_base_path
 

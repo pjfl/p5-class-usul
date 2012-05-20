@@ -102,7 +102,7 @@ __END__
 
 =head1 Name
 
-Class::Usul::Build::Questions - Things to ask when Build runs
+Class::Usul::Build::Questions - Things to ask when Build runs install
 
 =head1 Version
 
@@ -124,7 +124,7 @@ of any further questions once the build phase is complete
 
 =head2 q_install
 
-
+Do we run M::B install?
 
 =head2 q_path_prefix
 
@@ -137,7 +137,7 @@ F</var/www>
 
 =head2 q_post_install
 
-
+Do we run the post installation commands?
 
 =head2 q_phase
 
@@ -150,19 +150,19 @@ upon this value
 
 Dummy question returns the version part of the installation directory
 
-=head1 Diagnostics
-
-None
-
 =head1 Configuration and Environment
 
 Edits and stores config information in the file F<build.xml>
+
+=head1 Diagnostics
+
+None
 
 =head1 Dependencies
 
 =over 3
 
-=item L<Class::Usul::Build>
+=item L<Class::Usul::Moose>
 
 =back
 
@@ -182,7 +182,7 @@ Peter Flanigan, C<< <Support at RoxSoft.co.uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2010 Peter Flanigan. All rights reserved
+Copyright (c) 2012 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

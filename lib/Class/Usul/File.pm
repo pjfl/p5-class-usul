@@ -152,7 +152,27 @@ Prepends F<$base> to F<$path> unless F<$path> is an absolute path
 
 =head2 data_dump
 
+   $self->dump( @args );
+
+Accepts either a list or a hash ref. Calls L</dataclass_schema> with
+the I<storage_class> attribute if supplied. Calls the
+L<dump|File::DataClass::Schema/dump> method
+
 =head2 data_load
+
+   $self->load( @args );
+
+Accepts either a list or a hash ref. Calls L</dataclass_schema> with
+the I<storage_class> and I<arrays> attributes if supplied. Calls the
+L<load|File::DataClass::Schema/load> method
+
+=head2 dataclass_schema
+
+   $f_dc_schema_obj = $self->dataclass_schema( $attrs );
+
+Returns a L<File::DataClass::Schema> object. Object uses our
+C<exception_class>, no caching and no locking by default. Works as a
+class method
 
 =head2 delete_tmp_files
 
@@ -160,13 +180,6 @@ Prepends F<$base> to F<$path> unless F<$path> is an absolute path
 
 Delete this processes temporary files. Files are in the C<$dir> directory
 which defaults to C<< $self->tempdir >>
-
-=head2 dataclass_schema
-
-   $f_dc_schema_obj = $self->dataclass_schema( $attrs );
-
-Returns a L<File::DataClass::Schema> object. Object uses our
-C<exception_class>, no caching and no locking
 
 =head2 extensions
 
@@ -245,7 +258,7 @@ None
 
 =head1 Incompatibilities
 
-The C</uuid> method with only work on a OS with a F</proc> filesystem
+The L</uuid> method with only work on a OS with a F</proc> filesystem
 
 =head1 Bugs and Limitations
 
