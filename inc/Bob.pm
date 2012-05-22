@@ -20,7 +20,7 @@ use Module::Build;
 sub new {
    my ($class, $params) = @_; $params ||= {}; $params->{requires} ||= {};
 
-   my $perl_ver   = $params->{requires}->{perl} || 5.008_008;
+   my $perl_ver    = $params->{requires}->{perl} || 5.008_008;
 
    $] < $perl_ver and whimper "Perl minimum ${perl_ver}";
 
