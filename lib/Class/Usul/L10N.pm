@@ -121,11 +121,14 @@ sub _gettext {
    my $domain  = $self->_load_domains( $args )
       or return ($key, $args->{plural_key})[ $count > 1 ] || $default;
    # Select either singular or plural translation
-   my ($nplurals, $plural) = $domain->{plural_func}->( $count );
+   my ($nplurals, $plural) = (1, 0);
 
-   defined     $nplurals or $nplurals = 0;
-   defined      $plural  or  $plural  = 0;
-   $nplurals <= $plural and  $plural  = 0;
+   if ($count > 1) {
+      ($nplurals, $plural) = $domain->{plural_func}->( $count );
+      defined     $nplurals or $nplurals = 0;
+      defined      $plural  or  $plural  = 0;
+      $nplurals <= $plural and  $plural  = $nplurals;
+   }
 
    my $id   = defined $args->{context}
             ? $args->{context}.CONTEXT_SEP.$key : $key;
