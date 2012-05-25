@@ -22,7 +22,7 @@ has '_encoding'       => is => 'ro', isa => Maybe[EncodingType],
    init_arg           => 'encoding';
 
 has '_log'            => is => 'ro', isa => LogType, init_arg => 'log',
-   builder            => '_build__log', lazy => TRUE;
+   builder            => '_build_log', lazy => TRUE;
 
 has '_log_attributes' => is => 'ro', isa => HashRef,
    init_arg           => 'log_attributes', default => sub { {} };
@@ -50,6 +50,7 @@ sub BUILD {
    for my $method (LOG_LEVELS) {
       $meta->has_method( $method ) or $meta->add_method( $method => sub {
          my ($self, $text) = @_; $text or return; chomp $text;
+
          $self->_encoding and $text = encode( $self->_encoding, $text );
          $self->_log->$method( $text."\n" );
          return;
@@ -74,19 +75,19 @@ sub BUILD {
 
 # Private methods
 
-sub _build__log {
+sub _build_log {
    my $self    = shift;
-   my $attrs   = { %{ $self->_log_attributes } };
-   my $logfile = NUL.($attrs->{filename} || $self->_logfile);
-   my $level   = $self->_debug_flag ? 7 : $attrs->{maxlevel} || 6;
+   my $attr    = { %{ $self->_log_attributes } };
+   my $logfile = NUL.($attr->{filename} || $self->_logfile);
+   my $level   = $self->_debug_flag ? 7 : $attr->{maxlevel} || 6;
 
    ($logfile and -d dirname( $logfile )) or return Class::Null->new;
 
-   $attrs->{filename}   = $logfile;
-   $attrs->{maxlevel}   = $level;
-   $attrs->{mode    } ||= q(append);
+   $attr->{filename}   = $logfile;
+   $attr->{maxlevel}   = $level;
+   $attr->{mode    } ||= q(append);
 
-   return Log::Handler->new( file => $attrs );
+   return Log::Handler->new( file => $attr );
 }
 
 __PACKAGE__->meta->make_immutable;
