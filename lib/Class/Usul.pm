@@ -25,7 +25,7 @@ has '_config'    => is => 'ro',  isa => ConfigType, coerce => TRUE,
 has 'debug',     => is => 'rw',  isa => Bool, default => FALSE,
    trigger       => \&_debug_trigger;
 
-has 'encoding'   => is => 'ro',  isa => EncodingType, coerce => TRUE,
+has 'encoding'   => is => 'ro', isa => EncodingType, coerce => TRUE,
    documentation => 'Decode/encode input/output using this encoding',
    default       => sub { $_[ 0 ]->config->encoding }, lazy => TRUE;
 

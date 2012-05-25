@@ -18,7 +18,7 @@ use Log::Handler;
 has '_debug_flag'     => is => 'ro', isa => Bool, init_arg => 'debug',
    default            => FALSE;
 
-has '_encoding'       => is => 'ro', isa => Maybe[EncodingType],
+has '_encoding'       => is => 'ro', isa => EncodingType | Undef,
    init_arg           => 'encoding';
 
 has '_log'            => is => 'ro', isa => LogType, init_arg => 'log',
@@ -30,14 +30,15 @@ has '_log_attributes' => is => 'ro', isa => HashRef,
 has '_logfile'        => is => 'ro', isa => Path | Undef, coerce => TRUE,
    init_arg           => 'logfile';
 
-around BUILDARGS => sub {
+around 'BUILDARGS' => sub {
    my ($next, $class, @rest) = @_; my $attr = $class->$next( @rest );
 
    my $builder = delete $attr->{builder}; $builder or return $attr;
    my $config  = $builder->can( q(config) ) ? $builder->config : {};
 
    merge_attributes $attr, $builder, {}, [ qw(debug encoding) ];
-   merge_attributes $attr, $config,  {}, [ qw(log_attributes logfile) ];
+   merge_attributes $attr, $config,  {},
+      [ qw(encoding log_attributes logfile) ];
 
    return $attr;
 };
