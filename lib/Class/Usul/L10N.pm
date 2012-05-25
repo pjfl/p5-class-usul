@@ -163,10 +163,10 @@ sub _gettext {
                           (?: \@[-_A-Za-z0-9=;]+ )? \z }msx and $charset = $1;
       $charset and $attrs->{charset} = $charset;
 
-      my $data   = try   { File::Gettext->new( $attrs )->load( $lang, @names ) }
+      my $domain = try   { File::Gettext->new( $attrs )->load( $lang, @names ) }
                    catch { $self->log->error( $_ ); return };
 
-      return $data ? $cache->{ $key } = $data : undef;
+      return $domain ? $cache->{ $key } = $domain : undef;
    }
 }
 
