@@ -62,10 +62,11 @@ sub BUILD {
       $meta->has_method( $msg_meth ) or $meta->add_method( $msg_meth => sub {
          my ($self, $opts, $msg) = @_; my $text;
 
+         my $user = $opts->{user} ? $opts->{user}->username : q(unknown);
+
          $msg ||= NUL; $msg = NUL.$msg; chomp $msg;
-         $text  = (ucfirst $opts->{leader} || NUL).q([);
-         $text .= ($opts->{user}->username || NUL);
-         $text .= q(]).SPC.(ucfirst $msg || 'no message');
+         $text  = (ucfirst $opts->{leader} || NUL).q([).($user || NUL).q(]).SPC;
+         $text .= (ucfirst $msg || 'no message');
          $self->$method( $text );
          return;
       } );
