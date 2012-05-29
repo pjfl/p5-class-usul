@@ -18,42 +18,36 @@ use File::Gettext::Constants;
 use File::Spec::Functions        qw(canonpath catdir catfile rel2abs tmpdir);
 use Config;
 
-has 'appclass'        => is => 'ro', isa => Str,
-   required           => TRUE;
+has 'appclass'        => is => 'ro', isa => NonEmptySimpleStr, required => TRUE;
 
-has 'doc_title'       => is => 'ro', isa => Str,
+has 'doc_title'       => is => 'ro', isa => NonEmptySimpleStr,
    default            => 'User Contributed Documentation';
 
 has 'encoding'        => is => 'ro', isa => EncodingType, coerce => TRUE,
    default            => DEFAULT_ENCODING;
 
-has 'extension'       => is => 'ro', isa => Str,
+has 'extension'       => is => 'ro', isa => NonEmptySimpleStr,
    default            => CONFIG_EXTN;
 
 has 'home'            => is => 'ro', isa => Directory, coerce => TRUE,
    documentation      => 'Directory containing the config file',
    required           => TRUE;
 
-has 'l10n_attributes' => is => 'ro', isa => HashRef,
-   default            => sub { {} };
+has 'l10n_attributes' => is => 'ro', isa => HashRef, default => sub { {} };
 
-has 'lock_attributes' => is => 'ro', isa => HashRef,
-   default            => sub { {} };
+has 'lock_attributes' => is => 'ro', isa => HashRef, default => sub { {} };
 
-has 'log_attributes'  => is => 'ro', isa => HashRef,
-   default            => sub { {} };
+has 'log_attributes'  => is => 'ro', isa => HashRef, default => sub { {} };
 
 has 'man_page_cmd'    => is => 'ro', isa => ArrayRef,
    default            => sub { [ qw(nroff -man) ] };
 
-has 'mode'            => is => 'ro', isa => Int,
-   default            => PERMS;
+has 'mode'            => is => 'ro', isa => PositiveInt, default => PERMS;
 
-has 'no_thrash'       => is => 'ro', isa => Int,
-   default            => 3;
+has 'no_thrash'       => is => 'ro', isa => PositiveInt, default => 3;
 
 has 'pathname'        => is => 'ro', isa => File, coerce => TRUE,
-   default            => sub { rel2abs( $PROGRAM_NAME ) };
+   builder            => '_build_pathname', lazy => TRUE;
 
 
 has 'appldir'         => is => 'ro', isa => Directory, coerce => TRUE,
@@ -105,22 +99,22 @@ has 'vardir'          => is => 'ro', isa => Path,      coerce => TRUE,
    lazy               => TRUE,   builder => '_build_vardir';
 
 
-has 'name'            => is => 'ro', isa => Str,
+has 'name'            => is => 'ro', isa => NonEmptySimpleStr,
    lazy               => TRUE,   builder => '_build_name';
 
-has 'owner'           => is => 'ro', isa => Str,
+has 'owner'           => is => 'ro', isa => NonEmptySimpleStr,
    lazy               => TRUE,   builder => '_build_owner';
 
-has 'phase'           => is => 'ro', isa => Int,
+has 'phase'           => is => 'ro', isa => PositiveInt,
    lazy               => TRUE,   builder => '_build_phase';
 
-has 'prefix'          => is => 'ro', isa => Str,
+has 'prefix'          => is => 'ro', isa => NonEmptySimpleStr,
    lazy               => TRUE,   builder => '_build_prefix';
 
-has 'script'          => is => 'ro', isa => Str,
+has 'script'          => is => 'ro', isa => NonEmptySimpleStr,
    lazy               => TRUE,   builder => '_build_script';
 
-has 'secret'          => is => 'ro', isa => Str,
+has 'secret'          => is => 'ro', isa => NonEmptySimpleStr,
    lazy               => TRUE,   builder => '_build_secret';
 
 # TODO: Move these away, a long way away
@@ -224,6 +218,11 @@ sub _build_name {
 
 sub _build_owner {
    return $_[ 0 ]->prefix || q(root);
+}
+
+sub _build_pathname {
+   return rel2abs( (q(-) eq substr $PROGRAM_NAME, 0, 1) ? $EXECUTABLE_NAME
+                                                        : $PROGRAM_NAME );
 }
 
 sub _build_pi_config_file {
