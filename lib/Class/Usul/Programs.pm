@@ -144,15 +144,13 @@ sub add_leader {
 }
 
 sub anykey {
-   my ($self, $prompt) = @_; $prompt ||= 'Press any key to continue...';
+   my $prompt = $_[ 1 ] || 'Press any key to continue...';
 
    return __prompt( -p => $prompt, -e => NUL, -1 => TRUE );
 }
 
 sub can_call {
-   my ($self, $method) = @_;
-
-   return (is_member $method, __list_methods_of( $self )) ? TRUE : FALSE;
+   return (is_member $_[ 1 ], __list_methods_of( $_[ 0 ] )) ? TRUE : FALSE;
 }
 
 sub debug_flag {
@@ -466,7 +464,7 @@ sub _output_usage {
 }
 
 sub _output_version {
-   my $self = shift; $self->output( 'Version '.$self->VERSION ); exit OK;
+   $_[ 0 ]->output( 'Version '.$_[ 0 ]->VERSION ); exit OK;
 }
 
 sub _usage_for {
