@@ -74,9 +74,6 @@ has 'logfile'         => is => 'ro', isa => Path,      coerce => TRUE,
 has 'logsdir'         => is => 'ro', isa => Directory, coerce => TRUE,
    lazy               => TRUE,   builder => '_build_logsdir';
 
-has 'pi_config_file'  => is => 'ro', isa => Path,      coerce => TRUE,
-   lazy               => TRUE,   builder => '_build_pi_config_file';
-
 has 'root'            => is => 'ro', isa => Path,      coerce => TRUE,
    lazy               => TRUE,   builder => '_build_root';
 
@@ -116,13 +113,6 @@ has 'script'          => is => 'ro', isa => NonEmptySimpleStr,
 
 has 'secret'          => is => 'ro', isa => NonEmptySimpleStr,
    lazy               => TRUE,   builder => '_build_secret';
-
-# TODO: Move these away, a long way away
-has 'aliases_path'    => is => 'ro', isa => Path, coerce => TRUE,
-   lazy               => TRUE,   builder => '_build_aliases_path';
-
-has 'profiles_path'   => is => 'ro', isa => Path, coerce => TRUE,
-   lazy               => TRUE,   builder => '_build_profiles_path';
 
 around BUILDARGS => sub {
    my ($next, $class, @args) = @_; my $attr = $class->$next( @args ); my $paths;
@@ -225,10 +215,6 @@ sub _build_pathname {
                                                         : $PROGRAM_NAME );
 }
 
-sub _build_pi_config_file {
-   return $_[ 0 ]->_inflate_path( $_[ 1 ], qw(ctrldir build.json) );
-}
-
 sub _build_path_to {
    my ($self, $appclass, $home) = __unpack( @_ ); return $home;
 }
@@ -293,16 +279,6 @@ sub _build_vardir {
    my $path = $self->_inflate_path( $attr, qw(appldir var) );
 
    return -d $path ? $path : catdir( NUL, q(var) );
-}
-
-sub _build_aliases_path {
-   return $_[ 0 ]->_inflate_path( $_[ 1 ], qw(ctrldir aliases) );
-}
-
-sub _build_profiles_path {
-   my ($self, $attr) = @_; my $file = q(user_profiles).$self->extension;
-
-   return $self->_inflate_path( $attr, q(ctrldir), $file );
 }
 
 sub _inflate_path {
@@ -454,10 +430,6 @@ File in the I<logsdir> to which this program will log
 =item logsdir
 
 Directory containg the application log files
-
-=item pi_config_file
-
-File. Post installation configuration file
 
 =item root
 
