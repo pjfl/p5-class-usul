@@ -153,7 +153,7 @@ sub _gettext {
 
       defined $cache->{ $key } and return $cache->{ $key };
 
-      my $attrs  = { %{ $self->l10n_attributes }, ioc_obj => $self,
+      my $attrs  = { %{ $self->l10n_attributes }, builder => $self,
                      source_name => $self->source_name };
 
       defined $self->localedir and $attrs->{localedir} = $self->localedir;
