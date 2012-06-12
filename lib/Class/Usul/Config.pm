@@ -9,8 +9,8 @@ use Class::Usul::File;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Constraints     qw(EncodingType);
-use Class::Usul::Functions       qw(app_prefix class2appdir
-                                    home2appl split_on__ untaint_path);
+use Class::Usul::Functions       qw(app_prefix class2appdir home2appl split_on__
+                                    untaint_path);
 use Config;
 use English                      qw(-no_match_vars);
 use File::Basename               qw(basename dirname);
