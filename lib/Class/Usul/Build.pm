@@ -1191,7 +1191,7 @@ Updates license file and changelog
 
 When called from it's subclass this method performs the sequence of
 actions required to install the application. Configuration options are
-written from the file F<build.xml>. The L</actions> method returns the
+written from the file F<build.json>. The L</actions> method returns the
 list of steps required to install the application
 
 =head2 ACTION_install_local_cpanm
@@ -1412,7 +1412,7 @@ None
 
 =head1 Configuration and Environment
 
-Edits and stores config information in the file F<build.xml>
+Edits and stores config information in the file F<build.json>
 
 =head1 Dependencies
 

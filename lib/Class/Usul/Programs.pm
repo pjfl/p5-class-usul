@@ -832,7 +832,7 @@ the application installation directory. Defaults to the environment
 variable <uppercase application name>_HOME
 
 Search through subdirectories of @INC looking for the file
-myApplication.xml. Uses the location of this file to return the path to
+myApplication.json. Uses the location of this file to return the path to
 the installation directory
 
 =head2 get_line

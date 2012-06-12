@@ -125,7 +125,7 @@ String I<CODE>
 
 =head2 CONFIG_EXTN
 
-The default configuration file extension, I<.xml>. Change this by
+The default configuration file extension, I<.json>. Change this by
 setting the I<Config_Extn> class attribute
 
 =head2 DEFAULT_DIR

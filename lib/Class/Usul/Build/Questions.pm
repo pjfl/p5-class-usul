@@ -152,7 +152,7 @@ Dummy question returns the version part of the installation directory
 
 =head1 Configuration and Environment
 
-Edits and stores config information in the file F<build.xml>
+Edits and stores config information in the file F<build.json>
 
 =head1 Diagnostics
 
