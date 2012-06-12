@@ -56,6 +56,8 @@ sub dataclass_schema {
    if (blessed $self) { $attr->{builder} = $self->usul }
    else { $attr->{cache_class} = q(none); $attr->{lock_class} = q(none) }
 
+   $attr->{storage_class} ||= q(Any);
+
    return File::DataClass::Schema->new( $attr );
 }
 

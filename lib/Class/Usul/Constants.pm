@@ -14,7 +14,7 @@ use File::DataClass::Constants ();
 class_has 'Assert'          => is => 'rw', isa => 'Maybe[CodeRef]';
 
 class_has 'Config_Extn'     => is => 'rw', isa => 'Str',
-   default                  => q(.xml);
+   default                  => q(.json);
 
 class_has 'Exception_Class' => is => 'rw', isa => 'File::DataClass::Exception',
    default                  => q(File::DataClass::Exception);
