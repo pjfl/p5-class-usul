@@ -11,12 +11,12 @@ use Class::Usul::Constants;
 use Class::Usul::Constraints     qw(EncodingType);
 use Class::Usul::Functions       qw(app_prefix class2appdir
                                     home2appl split_on__ untaint_path);
+use Config;
 use English                      qw(-no_match_vars);
 use File::Basename               qw(basename dirname);
 use File::DataClass::Constraints qw(Directory File Path);
 use File::Gettext::Constants;
 use File::Spec::Functions        qw(canonpath catdir catfile rel2abs tmpdir);
-use Config;
 
 has 'appclass'        => is => 'ro', isa => NonEmptySimpleStr, required => TRUE;
 
