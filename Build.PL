@@ -18,6 +18,7 @@ Bob->new( {
       'parent'                        => 0.221,
       'version'                       => 0.77,
       'Class::Inspector'              => 1.24,
+      'Class::Load'                   => 0.18,
       'Class::Null'                   => 1.09,
       'Crypt::CBC'                    => 2.30,
       'Crypt::Twofish'                => 2.12,

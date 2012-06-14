@@ -6,13 +6,16 @@ use strict;
 use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
+use Class::Load                 qw(load_first_existing_class);
 use Class::Usul::Constants;
 use Class::Usul::Functions;
-use MooseX::Types -declare => [ qw(ConfigType EncodingType LogType) ];
-use MooseX::Types::Moose        qw(HashRef Object Str Undef);
+use MooseX::Types -declare => [ qw(ClassName ConfigType EncodingType LogType
+                                   NullLoadingClass) ];
+use MooseX::Types::Moose        qw(HashRef Object Str Undef),
+                 ClassName => { -as => 'MooseClassName' };
 use Scalar::Util                qw(blessed);
 
-subtype ConfigType, as Object;
+class_type ConfigType, { class => q(Class::Usul::Config) };
 
 subtype EncodingType, as Str,
    where   { is_member $_, ENCODINGS },
@@ -22,6 +25,11 @@ coerce  EncodingType, from Undef, via { DEFAULT_ENCODING };
 subtype LogType, as Object,
    where   { $_->isa( q(Class::Null) ) or __has_log_level_methods( $_ ) },
    message { 'Object '.(blessed $_ || $_).' is missing a log level method' };
+
+subtype NullLoadingClass, as MooseClassName;
+coerce  NullLoadingClass, from Str, via {
+   my $name = $_; load_first_existing_class( $name, q(Class::Null) );
+};
 
 sub __has_log_level_methods {
    my $obj = shift;
