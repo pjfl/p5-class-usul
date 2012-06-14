@@ -14,8 +14,9 @@ use Class::Usul::Constants;
 use Class::Usul::Response::Meta;
 use Class::Usul::Functions qw(abs_path app_prefix arg_list assert_directory
                               class2appdir classdir elapsed env_prefix
-                              exception find_source is_member prefix2class
-                              say throw untaint_identifier untaint_path);
+                              exception find_source is_arrayref is_hashref
+                              is_member prefix2class say throw
+                              untaint_identifier untaint_path);
 use Encode                 qw(decode);
 use English                qw(-no_match_vars);
 use File::Spec::Functions  qw(catdir catfile);
@@ -102,7 +103,7 @@ has '_params'  => is => 'ro', isa => HashRef, default => sub { {} },
 has '_pwidth'  => is => 'rw', isa => Int, accessor => 'pwidth',
    default     => 60, init_arg => 'pwidth';
 
-around BUILDARGS => sub {
+around 'BUILDARGS' => sub {
    my ($next, $class, @args) = @_; my $attr = $class->$next( @args );
 
    my $cfg = $attr->{config} ||= {};
@@ -281,11 +282,14 @@ sub list_methods : method {
 }
 
 sub loc {
-   my ($self, @rest) = @_;
+   my ($self, $key, @args) = @_; my $car = $args[ 0 ];
 
-   my $attr = { language => $self->language, ns => $self->config->name };
+   my $args = (is_hashref $car) ? { %{ $car } }
+            : { params => (is_arrayref $car) ? $car : [ @args ] };
 
-   return $self->next::method( $attr, @rest );
+   $args->{language} ||= $self->language; $args->{ns} ||= $self->config->name;
+
+   return $self->next::method( $key, $args );
 }
 
 sub output {
@@ -497,9 +501,9 @@ sub __get_cfgfiles {
    my $prefix = app_prefix $appclass; my $files = []; my $file;
 
    for my $extn (keys %{ Class::Usul::File->extensions }) {
-      $file = untaint_path catfile( $home, $prefix.$extn );
+      $file = untaint_path catfile( $home, "${prefix}${extn}" );
       -f $file and push @{ $files }, $file;
-      $file = untaint_path catfile( $home, $prefix.q(_local).$extn );
+      $file = untaint_path catfile( $home, "${prefix}_local${extn}" );
       -f $file and push @{ $files }, $file;
    }
 
@@ -893,9 +897,10 @@ be called via the L<run method|/run>
 
 =head2 loc
 
-   $local_text = $self->localize( $key, $args );
+   $local_text = $self->loc( $key, @options );
 
-Localizes the message. Calls L<Class::Usul::L10N/localize>
+Localizes the message. Calls L<Class::Usul/loc>. Adds I<language> and
+I<namespace> (search domain) to the options
 
 =head2 output
 

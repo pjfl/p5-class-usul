@@ -10,8 +10,7 @@ use Class::Usul::Moose;
 use Class::Usul::Config;
 use Class::Usul::Constants;
 use Class::Usul::Constraints qw(ConfigType EncodingType LogType);
-use Class::Usul::Functions   qw(data_dumper is_arrayref is_hashref
-                                merge_attributes);
+use Class::Usul::Functions   qw(arg_list data_dumper merge_attributes);
 use Class::Usul::L10N;
 use Class::Usul::Log;
 use IPC::SRLock;
@@ -42,15 +41,12 @@ sub dumper {
 }
 
 sub loc {
-   my ($self, $params, $key, @rest) = @_; my $car = $rest[ 0 ];
+   my ($self, $key, $opts) = @_;
 
-   my $args = (is_hashref $car) ? { %{ $car } }
-            : { params => (is_arrayref $car) ? $car : [ @rest ] };
+   $opts->{domain_names} = [ DEFAULT_L10N_DOMAIN, $opts->{ns} ];
+   $opts->{locale      } = $opts->{language};
 
-   $args->{domain_names} = [ DEFAULT_L10N_DOMAIN, $params->{ns} ];
-   $args->{locale      } = $params->{language};
-
-   return $self->l10n->localize( $key, $args );
+   return $self->l10n->localize( $key, $opts );
 }
 
 {  my $cache;
@@ -140,9 +136,10 @@ Use L<Data::Printer> to dump arguments for development purposes
 
 =head2 loc
 
-   $local_text = $self->loc( $params, $key, $args );
+   $local_text = $self->loc( $key, \%options );
 
-Localizes the message. Calls L<Class::Usul::L10N/localize>
+Localizes the message. Calls L<Class::Usul::L10N/localize>. Adds the constant
+C<DEFAULT_L10N_DOMAINS> to the list of domain files that are searched
 
 =head2 lock
 
