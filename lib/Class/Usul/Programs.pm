@@ -11,17 +11,18 @@ use Class::Usul::IPC;
 use Class::Usul::File;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
+use Class::Usul::Constraints qw(FileType IPCType);
 use Class::Usul::Response::Meta;
-use Class::Usul::Functions qw(abs_path app_prefix arg_list assert_directory
-                              class2appdir classdir elapsed env_prefix
-                              exception find_source is_arrayref is_hashref
-                              is_member prefix2class say throw
-                              untaint_identifier untaint_path);
-use Encode                 qw(decode);
-use English                qw(-no_match_vars);
-use File::Spec::Functions  qw(catdir catfile);
-use IO::Interactive        qw(is_interactive);
-use List::Util             qw(first);
+use Class::Usul::Functions   qw(abs_path app_prefix arg_list assert_directory
+                                class2appdir classdir elapsed env_prefix
+                                exception find_source is_arrayref is_hashref
+                                is_member prefix2class say throw
+                                untaint_identifier untaint_path);
+use Encode                   qw(decode);
+use English                  qw(-no_match_vars);
+use File::Spec::Functions    qw(catdir catfile);
+use IO::Interactive          qw(is_interactive);
+use List::Util               qw(first);
 use Config;
 use Pod::Man;
 use Pod::Usage;
@@ -47,15 +48,15 @@ has 'help_manual'  => is => 'ro', isa => Bool, default => FALSE,
    documentation   => 'Uses Pod::Man to display the program documentation',
    traits          => [ 'Getopt' ], cmd_aliases => q(H), cmd_flag => 'man_page';
 
-has 'home'         => is => 'ro', isa => Str,
+has 'home'         => is => 'ro', isa => SimpleStr,
    documentation   => 'Directory containing the configuration file',
    traits          => [ 'Getopt' ], cmd_flag => 'home';
 
-has 'language'     => is => 'ro', isa => Str,  default => NUL,
+has 'language'     => is => 'ro', isa => SimpleStr,  default => NUL,
    documentation   => 'Loads the specified language message catalog',
    traits          => [ 'Getopt' ], cmd_aliases => q(L), cmd_flag => 'language';
 
-has 'method'       => is => 'rw', isa => Str | Undef,  default => NUL,
+has 'method'       => is => 'rw', isa => SimpleStr | Undef,  default => NUL,
    documentation   => 'Name of the method to call. Required',
    traits          => [ 'Getopt' ], cmd_aliases => q(c), cmd_flag => 'command';
 
@@ -77,20 +78,20 @@ has 'version'      => is => 'ro', isa => Bool, default => FALSE,
    traits          => [ 'Getopt' ], cmd_aliases => q(V), cmd_flag => 'version';
 
 
-has '_file'    => is => 'ro', isa => Object,
+has '_file'    => is => 'ro', isa => FileType,
    default     => sub { Class::Usul::File->new( builder => $_[ 0 ] ) },
    handles     => [ qw(io) ], init_arg => undef, lazy => TRUE, reader => 'file';
 
-has '_ipc'     => is => 'ro', isa => Object,
+has '_ipc'     => is => 'ro', isa => IPCType,
    default     => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) },
    handles     => [ qw(run_cmd) ], init_arg => undef, lazy => TRUE,
    reader      => 'ipc';
 
-has '_logname' => is => 'ro', isa => Str,
+has '_logname' => is => 'ro', isa => NonEmptySimpleStr,
    default     => sub { untaint_identifier( $ENV{USER} || $ENV{LOGNAME} ) },
    init_arg    => undef, lazy => TRUE, reader => 'logname';
 
-has '_mode'    => is => 'rw', isa => Int, accessor => 'mode',
+has '_mode'    => is => 'rw', isa => PositiveInt, accessor => 'mode',
    default     => sub { $_[ 0 ]->config->mode }, init_arg => 'mode',
    lazy        => TRUE;
 
@@ -100,7 +101,7 @@ has '_os'      => is => 'ro', isa => HashRef, builder => '_build__os',
 has '_params'  => is => 'ro', isa => HashRef, default => sub { {} },
    init_arg    => 'params', reader => 'params';
 
-has '_pwidth'  => is => 'rw', isa => Int, accessor => 'pwidth',
+has '_pwidth'  => is => 'rw', isa => PositiveInt, accessor => 'pwidth',
    default     => 60, init_arg => 'pwidth';
 
 around 'BUILDARGS' => sub {
@@ -284,12 +285,12 @@ sub list_methods : method {
 sub loc {
    my ($self, $key, @args) = @_; my $car = $args[ 0 ];
 
-   my $args = (is_hashref $car) ? { %{ $car } }
+   my $opts = (is_hashref $car) ? { %{ $car } }
             : { params => (is_arrayref $car) ? $car : [ @args ] };
 
-   $args->{language} ||= $self->language; $args->{ns} ||= $self->config->name;
+   $opts->{language} ||= $self->language; $opts->{ns} ||= $self->config->name;
 
-   return $self->next::method( $key, $args );
+   return $self->next::method( $key, $opts );
 }
 
 sub output {

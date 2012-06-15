@@ -9,7 +9,7 @@ use 5.010;
 use Class::Usul::Moose;
 use Class::Usul::Config;
 use Class::Usul::Constants;
-use Class::Usul::Constraints qw(ConfigType EncodingType LogType);
+use Class::Usul::Constraints qw(ConfigType EncodingType L10NType LogType);
 use Class::Usul::Functions   qw(arg_list data_dumper merge_attributes);
 use Class::Usul::L10N;
 use Class::Usul::Log;
@@ -28,7 +28,7 @@ has 'encoding'   => is => 'ro', isa => EncodingType, coerce => TRUE,
    documentation => 'Decode/encode input/output using this encoding',
    default       => sub { $_[ 0 ]->config->encoding }, lazy => TRUE;
 
-has '_l10n'      => is => 'ro',  isa => Object,
+has '_l10n'      => is => 'ro',  isa => L10NType,
    default       => sub { Class::Usul::L10N->new( builder => $_[ 0 ] ) },
    init_arg      => 'l10n', lazy => TRUE, reader => 'l10n';
 

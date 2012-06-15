@@ -3,22 +3,22 @@
 package Class::Usul::Response::Table;
 
 use strict;
-use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.4.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.7.%d', q$Rev$ =~ /\d+/gmx );
 
-use Moose;
+use Class::Usul::Moose;
 
-has 'align'    => is => 'rw', isa => 'HashRef',  default => sub { {} };
-has 'class'    => is => 'rw', isa => 'Maybe[Str]';
-has 'count'    => is => 'rw', isa => 'Int',      default => 0;
-has 'flds'     => is => 'rw', isa => 'ArrayRef', default => sub { [] };
-has 'hclass'   => is => 'rw', isa => 'HashRef',  default => sub { {} };
-has 'labels'   => is => 'rw', isa => 'HashRef',  default => sub { {} };
-has 'sizes'    => is => 'rw', isa => 'HashRef',  default => sub { {} };
-has 'typelist' => is => 'rw', isa => 'HashRef',  default => sub { {} };
-has 'values'   => is => 'rw', isa => 'ArrayRef', default => sub { [] };
-has 'widths'   => is => 'rw', isa => 'HashRef',  default => sub { {} };
-has 'wrap'     => is => 'rw', isa => 'HashRef',  default => sub { {} };
+has 'caption'  => is => 'ro', isa => Str,      default => q();
+has 'class'    => is => 'ro', isa => HashRef,  default => sub { {} };
+has 'classes'  => is => 'ro', isa => HashRef,  default => sub { {} };
+has 'count'    => is => 'ro', isa => Int,      default => 0;
+has 'flds'     => is => 'ro', isa => ArrayRef, default => sub { [] };
+has 'hclass'   => is => 'ro', isa => HashRef,  default => sub { {} };
+has 'labels'   => is => 'ro', isa => HashRef,  default => sub { {} };
+has 'sizes'    => is => 'ro', isa => HashRef,  default => sub { {} };
+has 'typelist' => is => 'ro', isa => HashRef,  default => sub { {} };
+has 'values'   => is => 'ro', isa => ArrayRef, default => sub { [] };
+has 'widths'   => is => 'ro', isa => HashRef,  default => sub { {} };
+has 'wrap'     => is => 'ro', isa => HashRef,  default => sub { {} };
 
 __PACKAGE__->meta->make_immutable;
 
@@ -36,18 +36,17 @@ Class::Usul::Response::Table - Data structure for the table widget
 
 =head1 Version
 
-0.4.$Revision$
+0.7.$Revision$
 
 =head1 Synopsis
 
-   use Class::Usul::Response;
+   use Class::Usul::Response::Table;
 
-   $table_object = Class::Usul::Response->new;
+   $table_obj = Class::Usul::Response::Table->new( \%params );
 
 =head1 Description
 
-Response class for the table widget in L<HTML::FormWidgets>. Defines a list
-of mutable attributes
+Response class for the table widget in L<HTML::FormWidgets>
 
 =head1 Subroutines/Methods
 
@@ -65,7 +64,7 @@ None
 
 =over 3
 
-=item L<Class::Usul::Base>
+=item L<Class::Usul::Moose>
 
 =back
 
@@ -85,7 +84,7 @@ Peter Flanigan, C<< <Support at RoxSoft.co.uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2008 Peter Flanigan. All rights reserved
+Copyright (c) 2012 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

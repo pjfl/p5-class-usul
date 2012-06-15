@@ -9,6 +9,7 @@ use Class::Null;
 use Class::Usul::File;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
+use Class::Usul::Constraints  qw(BaseType FileType);
 use Class::Usul::Functions    qw(arg_list is_arrayref merge_attributes
                                  strip_leader throw);
 use Class::Usul::Response::IPC;
@@ -29,11 +30,11 @@ our ($ERROR, $WAITEDPID);
 
 my $SPECIAL_CHARS = do { my $x = join NUL, qw(< > | &); qr{ ([$x]) }mx };
 
-has '_file' => is => 'ro', isa => Object,
+has '_file' => is => 'ro', isa => FileType,
    default  => sub { Class::Usul::File->new( builder => $_[ 0 ]->usul ) },
    handles  => [ qw(io) ], init_arg => undef, lazy => TRUE, reader => 'file';
 
-has '_usul' => is => 'ro', isa => Object,
+has '_usul' => is => 'ro', isa => BaseType,
    handles  => [ qw(config debug lock log) ], init_arg => 'builder',
    reader   => 'usul', required => TRUE, weak_ref => TRUE;
 
@@ -120,41 +121,36 @@ sub process_exists {
 }
 
 sub process_table {
-   my ($self, @rest) = @_;
+   my ($self, @rest) = @_; my $args = arg_list @rest;
 
-   my $args  = arg_list @rest;
    my $pat   = $args->{pattern};
    my $ptype = $args->{type   };
    my $user  = $args->{user   };
    my $ppt   = Proc::ProcessTable->new( cache_ttys => TRUE );
    my $has   = { map { $_ => TRUE } $ppt->fields };
-   my $table = __new_process_table();
+   my @rows  = ();
    my $count = 0;
-
-   $table->values( [] );
 
    if ($ptype == 3) {
       my %procs = map { $_->pid => $_ } @{ $ppt->table };
       my @pids  = $self->_list_pids_by_file_system( $args->{fsystem} );
 
       for my $p (grep { defined } map { $procs{ $_ } } @pids) {
-         push @{ $table->values }, $self->_set_fields( $has, $p );
+         push @rows, $self->_set_fields( $has, $p );
          $count++;
       }
    }
    else {
       for my $p (@{ $ppt->table }) {
          if (   ($ptype == 1 and __proc_belongs_to_user( $p->uid, $user ))
-             or ($ptype == 2 and __cmd_matches_pattern( $p->cmndline, $pat ))){
-            push @{ $table->values }, $self->_set_fields( $has, $p );
+             or ($ptype == 2 and __cmd_matches_pattern( $p->cmndline, $pat ))) {
+            push @rows, $self->_set_fields( $has, $p );
             $count++;
          }
       }
    }
 
-   @{ $table->values } = sort { __pscomp( $a, $b ) } @{ $table->values };
-   $table->count( $count );
-   return $table;
+   return __new_process_table( [ sort { __pscomp( $a, $b ) } @rows ], $count );
 }
 
 sub run_cmd {
@@ -475,12 +471,10 @@ sub __ipc_run_harness {
 }
 
 sub __new_process_table {
-   my $table = Class::Usul::Response::Table->new
-      ( align    => { uid   => 'left',   pid   => 'right',
-                      ppid  => 'right',  start => 'right',
-                      tty   => 'right',  time  => 'right',
-                      size  => 'right',  state => 'left',
-                      cmd   => 'left' },
+   my ($rows, $count) = @_;
+
+   return Class::Usul::Response::Table->new
+      ( count    => $count,
         flds     => [ qw(uid pid ppid start time size state tty cmd) ],
         labels   => { uid   => 'User',   pid   => 'PID',
                       ppid  => 'PPID',   start => 'Start Time',
@@ -490,9 +484,8 @@ sub __new_process_table {
         typelist => { pid   => q(numeric), ppid => q(numeric),
                       start => q(date),    size => q(numeric),
                       time  => q(numeric) },
+        values   => $rows,
         wrap     => { cmd => 1 }, );
-
-   return $table;
 }
 
 sub __partition_command {

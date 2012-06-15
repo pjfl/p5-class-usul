@@ -6,19 +6,25 @@ use strict;
 use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
+use Encode                      qw(find_encoding);
 use Class::Load                 qw(load_first_existing_class);
 use Class::Usul::Constants;
 use Class::Usul::Functions;
-use MooseX::Types -declare => [ qw(ClassName ConfigType EncodingType LogType
-                                   NullLoadingClass) ];
+use MooseX::Types -declare => [ qw(BaseType ClassName ConfigType EncodingType
+                                   FileType IPCType L10NType LogType
+                                   NullLoadingClass RequestType) ];
 use MooseX::Types::Moose        qw(HashRef Object Str Undef),
                  ClassName => { -as => 'MooseClassName' };
 use Scalar::Util                qw(blessed);
 
-class_type ConfigType, { class => q(Class::Usul::Config) };
+class_type BaseType,   { class => 'Class::Usul'         };
+class_type ConfigType, { class => 'Class::Usul::Config' };
+class_type FileType,   { class => 'Class::Usul::File'   };
+class_type IPCType,    { class => 'Class::Usul::IPC'    };
+class_type L10NType,   { class => 'Class::Usul::L10N'   };
 
 subtype EncodingType, as Str,
-   where   { is_member $_, ENCODINGS },
+   where   { find_encoding( $_ ) },
    message { "String ${_} is not a valid encoding" };
 coerce  EncodingType, from Undef, via { DEFAULT_ENCODING };
 
@@ -30,6 +36,10 @@ subtype NullLoadingClass, as MooseClassName;
 coerce  NullLoadingClass, from Str, via {
    my $name = $_; load_first_existing_class( $name, q(Class::Null) );
 };
+
+subtype RequestType, as Object,
+   where   { $_->can( q(params) ) },
+   message { 'Object '.(blessed $_ || $_).' does not have a params method' };
 
 sub __has_log_level_methods {
    my $obj = shift;
