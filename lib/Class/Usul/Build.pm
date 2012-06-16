@@ -872,7 +872,7 @@ sub _update_version {
 
       my $is_blessed = blessed $self;
       my $dir = $is_blessed ? $self->cli->config->appldir : File::Spec->curdir;
-      my $vcs = $self->_vcs_class->new( $dir );
+      my $vcs = $self->_vcs_class->new( project_dir => $dir );
 
       return $is_blessed ? $cache = $vcs : $vcs;
    }

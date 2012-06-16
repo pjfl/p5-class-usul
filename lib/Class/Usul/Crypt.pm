@@ -17,9 +17,7 @@ use Sub::Exporter -setup => {
    exports => [ qw(decrypt encrypt) ], groups => { default => [], },
 };
 
-my $CLEANER = '.*^\s*use\s+Acme::Bleach\s*;\r*\n';
-my $SEED    = do { local $RS = undef; <DATA> };
-my $KEY     = " \t" x 8;
+my $SEED = do { local $RS = undef; <DATA> };
 
 sub decrypt (;$$) {
    my ($args, $encoded) = @_; $encoded or return; my $key = __keygen( $args );
@@ -42,14 +40,30 @@ sub encrypt (;$$) {
 sub __keygen {
    my $args = shift; is_hashref $args or $args = { salt => $args || NUL };
 
-  (my $seed = __inflate( $args->{seed} || $SEED )) =~ s{ $CLEANER }{}msx;
+   my $seed = __strip( __inflate( __clean( $args->{seed} || $SEED ) ) );
    ## no critic
    return substr create_token( ( eval $seed ).$args->{salt} ), 0, 32;
    ## critic
 }
 
+sub __clean {
+   my $y = shift; my $x = " \t" x 8; $y =~ s{^$x|[^ \t]}{}g; return $y;
+}
+
 sub __inflate {
-   local $_ = pop; s{ \A $KEY|[^ \t] }{}gmx; tr{ \t}{01}; return pack 'b*', $_;
+   my $y = shift; $y =~ tr{ \t}{01}; return pack 'b*', $y;
+}
+
+sub __strip {
+   my $y = shift; my $x = __crc(); $y =~ s{$x}{}sm; return $y;
+}
+
+sub __crc {
+   my $y = __magic(); $y =~ tr{a-zA-Z}{n-za-mN-ZA-M}; return $y;
+}
+
+sub __magic {
+   return '.*^\f*hfr\f+Npzr::Oyrnpu\f*;\e*\a';
 }
 
 1;

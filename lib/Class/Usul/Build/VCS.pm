@@ -10,37 +10,37 @@ use Class::Usul::Constants;
 use File::Spec;
 use IPC::Cmd qw(can_run);
 
-has 'type' => is => 'rw', isa => 'Str';
-has 'vcs'  => is => 'rw', isa => 'Object';
+has 'type' => is => 'ro', isa => 'Str';
+has 'vcs'  => is => 'ro', isa => 'Object';
 
 around BUILDARGS => sub {
-   my ($next, $class, @rest) = @_; my $attrs = $class->$next( @rest );
+   my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
 
-   my $dir = $attrs->{project_dir};
+   my $dir = $attr->{project_dir};
 
    if (-d File::Spec->catfile( $dir, q(.git) )) {
-      can_run( q(git) ) or return $attrs; # Be nice to CPAN testing
+      can_run( q(git) ) or return $attr; # Be nice to CPAN testing
 
       require Git::Class::Worktree;
 
-      $attrs->{vcs } = Git::Class::Worktree->new( path => $dir );
-      $attrs->{type} = q(git);
-      return $attrs;
+      $attr->{vcs } = Git::Class::Worktree->new( path => $dir );
+      $attr->{type} = q(git);
+      return $attr;
    }
 
-   $dir = File::Spec->catfile( $attrs->{project_dir}, q(.svn) );
+   $dir = File::Spec->catfile( $attr->{project_dir}, q(.svn) );
 
    if (-d $dir) {
-      can_run( q(svn) ) or return $attrs; # Be nice to CPAN testing
+      can_run( q(svn) ) or return $attr; # Be nice to CPAN testing
 
       require SVN::Class;
 
-      $attrs->{vcs } = SVN::Class::svn_dir( $dir );
-      $attrs->{type} = q(svn);
-      return $attrs;
+      $attr->{vcs } = SVN::Class::svn_dir( $dir );
+      $attr->{type} = q(svn);
+      return $attr;
    }
 
-   return $attrs;
+   return $attr;
 };
 
 sub commit {

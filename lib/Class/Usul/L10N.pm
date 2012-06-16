@@ -16,16 +16,14 @@ use File::Gettext;
 use File::Spec;
 use Try::Tiny;
 
-has 'debug'           => is => 'rw', isa => Bool,
-   default            => FALSE;
+has 'debug'           => is => 'rw', isa => Bool, default => FALSE;
 
-has 'l10n_attributes' => is => 'ro', isa => HashRef,
-   default            => sub { {} };
+has 'l10n_attributes' => is => 'ro', isa => HashRef, default => sub { {} };
 
 has 'domain_names'    => is => 'ro', isa => ArrayRef[Str],
    default            => sub { [ q(messages) ] };
 
-has 'localedir'       => is => 'ro', isa => Undef | Path, coerce => TRUE;
+has 'localedir'       => is => 'ro', isa => Path | Undef, coerce => TRUE;
 
 has 'lock'            => is => 'ro', isa => Lock,
    default            => sub { Class::Null->new };
@@ -45,7 +43,7 @@ has 'use_country'     => is => 'ro', isa => Bool,
 around 'BUILDARGS' => sub {
    my ($next, $class, @rest) = @_; my $attr = $class->$next( @rest );
 
-   my $builder = delete $attr->{builder}; $builder or return $attr;
+   my $builder = delete $attr->{builder} or return $attr;
    my $config  = $builder->can( q(config) ) ? $builder->config : {};
 
    merge_attributes $attr, $builder, {}, [ qw(debug lock log) ];

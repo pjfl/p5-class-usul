@@ -17,22 +17,22 @@ use IPC::SRLock;
 
 coerce ConfigType, from HashRef, via { Class::Usul::Config->new( $_ ) };
 
-has '_config'    => is => 'ro',  isa => ConfigType, coerce => TRUE,
+has '_config'    => is => 'ro', isa => ConfigType, coerce => TRUE,
    handles       => [ qw(prefix secret) ], init_arg => 'config',
    reader        => 'config', required => TRUE;
 
-has 'debug',     => is => 'rw',  isa => Bool, default => FALSE,
+has 'debug',     => is => 'rw', isa => Bool, default => FALSE,
    trigger       => \&_debug_trigger;
 
 has 'encoding'   => is => 'ro', isa => EncodingType, coerce => TRUE,
    documentation => 'Decode/encode input/output using this encoding',
    default       => sub { $_[ 0 ]->config->encoding }, lazy => TRUE;
 
-has '_l10n'      => is => 'ro',  isa => L10NType,
+has '_l10n'      => is => 'ro', isa => L10NType,
    default       => sub { Class::Usul::L10N->new( builder => $_[ 0 ] ) },
    init_arg      => 'l10n', lazy => TRUE, reader => 'l10n';
 
-has '_log'       => is => 'ro',  isa => LogType,
+has '_log'       => is => 'ro', isa => LogType,
    default       => sub { Class::Usul::Log->new( builder => $_[ 0 ] ) },
    init_arg      => 'log',  lazy => TRUE, reader => 'log';
 

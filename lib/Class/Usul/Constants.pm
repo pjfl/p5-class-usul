@@ -8,8 +8,8 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Moose;
 use MooseX::ClassAttribute;
-use File::DataClass::Exception;
 use File::DataClass::Constants ();
+use File::DataClass::Exception;
 
 class_has 'Assert'          => is => 'rw', isa => 'Maybe[CodeRef]';
 
@@ -19,20 +19,20 @@ class_has 'Config_Extn'     => is => 'rw', isa => 'Str',
 class_has 'Exception_Class' => is => 'rw', isa => 'File::DataClass::Exception',
    default                  => q(File::DataClass::Exception);
 
-my @constants;
+my @_constants;
 
 BEGIN {
-   @constants = ( qw(ARRAY ASSERT BRK CODE CONFIG_EXTN DEFAULT_DIR
-                     DEFAULT_ENCODING DEFAULT_L10N_DOMAIN
-                     DIGEST_ALGORITHMS ENCODINGS EVIL EXCEPTION_CLASS EXTNS
-                     FAILED FALSE HASH LANG LBRACE LOCALIZE LOG_LEVELS
-                     NO NUL OK PERMS PHASE PREFIX QUIT SEP SPC TRUE
-                     UNTAINT_CMDLINE UNTAINT_IDENTIFIER UNTAINT_PATH
-                     UUID_PATH WIDTH YES) );
+   @_constants = ( qw(ARRAY ASSERT BRK CODE CONFIG_EXTN DEFAULT_DIR
+                      DEFAULT_ENCODING DEFAULT_L10N_DOMAIN
+                      DIGEST_ALGORITHMS ENCODINGS EVIL EXCEPTION_CLASS EXTNS
+                      FAILED FALSE HASH LANG LBRACE LOCALIZE LOG_LEVELS
+                      NO NUL OK PERMS PHASE PREFIX QUIT SEP SPC TRUE
+                      UNTAINT_CMDLINE UNTAINT_IDENTIFIER UNTAINT_PATH
+                      UUID_PATH WIDTH YES) );
 }
 
 use Sub::Exporter -setup => {
-   exports => [ @constants ], groups => { default => [ @constants ], },
+   exports => [ @_constants ], groups => { default => [ @_constants ], },
 };
 
 sub ARRAY    () { q(ARRAY)           }
@@ -51,7 +51,7 @@ sub NUL      () { q()                }
 sub OK       () { 0                  }
 sub PERMS    () { oct q(0660)        }
 sub PHASE    () { 2                  }
-sub PREFIX   () { [ NUL, q(opt) ]    }
+sub PREFIX   () { [ q(), q(opt) ]    }
 sub QUIT     () { q(q)               }
 sub SEP      () { q(/)               }
 sub SPC      () { q( )               }
@@ -61,7 +61,7 @@ sub YES      () { q(y)               }
 
 sub ASSERT              () { __PACKAGE__->Assert || sub {} }
 sub CONFIG_EXTN         () { __PACKAGE__->Config_Extn }
-sub DEFAULT_DIR         () { [ NUL, qw(etc default) ] }
+sub DEFAULT_DIR         () { [ q(), qw(etc default) ] }
 sub DEFAULT_ENCODING    () { q(UTF-8) }
 sub DEFAULT_L10N_DOMAIN () { q(default) }
 sub DIGEST_ALGORITHMS   () { ( qw(SHA-512 SHA-256 SHA-1 MD5) ) }
@@ -71,7 +71,7 @@ sub LOG_LEVELS          () { ( qw(alert debug error fatal info warn) ) }
 sub UNTAINT_CMDLINE     () { qr{ \A ([^\$%;|&><\*]+) \z }mx }
 sub UNTAINT_IDENTIFIER  () { qr{ \A ([a-zA-Z0-9_]+)  \z }mx }
 sub UNTAINT_PATH        () { qr{ \A ([^\$%;|&><\*]+) \z }mx }
-sub UUID_PATH           () { [ NUL, qw(proc sys kernel random uuid) ] }
+sub UUID_PATH           () { [ q(), qw(proc sys kernel random uuid) ] }
 
 __PACKAGE__->meta->make_immutable;
 

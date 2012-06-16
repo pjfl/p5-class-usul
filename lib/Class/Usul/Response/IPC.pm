@@ -8,13 +8,13 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Moose;
 
-has 'core'   => is => 'rw', isa => 'Int', default => 0;
-has 'out'    => is => 'rw', isa => 'Str', default => q();
-has 'pid'    => is => 'rw', isa => 'Maybe[Int]';
-has 'rv'     => is => 'rw', isa => 'Int', default => 0;
-has 'sig'    => is => 'rw', isa => 'Maybe[Int]';
-has 'stderr' => is => 'rw', isa => 'Str', default => q();
-has 'stdout' => is => 'rw', isa => 'Str', default => q();
+has 'core'   => is => 'ro', isa => 'Int', default => 0;
+has 'out'    => is => 'ro', isa => 'Str', default => q();
+has 'pid'    => is => 'ro', isa => 'Maybe[Int]';
+has 'rv'     => is => 'ro', isa => 'Int', default => 0;
+has 'sig'    => is => 'ro', isa => 'Maybe[Int]';
+has 'stderr' => is => 'ro', isa => 'Str', default => q();
+has 'stdout' => is => 'ro', isa => 'Str', default => q();
 
 __PACKAGE__->meta->make_immutable;
 

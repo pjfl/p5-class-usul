@@ -5,15 +5,13 @@ package Class::Usul::IPC;
 use strict;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use Class::Null;
-use Class::Usul::File;
 use Class::Usul::Moose;
+use Class::Null;
 use Class::Usul::Constants;
 use Class::Usul::Constraints  qw(BaseType FileType);
+use Class::Usul::File;
 use Class::Usul::Functions    qw(arg_list is_arrayref merge_attributes
                                  strip_leader throw);
-use Class::Usul::Response::IPC;
-use Class::Usul::Response::Table;
 use Class::Usul::Time         qw(time2str);
 use English                   qw(-no_match_vars);
 use File::Basename            qw(basename);
@@ -28,7 +26,11 @@ use Try::Tiny;
 
 our ($ERROR, $WAITEDPID);
 
-my $SPECIAL_CHARS = do { my $x = join NUL, qw(< > | &); qr{ ([$x]) }mx };
+has 'response_class' => is => 'ro', isa => LoadableClass, coerce => TRUE,
+   default           => 'Class::Usul::Response::IPC', lazy => TRUE;
+
+has 'table_class'    => is => 'ro', isa => LoadableClass, coerce => TRUE,
+   default           => 'Class::Usul::Response::Table', lazy => TRUE;
 
 has '_file' => is => 'ro', isa => FileType,
    default  => sub { Class::Usul::File->new( builder => $_[ 0 ]->usul ) },
@@ -68,7 +70,6 @@ sub popen {
    my $err  = IO::Handle->new();
    my $out  = IO::Handle->new();
    my $in   = IO::Handle->new();
-   my $res  = Class::Usul::Response::IPC->new();
 
    {  local ($CHILD_ERROR, $ERRNO, $WAITEDPID); local $ERROR = FALSE;
 
@@ -91,12 +92,12 @@ sub popen {
 
    if ($e) { $err->close; $out->close; throw $e }
 
-   my $selector = IO::Select->new(); $selector->add( $err, $out );
+   my $stdout; my $selector = IO::Select->new(); $selector->add( $err, $out );
 
    while (@ready = $selector->can_read) {
       for my $fh (@ready) {
          if (fileno $fh == fileno $err) { $e = __read_all_from( $fh ) }
-         else { $res->out( $res->stdout( __read_all_from( $fh ) ) ) }
+         else { $stdout = __read_all_from( $fh ) }
 
          if ($fh->eof) { $selector->remove( $fh ); $fh->close }
       }
@@ -104,7 +105,8 @@ sub popen {
 
    waitpid $pid, 0; $e and throw $e;
 
-   return $res;
+   return $self->response_class->new( out => $stdout, stdout => $stdout );
+
 }
 
 sub process_exists {
@@ -150,7 +152,8 @@ sub process_table {
       }
    }
 
-   return __new_process_table( [ sort { __pscomp( $a, $b ) } @rows ], $count );
+   return $self->_new_process_table( [ sort { __pscomp( $a, $b ) } @rows ],
+                                     $count );
 }
 
 sub run_cmd {
@@ -230,6 +233,24 @@ sub _list_pids_by_file_system {
    return sort { $a <=> $b } grep { defined && length } split SPC, $data;
 }
 
+sub _new_process_table {
+   my ($self, $rows, $count) = @_;
+
+   return $self->table_class->new
+      ( count    => $count,
+        flds     => [ qw(uid pid ppid start time size state tty cmd) ],
+        labels   => { uid   => 'User',   pid   => 'PID',
+                      ppid  => 'PPID',   start => 'Start Time',
+                      tty   => 'TTY',    time  => 'Time',
+                      size  => 'Size',   state => 'State',
+                      cmd   => 'Command' },
+        typelist => { pid   => q(numeric), ppid => q(numeric),
+                      start => q(date),    size => q(numeric),
+                      time  => q(numeric) },
+        values   => $rows,
+        wrap     => { cmd => 1 }, );
+}
+
 sub _run_cmd_ipc_run_args {
    my ($self, @rest) = @_; my $args = arg_list @rest;
 
@@ -291,21 +312,20 @@ sub _run_cmd_using_ipc_run {
 
    $args->{debug} and $self->log->debug( "Run harness returned ${rv}" );
 
-   my $res = Class::Usul::Response::IPC->new();
+   my $sig = $rv & 127; my $core = $rv & 128; $rv = $rv >> 8;
 
-   $res->sig( $rv & 127 ); $res->core( $rv & 128 ); $rv = $res->rv( $rv >> 8 );
+   my ($stderr, $stdout);
 
    if ($out ne q(null) and $out ne q(stdout)) {
-      $res->out( __run_cmd_filter_out( $res->stdout( $buf_out ) ) );
+      $out = __run_cmd_filter_out( $stdout = $buf_out );
    }
+   else { $out = $stdout = NUL }
 
-   if ($err eq q(out)) {
-      $res->stderr( $res->stdout ); $error = $res->out; chomp $error;
-   }
+   if ($err eq q(out)) { $stderr = $stdout; $error = $out; chomp $error }
    elsif ($err ne q(null) and $err ne q(stderr)) {
-      $res->stderr( $error = $buf_err ); chomp $error;
+      $stderr = $error = $buf_err; chomp $error;
    }
-   else { $error = NUL }
+   else { $stderr = $error = NUL }
 
    if ($rv > $args->{expected_rv}) {
       $error ||= 'Unknown error'; $msg = "Return value ${rv} error ${error}";
@@ -313,7 +333,9 @@ sub _run_cmd_using_ipc_run {
       throw error => $error, rv => $rv;
    }
 
-   return $res;
+   return $self->response_class->new( core   => $core,   out    => $out,
+                                      rv     => $rv,     sig    => $sig,
+                                      stderr => $stderr, stdout => $stdout );
 }
 
 sub _run_cmd_using_system {
@@ -359,9 +381,9 @@ sub _run_cmd_using_system {
       }
    }
 
-   my $res = Class::Usul::Response::IPC->new();
+   my $sig = $rv & 127; my $core = $rv & 128; $rv = $rv >> 8;
 
-   $res->sig( $rv & 127 ); $res->core( $rv & 128 ); $rv = $res->rv( $rv >> 8 );
+   my ($stderr, $stdout);
 
    if ($args->{async}) {
       if ($rv != 0) {
@@ -371,24 +393,23 @@ sub _run_cmd_using_system {
 
       my $pid = $args->{pid_ref}->chomp->getline || 'unknown pid';
 
-      $res->out( "Started ${prog}(${pid}) in the background" );
-      $res->pid( $pid );
-      return $res;
+      $out = "Started ${prog}(${pid}) in the background";
+
+      return $self->response_class->new( core => $core, out => $out,
+                                         pid  => $pid,  rv  => $rv,
+                                         sig  => $sig );
    }
 
    if ($out ne q(stdout) and $out ne q(null) and -f $out) {
-      my $text = $self->io( $out )->slurp;
-
-      $res->out( __run_cmd_filter_out( $res->stdout( $text ) ) );
+      $out = __run_cmd_filter_out( $stdout = $self->io( $out )->slurp );
    }
+   else { $out = $stdout = NUL }
 
-   if ($err eq q(out)) {
-      $res->stderr( $res->stdout ); $error = $res->out; chomp $error;
-   }
+   if ($err eq q(out)) { $stderr = $stdout; $error = $out; chomp $error }
    elsif ($err ne q(stderr) and $err ne q(null) and -f $err) {
-      $res->stderr( $error = $self->io( $err )->slurp ); chomp $error;
+      $stderr = $error = $self->io( $err )->slurp; chomp $error;
    }
-   else { $error = NUL }
+   else { $stderr = $error = NUL }
 
    if ($rv > $args->{expected_rv}) {
       $error ||= 'Unknown error'; $msg = "Return value ${rv} error ${error}";
@@ -396,7 +417,9 @@ sub _run_cmd_using_system {
       throw error => $error, rv => $rv;
    }
 
-   return $res;
+   return $self->response_class->new( core   => $core,   out    => $out,
+                                      rv     => $rv,     sig    => $sig,
+                                      stderr => $stderr, stdout => $stdout );
 }
 
 sub _set_fields {
@@ -470,30 +493,12 @@ sub __ipc_run_harness {
    my $h = IPC::Run::harness( @_ ); $h->run; return $h->full_result || 0;
 }
 
-sub __new_process_table {
-   my ($rows, $count) = @_;
-
-   return Class::Usul::Response::Table->new
-      ( count    => $count,
-        flds     => [ qw(uid pid ppid start time size state tty cmd) ],
-        labels   => { uid   => 'User',   pid   => 'PID',
-                      ppid  => 'PPID',   start => 'Start Time',
-                      tty   => 'TTY',    time  => 'Time',
-                      size  => 'Size',   state => 'State',
-                      cmd   => 'Command' },
-        typelist => { pid   => q(numeric), ppid => q(numeric),
-                      start => q(date),    size => q(numeric),
-                      time  => q(numeric) },
-        values   => $rows,
-        wrap     => { cmd => 1 }, );
-}
-
 sub __partition_command {
    my $cmd = shift; my $aref = []; my @command = ();
 
    for my $item (grep { defined && length } @{ $cmd }) {
-      if ($item =~ $SPECIAL_CHARS) { push @command, $aref, $item; $aref = [] }
-      else { push @{ $aref }, $item }
+      if ($item !~ m{ [\<\>\|\&] }mx) { push @{ $aref }, $item }
+      else { push @command, $aref, $item; $aref = [] }
    }
 
    if ($aref->[ 0 ]) {

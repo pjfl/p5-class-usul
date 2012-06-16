@@ -11,14 +11,14 @@ use Time::HiRes qw(usleep);
 use Time::Local;
 use Time::Zone;
 
-my @functions;
+my @_functions;
 
 BEGIN {
-   @functions = ( qw(nap str2date_time str2time time2str) );
+   @_functions = ( qw(nap str2date_time str2time time2str) );
 }
 
 use Sub::Exporter -setup => {
-   exports => [ @functions ],
+   exports => [ @_functions ],
    groups  => { default => [ qw(str2time time2str) ], },
 };
 
@@ -50,7 +50,7 @@ sub str2date_time ($;$) {
 
 sub str2time ($;$) {
    # This subroutine: Copyright (c) 1995 Graham Barr. All rights reserved.
-   # British version dd/mm/ccyy
+   # British version dd/mm/yyyy
    my ($dtstr, $zone) = @_;
    my ($year, $month, $day, $hh, $mm, $ss, $dst, $frac, $m, $h, $result);
    my %day =
