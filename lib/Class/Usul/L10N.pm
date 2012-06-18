@@ -61,6 +61,10 @@ sub get_po_header {
    return $header->{msgstr} || {};
 }
 
+sub invalidate_cache {
+   $_[ 0 ]->_invalidate_cache; return;
+}
+
 sub localize {
    my ($self, $key, $args) = @_;
 
@@ -137,6 +141,10 @@ sub _gettext {
 }
 
 {  my $cache = {};
+
+   sub _invalidate_cache {
+      $cache = {};
+   }
 
    sub _load_domains {
       my ($self, $args) = @_; my $charset;
@@ -225,6 +233,12 @@ Finish initializing the object
    $po_header_hash_ref = $l10n->get_po_header( { locale => q(de) } );
 
 Returns a hash ref containing the keys and values of the PO header record
+
+=head2 invalidate_cache
+
+   $l10n->invalidate_cache;
+
+Causes a reload of the domain files the next time a message is localized
 
 =head2 localize
 

@@ -8,7 +8,7 @@ use version; our $VERSION = qv( sprintf '0.7.%d', q$Rev$ =~ /\d+/gmx );
 use Class::Usul::Moose;
 
 has 'caption'  => is => 'ro', isa => Str,      default => q();
-has 'class'    => is => 'ro', isa => HashRef,  default => sub { {} };
+has 'class'    => is => 'ro', isa => Str,      default => q();
 has 'classes'  => is => 'ro', isa => HashRef,  default => sub { {} };
 has 'count'    => is => 'ro', isa => Int,      default => 0;
 has 'flds'     => is => 'ro', isa => ArrayRef, default => sub { [] };
