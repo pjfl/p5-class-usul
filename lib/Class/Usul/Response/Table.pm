@@ -7,18 +7,18 @@ use version; our $VERSION = qv( sprintf '0.7.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 
-has 'caption'  => is => 'ro', isa => Str,      default => q();
-has 'class'    => is => 'ro', isa => Str,      default => q();
-has 'classes'  => is => 'ro', isa => HashRef,  default => sub { {} };
-has 'count'    => is => 'ro', isa => Int,      default => 0;
-has 'flds'     => is => 'ro', isa => ArrayRef, default => sub { [] };
-has 'hclass'   => is => 'ro', isa => HashRef,  default => sub { {} };
-has 'labels'   => is => 'ro', isa => HashRef,  default => sub { {} };
-has 'sizes'    => is => 'ro', isa => HashRef,  default => sub { {} };
-has 'typelist' => is => 'ro', isa => HashRef,  default => sub { {} };
-has 'values'   => is => 'ro', isa => ArrayRef, default => sub { [] };
-has 'widths'   => is => 'ro', isa => HashRef,  default => sub { {} };
-has 'wrap'     => is => 'ro', isa => HashRef,  default => sub { {} };
+has 'caption'  => is => 'ro', isa => Str,           default => q();
+has 'class'    => is => 'ro', isa => HashRef | Str, default => q();
+has 'classes'  => is => 'ro', isa => HashRef,       default => sub { {} };
+has 'count'    => is => 'ro', isa => Int,           default => 0;
+has 'flds'     => is => 'ro', isa => ArrayRef,      default => sub { [] };
+has 'hclass'   => is => 'ro', isa => HashRef,       default => sub { {} };
+has 'labels'   => is => 'ro', isa => HashRef,       default => sub { {} };
+has 'sizes'    => is => 'ro', isa => HashRef,       default => sub { {} };
+has 'typelist' => is => 'ro', isa => HashRef,       default => sub { {} };
+has 'values'   => is => 'ro', isa => ArrayRef,      default => sub { [] };
+has 'widths'   => is => 'ro', isa => HashRef,       default => sub { {} };
+has 'wrap'     => is => 'ro', isa => HashRef,       default => sub { {} };
 
 __PACKAGE__->meta->make_immutable;
 
