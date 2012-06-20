@@ -31,9 +31,10 @@ use Term::ReadKey;
 use Text::Autoformat;
 use Try::Tiny;
 
-extends qw(Class::Usul);
-with    qw(Class::Usul::TraitFor::LoadingClasses);
-with    qw(Class::Usul::TraitFor::UntaintedGetopts);
+extends q(Class::Usul);
+with    q(MooseX::Getopt::Dashes);
+with    q(Class::Usul::TraitFor::LoadingClasses);
+with    q(Class::Usul::TraitFor::UntaintedGetopts);
 
 has 'debug',       => is => 'rw', isa => Bool, default => FALSE,
    documentation   => 'Turn debugging on. Promps if interactive',
@@ -119,8 +120,9 @@ around 'BUILDARGS' => sub {
 sub BUILD {
    my $self = shift; $self->_apply_encoding;
 
-   $self->help_manual  and $self->_output_usage( 2 );
+   $self->help_flag    and $self->_output_usage( 0 );
    $self->help_options and $self->_output_usage( 1 );
+   $self->help_manual  and $self->_output_usage( 2 );
    $self->version      and $self->_output_version;
 
    $self->debug( $self->_get_debug_option );
@@ -463,9 +465,13 @@ sub _output_usage {
 
    $verbose > 1 and exit $self->_man_page_from( $self->config );
 
-   pod2usage( { -input   => NUL.$self->config->pathname, -message => SPC,
-                -verbose => $verbose } );
-   exit OK; # Never reached
+   if ($verbose > 0) {
+      pod2usage( { -input   => NUL.$self->config->pathname, -message => SPC,
+                   -verbose => $verbose } ); # Never returns
+   }
+
+   warn ucfirst $self->usage;
+   exit OK;
 }
 
 sub _output_version {

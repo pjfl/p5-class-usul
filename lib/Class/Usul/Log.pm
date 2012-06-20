@@ -33,7 +33,7 @@ has '_logfile'        => is => 'ro', isa => Path | Undef, coerce => TRUE,
 around 'BUILDARGS' => sub {
    my ($next, $class, @rest) = @_; my $attr = $class->$next( @rest );
 
-   my $builder = delete $attr->{builder}; $builder or return $attr;
+   my $builder = delete $attr->{builder} or return $attr;
    my $config  = $builder->can( q(config) ) ? $builder->config : {};
 
    merge_attributes $attr, $builder, {}, [ qw(debug encoding) ];

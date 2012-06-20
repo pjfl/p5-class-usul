@@ -40,29 +40,28 @@ sub encrypt (;$$) {
 sub __keygen {
    my $args = shift; is_hashref $args or $args = { salt => $args || NUL };
 
-   my $seed = __strip( __inflate( __clean( $args->{seed} || $SEED ) ) );
-   ## no critic
-   return substr create_token( ( eval $seed ).$args->{salt} ), 0, 32;
-   ## critic
+   my $material = __transform( $args->{seed} || $SEED ).$args->{salt};
+
+   return substr create_token( $material ), 0, 32;
 }
 
-sub __clean {
-   my $y = shift; my $x = " \t" x 8; $y =~ s{^$x|[^ \t]}{}g; return $y;
+sub __transform {
+   my $y = pop; my $x = " \t" x 8; $y =~ s{^$x|[^ \t]}{}g; return __pack( $y );
 }
 
-sub __inflate {
-   my $y = shift; $y =~ tr{ \t}{01}; return pack 'b*', $y;
+sub __pack {
+   my $y = pop; $y =~ tr{ \t}{01}; return __evaluate( pack 'b*', $y );
 }
 
-sub __strip {
-   my $y = shift; my $x = __crc(); $y =~ s{$x}{}sm; return $y;
+sub __evaluate {
+   my $y = pop; my $x = __crc(); $y =~ s{$x}{}sm; return eval $y;
 }
 
 sub __crc {
-   my $y = __magic(); $y =~ tr{a-zA-Z}{n-za-mN-ZA-M}; return $y;
+   my $y = __static(); $y =~ tr{a-zA-Z}{n-za-mN-ZA-M}; return $y;
 }
 
-sub __magic {
+sub __static {
    return '.*^\f*hfr\f+Npzr::Oyrnpu\f*;\e*\a';
 }
 

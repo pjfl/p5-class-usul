@@ -8,8 +8,6 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use Moose::Role;
 use Class::Usul::Functions qw(untaint_cmdline);
 
-with qw(MooseX::Getopt::Dashes);
-
 around _parse_argv => sub {
    my ($next, $self, @args) = @_;
 
