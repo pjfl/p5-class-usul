@@ -26,7 +26,7 @@ BEGIN {
                       DEFAULT_ENCODING DEFAULT_L10N_DOMAIN
                       DIGEST_ALGORITHMS ENCODINGS EVIL EXCEPTION_CLASS EXTNS
                       FAILED FALSE HASH LANG LBRACE LOCALIZE LOG_LEVELS
-                      NO NUL OK PERMS PHASE PREFIX QUIT SEP SPC TRUE
+                      MODE NO NUL OK PHASE PREFIX QUIT SEP SPC TRUE
                       UNTAINT_CMDLINE UNTAINT_IDENTIFIER UNTAINT_PATH
                       UUID_PATH WIDTH YES) );
 }
@@ -46,10 +46,10 @@ sub HASH     () { q(HASH)            }
 sub LANG     () { q(en)              }
 sub LBRACE   () { q({)               }
 sub LOCALIZE () { q([_)              }
+sub MODE     () { q(002)             }
 sub NO       () { q(n)               }
 sub NUL      () { q()                }
 sub OK       () { 0                  }
-sub PERMS    () { oct q(0660)        }
 sub PHASE    () { 2                  }
 sub PREFIX   () { [ q(), q(opt) ]    }
 sub QUIT     () { q(q)               }
@@ -192,6 +192,10 @@ parameter, I<[_>
 
 List of methods the log object is expected to support
 
+=head2 MODE
+
+Default file creation mask
+
 =head2 NO
 
 The letter I<n>
@@ -203,10 +207,6 @@ Empty string
 =head2 OK
 
 Returns good program exit code, zero
-
-=head2 PERMS
-
-Default file creation permissions
 
 =head2 PHASE
 

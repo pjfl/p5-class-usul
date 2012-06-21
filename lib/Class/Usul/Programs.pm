@@ -1011,8 +1011,6 @@ Turning debug on produces some more output
 
 =item L<Class::Usul>
 
-=item L<Class::Usul::InflateSymbols>
-
 =item L<File::DataClass>
 
 =item L<Getopt::Mixed>

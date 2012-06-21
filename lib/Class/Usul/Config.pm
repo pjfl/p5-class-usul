@@ -42,7 +42,7 @@ has 'log_attributes'  => is => 'ro', isa => HashRef, default => sub { {} };
 has 'man_page_cmd'    => is => 'ro', isa => ArrayRef,
    default            => sub { [ qw(nroff -man) ] };
 
-has 'mode'            => is => 'ro', isa => PositiveInt, default => PERMS;
+has 'mode'            => is => 'ro', isa => PositiveInt, default => MODE;
 
 has 'no_thrash'       => is => 'ro', isa => PositiveInt, default => 3;
 
@@ -114,7 +114,7 @@ has 'script'          => is => 'ro', isa => NonEmptySimpleStr,
 has 'secret'          => is => 'ro', isa => NonEmptySimpleStr,
    lazy               => TRUE,   builder => '_build_secret';
 
-around BUILDARGS => sub {
+around 'BUILDARGS' => sub {
    my ($next, $class, @args) = @_; my $attr = $class->$next( @args ); my $paths;
 
    if ($paths = delete $attr->{cfgfiles} and $paths->[ 0 ]) {
@@ -142,24 +142,22 @@ around BUILDARGS => sub {
 # Private methods
 
 sub _build_appldir {
-   my ($self, $appclass, $home) = __unpack( @_ );
+   my ($self, $appclass, $home) = __unpack( @_ ); my $dir = home2appl $home;
 
-   my $path = dirname( $Config{sitelibexp} );
+   -d catdir( $dir, q(bin) )
+      or $dir = catdir( NUL, q(var), (class2appdir $appclass) );
 
-   if ($home =~ m{ \A $path }mx) {
-      $path = catdir( NUL, q(var), (class2appdir $appclass), q(default) );
-   }
-   else { $path = home2appl $home }
+   -d $dir or $dir = home2appl $home;
 
-   return rel2abs( untaint_path $path );
+   return rel2abs( untaint_path $dir );
 }
 
 sub _build_binsdir {
    my ($self, $attr) = @_;
 
-   my $path = $self->_inflate_path( $attr, qw(appldir bin) );
+   my $dir = $self->_inflate_path( $attr, qw(appldir bin) );
 
-   return -d $path ? $path : untaint_path $Config{installsitescript};
+   return -d $dir ? $dir : untaint_path $Config{installsitescript};
 }
 
 sub _build_ctlfile {
@@ -169,11 +167,15 @@ sub _build_ctlfile {
 }
 
 sub _build_ctrldir {
-   return $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir etc) );
+   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir etc) );
+
+   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], q(vardir) );
 }
 
 sub _build_dbasedir {
-   return $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir db) );
+   my $dir =  $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir db) );
+
+   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], q(vardir) );
 }
 
 sub _build_localedir {
@@ -195,9 +197,9 @@ sub _build_logfile {
 sub _build_logsdir {
    my ($self, $attr) = @_;
 
-   my $path = $self->_inflate_path( $attr, qw(vardir logs) );
+   my $dir = $self->_inflate_path( $attr, qw(vardir logs) );
 
-   return -d $path ? $path : $self->_inflate_path( $attr, qw(tempdir) );
+   return -d $dir ? $dir : $self->_inflate_path( $attr, qw(tempdir) );
 }
 
 sub _build_name {
@@ -222,7 +224,8 @@ sub _build_path_to {
 sub _build_phase {
    my ($self, $attr) = @_;
 
-   my $appldir = blessed $self ? $self->appldir : $attr->{appldir};
+   my $appldir = blessed $self ? $self->appldir
+               : $self->_inflate_path( $attr, q(appldir) );
    my $verdir  = basename( $appldir );
    my ($phase) = $verdir =~ m{ \A v \d+ \. \d+ p (\d+) \z }msx;
 
@@ -234,11 +237,15 @@ sub _build_prefix {
 }
 
 sub _build_root {
-   return $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir root) );
+   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir root) );
+
+   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], q(vardir) );
 }
 
 sub _build_rundir {
-   return $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir run) );
+   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir run) );
+
+   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], q(vardir) );
 }
 
 sub _build_script {
@@ -250,7 +257,9 @@ sub _build_secret {
 }
 
 sub _build_sessdir {
-   return $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir hist) );
+   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir hist) );
+
+   return -d $dir ? $dir : $_[ 0 ]->inflate_path( $_[ 1 ], q(vardir) );
 }
 
 sub _build_shell {
@@ -268,17 +277,17 @@ sub _build_suid {
 }
 
 sub _build_tempdir {
-   my $path = $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir tmp) );
+   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir tmp) );
 
-   return -d $path ? $path : untaint_path tmpdir;
+   return -d $dir ? $dir : untaint_path tmpdir;
 }
 
 sub _build_vardir {
    my ($self, $attr) = @_;
 
-   my $path = $self->_inflate_path( $attr, qw(appldir var) );
+   my $dir = $self->_inflate_path( $attr, qw(appldir var) );
 
-   return -d $path ? $path : catdir( NUL, q(var) );
+   return -d $dir ? $dir : $self->_inflate_path( $attr, q(appldir) );
 }
 
 sub _inflate_path {
