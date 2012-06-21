@@ -224,9 +224,8 @@ sub _build_path_to {
 sub _build_phase {
    my ($self, $attr) = @_;
 
-   my $appldir = blessed $self ? $self->appldir
-               : $self->_inflate_path( $attr, q(appldir) );
-   my $verdir  = basename( $appldir );
+   my $verdir  = blessed $self ? basename( $self->appldir )
+               : basename( $self->_inflate_path( $attr, q(appldir) ) );
    my ($phase) = $verdir =~ m{ \A v \d+ \. \d+ p (\d+) \z }msx;
 
    return defined $phase ? $phase : PHASE;
