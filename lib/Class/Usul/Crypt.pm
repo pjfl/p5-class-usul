@@ -38,30 +38,34 @@ sub encrypt (;$$) {
 # Private functions
 
 sub __keygen {
-   my $args = shift; is_hashref $args or $args = { salt => $args || NUL };
-
-   my $material = __transform( $args->{seed} || $SEED ).$args->{salt};
-
-   return substr create_token( $material ), 0, 32;
+   return substr create_token( __f0( shift ) ), 0, 32;
 }
 
-sub __transform {
-   my $y = pop; my $x = " \t" x 8; $y =~ s{^$x|[^ \t]}{}g; return __pack( $y );
+sub __f0 {
+   my $y = pop; is_hashref $y or $y = { salt => $y || NUL }; return __f1( $y );
 }
 
-sub __pack {
-   my $y = pop; $y =~ tr{ \t}{01}; return __evaluate( pack 'b*', $y );
+sub __f1 {
+   return __f2( $_[ 0 ]->{seed} || $SEED ).$_[ 0 ]->{salt};
 }
 
-sub __evaluate {
-   my $y = pop; my $x = __crc(); $y =~ s{$x}{}sm; return eval $y;
+sub __f2 {
+   my $y = pop; my $x = " \t" x 8; $y =~ s{^$x|[^ \t]}{}g; return __f3( $y );
 }
 
-sub __crc {
-   my $y = __static(); $y =~ tr{a-zA-Z}{n-za-mN-ZA-M}; return $y;
+sub __f3 {
+   my $y = pop; $y =~ tr{ \t}{01}; return __f4( pack 'b*', $y );
 }
 
-sub __static {
+sub __f4 {
+   my $y = pop; my $x = __f5(); $y =~ s{$x}{}sm; return eval $y;
+}
+
+sub __f5 {
+   my $y = __f6(); $y =~ tr{a-zA-Z}{n-za-mN-ZA-M}; return $y;
+}
+
+sub __f6 {
    return '.*^\f*hfr\f+Npzr::Oyrnpu\f*;\e*\a';
 }
 
@@ -102,14 +106,14 @@ I<salt> and I<seed> keys
 
 =head2 decrypt
 
-   my $plain = decrypt( $key, $encoded );
+   my $plain = decrypt( $salt || \%params, $encoded );
 
 Decodes and decrypts the C<$encoded> argument and returns the plain
 text result. See the C<encrypt> method
 
 =head2 encrypt
 
-   my $encrypted = encrypt( $key, $plain );
+   my $encrypted = encrypt( $salt || \%params, $plain );
 
 Encrypts the plain text passed in the C<$plain> argument and returns
 it Base64 encoded. L<Crypt::Twofish_PP> is used to do the encryption. The
@@ -122,7 +126,7 @@ C<__inflate> to create the seed. The seed is C<eval>'d in string
 context and then the salt is concantented onto it before being passed to
 C<Class::Usul::Functions/create_token>
 
-=head2 __inflate
+=head2 __f0 .. __f6
 
 Lifted from L<Acme::Bleach> this recovers the default seed for the key
 generator
