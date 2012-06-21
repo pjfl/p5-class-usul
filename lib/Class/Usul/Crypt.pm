@@ -20,53 +20,53 @@ use Sub::Exporter -setup => {
 my $SEED = do { local $RS = undef; <DATA> };
 
 sub decrypt (;$$) {
-   my ($args, $encoded) = @_; $encoded or return; my $key = __keygen( $args );
-
-   my $cipher = Crypt::CBC->new( -cipher => q(Twofish), -key => $key );
-
-   return $cipher->decrypt( decode_base64( $encoded ) );
+   $_[ 0 ] ? __f0( $_[ 0 ] )->decrypt( decode_base64( $_[ 1 ] ) ) : $_[ 0 ];
 }
 
 sub encrypt (;$$) {
-   my ($args, $plain) = @_; $plain or return; my $key = __keygen( $args );
-
-   my $cipher = Crypt::CBC->new( -cipher => q(Twofish), -key => $key );
-
-   return encode_base64( $cipher->encrypt( $plain ), NUL );
+   $_[ 0 ] ? encode_base64( __f0( $_[ 0 ] )->encrypt( $_[ 1 ] ), '' ) : $_[ 0 ];
 }
 
 # Private functions
 
-sub __keygen {
-   return substr create_token( __f0( shift ) ), 0, 32;
-}
-
 sub __f0 {
-   my $y = pop; is_hashref $y or $y = { salt => $y || NUL }; return __f1( $y );
+   Crypt::CBC->new( -cipher => __f1( $_[ 0 ] ), -key => __f2( $_[ 0 ] ) );
 }
 
 sub __f1 {
-   return __f2( $_[ 0 ]->{seed} || $SEED ).$_[ 0 ]->{salt};
+   $_[ 0 ] && ref $_[ 0 ] ? $_[ 0 ]->{cipher} || q(Twofish) : q(Twofish);
 }
 
 sub __f2 {
-   my $y = pop; my $x = " \t" x 8; $y =~ s{^$x|[^ \t]}{}g; return __f3( $y );
+   substr create_token( __f3( pop ) ), 0, 32;
 }
 
 sub __f3 {
-   my $y = pop; $y =~ tr{ \t}{01}; return __f4( pack 'b*', $y );
+   my $y = pop; __f4( (is_hashref $y) ? $y : { salt => $y || '' } );
 }
 
 sub __f4 {
-   my $y = pop; my $x = __f5(); $y =~ s{$x}{}sm; return eval $y;
+   __f5( $_[ 0 ]->{seed} || $SEED ).$_[ 0 ]->{salt};
 }
 
 sub __f5 {
-   my $y = __f6(); $y =~ tr{a-zA-Z}{n-za-mN-ZA-M}; return $y;
+   my $y = pop; my $x = " \t" x 8; $y =~ s{^$x|[^ \t]}{}g; __f6( $y );
 }
 
 sub __f6 {
-   return '.*^\f*hfr\f+Npzr::Oyrnpu\f*;\e*\a';
+   my $y = pop; $y =~ tr{ \t}{01}; __f7( pack 'b*', $y );
+}
+
+sub __f7 {
+   my $y = pop; my $x = __f8(); $y =~ s{$x}{}sm; eval $y;
+}
+
+sub __f8 {
+   my $y = __f9(); $y =~ tr{a-zA-Z}{n-za-mN-ZA-M}; $y;
+}
+
+sub __f9 {
+   '.*^\f*hfr\f+Npzr::Oyrnpu\f*;\e*\a';
 }
 
 1;
@@ -119,17 +119,16 @@ Encrypts the plain text passed in the C<$plain> argument and returns
 it Base64 encoded. L<Crypt::Twofish_PP> is used to do the encryption. The
 C<$key> argument is passed to the C<__keygen> method
 
-=head2 __keygen
+=head2 __f0 .. __f9
+
+Lifted from L<Acme::Bleach> this recovers the default seed for the key
+generator
 
 Generates the key used by the C<encrypt> and C<decrypt> methods. Calls
 C<__inflate> to create the seed. The seed is C<eval>'d in string
 context and then the salt is concantented onto it before being passed to
-C<Class::Usul::Functions/create_token>
-
-=head2 __f0 .. __f6
-
-Lifted from L<Acme::Bleach> this recovers the default seed for the key
-generator
+C<Class::Usul::Functions/create_token>. Uses this value as the key
+for a L<Crypt::CBC> object which it creates and returns
 
 =head1 Diagnostics
 
