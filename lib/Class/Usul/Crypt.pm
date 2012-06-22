@@ -42,7 +42,7 @@ sub __f2 {
 }
 
 sub __f3 {
-   my $y = pop; __f4( (is_hashref $y) ? $y : { salt => $y || '' } );
+   __f4( (is_hashref $_[ 0 ]) ? $_[ 0 ] : { salt => $_[ 0 ] || '' } );
 }
 
 sub __f4 {
