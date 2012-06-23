@@ -14,7 +14,8 @@ use MIME::Base64;
 use Sys::Hostname;
 
 use Sub::Exporter -setup => {
-   exports => [ qw(decrypt encrypt) ], groups => { default => [], },
+   exports => [ qw(decrypt encrypt cipher_list default_cipher) ],
+   groups  => { default => [], },
 };
 
 my $SEED = do { local $RS = undef; <DATA> };
@@ -27,6 +28,14 @@ sub encrypt (;$$) {
    $_[ 0 ] ? encode_base64( __f0( $_[ 0 ] )->encrypt( $_[ 1 ] ), '' ) : $_[ 0 ];
 }
 
+sub cipher_list () {
+   ( qw(Blowfish Rijndael Twofish) );
+}
+
+sub default_cipher () {
+   q(Twofish);
+}
+
 # Private functions
 
 sub __f0 {
@@ -34,7 +43,7 @@ sub __f0 {
 }
 
 sub __f1 {
-   $_[ 0 ] && ref $_[ 0 ] ? $_[ 0 ]->{cipher} || q(Twofish) : q(Twofish);
+   (is_hashref $_[ 0 ]) ? $_[ 0 ]->{cipher} || default_cipher : default_cipher;
 }
 
 sub __f2 {
@@ -89,13 +98,14 @@ Class::Usul::Crypt - Encryption/decryption functions
    my $key = 'my_little_secret'; # OR
    my $key = { salt => 'my_little_secret', seed => 'whiten this' };
 
-   my $base64_encrypted_text = encrypt( $key, $plain_text );
+   my $base64_encrypted_text = encrypt( $key, $plain_text, [ $cipher ] );
 
    my $plain_text = decrypt( $key, $base64_encrypted_text );
 
 =head1 Description
 
-Exports a pair of functions to encrypt/decrypt data
+Exports a pair of functions to encrypt/decrypt data. Obfuscates the default
+encryption key
 
 =head1 Configuration and Environment
 
@@ -109,26 +119,39 @@ I<salt> and I<seed> keys
    my $plain = decrypt( $salt || \%params, $encoded );
 
 Decodes and decrypts the C<$encoded> argument and returns the plain
-text result. See the C<encrypt> method
+text result. See the L</encrypt> method
 
 =head2 encrypt
 
-   my $encrypted = encrypt( $salt || \%params, $plain );
+   my $encrypted = encrypt( $salt || \%params, $plain, [ $cipher ] );
 
 Encrypts the plain text passed in the C<$plain> argument and returns
-it Base64 encoded. L<Crypt::Twofish_PP> is used to do the encryption. The
-C<$key> argument is passed to the C<__keygen> method
+it Base64 encoded. By default L<Crypt::Twofish> is used to do the
+encryption. The optional C<$cipher> argument overrides this
+
+=head2 cipher_list
+
+   @list_of_ciphers = cipher_list();
+
+Returns the list of ciphers supported by L<Crypt::CBC>. These may not
+all be installed
+
+=head2 default_cipher
+
+   $ciper_name = default_cipher();
+
+Returns I<Twofish>
 
 =head2 __f0 .. __f9
 
 Lifted from L<Acme::Bleach> this recovers the default seed for the key
 generator
 
-Generates the key used by the C<encrypt> and C<decrypt> methods. Calls
-C<__inflate> to create the seed. The seed is C<eval>'d in string
-context and then the salt is concantented onto it before being passed to
-C<Class::Usul::Functions/create_token>. Uses this value as the key
-for a L<Crypt::CBC> object which it creates and returns
+Generates the key used by the C<encrypt> and C<decrypt> methods. The
+seed is C<eval>'d in string context and then the salt is concantented
+onto it before being passed to
+C<Class::Usul::Functions/create_token>. Uses this value as the key for
+a L<Crypt::CBC> object which it creates and returns
 
 =head1 Diagnostics
 
@@ -141,6 +164,10 @@ None
 =item L<Crypt::CBC>
 
 =item L<Crypt::Twofish>
+
+=item L<MIME::Base64>
+
+=item L<Sub::Exporter>
 
 =back
 
