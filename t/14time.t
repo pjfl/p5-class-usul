@@ -27,28 +27,26 @@ Math::BigInt->config()->{lib} eq q(Math::BigInt::GMP)
 
 use Class::Usul::Time qw(str2date_time str2time time2str);
 
-ok time2str( undef, 0 ) eq q(1970-01-01 01:00:00), 'stamp';
+is time2str( undef, 0 ), q(1970-01-01 01:00:00), 'stamp';
 
 my $dt = q().str2date_time( q(11/9/2007 14:12), q(GMT) );
 
-ok $dt eq q(2007-09-11T14:12:00), 'str2date_time';
+is $dt, q(2007-09-11T14:12:00), 'str2date_time';
 
-$dt ne q(2007-09-11T14:12:00) and warn "str2date_time is ${dt}\n";
+is str2time( q(2007-07-30 01:05:32), q(BST) ), q(1185753932), 'str2time/1';
 
-ok str2time( q(2007-07-30 01:05:32), q(BST) ) eq q(1185753932), 'str2time/1';
+is str2time( q(30/7/2007 01:05:32), q(BST) ), q(1185753932), 'str2time/2';
 
-ok str2time( q(30/7/2007 01:05:32), q(BST) ) eq q(1185753932), 'str2time/2';
+is str2time( q(30/7/2007), q(BST) ), q(1185750000), 'str2time/3';
 
-ok str2time( q(30/7/2007), q(BST) ) eq q(1185750000), 'str2time/3';
+is str2time( q(2007.07.30), q(BST) ), q(1185750000), 'str2time/4';
 
-ok str2time( q(2007.07.30), q(BST) ) eq q(1185750000), 'str2time/4';
+is str2time( q(1970/01/01), q(GMT) ), q(0), 'str2time/epoch';
 
-ok str2time( q(1970/01/01), q(GMT) ) eq q(0), 'str2time/epoch';
+is time2str( q(%Y-%m-%d), 0 ), q(1970-01-01), 'time2str/1';
 
-ok time2str( q(%Y-%m-%d), 0 ) eq q(1970-01-01), 'time2str/1';
-
-ok time2str( q(%Y-%m-%d %H:%M:%S), 1185753932, q(BST) )
-   eq q(2007-07-30 01:05:32), 'time2str/2';
+is time2str( q(%Y-%m-%d %H:%M:%S), 1185753932, q(BST) ),
+   q(2007-07-30 01:05:32), 'time2str/2';
 
 done_testing;
 
