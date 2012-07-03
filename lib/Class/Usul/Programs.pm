@@ -255,13 +255,6 @@ sub get_option {
    return $opt - 1;
 }
 
-sub get_owner {
-   my ($self, $pi_cfg) = @_; $pi_cfg ||= {};
-
-   return ($self->options->{uid} || getpwnam( $pi_cfg->{owner} ) || 0,
-           $self->options->{gid} || getgrnam( $pi_cfg->{group} ) || 0);
-}
-
 sub info {
    my ($self, $msg, $args) = @_;
 
@@ -873,12 +866,6 @@ defined
 
 Returns the selected option number from the list of possible options passed
 in the C<$question> argument
-
-=head2 get_owner
-
-   ($uid, $gid) = $self->get_owner( $post_install_config );
-
-Returns the application owner and group ids
 
 =head2 info
 

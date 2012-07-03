@@ -108,11 +108,11 @@ has 'phase'           => is => 'ro', isa => PositiveInt,
 has 'prefix'          => is => 'ro', isa => NonEmptySimpleStr,
    lazy               => TRUE,   builder => '_build_prefix';
 
+has 'salt'            => is => 'ro', isa => NonEmptySimpleStr,
+   lazy               => TRUE,   builder => '_build_salt';
+
 has 'script'          => is => 'ro', isa => NonEmptySimpleStr,
    lazy               => TRUE,   builder => '_build_script';
-
-has 'secret'          => is => 'ro', isa => NonEmptySimpleStr,
-   lazy               => TRUE,   builder => '_build_secret';
 
 around 'BUILDARGS' => sub {
    my ($next, $class, @args) = @_; my $attr = $class->$next( @args ); my $paths;
@@ -251,7 +251,7 @@ sub _build_script {
    return basename( $_[ 0 ]->pathname );
 }
 
-sub _build_secret {
+sub _build_salt {
    return $_[ 0 ]->prefix;
 }
 
@@ -490,9 +490,9 @@ String. Program prefix
 
 String. The basename of the I<pathname> attribute
 
-=item secret
+=item salt
 
-String. This applications secret key as set by the administrators . It
+String. This applications salt for passwords as set by the administrators . It
 is used to perturb the encryption methods. Defaults to the I<prefix>
 attribute value
 

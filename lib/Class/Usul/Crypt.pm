@@ -3,11 +3,12 @@
 package Class::Usul::Crypt;
 
 use strict;
+use warnings;
 use namespace::clean -except => 'meta';
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(create_token is_hashref);
+use Class::Usul::Functions qw(create_token is_coderef is_hashref);
 use Crypt::CBC;
 use English qw(-no_match_vars);
 use MIME::Base64;
@@ -21,11 +22,11 @@ use Sub::Exporter -setup => {
 my $SEED = do { local $RS = undef; <DATA> };
 
 sub decrypt (;$$) {
-   $_[ 0 ] ? __f0( $_[ 0 ] )->decrypt( decode_base64( $_[ 1 ] ) ) : $_[ 0 ];
+   $_[ 0 ] ? __cipher( $_[ 0 ] )->decrypt( decode_base64( $_[ 1 ] ) ) : $_[ 0 ];
 }
 
 sub encrypt (;$$) {
-   $_[ 0 ] ? encode_base64( __f0( $_[ 0 ] )->encrypt( $_[ 1 ] ), '' ) : $_[ 0 ];
+   $_[ 0 ] ? encode_base64( __cipher( $_[ 0 ] )->encrypt( $_[ 1 ] ) ) : $_[ 0 ];
 }
 
 sub cipher_list () {
@@ -38,44 +39,36 @@ sub default_cipher () {
 
 # Private functions
 
-sub __f0 {
-   Crypt::CBC->new( -cipher => __f1( $_[ 0 ] ), -key => __f2( $_[ 0 ] ) );
+sub __cipher {
+   Crypt::CBC->new( -cipher => __cname( $_[ 0 ] ), -key => __token( $_[ 0 ] ) );
 }
 
-sub __f1 {
+sub __cname {
    (is_hashref $_[ 0 ]) ? $_[ 0 ]->{cipher} || default_cipher : default_cipher;
 }
 
-sub __f2 {
-   substr create_token( __f3( pop ) ), 0, 32;
+sub __token {
+   substr create_token( __inflate( pop ) ), 0, 32;
 }
 
-sub __f3 {
-   __f4( (is_hashref $_[ 0 ]) ? $_[ 0 ] : { salt => $_[ 0 ] || '' } );
+sub __inflate {
+   __compose( (is_hashref $_[ 0 ]) ? $_[ 0 ] : { salt => $_[ 0 ] || NUL } );
 }
 
-sub __f4 {
-   __f5( $_[ 0 ]->{seed} || $SEED ).$_[ 0 ]->{salt};
+sub __compose {
+   __prepare( __deref( $_[ 0 ]->{seed} ) || $SEED ).__deref( $_[ 0 ]->{salt} );
 }
 
-sub __f5 {
-   my $y = pop; my $x = " \t" x 8; $y =~ s{^$x|[^ \t]}{}g; __f6( $y );
+sub __deref {
+   (is_coderef $_[ 0 ]) ? $_[ 0 ]->() : $_[ 0 ];
 }
 
-sub __f6 {
-   my $y = pop; $y =~ tr{ \t}{01}; __f7( pack 'b*', $y );
+sub __prepare {
+   my $y = pop; my $x = " \t" x 8; $y =~ s{^$x|[^ \t]}{}g; __whiten( $y );
 }
 
-sub __f7 {
-   my $y = pop; my $x = __f8(); $y =~ s{$x}{}sm; eval $y;
-}
-
-sub __f8 {
-   my $y = __f9(); $y =~ tr{a-zA-Z}{n-za-mN-ZA-M}; $y;
-}
-
-sub __f9 {
-   '.*^\f*hfr\f+Npzr::Oyrnpu\f*;\e*\a';
+sub __whiten {
+   my $y = pop; $y =~ tr{ \t}{01}; $y = pack 'b*', $y; eval $y;
 }
 
 1;
@@ -94,11 +87,11 @@ Class::Usul::Crypt - Encryption/decryption functions
 
    use Class::Usul::Crypt qw(decrypt encrypt);
 
-   my $key = q(); # OR
-   my $key = 'my_little_secret'; # OR
-   my $key = { salt => 'my_little_secret', seed => 'whiten this' };
+   my $args = q(); # OR
+   my $args = 'salt'; # OR
+   my $args = { salt => 'salt', seed => 'whiten this' };
 
-   my $base64_encrypted_text = encrypt( $key, $plain_text, [ $cipher ] );
+   my $base64_encrypted_text = encrypt( $args, $plain_text, [ $cipher ] );
 
    my $plain_text = decrypt( $key, $base64_encrypted_text );
 
@@ -110,7 +103,8 @@ encryption key
 =head1 Configuration and Environment
 
 The C<$key> can be a string (including the null string) or a hash ref with
-I<salt> and I<seed> keys
+I<salt> and I<seed> keys. The I<seed> attribute can be a code ref in which
+case it will be called with no argument and the return value used
 
 =head1 Subroutines/Methods
 
@@ -142,7 +136,7 @@ all be installed
 
 Returns I<Twofish>
 
-=head2 __f0 .. __f9
+=head2 __cipher
 
 Lifted from L<Acme::Bleach> this recovers the default seed for the key
 generator

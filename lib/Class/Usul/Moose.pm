@@ -31,7 +31,7 @@ sub import {
 sub _do_import {
    my ($class, $into, @also) = @_;
 
-   my ( $import, $unimport, $init_meta )
+   my ($import, $unimport, $init_meta)
       = Moose::Exporter->build_import_methods
          ( into => $into, also => [ @also, 'Moose::Util::TypeConstraints' ], );
 

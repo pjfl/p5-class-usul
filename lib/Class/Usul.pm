@@ -18,7 +18,7 @@ use IPC::SRLock;
 coerce ConfigType, from HashRef, via { Class::Usul::Config->new( $_ ) };
 
 has '_config'    => is => 'ro', isa => ConfigType, coerce => TRUE,
-   handles       => [ qw(prefix secret) ], init_arg => 'config',
+   handles       => [ qw(prefix salt) ], init_arg => 'config',
    reader        => 'config', required => TRUE;
 
 has 'debug',     => is => 'rw', isa => Bool, default => FALSE,

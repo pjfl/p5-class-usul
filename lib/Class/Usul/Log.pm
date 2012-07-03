@@ -13,7 +13,6 @@ use Class::Usul::Functions       qw(merge_attributes);
 use Encode;
 use File::Basename               qw(dirname);
 use File::DataClass::Constraints qw(Path);
-use Log::Handler;
 
 has '_debug_flag'     => is => 'ro', isa => Bool, init_arg => 'debug',
    default            => FALSE;
@@ -27,6 +26,9 @@ has '_log'            => is => 'ro', isa => LogType, init_arg => 'log',
 has '_log_attributes' => is => 'ro', isa => HashRef,
    init_arg           => 'log_attributes', default => sub { {} };
 
+has '_log_class'      => is => 'ro', isa => LoadableClass, coerce => TRUE,
+   default            => 'Log::Handler', init_arg => 'log_class', lazy => TRUE;
+
 has '_logfile'        => is => 'ro', isa => Path | Undef, coerce => TRUE,
    init_arg           => 'logfile';
 
@@ -38,7 +40,7 @@ around 'BUILDARGS' => sub {
 
    merge_attributes $attr, $builder, {}, [ qw(debug encoding) ];
    merge_attributes $attr, $config,  {},
-      [ qw(encoding log_attributes logfile) ];
+      [ qw(encoding log_attributes log_class logfile) ];
 
    return $attr;
 };
@@ -57,7 +59,7 @@ sub BUILD {
          return;
       } );
 
-      my $msg_meth .= "${method}_message";
+      my $msg_meth = "${method}_message";
 
       $meta->has_method( $msg_meth ) or $meta->add_method( $msg_meth => sub {
          my ($self, $opts, $msg) = @_; my $text;
@@ -81,16 +83,15 @@ sub BUILD {
 sub _build_log {
    my $self    = shift;
    my $attr    = { %{ $self->_log_attributes } };
-   my $logfile = NUL.($attr->{filename} || $self->_logfile);
-   my $level   = $self->_debug_flag ? 7 : $attr->{maxlevel} || 6;
+   my $logfile = $attr->{filename} || $self->_logfile;
 
-   ($logfile and -d dirname( $logfile )) or return Class::Null->new;
+   ($logfile and -d dirname( NUL.$logfile )) or return Class::Null->new;
 
-   $attr->{filename}   = $logfile;
-   $attr->{maxlevel}   = $level;
+   $attr->{filename}   = NUL.$logfile;
+   $attr->{maxlevel}   = $self->_debug_flag ? 7 : $attr->{maxlevel} || 6;
    $attr->{mode    } ||= q(append);
 
-   return Log::Handler->new( file => $attr );
+   return $self->_log_class->new( file => $attr );
 }
 
 __PACKAGE__->meta->make_immutable;
