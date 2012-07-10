@@ -585,9 +585,9 @@ sub _get_archive_names {
       my $cfg = { %CONFIG, %{ $passed_cfg || {} }, %{ $self->notes } };
 
       if ($path = $self->_get_config_path( $cfg ) and -f $path) {
-         my $attrs = $cfg->{config_attrs};
+         my $file = $self->cli( $cfg )->file;
 
-         $cfg = $self->cli->file->dataclass_schema( $attrs )->load( $path );
+         $cfg = $file->dataclass_schema( $cfg->{config_attrs} )->load( $path );
       }
 
       return $cache = $cfg;

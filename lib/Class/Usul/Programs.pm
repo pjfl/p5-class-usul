@@ -70,7 +70,7 @@ has 'options'      => is => 'ro', isa => HashRef, default => sub { {} },
       'Zero, one or more key/value pairs available to the method call',
    traits          => [ 'Getopt' ], cmd_aliases => q(o), cmd_flag => 'option';
 
-has 'quiet'        => is => 'rw', isa => Bool, default => FALSE,
+has 'quiet'        => is => 'ro', isa => Bool, default => FALSE,
    documentation   => 'Quiet the display of information messages',
    traits          => [ 'Getopt' ], cmd_aliases => q(q), cmd_flag => 'quiet';
 
