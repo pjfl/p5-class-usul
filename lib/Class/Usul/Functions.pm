@@ -469,7 +469,7 @@ C<ucfirst>s the list and then C<join>s that with I<::>
 
 =head2 product
 
-   $product = produce( 1, 2, 3, 4 );
+   $product = product( 1, 2, 3, 4 );
 
 Returns the product of the list of numbers
 
