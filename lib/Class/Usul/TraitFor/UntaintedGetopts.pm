@@ -3,6 +3,7 @@
 package Class::Usul::TraitFor::UntaintedGetopts;
 
 use strict;
+use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Moose::Role;
@@ -15,8 +16,6 @@ around _parse_argv => sub {
 
    return $self->$next( @args );
 };
-
-no Moose::Role;
 
 1;
 

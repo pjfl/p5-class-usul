@@ -16,13 +16,11 @@ has 'name'     => is => 'ro', isa => 'Maybe[Str]';
 has 'provides' => is => 'ro', isa => 'Maybe[HashRef]';
 has 'version'  => is => 'ro', isa => 'Maybe[Str]';
 
-around BUILDARGS => sub {
+around 'BUILDARGS' => sub {
    return LoadFile( q().$_[2] ) || {};
 };
 
 __PACKAGE__->meta->make_immutable;
-
-no Moose;
 
 1;
 

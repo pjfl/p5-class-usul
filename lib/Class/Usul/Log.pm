@@ -83,20 +83,20 @@ sub BUILD {
 sub _build_log {
    my $self    = shift;
    my $attr    = { %{ $self->_log_attributes } };
-   my $logfile = $attr->{filename} || $self->_logfile;
+   my $fattr   = $attr->{file} ||= {};
+   my $logfile = $fattr->{filename} || $self->_logfile;
 
    ($logfile and -d dirname( NUL.$logfile )) or return Class::Null->new;
 
-   $attr->{filename}   = NUL.$logfile;
-   $attr->{maxlevel}   = $self->_debug_flag ? 7 : $attr->{maxlevel} || 6;
-   $attr->{mode    } ||= q(append);
+   $fattr->{filename}   = NUL.$logfile;
+   $fattr->{maxlevel}   = $self->_debug_flag
+                        ? 'debug' : $fattr->{maxlevel} || 'info';
+   $fattr->{mode    } ||= q(append);
 
-   return $self->_log_class->new( file => $attr );
+   return $self->_log_class->new( %{ $attr } );
 }
 
 __PACKAGE__->meta->make_immutable;
-
-no Moose;
 
 1;
 

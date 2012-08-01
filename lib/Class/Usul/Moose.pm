@@ -4,6 +4,7 @@ package Class::Usul::Moose;
 
 use strict;
 use warnings;
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use feature ();
 use namespace::autoclean ();
 no  bareword::filehandles;
@@ -13,6 +14,7 @@ no  multidimensional;
 use Moose ();
 #use Moose::Autobox ();
 use Moose::Util::TypeConstraints ();
+use MooseX::AttributeShortcuts ();
 use MooseX::Types::Moose ();
 use MooseX::Types::Common::String ();
 use MooseX::Types::Common::Numeric ();
@@ -42,6 +44,7 @@ sub _do_import {
    $class->$import( { into => $into } );
 #   Method::Signatures::Simple->import( into => $into );
 #   Moose::Autobox->import( into => $into );
+#   MooseX::AttributeShortcuts->import( -into => $into );
    MooseX::Types::Moose->import( { into => $into },
       MooseX::Types::Moose->type_names );
    MooseX::Types::Common::String->import( { into => $into },

@@ -84,8 +84,6 @@ sub setup_plugins {
    return \@plugins;
 }
 
-no Moose::Role;
-
 1;
 
 __END__

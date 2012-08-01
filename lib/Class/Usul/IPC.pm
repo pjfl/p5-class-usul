@@ -536,8 +536,6 @@ sub __run_cmd_filter_out {
 
 __PACKAGE__->meta->make_immutable;
 
-no Moose;
-
 1;
 
 __END__
