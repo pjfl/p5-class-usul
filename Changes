@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+         - Updated inc::Bob to 1.4
          - Removed pi_config_file, aliases_path, and profiles_path from
            C::U::Config
 
@@ -10,7 +11,6 @@ Revision history for Class::Usul
 0.1.103  2011-02-22
          - Updated inc::Bob
          - Moved boilerplate M::B subclass code to inc/Bob.pm
-         - Suppressed Konig CPAN testing again
 
 0.1.70   2010-01-31 16:29:08 GMT
          - Started
