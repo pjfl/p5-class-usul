@@ -8,28 +8,26 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use Class::Null;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Constraints     qw(EncodingType LogType);
 use Class::Usul::Functions       qw(merge_attributes);
 use Encode;
 use File::Basename               qw(dirname);
 use File::DataClass::Constraints qw(Path);
 
-has '_debug_flag'     => is => 'ro', isa => Bool, init_arg => 'debug',
+has '_debug_flag'     => is => 'ro',   isa => Bool, init_arg => 'debug',
    default            => FALSE;
 
-has '_encoding'       => is => 'ro', isa => EncodingType | Undef,
+has '_encoding'       => is => 'ro',   isa => EncodingType | Undef,
    init_arg           => 'encoding';
 
-has '_log'            => is => 'ro', isa => LogType, init_arg => 'log',
-   builder            => '_build_log', lazy => TRUE;
+has '_log'            => is => 'lazy', isa => LogType, init_arg => 'log';
 
-has '_log_attributes' => is => 'ro', isa => HashRef,
+has '_log_attributes' => is => 'ro',   isa => HashRef,
    init_arg           => 'log_attributes', default => sub { {} };
 
-has '_log_class'      => is => 'ro', isa => LoadableClass, coerce => TRUE,
-   default            => 'Log::Handler', init_arg => 'log_class', lazy => TRUE;
+has '_log_class'      => is => 'lazy', isa => LoadableClass, coerce => TRUE,
+   default            => sub { 'Log::Handler' }, init_arg => 'log_class';
 
-has '_logfile'        => is => 'ro', isa => Path | Undef, coerce => TRUE,
+has '_logfile'        => is => 'ro',   isa => Path | Undef, coerce => TRUE,
    init_arg           => 'logfile';
 
 around 'BUILDARGS' => sub {
@@ -80,7 +78,7 @@ sub BUILD {
 
 # Private methods
 
-sub _build_log {
+sub _build__log {
    my $self    = shift;
    my $attr    = { %{ $self->_log_attributes } };
    my $fattr   = $attr->{file} ||= {};
@@ -114,7 +112,7 @@ Class::Usul::Log - Create methods for each logging level that encode their outpu
 
 =head1 Synopsis
 
-   use Class::Usul::Constraints qw(LogType);
+   use Class::Usul::Moose;
    use Class::Usul::Log;
 
    has '_log' => is => 'ro', isa => LogType,
@@ -187,8 +185,6 @@ None
 =item L<Class::Null>
 
 =item L<Class::Usul::Constants>
-
-=item L<Class::Usul::Constraints>
 
 =item L<Class::Usul::Functions>
 

@@ -11,7 +11,6 @@ use Class::Usul::IPC;
 use Class::Usul::File;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Constraints qw(FileType IPCType);
 use Class::Usul::Response::Meta;
 use Class::Usul::Functions   qw(abs_path app_prefix arg_list assert_directory
                                 class2appdir classdir elapsed env_prefix
@@ -79,25 +78,24 @@ has 'version'      => is => 'ro', isa => Bool, default => FALSE,
    traits          => [ 'Getopt' ], cmd_aliases => q(V), cmd_flag => 'version';
 
 
-has '_file'    => is => 'ro', isa => FileType,
+has '_file'    => is => 'lazy', isa => FileType,
    default     => sub { Class::Usul::File->new( builder => $_[ 0 ] ) },
-   handles     => [ qw(io) ], init_arg => undef, lazy => TRUE, reader => 'file';
+   handles     => [ qw(io) ], init_arg => undef, reader => 'file';
 
-has '_ipc'     => is => 'ro', isa => IPCType,
+has '_ipc'     => is => 'lazy', isa => IPCType,
    default     => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) },
-   handles     => [ qw(run_cmd) ], init_arg => undef, lazy => TRUE,
-   reader      => 'ipc';
+   handles     => [ qw(run_cmd) ], init_arg => undef, reader => 'ipc';
 
-has '_logname' => is => 'ro', isa => NonEmptySimpleStr,
+has '_logname' => is => 'lazy', isa => NonEmptySimpleStr,
    default     => sub { untaint_identifier( $ENV{USER} || $ENV{LOGNAME} ) },
-   init_arg    => undef, lazy => TRUE, reader => 'logname';
+   init_arg    => undef, reader => 'logname';
 
-has '_mode'    => is => 'rw', isa => PositiveInt, accessor => 'mode',
+has '_mode'    => is => 'rw',   isa => PositiveInt, accessor => 'mode',
    default     => sub { $_[ 0 ]->config->mode }, init_arg => 'mode',
    lazy        => TRUE;
 
-has '_os'      => is => 'ro', isa => HashRef, builder => '_build__os',
-   init_arg    => undef, lazy => TRUE, reader => 'os';
+has '_os'      => is => 'lazy', isa => HashRef, init_arg => undef,
+   reader      => 'os';
 
 has '_params'  => is => 'ro', isa => HashRef, default => sub { {} },
    init_arg    => 'params', reader => 'params';

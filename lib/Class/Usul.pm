@@ -9,32 +9,31 @@ use 5.010;
 use Class::Usul::Moose;
 use Class::Usul::Config;
 use Class::Usul::Constants;
-use Class::Usul::Constraints qw(ConfigType EncodingType L10NType LogType);
-use Class::Usul::Functions   qw(arg_list data_dumper merge_attributes);
+use Class::Usul::Functions qw(arg_list data_dumper merge_attributes);
 use Class::Usul::L10N;
 use Class::Usul::Log;
 use IPC::SRLock;
 
 coerce ConfigType, from HashRef, via { Class::Usul::Config->new( $_ ) };
 
-has '_config'    => is => 'ro', isa => ConfigType, coerce => TRUE,
+has '_config'    => is => 'ro',   isa => ConfigType, coerce => TRUE,
    handles       => [ qw(prefix salt) ], init_arg => 'config',
    reader        => 'config', required => TRUE;
 
-has 'debug',     => is => 'rw', isa => Bool, default => FALSE,
+has 'debug',     => is => 'rw',   isa => Bool, default => FALSE,
    trigger       => \&_debug_trigger;
 
-has 'encoding'   => is => 'ro', isa => EncodingType, coerce => TRUE,
+has 'encoding'   => is => 'lazy', isa => EncodingType, coerce => TRUE,
    documentation => 'Decode/encode input/output using this encoding',
-   default       => sub { $_[ 0 ]->config->encoding }, lazy => TRUE;
+   default       => sub { $_[ 0 ]->config->encoding };
 
-has '_l10n'      => is => 'ro', isa => L10NType,
+has '_l10n'      => is => 'lazy', isa => L10NType,
    default       => sub { Class::Usul::L10N->new( builder => $_[ 0 ] ) },
-   init_arg      => 'l10n', lazy => TRUE, reader => 'l10n';
+   init_arg      => 'l10n', reader => 'l10n';
 
-has '_log'       => is => 'ro', isa => LogType,
+has '_log'       => is => 'lazy', isa => LogType,
    default       => sub { Class::Usul::Log->new( builder => $_[ 0 ] ) },
-   init_arg      => 'log',  lazy => TRUE, reader => 'log';
+   init_arg      => 'log', reader => 'log';
 
 sub dumper {
    my $self = shift; return data_dumper( @_ ); # Damm handy for development
@@ -175,8 +174,6 @@ debug level
 =over 3
 
 =item L<Class::Usul::Constants>
-
-=item L<Class::Usul::Constraints>
 
 =item L<Class::Usul::Functions>
 

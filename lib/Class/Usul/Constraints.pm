@@ -33,9 +33,9 @@ subtype LogType, as Object,
    message { 'Object '.(blessed $_ || $_).' is missing a log level method' };
 
 subtype NullLoadingClass, as MooseClassName;
-coerce  NullLoadingClass, from Str, via {
-   my $name = $_; load_first_existing_class( $name, q(Class::Null) );
-};
+coerce  NullLoadingClass,
+   from Str,   via { __load_if( $_ ) },
+   from Undef, via { __load_if() };
 
 subtype RequestType, as Object,
    where   { $_->can( q(params) ) },
@@ -48,6 +48,10 @@ sub __has_log_level_methods {
 
    return TRUE;
 }
+
+sub __load_if {
+   my $name = shift || NUL; load_first_existing_class( $name, q(Class::Null) );
+};
 
 1;
 
@@ -65,7 +69,7 @@ This document describes Class::Usul::Constraints version 0.1.$Revision$
 
 =head1 Synopsis
 
-   use Class::Usul::Constraints qw(ConfigType EncodingType LogType);
+   use Class::Usul::Constraints q(:all);
 
 =head1 Description
 
@@ -106,6 +110,8 @@ None
 =over 3
 
 =item L<Class::Usul::Constants>
+
+=item L<Class::Usul::Functions>
 
 =item L<MooseX::Types>
 

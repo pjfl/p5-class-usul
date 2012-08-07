@@ -8,7 +8,6 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use Class::Usul::File;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Constraints     qw(EncodingType);
 use Class::Usul::Functions       qw(app_prefix class2appdir home2appl split_on__
                                     untaint_path);
 use Config;
@@ -18,101 +17,80 @@ use File::DataClass::Constraints qw(Directory File Path);
 use File::Gettext::Constants;
 use File::Spec::Functions        qw(canonpath catdir catfile rel2abs tmpdir);
 
-has 'appclass'        => is => 'ro', isa => NonEmptySimpleStr, required => TRUE;
+has 'appclass'        => is => 'ro',   isa => NonEmptySimpleStr,
+   required           => TRUE;
 
-has 'doc_title'       => is => 'ro', isa => NonEmptySimpleStr,
+has 'doc_title'       => is => 'ro',   isa => NonEmptySimpleStr,
    default            => 'User Contributed Documentation';
 
-has 'encoding'        => is => 'ro', isa => EncodingType, coerce => TRUE,
+has 'encoding'        => is => 'ro',   isa => EncodingType, coerce => TRUE,
    default            => DEFAULT_ENCODING;
 
-has 'extension'       => is => 'ro', isa => NonEmptySimpleStr,
+has 'extension'       => is => 'ro',   isa => NonEmptySimpleStr,
    default            => CONFIG_EXTN;
 
-has 'home'            => is => 'ro', isa => Directory, coerce => TRUE,
+has 'home'            => is => 'ro',   isa => Directory, coerce => TRUE,
    documentation      => 'Directory containing the config file',
    required           => TRUE;
 
-has 'l10n_attributes' => is => 'ro', isa => HashRef, default => sub { {} };
+has 'l10n_attributes' => is => 'ro',   isa => HashRef, default => sub { {} };
 
-has 'lock_attributes' => is => 'ro', isa => HashRef, default => sub { {} };
+has 'lock_attributes' => is => 'ro',   isa => HashRef, default => sub { {} };
 
-has 'log_attributes'  => is => 'ro', isa => HashRef, default => sub { {} };
+has 'log_attributes'  => is => 'ro',   isa => HashRef, default => sub { {} };
 
-has 'man_page_cmd'    => is => 'ro', isa => ArrayRef,
+has 'man_page_cmd'    => is => 'ro',   isa => ArrayRef,
    default            => sub { [ qw(nroff -man) ] };
 
-has 'mode'            => is => 'ro', isa => PositiveInt, default => MODE;
+has 'mode'            => is => 'ro',   isa => PositiveInt, default => MODE;
 
-has 'no_thrash'       => is => 'ro', isa => PositiveInt, default => 3;
+has 'no_thrash'       => is => 'ro',   isa => PositiveInt, default => 3;
 
-has 'pathname'        => is => 'ro', isa => File, coerce => TRUE,
-   builder            => '_build_pathname', lazy => TRUE;
-
-
-has 'appldir'         => is => 'ro', isa => Directory, coerce => TRUE,
-   lazy               => TRUE,   builder => '_build_appldir';
-
-has 'binsdir'         => is => 'ro', isa => Path,      coerce => TRUE,
-   lazy               => TRUE,   builder => '_build_binsdir';
-
-has 'ctlfile'         => is => 'ro', isa => Path,      coerce => TRUE,
-   lazy               => TRUE,   builder => '_build_ctlfile';
-
-has 'ctrldir'         => is => 'ro', isa => Path,      coerce => TRUE,
-   lazy               => TRUE,   builder => '_build_ctrldir';
-
-has 'dbasedir'        => is => 'ro', isa => Path,      coerce => TRUE,
-   lazy               => TRUE,   builder => '_build_dbasedir';
-
-has 'localedir'       => is => 'ro', isa => Directory, coerce => TRUE,
-   lazy               => TRUE,   builder => '_build_localedir';
-
-has 'logfile'         => is => 'ro', isa => Path,      coerce => TRUE,
-   lazy               => TRUE,   builder => '_build_logfile';
-
-has 'logsdir'         => is => 'ro', isa => Directory, coerce => TRUE,
-   lazy               => TRUE,   builder => '_build_logsdir';
-
-has 'root'            => is => 'ro', isa => Path,      coerce => TRUE,
-   lazy               => TRUE,   builder => '_build_root';
-
-has 'rundir'          => is => 'ro', isa => Path,      coerce => TRUE,
-   lazy               => TRUE,   builder => '_build_rundir';
-
-has 'sessdir'         => is => 'ro', isa => Path,      coerce => TRUE,
-   lazy               => TRUE,   builder => '_build_sessdir';
-
-has 'shell'           => is => 'ro', isa => File,      coerce => TRUE,
-   lazy               => TRUE,   builder => '_build_shell';
-
-has 'suid'            => is => 'ro', isa => Path,      coerce => TRUE,
-   lazy               => TRUE,   builder => '_build_suid';
-
-has 'tempdir'         => is => 'ro', isa => Directory, coerce => TRUE,
-   lazy               => TRUE,   builder => '_build_tempdir';
-
-has 'vardir'          => is => 'ro', isa => Path,      coerce => TRUE,
-   lazy               => TRUE,   builder => '_build_vardir';
+has 'pathname'        => is => 'lazy', isa => File, coerce => TRUE;
 
 
-has 'name'            => is => 'ro', isa => NonEmptySimpleStr,
-   lazy               => TRUE,   builder => '_build_name';
+has 'appldir'         => is => 'lazy', isa => Directory, coerce => TRUE;
 
-has 'owner'           => is => 'ro', isa => NonEmptySimpleStr,
-   lazy               => TRUE,   builder => '_build_owner';
+has 'binsdir'         => is => 'lazy', isa => Path,      coerce => TRUE;
 
-has 'phase'           => is => 'ro', isa => PositiveInt,
-   lazy               => TRUE,   builder => '_build_phase';
+has 'ctlfile'         => is => 'lazy', isa => Path,      coerce => TRUE;
 
-has 'prefix'          => is => 'ro', isa => NonEmptySimpleStr,
-   lazy               => TRUE,   builder => '_build_prefix';
+has 'ctrldir'         => is => 'lazy', isa => Path,      coerce => TRUE;
 
-has 'salt'            => is => 'ro', isa => NonEmptySimpleStr,
-   lazy               => TRUE,   builder => '_build_salt';
+has 'dbasedir'        => is => 'lazy', isa => Path,      coerce => TRUE;
 
-has 'script'          => is => 'ro', isa => NonEmptySimpleStr,
-   lazy               => TRUE,   builder => '_build_script';
+has 'localedir'       => is => 'lazy', isa => Directory, coerce => TRUE;
+
+has 'logfile'         => is => 'lazy', isa => Path,      coerce => TRUE;
+
+has 'logsdir'         => is => 'lazy', isa => Directory, coerce => TRUE;
+
+has 'root'            => is => 'lazy', isa => Path,      coerce => TRUE;
+
+has 'rundir'          => is => 'lazy', isa => Path,      coerce => TRUE;
+
+has 'sessdir'         => is => 'lazy', isa => Path,      coerce => TRUE;
+
+has 'shell'           => is => 'lazy', isa => File,      coerce => TRUE;
+
+has 'suid'            => is => 'lazy', isa => Path,      coerce => TRUE;
+
+has 'tempdir'         => is => 'lazy', isa => Directory, coerce => TRUE;
+
+has 'vardir'          => is => 'lazy', isa => Path,      coerce => TRUE;
+
+
+has 'name'            => is => 'lazy', isa => NonEmptySimpleStr;
+
+has 'owner'           => is => 'lazy', isa => NonEmptySimpleStr;
+
+has 'phase'           => is => 'lazy', isa => PositiveInt;
+
+has 'prefix'          => is => 'lazy', isa => NonEmptySimpleStr;
+
+has 'salt'            => is => 'lazy', isa => NonEmptySimpleStr;
+
+has 'script'          => is => 'lazy', isa => NonEmptySimpleStr;
 
 around 'BUILDARGS' => sub {
    my ($next, $class, @args) = @_; my $attr = $class->$next( @args ); my $paths;
@@ -524,7 +502,9 @@ None
 
 =over 3
 
-=item L<Class::Usul>
+=item L<Class::Usul::File>
+
+=item L<Class::Usul::Moose>
 
 =back
 

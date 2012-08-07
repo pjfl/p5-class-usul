@@ -10,6 +10,8 @@ use namespace::autoclean ();
 no  bareword::filehandles;
 no  multidimensional;
 
+use Class::Usul::Constraints ();
+use Import::Into;
 #use Method::Signatures::Simple ();
 use Moose ();
 #use Moose::Autobox ();
@@ -23,37 +25,38 @@ use MooseX::Types::LoadableClass ();
 #use MooseX::Types::Varchar ();
 
 sub import {
-   my ($self, @rest) = @_; my $into = caller;
+   my ($self, @args) = @_; my $target = caller;
 
-   return _do_import( __PACKAGE__, $into, 'Moose', @rest );
+   return _do_import
+      ( __PACKAGE__, $target, 'Moose', 'Moose::Util::TypeConstraints', @args );
 }
 
 # Private methods
 
 sub _do_import {
-   my ($class, $into, @also) = @_;
+   my ($class, $target, @also) = @_;
 
-   my ($import, $unimport, $init_meta)
-      = Moose::Exporter->build_import_methods
-         ( into => $into, also => [ @also, 'Moose::Util::TypeConstraints' ], );
+   my ($import, $unimport, $init_meta) = Moose::Exporter->build_import_methods
+      ( into => $target, also => [ @also ] );
 
+   feature->import( qw(state switch) );
+   namespace::autoclean->import( -cleanee => $target );
+   $class->$import( { into => $target } );
+   Class::Usul::Constraints->import( { into => $target }, q(:all) );
+   MooseX::AttributeShortcuts->import::into( $target );
+#   Method::Signatures::Simple->import( into => $target );
+#   Moose::Autobox->import( into => $target );
+   MooseX::Types::Moose->import( { into => $target },
+      MooseX::Types::Moose->type_names );
+   MooseX::Types::Common::String->import( { into => $target },
+      MooseX::Types::Common::String->type_names );
+   MooseX::Types::Common::Numeric->import( { into => $target },
+      MooseX::Types::Common::Numeric->type_names );
+   MooseX::Types::LoadableClass->import( { into => $target },
+      qw(LoadableClass LoadableRole) );
+#   MooseX::Types::Varchar->import( { into => $target }, 'Varchar' );
    bareword::filehandles->unimport();
    multidimensional->unimport();
-   feature->import( qw(state switch) );
-   namespace::autoclean->import( -cleanee => $into );
-   $class->$import( { into => $into } );
-#   Method::Signatures::Simple->import( into => $into );
-#   Moose::Autobox->import( into => $into );
-#   MooseX::AttributeShortcuts->import( -into => $into );
-   MooseX::Types::Moose->import( { into => $into },
-      MooseX::Types::Moose->type_names );
-   MooseX::Types::Common::String->import( { into => $into },
-      MooseX::Types::Common::String->type_names );
-   MooseX::Types::Common::Numeric->import( { into => $into },
-      MooseX::Types::Common::Numeric->type_names );
-   MooseX::Types::LoadableClass->import( { into => $into },
-      qw(LoadableClass LoadableRole) );
-#   MooseX::Types::Varchar->import( { into => $into }, 'Varchar' );
    return;
 }
 
@@ -110,9 +113,15 @@ None
 
 =item L<warnings>
 
+=item L<Class::Usul::Constraints>
+
+=item L<Import::Into>
+
 =item L<Moose>
 
 =item L<Moose::Util::TypeConstraints>
+
+=item L<MooseX::AttributeShortcuts>
 
 =item L<MooseX::Types::Moose>
 

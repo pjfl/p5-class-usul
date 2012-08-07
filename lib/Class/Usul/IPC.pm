@@ -5,10 +5,9 @@ package Class::Usul::IPC;
 use strict;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use Class::Usul::Moose;
 use Class::Null;
+use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Constraints  qw(BaseType FileType);
 use Class::Usul::File;
 use Class::Usul::Functions    qw(arg_list is_arrayref merge_attributes
                                  strip_leader throw);
@@ -26,17 +25,17 @@ use Try::Tiny;
 
 our ($ERROR, $WAITEDPID);
 
-has 'response_class' => is => 'ro', isa => LoadableClass, coerce => TRUE,
-   default           => 'Class::Usul::Response::IPC', lazy => TRUE;
+has 'response_class' => is => 'lazy', isa => LoadableClass, coerce => TRUE,
+   default           => sub { 'Class::Usul::Response::IPC' };
 
-has 'table_class'    => is => 'ro', isa => LoadableClass, coerce => TRUE,
-   default           => 'Class::Usul::Response::Table', lazy => TRUE;
+has 'table_class'    => is => 'lazy', isa => LoadableClass, coerce => TRUE,
+   default           => sub { 'Class::Usul::Response::Table' };
 
-has '_file' => is => 'ro', isa => FileType,
+has '_file' => is => 'lazy', isa => FileType,
    default  => sub { Class::Usul::File->new( builder => $_[ 0 ]->usul ) },
-   handles  => [ qw(io) ], init_arg => undef, lazy => TRUE, reader => 'file';
+   handles  => [ qw(io) ], init_arg => undef, reader => 'file';
 
-has '_usul' => is => 'ro', isa => BaseType,
+has '_usul' => is => 'ro',   isa => BaseType,
    handles  => [ qw(config debug lock log) ], init_arg => 'builder',
    reader   => 'usul', required => TRUE, weak_ref => TRUE;
 

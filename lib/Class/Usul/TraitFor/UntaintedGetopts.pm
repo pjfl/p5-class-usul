@@ -9,7 +9,7 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use Moose::Role;
 use Class::Usul::Functions qw(untaint_cmdline);
 
-around _parse_argv => sub {
+around '_parse_argv' => sub {
    my ($next, $self, @args) = @_;
 
    @ARGV = map { untaint_cmdline $_ } @ARGV;

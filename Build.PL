@@ -6,7 +6,6 @@ use inc::Bob; # Module::Build subclass
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 Bob->new( {
-   stop_tests => 1,
    module     => q(Class::Usul),
    home_page  => q(http://www.roxsoft.co.uk),
    requires   => {
@@ -30,6 +29,7 @@ Bob->new( {
       'File::DataClass'               => q(0.11.0),
       'Getopt::Mixed'                 => 1.10,
       'Git::Class'                    => 0.03,
+      'Import::Into'                  => 1.001000,
       'IO::Interactive'               => q(0.0.5),
       'IPC::Cmd'                      => 0.42,
       'IPC::Open3'                    => 1.02,

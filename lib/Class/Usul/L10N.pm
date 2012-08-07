@@ -8,7 +8,6 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use Class::Null;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Constraints     qw(LogType);
 use Class::Usul::Functions       qw(assert is_arrayref merge_attributes);
 use File::DataClass::Constraints qw(Directory Lock Path);
 use File::Gettext::Constants;
@@ -16,29 +15,27 @@ use File::Gettext;
 use File::Spec;
 use Try::Tiny;
 
-has 'debug'           => is => 'rw', isa => Bool, default => FALSE;
+has 'debug'           => is => 'rw',   isa => Bool, default => FALSE;
 
-has 'l10n_attributes' => is => 'ro', isa => HashRef, default => sub { {} };
+has 'l10n_attributes' => is => 'ro',   isa => HashRef, default => sub { {} };
 
-has 'domain_names'    => is => 'ro', isa => ArrayRef[Str],
+has 'domain_names'    => is => 'ro',   isa => ArrayRef[Str],
    default            => sub { [ q(messages) ] };
 
-has 'localedir'       => is => 'ro', isa => Path | Undef, coerce => TRUE;
+has 'localedir'       => is => 'ro',   isa => Path | Undef, coerce => TRUE;
 
-has 'lock'            => is => 'ro', isa => Lock,
+has 'lock'            => is => 'ro',   isa => Lock,
    default            => sub { Class::Null->new };
 
-has 'log'             => is => 'ro', isa => LogType,
+has 'log'             => is => 'ro',   isa => LogType,
    default            => sub { Class::Null->new };
 
-has 'source_name'     => is => 'ro', isa => Str,
-   builder            => '_build_source_name', lazy => TRUE;
+has 'source_name'     => is => 'lazy', isa => SimpleStr;
 
-has 'tempdir'         => is => 'ro', isa => Directory, coerce => TRUE,
+has 'tempdir'         => is => 'ro',   isa => Directory, coerce => TRUE,
    default            => File::Spec->tmpdir;
 
-has 'use_country'     => is => 'ro', isa => Bool,
-   builder            => '_build_use_country', lazy => TRUE;
+has 'use_country'     => is => 'lazy', isa => Bool;
 
 around 'BUILDARGS' => sub {
    my ($next, $class, @rest) = @_; my $attr = $class->$next( @rest );
@@ -265,19 +262,15 @@ Asserts that the I<locale> attribute is set
 
 =item L<Class::Usul::Constants>
 
-=item L<Class::Usul::Constraints>
-
 =item L<Class::Usul::Functions>
+
+=item L<Class::Usul::Moose>
 
 =item L<File::DataClass::Constraints>
 
 =item L<File::Gettext>
 
 =item L<File::Gettext::Constants>
-
-=item L<Moose>
-
-=item L<MooseX::Types::Moose>
 
 =item L<Try::Tiny>
 
