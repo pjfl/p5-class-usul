@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+         - C:U:Moose now imports CX:U:Constraints and MX:AS
          - Updated inc::Bob to 1.4
          - Removed pi_config_file, aliases_path, and profiles_path from
            C::U::Config
