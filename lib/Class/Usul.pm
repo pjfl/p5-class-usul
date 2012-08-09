@@ -7,9 +7,9 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use 5.010;
 use Class::Usul::Moose;
-use Class::Usul::Config;
 use Class::Usul::Constants;
 use Class::Usul::Functions qw(arg_list data_dumper merge_attributes);
+use Class::Usul::Config;
 use Class::Usul::L10N;
 use Class::Usul::Log;
 use IPC::SRLock;
@@ -31,9 +31,12 @@ has '_l10n'      => is => 'lazy', isa => L10NType,
    default       => sub { Class::Usul::L10N->new( builder => $_[ 0 ] ) },
    init_arg      => 'l10n', reader => 'l10n';
 
+has '_lock'      => is => 'lazy', isa => LockType,
+   init_arg      => 'lock', reader => 'lock';
+
 has '_log'       => is => 'lazy', isa => LogType,
    default       => sub { Class::Usul::Log->new( builder => $_[ 0 ] ) },
-   init_arg      => 'log', reader => 'log';
+   init_arg      => 'log',  reader => 'log';
 
 sub dumper {
    my $self = shift; return data_dumper( @_ ); # Damm handy for development
@@ -42,15 +45,17 @@ sub dumper {
 sub loc {
    my ($self, $key, $opts) = @_;
 
-   $opts->{domain_names} = [ DEFAULT_L10N_DOMAIN, $opts->{ns} ];
-   $opts->{locale      } = $opts->{language};
+   $opts->{domain_names} ||= [ DEFAULT_L10N_DOMAIN, $opts->{ns} ];
+   $opts->{locale      } ||= $opts->{language};
 
    return $self->l10n->localize( $key, $opts );
 }
 
+# Private methods
+
 {  my $cache;
 
-   sub lock { # There is only one lock object. Instantiate on first use
+   sub _build__lock { # There is only one lock object. Instantiate on first use
       $cache and return $cache; my $self = shift; my $config = $self->config;
 
       my $attr = { %{ $config->lock_attributes } };
@@ -61,8 +66,6 @@ sub loc {
       return $cache = IPC::SRLock->new( $attr );
    }
 }
-
-# Private methods
 
 sub _debug_trigger {
    my ($self, $debug) = @_;
@@ -100,9 +103,9 @@ These modules provide a set of base classes for Perl packages and applications
 
 =head1 Configuration and Environment
 
-   $self = Class::Usul->new( $attrs );
+   $self = Class::Usul->new( $attr );
 
-The C<$attrs> arg is a hash ref containing the object attributes.
+The C<$attr> arg is a hash ref containing the object attributes.
 
 =over 3
 
@@ -138,7 +141,7 @@ Use L<Data::Printer> to dump arguments for development purposes
 Localizes the message. Calls L<Class::Usul::L10N/localize>. Adds the constant
 C<DEFAULT_L10N_DOMAINS> to the list of domain files that are searched
 
-=head2 lock
+=head2 _build__lock
 
 Defines the lock object. This instantiates on first use
 
