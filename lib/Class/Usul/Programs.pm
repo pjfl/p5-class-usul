@@ -12,16 +12,16 @@ use Class::Usul::File;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Response::Meta;
-use Class::Usul::Functions   qw(abs_path app_prefix arg_list assert_directory
-                                class2appdir classdir elapsed env_prefix
-                                exception find_source is_arrayref is_hashref
-                                is_member prefix2class say throw
-                                untaint_identifier untaint_path);
-use Encode                   qw(decode);
-use English                  qw(-no_match_vars);
-use File::Spec::Functions    qw(catdir catfile);
-use IO::Interactive          qw(is_interactive);
-use List::Util               qw(first);
+use Class::Usul::Functions qw(abs_path app_prefix arg_list assert_directory
+                              class2appdir classdir elapsed env_prefix
+                              exception find_source is_arrayref is_hashref
+                              is_member prefix2class say throw
+                              untaint_identifier untaint_path);
+use Encode                 qw(decode);
+use English                qw(-no_match_vars);
+use File::Spec::Functions  qw(catdir catfile);
+use IO::Interactive        qw(is_interactive);
+use List::Util             qw(first);
 use Config;
 use Pod::Man;
 use Pod::Usage;
@@ -97,10 +97,10 @@ has '_mode'    => is => 'rw',   isa => PositiveInt, accessor => 'mode',
 has '_os'      => is => 'lazy', isa => HashRef, init_arg => undef,
    reader      => 'os';
 
-has '_params'  => is => 'ro', isa => HashRef, default => sub { {} },
+has '_params'  => is => 'ro',   isa => HashRef, default => sub { {} },
    init_arg    => 'params', reader => 'params';
 
-has '_pwidth'  => is => 'rw', isa => PositiveInt, accessor => 'pwidth',
+has '_pwidth'  => is => 'rw',   isa => PositiveInt, accessor => 'pwidth',
    default     => 60, init_arg => 'pwidth';
 
 around 'BUILDARGS' => sub {
