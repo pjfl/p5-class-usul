@@ -7,36 +7,34 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 818 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use File::Spec;
-use IPC::Cmd qw(can_run);
+use File::Spec::Functions qw(catdir);
+use IPC::Cmd              qw(can_run);
 
 has 'type' => is => 'ro', isa => 'Str';
 has 'vcs'  => is => 'ro', isa => 'Object';
 
-around BUILDARGS => sub {
+around 'BUILDARGS' => sub {
    my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
 
    my $dir = $attr->{project_dir};
 
-   if (-d File::Spec->catfile( $dir, q(.git) )) {
-      can_run( q(git) ) or return $attr; # Be nice to CPAN testing
-
-      require Git::Class::Worktree;
-
-      $attr->{vcs } = Git::Class::Worktree->new( path => $dir );
-      $attr->{type} = q(git);
-      return $attr;
-   }
-
-   $dir = File::Spec->catfile( $attr->{project_dir}, q(.svn) );
-
-   if (-d $dir) {
+   if (-d catdir( $dir, q(.svn) )) {
       can_run( q(svn) ) or return $attr; # Be nice to CPAN testing
 
       require SVN::Class;
 
       $attr->{vcs } = SVN::Class::svn_dir( $dir );
       $attr->{type} = q(svn);
+      return $attr;
+   }
+
+   if (-d catdir( $dir, q(.git) )) {
+      can_run( q(git) ) or return $attr; # Be nice to CPAN testing
+
+      require Git::Class::Worktree;
+
+      $attr->{vcs } = Git::Class::Worktree->new( path => $dir );
+      $attr->{type} = q(git);
       return $attr;
    }
 
@@ -53,13 +51,17 @@ sub commit {
 }
 
 sub error {
-   # TODO: Git implementation
-   my $self = shift; return $self->vcs ? $self->vcs->error : 'No VCS';
+   my $self = shift; $self->vcs or return 'No VCS';
+
+   $self->type eq q(git) and return $self->vcs->_error;
+
+   return $self->vcs->error;
 }
 
 sub repository {
-   # TODO: Git implementation
    my $self = shift; $self->vcs or return;
+
+   $self->type eq q(git) and return $self->vcs->git( q(remote) );
 
    my $info = $self->vcs->info or return;
 
@@ -80,8 +82,6 @@ sub tag {
 }
 
 __PACKAGE__->meta->make_immutable;
-
-no Moose;
 
 1;
 

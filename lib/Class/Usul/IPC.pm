@@ -40,11 +40,11 @@ has '_usul' => is => 'ro',   isa => BaseType,
    reader   => 'usul', required => TRUE, weak_ref => TRUE;
 
 sub child_list {
-   my ($self, $pid, $procs) = @_; my ($child, $p, $t); my @pids = ();
+   my ($self, $pid, $procs) = @_; my ($child, $ppt); my @pids = ();
 
    unless (defined $procs) {
-      $t     = Proc::ProcessTable->new;
-      $procs = { map { $_->pid => $_->ppid } @{ $t->table } };
+      $ppt   = Proc::ProcessTable->new;
+      $procs = { map { $_->pid => $_->ppid } @{ $ppt->table } };
    }
 
    if (exists $procs->{ $pid }) {
@@ -370,7 +370,7 @@ sub _run_cmd_using_system {
 
       $args->{debug} and $self->log->debug( $msg );
       # On some systems the child handler reaps the child process so the system
-      # call returns -1 and sets $ERRNO to No child processes. This line and
+      # call returns -1 and sets $ERRNO to 'No child processes'. This line and
       # the child handler code fix the problem
       $rv == -1 and $WAITEDPID > 0 and $rv = $ERROR;
 
@@ -476,7 +476,7 @@ sub __cmd_matches_pattern {
 }
 
 sub __handler {
-   local $ERRNO; # so that waitpid does not step on existing value
+   local $ERRNO; # So that waitpid does not step on existing value
 
    while ((my $child_pid = waitpid -1, WNOHANG) > 0) {
       if (WIFEXITED( $CHILD_ERROR ) and $child_pid > $WAITEDPID) {
@@ -484,7 +484,7 @@ sub __handler {
       }
    }
 
-   $SIG{CHLD} = \&__handler; # in case of unreliable signals
+   $SIG{CHLD} = \&__handler; # In case of unreliable signals
    return;
 }
 
@@ -551,7 +551,11 @@ Class::Usul::IPC - List/Create/Delete processes
 
 =head1 Synopsis
 
-   use parent qw(Class::Usul::IPC);
+   use q(Class::Usul::IPC);
+
+   my $ipc = Class::Usul::IPC->new;
+
+   $result_object = $ipc->run_cmd( [ qw(ls -l) ] );
 
 =head1 Description
 
@@ -592,13 +596,18 @@ subclass. Called by L<Class::Usul::Model::Process/proc_table>
 
    $response = $self->run_cmd( $cmd, $args );
 
-Runs the given command by calling C<system>. The keys of the C<$args> hash are:
+Runs the given command. If C<$cmd> is a string then an implementation
+based on the C<system> function is used. If C<$cmd> is an arrayref
+then an implementation based on L<IPC::Run> is used if it is
+installed. If L<IPC::Run> is not installed then the arrayref is joined
+with spaces and the C<system> implementation is used. The keys of the
+C<$args> hashref are:
 
 =over 3
 
 =item async
 
-If I<async> is true then the command is run in the background
+If C<async> is true then the command is run in the background
 
 =item debug
 
@@ -633,44 +642,44 @@ error. The response object has the following methods:
 
 =over 3
 
-=item B<core>
+=item C<core>
 
 Returns true if the command generated a core dump
 
-=item B<err>
+=item C<err>
 
-Contains a cleaned up version of the command's B<STDERR>
+Contains a cleaned up version of the commands C<STDERR>
 
-=item B<out>
+=item C<out>
 
-Contains a cleaned up version of the command's B<STDOUT>
+Contains a cleaned up version of the commands C<STDOUT>
 
-=item B<pid>
+=item C<pid>
 
 The id of the background process. Only set if command is running I<async>
 
-=item B<rv>
+=item C<rv>
 
 The return value of the command
 
-=item B<sig>
+=item C<sig>
 
 If the command died as the result of receiving a signal return the
 signal number
 
-=item B<stderr>
+=item C<stderr>
 
-Contains the command's B<STDERR>
+Contains the commands C<STDERR>
 
-=item B<stdout>
+=item C<stdout>
 
-Contains the command's B<STDOUT>
+Contains the commands C<STDOUT>
 
 =back
 
 =head2 signal_process
 
-Send a signal the the selected processes. Invokes the I<suid> root wrapper
+Send a signal the the selected processes. Invokes the C<suid> root wrapper
 
 =head2 signal_process_as_root
 
@@ -678,14 +687,14 @@ Send a signal the the selected processes. Invokes the I<suid> root wrapper
 
 This is called by processes running as root to send signals to
 selected processes. The passed parameters can be either a list of key
-value pairs or a hash ref. Either a single B<pid>, or an array ref
-B<pids>, or B<file> must be passwd. The B<file> parameter should be a
-path to a file containing pids one per line. The B<sig> defaults to
-I<TERM>. If the B<flag> parameter is set to I<one> then the given signal
+value pairs or a hash ref. Either a single C<pid>, or an array ref
+C<pids>, or C<file> must be passwd. The C<file> parameter should be a
+path to a file containing process ids one per line. The C<sig> defaults to
+C<TERM>. If the C<flag> parameter is set to C<one> then the given signal
 will be sent once to each selected process. Otherwise each process and
-all of it's children will be sent the signal. If the B<force>
+all of it's children will be sent the signal. If the C<force>
 parameter is set to true the after a grace period each process and
-it's children are sent signal I<KILL>
+it's children are sent signal C<KILL>
 
 =head2 __cleaner
 

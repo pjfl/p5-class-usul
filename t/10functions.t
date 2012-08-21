@@ -53,8 +53,8 @@ is unescape_TT( escape_TT( q([% test %]) ) ), q([% test %]),
 is find_source( q(Class::Usul::Functions) ),
    abs_path( catfile( qw(lib Class Usul Functions.pm) ) ), 'find_source';
 
-is home2appl( catdir( qw(opt myapp v0.1 lib MyApp) ) ),
-   catdir( qw(opt myapp v0.1) ), 'home2appl';
+is home2appldir( catdir( qw(opt myapp v0.1 lib MyApp) ) ),
+   catdir( qw(opt myapp v0.1) ), 'home2appldir';
 
 ok is_arrayref( [] ),   'is_arrayref - true';
 ok ! is_arrayref( {} ), 'is_arrayref - false';

@@ -8,8 +8,8 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use Class::Usul::File;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions       qw(app_prefix class2appdir home2appl split_on__
-                                    untaint_path);
+use Class::Usul::Functions       qw(app_prefix class2appdir home2appldir
+                                    split_on__ untaint_path);
 use Config;
 use English                      qw(-no_match_vars);
 use File::Basename               qw(basename dirname);
@@ -120,12 +120,12 @@ around 'BUILDARGS' => sub {
 # Private methods
 
 sub _build_appldir {
-   my ($self, $appclass, $home) = __unpack( @_ ); my $dir = home2appl $home;
+   my ($self, $appclass, $home) = __unpack( @_ ); my $dir = home2appldir $home;
 
    -d catdir( $dir, q(bin) )
       or $dir = catdir( NUL, q(var), (class2appdir $appclass) );
 
-   -d $dir or $dir = home2appl $home;
+   -d $dir or $dir = home2appldir $home;
 
    return rel2abs( untaint_path $dir );
 }
@@ -330,143 +330,143 @@ Defines the following list of attributes
 
 =over 3
 
-=item appclass
+=item C<appclass>
 
 Required string. The classname of the application for which this is the
 configuration class
 
-=item doc_title
+=item C<doc_title>
 
 String defaults to 'User Contributed Documentation'. Used in the Unix man
 pages
 
-=item encoding
+=item C<encoding>
 
 String default to the constant I<DEFAULT_ENCODING>
 
-=item extension
+=item C<extension>
 
 String defaults to the constant I<CONFIG_EXTN>
 
-=item home
+=item C<home>
 
 Directory containing the config file. Required
 
-=item l10n_attributes
+=item C<l10n_attributes>
 
 Hash ref of attributes used to construct a L<Class::Usul::L10N> object
 
-=item lock_attributes
+=item C<lock_attributes>
 
 Hash ref of attributes used to construct an L<IPC::SRLock> object
 
-=item log_attributes
+=item C<log_attributes>
 
 Hash ref of attributes used to construct a L<Class::Usul::Log> object
 
-=item man_page_cmd
+=item C<man_page_cmd>
 
 Array ref containing the command and options to produce a man page. Defaults
 to I<man -nroff>
 
-=item mode
+=item C<mode>
 
 Integer defaults to the constant I<PERMS>. The default file creation mask
 
-=item no_thrash
+=item C<no_thrash>
 
-Interger default to 3. Number of seconds to sleep in a polling loop to
+Integer default to 3. Number of seconds to sleep in a polling loop to
 avoid processor thrash
 
-=item pathname
+=item C<pathname>
 
 File defaults to the absolute path to the I<PROGRAM_NAME> system constant
 
-=item appldir
+=item C<appldir>
 
 Directory. Defaults to the application's install directory
 
-=item binsdir
+=item C<binsdir>
 
 Directory. Defaults to the application's I<bin> directory
 
-=item ctlfile
+=item C<ctlfile>
 
-File in the I<ctrldir> directory that contains this programs control data
+File in the C<ctrldir> directory that contains this programs control data
 
-=item ctrldir
+=item C<ctrldir>
 
 Directory containing the per program configuration files
 
-=item dbasedir
+=item C<dbasedir>
 
 Directory containing the data file used to create the applications database
 
-=item localedir
+=item C<localedir>
 
 Directory containing the GNU Gettext portable object files used to translate
 messages into different languages
 
-=item logfile
+=item C<logfile>
 
-File in the I<logsdir> to which this program will log
+File in the C<logsdir> to which this program will log
 
-=item logsdir
+=item C<logsdir>
 
-Directory containg the application log files
+Directory containing the application log files
 
-=item root
+=item C<root>
 
 Directory. Path to the web applications document root
 
-=item rundir
+=item C<rundir>
 
 Directory. Contains a running programs PID file
 
-=item sessdir
+=item C<sessdir>
 
 Directory. The session directory
 
-=item shell
+=item C<shell>
 
 File. The default shell used to create new OS users
 
-=item suid
+=item C<suid>
 
 File. Name of the setuid root program in the I<bin> directory. Defaults to
 the I<prefix>_admin
 
-=item tempdir
+=item C<tempdir>
 
 Directory. It is the location of any temporary files created by the
 application. Defaults to the L<File::Spec> tempdir
 
-=item vardir
+=item C<vardir>
 
 Directory. Contains all of the non program code directories
 
-=item name
+=item C<name>
 
 String. Name of the program
 
-=item owner
+=item C<owner>
 
 String. Name of the application file owner
 
-=item phase
+=item C<phase>
 
 Integer. Phase number indicates the type of install, e.g. 1 live, 2 test,
 3 development
 
-=item prefix
+=item C<prefix>
 
 String. Program prefix
 
-=item script
+=item C<script>
 
 String. The basename of the I<pathname> attribute
 
-=item salt
+=item C<salt>
 
 String. This applications salt for passwords as set by the administrators . It
 is used to perturb the encryption methods. Defaults to the I<prefix>
@@ -483,7 +483,7 @@ and L</inflate_path>
 
 =head2 _inflate_path
 
-Infates the I<__symbol( relative_path )__> values to their actual runtime
+Inflates the I<__symbol( relative_path )__> values to their actual runtime
 values
 
 =head2 _inflate_symbol

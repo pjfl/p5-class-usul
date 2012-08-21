@@ -142,7 +142,7 @@ Lifted from L<Acme::Bleach> this recovers the default seed for the key
 generator
 
 Generates the key used by the C<encrypt> and C<decrypt> methods. The
-seed is C<eval>'d in string context and then the salt is concantented
+seed is C<eval>'d in string context and then the salt is concatenated
 onto it before being passed to
 C<Class::Usul::Functions/create_token>. Uses this value as the key for
 a L<Crypt::CBC> object which it creates and returns

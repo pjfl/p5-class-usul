@@ -62,6 +62,12 @@ like $io->chomp->getline, qr{ \[INFO\] \s Information }mx, 'Read logfile';
 
 unlink $logfile;
 
+is $prog->debug, 0, 'Debug false';
+
+$prog->debug( 1 );
+
+is $prog->debug, 1, 'Debug true';
+
 done_testing;
 
 #$prog->run;

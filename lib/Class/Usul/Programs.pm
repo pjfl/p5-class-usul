@@ -35,10 +35,8 @@ with    q(MooseX::Getopt::Dashes);
 with    q(Class::Usul::TraitFor::LoadingClasses);
 with    q(Class::Usul::TraitFor::UntaintedGetopts);
 
-has 'debug',       => is => 'rw', isa => Bool, default => FALSE,
-   documentation   => 'Turn debugging on. Promps if interactive',
-   traits          => [ 'Getopt' ], cmd_aliases => q(D), cmd_flag => 'debug',
-   trigger         => \&_debug_trigger;
+has '+debug'       => traits => [ 'Getopt' ], cmd_aliases => q(D),
+   cmd_flag        => 'debug';
 
 has 'help_options' => is => 'ro', isa => Bool, default => FALSE,
    documentation   => 'Uses Pod::Usage to describe the program usage options',
@@ -410,10 +408,6 @@ sub _build__os {
    return $cfg->{os} || {};
 }
 
-sub _debug_trigger {
-   my ($self, $debug) = @_; $self->SUPER::debug( $debug ); return;
-}
-
 sub _dont_ask {
    return $_[ 0 ]->debug || $_[ 0 ]->help_flag || $_[ 0 ]->help_options
        || $_[ 0 ]->help_manual || ! is_interactive();
@@ -761,7 +755,7 @@ the location of the config file
 
 =head2 BUILD
 
-Called just after the object is constructed this methos handles dispatching
+Called just after the object is constructed this methods handles dispatching
 to the help methods and prompting for the debug state
 
 =head2 add_leader
@@ -831,9 +825,9 @@ Environment variable containing the path to a file which contains
 the application installation directory. Defaults to the environment
 variable <uppercase application name>_HOME
 
-Search through subdirectories of @INC looking for the file
-myApplication.json. Uses the location of this file to return the path to
-the installation directory
+Search through sub directories of @INC looking for the file
+F<yourApplication.json>. Uses the location of this file to return the
+path to the installation directory
 
 =head2 get_line
 

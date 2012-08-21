@@ -98,18 +98,15 @@ sub _build_use_country {
    my $self = shift; return $self->l10n_attributes->{use_country} || FALSE;
 }
 
-{  my $cache = {};
+sub _extract_lang_from {
+   my ($self, $locale) = @_; state $cache ||= {};
 
-   sub _extract_lang_from {
-      my ($self, $locale) = @_;
+   defined $cache->{ $locale } and return $cache->{ $locale };
 
-      defined $cache->{ $locale } and return $cache->{ $locale };
+   my $sep  = $self->use_country ? q(.) : q(_);
+   my $lang = (split m{ \Q$sep\E }msx, $locale.$sep )[ 0 ];
 
-      my $sep  = $self->use_country ? q(.) : q(_);
-      my $lang = (split m{ \Q$sep\E }msx, $locale.$sep )[ 0 ];
-
-      return $cache->{ $locale } = $lang;
-   }
+   return $cache->{ $locale } = $lang;
 }
 
 sub _gettext {
@@ -157,7 +154,7 @@ sub _gettext {
       defined $cache->{ $key } and return $cache->{ $key };
 
       my $attrs  = { %{ $self->l10n_attributes }, builder => $self,
-                     source_name => $self->source_name };
+                     source_name => $self->source_name, };
 
       defined $self->localedir and $attrs->{localedir} = $self->localedir;
 

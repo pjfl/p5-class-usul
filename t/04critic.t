@@ -16,15 +16,13 @@ BEGIN {
    }
 }
 
-eval { require Test::Perl::Critic; };
+eval "use Test::Perl::Critic -profile => catfile( q(t), q(critic.rc) )";
 
 plan skip_all => 'Test::Perl::Critic not installed' if ($EVAL_ERROR);
 
 unless ($ENV{TEST_CRITIC}) {
    plan skip_all => 'Environment variable TEST_CRITIC not set';
 }
-
-Test::Perl::Critic->import( -profile => catfile( q(t), q(critic.rc) ) );
 
 all_critic_ok();
 

@@ -21,7 +21,8 @@ has '_config'    => is => 'ro',   isa => ConfigType, coerce => TRUE,
    reader        => 'config', required => TRUE;
 
 has 'debug',     => is => 'rw',   isa => Bool, default => FALSE,
-   trigger       => \&_debug_trigger;
+   documentation => 'Turn debugging on. Prompts if interactive',
+   trigger       => TRUE;
 
 has 'encoding'   => is => 'lazy', isa => EncodingType, coerce => TRUE,
    documentation => 'Decode/encode input/output using this encoding',
@@ -53,21 +54,18 @@ sub loc {
 
 # Private methods
 
-{  my $cache;
+sub _build__lock { # There is only one lock object. Instantiate on first use
+   my $self = shift; state $cache; $cache and return $cache;
 
-   sub _build__lock { # There is only one lock object. Instantiate on first use
-      $cache and return $cache; my $self = shift; my $config = $self->config;
+   my $config = $self->config; my $attr = { %{ $config->lock_attributes } };
 
-      my $attr = { %{ $config->lock_attributes } };
+   merge_attributes $attr, $self,   {}, [ qw(debug log) ];
+   merge_attributes $attr, $config, {}, [ qw(tempdir) ];
 
-      merge_attributes $attr, $self,   {}, [ qw(debug log) ];
-      merge_attributes $attr, $config, {}, [ qw(tempdir) ];
-
-      return $cache = IPC::SRLock->new( $attr );
-   }
+   return $cache = IPC::SRLock->new( $attr );
 }
 
-sub _debug_trigger {
+sub _trigger_debug {
    my ($self, $debug) = @_;
 
    $self->l10n->debug( $debug ); $self->lock->debug( $debug );
@@ -105,7 +103,7 @@ These modules provide a set of base classes for Perl packages and applications
 
    $self = Class::Usul->new( $attr );
 
-The C<$attr> arg is a hash ref containing the object attributes.
+The C<$attr> argument is a hash ref containing the object attributes.
 
 =over 3
 
@@ -120,7 +118,7 @@ Defaults to false
 
 =item encoding
 
-Decode input and encode output. Defaults to I<UTF-8>
+Decode input and encode output. Defaults to C<UTF-8>
 
 =back
 

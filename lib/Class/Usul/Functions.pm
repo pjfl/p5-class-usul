@@ -4,6 +4,7 @@ package Class::Usul::Functions;
 
 use strict;
 use warnings;
+use feature      qw(state);
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
@@ -24,7 +25,7 @@ BEGIN {
    @_functions = ( qw(abs_path app_prefix arg_list assert_directory
                       class2appdir classdir classfile create_token
                       data_dumper distname elapsed env_prefix
-                      escape_TT exception find_source fold home2appl
+                      escape_TT exception find_source fold home2appldir
                       is_arrayref is_coderef is_hashref is_member
                       merge_attributes my_prefix prefix2class product
                       say split_on__ squeeze strip_leader sub_name sum
@@ -67,24 +68,21 @@ sub classfile ($) {
    return File::Spec->catfile( split m{ :: }mx, $_[ 0 ].q(.pm) );
 }
 
-{  my $cache;
+sub create_token (;$) {
+   my $seed = shift; my ($candidate, $digest); state $cache;
 
-   sub create_token (;$) {
-      my $seed = shift; my ($candidate, $digest);
-
-      if ($cache) { $digest = Digest->new( $cache ) }
-      else {
-         for $candidate (DIGEST_ALGORITHMS) {
-            $digest = eval { Digest->new( $candidate ) } and last;
-         }
-
-         $digest or throw( 'No digest algorithm' ); $cache = $candidate;
+   if ($cache) { $digest = Digest->new( $cache ) }
+   else {
+      for (DIGEST_ALGORITHMS) {
+         $candidate = $_; $digest = eval { Digest->new( $candidate ) } and last;
       }
 
-      $digest->add( $seed || join q(), time, rand 10_000, $PID, {} );
-
-      return $digest->hexdigest;
+      $digest or throw( 'No digest algorithm' ); $cache = $candidate;
    }
+
+   $digest->add( $seed || join q(), time, rand 10_000, $PID, {} );
+
+   return $digest->hexdigest;
 }
 
 sub data_dumper (;@) {
@@ -140,7 +138,7 @@ sub fold (&) {
    }
 }
 
-sub home2appl ($) {
+sub home2appldir ($) {
    $_[ 0 ] or return; my $dir = Path::Class::Dir->new( $_[ 0 ] );
 
    $dir = $dir->parent while ($dir ne $dir->parent and $dir !~ m{ lib \z }mx);
@@ -273,7 +271,7 @@ __END__
 
 =head1 Name
 
-CatalystX::Usul::Functions - Globally accesible functions
+CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
@@ -340,7 +338,7 @@ C<app-munchies>
    $dir_path = classdir __PACKAGE__;
 
 Returns the path (directory) of a given class. Like L</classfile> but
-without the I<.pm> extenstion
+without the I<.pm> extension
 
 =head2 classfile
 
@@ -412,9 +410,9 @@ Find absolute path to the source code for the given module
 
 Classic reduce function with optional base value
 
-=head2 home2appl
+=head2 home2appldir
 
-   $appldir = home2appl $home_dir;
+   $appldir = home2appldir $home_dir;
 
 Strips the trailing C<lib/my_package> from the supplied directory path
 
@@ -456,7 +454,7 @@ may be an object in which case its accessor methods are called
 
    $prefix = my_prefix $PROGRAM_NAME;
 
-Takes the basename of the supplied arg and returns the first _
+Takes the basename of the supplied argument and returns the first _
 (underscore) separated field. Supplies basename with
 L<extensions|Class::Usul::Constants/EXTNS>
 
@@ -584,7 +582,7 @@ None
 
 =head1 Incompatibilities
 
-The C<home2appl> method is dependent on the installation path
+The L</home2appldir> method is dependent on the installation path
 containing a B<lib>
 
 =head1 Bugs and Limitations

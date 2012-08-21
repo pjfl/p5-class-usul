@@ -28,7 +28,7 @@ Bob->new( {
       'Email::Date::Format'           => 1.002,
       'File::DataClass'               => q(0.11.0),
       'Getopt::Mixed'                 => 1.10,
-      'Git::Class'                    => 0.03,
+      'Git::Class'                    => 0.12,
       'Import::Into'                  => 1.001000,
       'IO::Interactive'               => q(0.0.5),
       'IPC::Cmd'                      => 0.42,

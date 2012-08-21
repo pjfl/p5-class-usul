@@ -4,8 +4,9 @@ package Class::Usul::Build;
 
 use strict;
 use warnings;
+use feature qw(state);
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
-use parent qw(Module::Build);
+use parent  qw(Module::Build);
 use lib;
 
 use Class::Usul::Build::InstallActions;
@@ -287,12 +288,9 @@ sub class_path {
    return catfile( q(lib), split m{ :: }mx, $_[ 1 ].q(.pm) );
 }
 
-{  my $cache;
-
-   sub cli { # Self initialising accessor for the command line interface object
-      return $cache ||= Class::Usul::Programs->new
-         ( appclass => $_[ 0 ]->module_name, nodebug => TRUE );
-   }
+sub cli { # Self initialising accessor for the command line interface object
+   state $cache; return $cache ||= Class::Usul::Programs->new
+      ( appclass => $_[ 0 ]->module_name, nodebug => TRUE );
 }
 
 sub cli_info {
@@ -577,21 +575,18 @@ sub _get_archive_names {
    return \@archives;
 }
 
-{  my $cache;
+sub _get_config {
+   my ($self, $passed_cfg) = @_; state $cache; $cache and return $cache;
 
-   sub _get_config {
-      my ($self, $passed_cfg) = @_; $cache and return $cache; my $path;
+   my $cfg = { %CONFIG, %{ $passed_cfg || {} }, %{ $self->notes } }; my $path;
 
-      my $cfg = { %CONFIG, %{ $passed_cfg || {} }, %{ $self->notes } };
+   if ($path = $self->_get_config_path( $cfg ) and -f $path) {
+      my $file = $self->cli( $cfg )->file;
 
-      if ($path = $self->_get_config_path( $cfg ) and -f $path) {
-         my $file = $self->cli( $cfg )->file;
-
-         $cfg = $file->dataclass_schema( $cfg->{config_attrs} )->load( $path );
-      }
-
-      return $cache = $cfg;
+      $cfg = $file->dataclass_schema( $cfg->{config_attrs} )->load( $path );
    }
+
+   return $cache = $cfg;
 }
 
 sub _get_config_path {
@@ -600,27 +595,24 @@ sub _get_config_path {
    return catfile( $self->base_dir, $self->blib, @{ $cfg->{config_file} } );
 }
 
-{  my $cache;
+sub _get_local_config {
+   my $self = shift; state $cache; $cache and return $cache;
 
-   sub _get_local_config {
-      $cache and return $cache; my $self = shift; my $cli = $self->cli;
+   my $cli  = $self->cli; (my $perl_ver = $PERL_VERSION) =~ s{ \A v }{perl-}mx;
 
-      (my $perl_ver = $PERL_VERSION) =~ s{ \A v }{perl-}mx;
+   my $argv = $self->args->{ARGV}; my $cfg = $self->_get_config;
 
-      my $argv = $self->args->{ARGV}; my $cfg = $self->_get_config;
+   $cfg->{perl_ver     } = $argv->[ 0 ] || $perl_ver;
+   $cfg->{appldir      } = $argv->[ 1 ] || NUL.$cli->config->appldir;
+   $cfg->{perlbrew_root} = catdir ( $cfg->{appldir}, $cfg->{local_lib} );
+   $cfg->{local_etc    } = catdir ( $cfg->{perlbrew_root}, q(etc) );
+   $cfg->{local_libperl} = catdir ( $cfg->{perlbrew_root}, qw(lib perl5));
+   $cfg->{perlbrew_bin } = catdir ( $cfg->{perlbrew_root}, q(bin) );
+   $cfg->{perlbrew_cmnd} = catfile( $cfg->{perlbrew_bin }, q(perlbrew) );
+   $cfg->{local_lib_uri} = join SEP, $cfg->{cpan_authors}, $cfg->{ll_author},
+                                     $cfg->{ll_ver_dir}.q(.tar.gz);
 
-      $cfg->{perl_ver     } = $argv->[ 0 ] || $perl_ver;
-      $cfg->{appldir      } = $argv->[ 1 ] || NUL.$cli->config->appldir;
-      $cfg->{perlbrew_root} = catdir ( $cfg->{appldir}, $cfg->{local_lib} );
-      $cfg->{local_etc    } = catdir ( $cfg->{perlbrew_root}, q(etc) );
-      $cfg->{local_libperl} = catdir ( $cfg->{perlbrew_root}, qw(lib perl5));
-      $cfg->{perlbrew_bin } = catdir ( $cfg->{perlbrew_root}, q(bin) );
-      $cfg->{perlbrew_cmnd} = catfile( $cfg->{perlbrew_bin }, q(perlbrew) );
-      $cfg->{local_lib_uri} = join SEP, $cfg->{cpan_authors}, $cfg->{ll_author},
-                                        $cfg->{ll_ver_dir}.q(.tar.gz);
-
-      return $cache = $cfg;
-   }
+   return $cache = $cfg;
 }
 
 sub _import_local_env {
@@ -804,14 +796,11 @@ sub _set_install_paths {
    return;
 }
 
-{  my $cache;
-
-   sub _setup_plugins {
-      # Load CX::U::Plugin::Build::* plugins. Can haz plugins for M::B!
-      return $cache ||= $_[ 0 ]->cli->setup_plugins
-         ( { child_class  => blessed $_[ 0 ],
-             search_paths => [ q(::Plugin::Build) ], } );
-   }
+sub _setup_plugins {
+   # Load CX::U::Plugin::Build::* plugins. Can haz plugins for M::B!
+   state $cache; return $cache ||= $_[ 0 ]->cli->setup_plugins
+      ( { child_class  => blessed $_[ 0 ],
+          search_paths => [ q(::Plugin::Build) ], } );
 }
 
 sub _source_paths {
@@ -865,17 +854,14 @@ sub _update_version {
    return;
 }
 
-{  my $cache;
+sub _vcs {
+   my $self = shift; state $cache; $cache and return $cache;
 
-   sub _vcs {
-      $cache and return $cache; my $self = shift;
+   my $is_blessed = blessed $self ? TRUE : FALSE;
+   my $dir = $is_blessed ? $self->cli->config->appldir : File::Spec->curdir;
+   my $vcs = $self->_vcs_class->new( project_dir => $dir );
 
-      my $is_blessed = blessed $self;
-      my $dir = $is_blessed ? $self->cli->config->appldir : File::Spec->curdir;
-      my $vcs = $self->_vcs_class->new( project_dir => $dir );
-
-      return $is_blessed ? $cache = $vcs : $vcs;
-   }
+   return $is_blessed ? $cache = $vcs : $vcs;
 }
 
 sub _vcs_class {
@@ -1329,7 +1315,7 @@ distribution tarball then calls the parent method
 
 =head2 patch_file
 
-Runs the I<patch> utility on the specifed source file
+Runs the I<patch> utility on the specified source file
 
 =head2 post_install
 

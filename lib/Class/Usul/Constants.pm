@@ -106,13 +106,13 @@ Exports a list of subroutines each of which returns a constants value
 
 =head2 ARRAY
 
-String I<ARRAY>
+String C<ARRAY>
 
 =head2 ASSERT
 
 Return a coderef which is imported by L<Class::Usul::Functions> into
 the callers namespace as the C<assert> function. By default this will
-be the empty subroutine, sub {}. Change this by setting the I<Assert>
+be the empty subroutine, C<sub {}>. Change this by setting the C<Assert>
 class attribute
 
 =head2 BRK
@@ -121,12 +121,12 @@ Separate leader (: ) from message
 
 =head2 CODE
 
-String I<CODE>
+String C<CODE>
 
 =head2 CONFIG_EXTN
 
-The default configuration file extension, I<.json>. Change this by
-setting the I<Config_Extn> class attribute
+The default configuration file extension, F<.json>. Change this by
+setting the C<Config_Extn> class attribute
 
 =head2 DEFAULT_DIR
 
@@ -135,11 +135,11 @@ which will contain the applications installation information
 
 =head2 DEFAULT_ENCODING
 
-String I<UTF-8>
+String C<UTF-8>
 
 =head2 DEFAULT_L10N_DOMAIN
 
-String I<default>. The name of the default message catalog
+String C<default>. The name of the default message catalog
 
 =head2 DIGEST_ALGORITHMS
 
@@ -151,13 +151,14 @@ List of supported IO encodings
 
 =head2 EVIL
 
-The L<Config> osname of the other operating system
+The L<Config> operating system name of the one whose name cannot be spoken
+out loud
 
 =head2 EXCEPTION_CLASS
 
 The name of the class used to throw exceptions. Defaults to
 L<File::DataClass::Exception> but can be changed by setting the
-I<Exception_Class> class attribute
+C<Exception_Class> class attribute
 
 =head2 EXTNS
 
@@ -169,24 +170,24 @@ Non zero exit code indicating program failure
 
 =head2 FALSE
 
-Digit I<0>
+Digit C<0>
 
 =head2 HASH
 
-String I<HASH>
+String C<HASH>
 
 =head2 LANG
 
-Default language code, I<en>
+Default language code, C<en>
 
 =head2 LBRACE
 
-The left brace character, I<{>
+The left brace character, C<{>
 
 =head2 LOCALIZE
 
 The character sequence that introduces a localization substitution
-parameter, I<[_>
+parameter, C<[_>
 
 =head2 LOG_LEVELS
 
@@ -198,7 +199,7 @@ Default file creation mask
 
 =head2 NO
 
-The letter I<n>
+The letter C<n>
 
 =head2 NUL
 
@@ -222,7 +223,7 @@ The character q
 
 =head2 SEP
 
-Slash I</> character
+Slash C</> character
 
 =head2 SPC
 
@@ -230,7 +231,7 @@ Space character
 
 =head2 TRUE
 
-Digit I<1>
+Digit C<1>
 
 =head2 UNTAINT_CMDLINE
 

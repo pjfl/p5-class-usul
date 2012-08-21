@@ -23,21 +23,27 @@ use MooseX::Types::Common::Numeric ();
 use MooseX::Types::LoadableClass ();
 # MooseX::Types::Parameterizable broken 0.08 RT#75119
 #use MooseX::Types::Varchar ();
+use Scalar::Util qw(blessed);
 
 sub import {
-   my ($self, @args) = @_; my $target = caller;
+   my ($self, @args) = @_;
 
-   return _do_import
-      ( __PACKAGE__, $target, 'Moose', 'Moose::Util::TypeConstraints', @args );
+   my $class = blessed $self || $self;
+   my $opts  = @args && ref $args[ 0 ] eq q(HASH) ? shift @args : {};
+
+   $opts->{also} ||= [ 'Moose', 'Moose::Util::TypeConstraints', @args ];
+   $opts->{into} ||= caller;
+
+   return _do_import( $class, $opts );
 }
 
 # Private methods
 
 sub _do_import {
-   my ($class, $target, @also) = @_;
+   my ($class, $opts) = @_; my $target = $opts->{into};
 
    my ($import, $unimport, $init_meta) = Moose::Exporter->build_import_methods
-      ( into => $target, also => [ @also ] );
+      ( into => $target, also => $opts->{also} || [] );
 
    feature->import( qw(state switch) );
    namespace::autoclean->import( -cleanee => $target );

@@ -108,16 +108,16 @@ Defines the following type constraints
 
 =over 3
 
-=item ConfigType
+=item C<ConfigType>
 
 Subtype of I<Object> can be coerced from a hash ref
 
-=item EncodingType
+=item C<EncodingType>
 
 Subtype of I<Str> which has to be one of the list of encodings in the
 I<ENCODINGS> constant
 
-=item LogType
+=item C<LogType>
 
 Subtype of I<Object> which has to implement all of the methods in the
 I<LOG_LEVELS> constant
