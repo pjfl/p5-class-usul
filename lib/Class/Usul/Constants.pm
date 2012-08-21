@@ -117,7 +117,7 @@ class attribute
 
 =head2 BRK
 
-Separate leader (: ) from message
+Separate leader from message,  (: )
 
 =head2 CODE
 

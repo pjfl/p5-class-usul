@@ -48,6 +48,7 @@ arrayref
 async
 backend
 basename
+brk
 buildargs
 changelog
 classdir
@@ -61,6 +62,7 @@ datetime
 debian
 distmeta
 distname
+extns
 gettext
 getopts
 hashref
@@ -69,10 +71,12 @@ io
 installdeps
 isa
 json
+lbrace
 loc
 lookup
 multi
 namespace
+nul
 pathname
 perlbrew
 plugins
@@ -80,7 +84,9 @@ popen
 posix
 prepends
 runtime
+sep
 sig
+spc
 stderr
 stdin
 stdout
