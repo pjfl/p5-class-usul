@@ -40,6 +40,7 @@ Bob->new( {
       'Module::Load::Conditional'     => 0.26,
       'Module::Pluggable'             => 3.9,
       'Moose'                         => 2.0402,
+      'MooseX::AttributeShortcuts'    => 0.014,
       'MooseX::ClassAttribute'        => 0.10,
       'MooseX::MethodAttributes'      => 0.24,
       'MooseX::Role::Parameterized'   => 0.19,

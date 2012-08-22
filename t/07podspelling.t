@@ -24,7 +24,7 @@ $ENV{TEST_SPELLING}
 
 my $checker = has_working_spellchecker(); # Aspell is prefered
 
-if ($checker) { $checker and warn "Check using ${checker}\n" }
+if ($checker) { warn "Check using ${checker}\n" }
 else { plan skip_all => 'No OS spell checkers found' }
 
 add_stopwords( <DATA> );
