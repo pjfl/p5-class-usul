@@ -24,7 +24,7 @@ has '_usul' => is => 'ro', isa => Object,
 sub absolute {
    my ($self, $base, $path) = @_; $base ||= NUL; $path or return NUL;
 
-   is_arrayref $base and $base = catdir( $base );
+   is_arrayref $base and $base = catdir( @{ $base } );
 
    return $self->io( $path )->absolute( $base );
 }

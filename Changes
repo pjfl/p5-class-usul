@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+         - Fixed base arrayref bug in C:U:File absolute
          - Fixed version number in C:U:Response::Table
 
 0.1.202  2012-09-02

@@ -51,6 +51,14 @@ my $tf = [ qw(t test.xml) ];
 ok( (grep { m{ name }msx } $cuf->io( $tf )->getlines)[ 0 ] =~ m{ library }msx,
     'io' );
 
+my $path = $cuf->absolute( [ qw(test test) ], q(test) );
+
+like $path, qr{ test . test . test \z }mx, 'absolute 1';
+
+$path = $cuf->absolute( q(test), q(test) );
+
+like $path, qr{ test . test \z }mx, 'absolute 2';
+
 my $fdcs = $cuf->dataclass_schema->load( $tf );
 
 is $fdcs->{credentials}->{library}->{driver}, q(mysql), 'file_dataclass_schema';
