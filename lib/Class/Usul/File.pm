@@ -54,7 +54,7 @@ sub dataclass_schema {
    my ($self, @rest) = @_; my $attr = arg_list @rest;
 
    if (blessed $self) { $attr->{builder} = $self->usul }
-   else { $attr->{cache_class} = q(none); $attr->{lock_class} = q(none) }
+   else { $attr->{cache_class} = q(none) }
 
    $attr->{storage_class} ||= q(Any);
 
