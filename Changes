@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+0.8.206  2012-09-06
+         - Bumped minor version # to 8 because of PAUSE indexer failure
+
 0.1.205  2012-09-06
          - Added missing dependency MooseX::Types::LoadableClass
          - Fixed base arrayref bug in C:U:File absolute
