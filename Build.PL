@@ -47,6 +47,7 @@ Bob->new( {
       'MooseX::Role::WithOverloading' => 0.08,
       'MooseX::Traits::Pluggable'     => 0.10,
       'MooseX::Types'                 => 0.25,
+      'MooseX::Types::LoadableClass'  => 0.007,
       'POSIX'                         => 1.09,
       'Path::Class'                   => 0.16,
       'Perl::Version'                 => 1.009,
