@@ -16,11 +16,11 @@ sub test_exceptions {
 
    $p->{stop_tests} and return 'CPAN Testing stopped in Build.PL';
 
-   $osname eq q(cygwin)      and return 'Cygwin OS unsupported';
-   $osname eq q(mirbsd)      and return 'Mirbsd OS unsupported';
-   $osname eq q(mswin32)     and return 'Mswin  OS unsupported';
-   $osname eq q(netbsd)      and return 'Netbsd OS unsupported';
+   $osname eq q(cygwin)      and return 'Cygwin  OS unsupported';
+   $osname eq q(mirbsd)      and return 'Mirbsd  OS unsupported';
+   $osname eq q(mswin32)     and return 'MSWin32 OS unsupported';
    $uname  =~ m{ slack64 }mx and return 'Stopped Bingos slack64';
+   $uname  =~ m{ falco   }mx and return 'Stopped Bingos falco';
    return 0;
 }
 

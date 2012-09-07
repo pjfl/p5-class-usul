@@ -20,7 +20,6 @@ use IO::Select;
 use IPC::Open3;
 use Module::Load::Conditional qw(can_load);
 use POSIX                     qw(WIFEXITED WNOHANG);
-use Proc::ProcessTable;
 use Try::Tiny;
 
 our ($ERROR, $WAITEDPID);
@@ -43,7 +42,7 @@ sub child_list {
    my ($self, $pid, $procs) = @_; my ($child, $ppt); my @pids = ();
 
    unless (defined $procs) {
-      $ppt   = Proc::ProcessTable->new;
+      $ppt   = __new_proc_process_table();
       $procs = { map { $_->pid => $_->ppid } @{ $ppt->table } };
    }
 
@@ -127,7 +126,7 @@ sub process_table {
    my $pat   = $args->{pattern};
    my $ptype = $args->{type   };
    my $user  = $args->{user   };
-   my $ppt   = Proc::ProcessTable->new( cache_ttys => TRUE );
+   my $ppt   = __new_proc_process_table();
    my $has   = { map { $_ => TRUE } $ppt->fields };
    my @rows  = ();
    my $count = 0;
@@ -490,6 +489,12 @@ sub __handler {
 
 sub __ipc_run_harness {
    my $h = IPC::Run::harness( @_ ); $h->run; return $h->full_result || 0;
+}
+
+sub __new_proc_process_table {
+   require Proc::ProcessTable;
+
+   return Proc::ProcessTable->new( cache_ttys => TRUE );
 }
 
 sub __partition_command {

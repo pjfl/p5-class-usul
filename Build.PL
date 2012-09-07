@@ -42,6 +42,7 @@ Bob->new( {
       'Moose'                         => 2.0402,
       'MooseX::AttributeShortcuts'    => 0.014,
       'MooseX::ClassAttribute'        => 0.10,
+      'MooseX::Getopt::Dashes'        => 0.33,
       'MooseX::MethodAttributes'      => 0.24,
       'MooseX::Role::Parameterized'   => 0.19,
       'MooseX::Role::WithOverloading' => 0.08,
@@ -54,7 +55,6 @@ Bob->new( {
       'Pod::Eventual'                 => 0.093330,
       'Pod::Man'                      => 2.22,
       'Pod::Parser'                   => 1.37,
-      'Proc::ProcessTable'            => 0.42,
       'SVN::Class'                    => 0.12,
       'Scalar::Util'                  => 1.19,
       'Sub::Exporter'                 => 0.982,
@@ -63,16 +63,17 @@ Bob->new( {
       'Time::Zone'                    => 2.22,
       'Try::Tiny'                     => 0.09,
       'YAML::Syck'                    => 1.05, },
-   recommends            => {
-      'App::cpanminus'   => 1.4004, },
-   configure_requires    => {
-      'version'          => 0.77,
-      'Module::Build'    => 0.38, },
-   build_requires        => {
-      'Class::Null'      => 1.09,
-      'Exception::Class' => 1.23,
-      'Math::BigInt'     => 1.89,
-      'Test::More'       => 0.74, },
+   recommends              => {
+      'App::cpanminus'     => 1.4004,
+      'Proc::ProcessTable' => 0.42, },
+   configure_requires      => {
+      'version'            => 0.77,
+      'Module::Build'      => 0.38, },
+   build_requires          => {
+      'Class::Null'        => 1.09,
+      'Exception::Class'   => 1.23,
+      'Math::BigInt'       => 1.89,
+      'Test::More'         => 0.74, },
 } )->create_build_script; # Goal!
 
 # Local Variables:

@@ -43,7 +43,7 @@ sub abs_path ($) {
 }
 
 sub app_prefix ($) {
-   (my $y = lc $_[ 0 ] || q()) =~ s{ :: }{_}gmx; return $y;
+   (my $y = lc ($_[ 0 ] || q())) =~ s{ :: }{_}gmx; return $y;
 }
 
 sub arg_list (;@) {
