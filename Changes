@@ -1,6 +1,6 @@
 Revision history for Class::Usul
 
-0.8.207  2012-09-07
+0.8.208  2012-09-07
          - Recommend / require Proc::ProcessTable due to installation problems
          - Added Bingos falco smoker to skip tests
            8625b420-f89e-11e1-8d3a-af090e115ead
