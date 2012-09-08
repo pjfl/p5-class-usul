@@ -7,9 +7,6 @@ use File::Spec::Functions;
 use FindBin qw( $Bin );
 use lib catdir( $Bin, updir, q(lib) );
 
-use Class::Null;
-use Exception::Class ( q(TestException) => { fields => [ qw(arg1 arg2) ] } );
-use English qw( -no_match_vars );
 use Module::Build;
 use Test::More;
 
@@ -19,6 +16,10 @@ BEGIN {
    $current and $current->notes->{stop_tests}
             and plan skip_all => $current->notes->{stop_tests};
 }
+
+use Class::Null;
+use English qw( -no_match_vars );
+use Exception::Class ( q(TestException) => { fields => [ qw(arg1 arg2) ] } );
 
 {  package Logger;
 

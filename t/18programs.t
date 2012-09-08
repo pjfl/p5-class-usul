@@ -8,10 +8,7 @@ use FindBin qw( $Bin );
 use lib catdir( $Bin, updir, q(lib) );
 
 use Module::Build;
-use English qw(-no_match_vars);
-use File::Basename qw(basename);
 use Test::More;
-use Test::Deep;
 
 BEGIN {
    my $current = eval { Module::Build->current };
@@ -19,6 +16,10 @@ BEGIN {
    $current and $current->notes->{stop_tests}
             and plan skip_all => $current->notes->{stop_tests};
 }
+
+use English qw(-no_match_vars);
+use File::Basename qw(basename);
+use Test::Deep;
 
 use Class::Usul::Programs;
 use Class::Usul::Functions qw(say);

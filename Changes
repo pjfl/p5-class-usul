@@ -1,5 +1,9 @@
 Revision history for Class::Usul
 
+0.8.209  2012-09-08
+         - Placed non-core use statements after the plan skip_all in tests
+           ed342005-6cb8-1014-a31e-9f2d1ede6b02. Classic
+
 0.8.208  2012-09-07
          - Recommend / require Proc::ProcessTable due to installation problems
          - Added Bingos falco smoker to skip tests

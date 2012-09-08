@@ -7,8 +7,6 @@ use File::Spec::Functions qw( catdir catfile tmpdir updir );
 use FindBin qw( $Bin );
 use lib catdir( $Bin, updir, q(lib) );
 
-use English qw( -no_match_vars );
-use File::Basename;
 use Module::Build;
 use Test::More;
 
@@ -18,6 +16,9 @@ BEGIN {
    $current and $current->notes->{stop_tests}
             and plan skip_all => $current->notes->{stop_tests};
 }
+
+use English qw( -no_match_vars );
+use File::Basename;
 
 {  package Logger;
 

@@ -8,7 +8,6 @@ use FindBin qw( $Bin );
 use lib catdir( $Bin, updir, q(lib) );
 use utf8;
 
-use English qw(-no_match_vars);
 use Module::Build;
 use Test::More;
 
@@ -18,6 +17,8 @@ BEGIN {
    $current and $current->notes->{stop_tests}
             and plan skip_all => $current->notes->{stop_tests};
 }
+
+use English qw(-no_match_vars);
 
 {  package Logger;
 
