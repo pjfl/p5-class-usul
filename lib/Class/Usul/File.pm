@@ -7,8 +7,7 @@ use version; our $VERSION = qv( sprintf '0.8.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions   qw(abs_path arg_list create_token is_arrayref
-                                merge_attributes throw untaint_path);
+use Class::Usul::Functions   qw(arg_list create_token is_arrayref throw);
 use English                  qw(-no_match_vars);
 use File::DataClass::Constants ();
 use File::DataClass::IO        ();

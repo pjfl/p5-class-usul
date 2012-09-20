@@ -91,9 +91,11 @@ Class::Usul::Crypt - Encryption/decryption functions
    my $args = 'salt'; # OR
    my $args = { salt => 'salt', seed => 'whiten this' };
 
-   my $base64_encrypted_text = encrypt( $args, $plain_text, [ $cipher ] );
+   $args->{cipher} = 'Twofish'; # Optionally
 
-   my $plain_text = decrypt( $key, $base64_encrypted_text );
+   my $base64_encrypted_text = encrypt( $args, $plain_text );
+
+   my $plain_text = decrypt( $args, $base64_encrypted_text );
 
 =head1 Description
 
@@ -117,11 +119,11 @@ text result. See the L</encrypt> method
 
 =head2 encrypt
 
-   my $encrypted = encrypt( $salt || \%params, $plain, [ $cipher ] );
+   my $encoded = encrypt( $salt || \%params, $plain );
 
 Encrypts the plain text passed in the C<$plain> argument and returns
 it Base64 encoded. By default L<Crypt::Twofish> is used to do the
-encryption. The optional C<$cipher> argument overrides this
+encryption. The optional C<< $params->{cipher} >> attribute overrides this
 
 =head2 cipher_list
 
