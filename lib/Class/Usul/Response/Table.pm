@@ -6,12 +6,14 @@ use strict;
 use version; our $VERSION = qv( sprintf '0.8.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
+use MooseX::Aliases;
 
 has 'caption'  => is => 'ro', isa => Str,           default => q();
 has 'class'    => is => 'ro', isa => HashRef | Str, default => q();
 has 'classes'  => is => 'ro', isa => HashRef,       default => sub { {} };
 has 'count'    => is => 'ro', isa => Int,           default => 0;
-has 'flds'     => is => 'ro', isa => ArrayRef,      default => sub { [] };
+has 'fields'   => is => 'ro', isa => ArrayRef,      default => sub { [] },
+   alias       => q(flds);
 has 'hclass'   => is => 'ro', isa => HashRef,       default => sub { {} };
 has 'labels'   => is => 'ro', isa => HashRef,       default => sub { {} };
 has 'sizes'    => is => 'ro', isa => HashRef,       default => sub { {} };
@@ -48,7 +50,9 @@ Response class for the table widget in L<HTML::FormWidgets>
 
 =head1 Subroutines/Methods
 
-None
+=head2 flds
+
+Deprecated use C<fields> instead
 
 =head1 Diagnostics
 
