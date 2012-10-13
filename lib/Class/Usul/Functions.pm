@@ -24,7 +24,7 @@ my @_functions;
 BEGIN {
    @_functions = ( qw(abs_path app_prefix arg_list assert_directory
                       class2appdir classdir classfile create_token
-                      data_dumper distname elapsed env_prefix
+                      data_dumper distname downgrade elapsed env_prefix
                       escape_TT exception find_source fold home2appldir
                       is_arrayref is_coderef is_hashref is_member
                       merge_attributes my_prefix prefix2class product
@@ -91,6 +91,10 @@ sub data_dumper (;@) {
 
 sub distname ($) {
    (my $y = $_[ 0 ] || q()) =~ s{ :: }{-}gmx; return $y;
+}
+
+sub downgrade (;$) {
+   my $x = shift || q(); my ($y) = $x =~ m{ (.*) }msx; return $y;
 }
 
 sub elapsed () {
@@ -368,6 +372,15 @@ Uses L<Data::Printer> to dump C<$thing> in colour to I<stderr>
 
 Takes a class name and returns it with B<::> changed to
 B<->, e.g. C<App::Munchies> becomes C<App-Munchies>
+
+=head2 downgrade
+
+   $sv_pv = downgrade $sv_pvgv;
+
+Horrendus Perl bug is promoting PV and PVMG type scalars to PVGV. Serializing
+these values with L<Storable> throws a can't store SCALAR items errror. This
+functions copys the string value of the input scalar to the output scalar
+but resets the output scalar type to PV
 
 =head2 elapsed
 

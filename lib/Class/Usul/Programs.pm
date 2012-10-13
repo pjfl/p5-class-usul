@@ -189,8 +189,7 @@ sub fatal {
    exit FAILED;
 }
 
-sub get_line {
-   # General text input routine.
+sub get_line { # General text input routine.
    my ($self, $question, $default, $quit, $width, $multiline, $noecho) = @_;
 
    $question ||= 'Enter your answer';
@@ -276,12 +275,13 @@ sub list_methods : method {
 sub loc {
    my ($self, $key, @args) = @_; my $car = $args[ 0 ];
 
-   my $opts = (is_hashref $car) ? { %{ $car } }
+   my $args = (is_hashref $car) ? { %{ $car } }
             : { params => (is_arrayref $car) ? $car : [ @args ] };
 
-   $opts->{language} ||= $self->language; $opts->{ns} ||= $self->config->name;
+   $args->{domain_names} ||= [ DEFAULT_L10N_DOMAIN, $self->config->name ];
+   $args->{locale      } ||= $self->language;
 
-   return $self->next::method( $key, $opts );
+   return $self->localize( $key, $args );
 }
 
 sub output {
@@ -349,8 +349,7 @@ sub warning {
    return;
 }
 
-sub yorn {
-   # General yes or no input routine
+sub yorn { # General yes or no input routine
    my ($self, $question, $default, $quit, $width, $newline) = @_;
 
    my $no = NO; my $yes = YES; my $result;
@@ -413,8 +412,7 @@ sub _dont_ask {
        || $_[ 0 ]->help_manual || ! is_interactive();
 }
 
-sub _getopt_full_usage {
-   # Required to stop MX::Getopt from printing usage
+sub _getopt_full_usage { # Required to stop MX::Getopt from printing usage
 }
 
 sub _get_debug_option {
@@ -881,10 +879,12 @@ be called via the L<run method|/run>
 
 =head2 loc
 
-   $local_text = $self->loc( $key, @options );
+   $localized_text = $self->loc( $key, @options );
 
-Localizes the message. Calls L<Class::Usul/loc>. Adds I<language> and
-I<namespace> (search domain) to the options
+Localizes the message. Calls L<Class::Usul::L10N/localize>. Adds the
+constant C<DEFAULT_L10N_DOMAINS> to the list of domain files that are
+searched. Adds C<< $self->language >> and C< $self->config->name >>
+(search domain) to the arguments passed to C<localize>
 
 =head2 output
 

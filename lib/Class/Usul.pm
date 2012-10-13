@@ -30,7 +30,7 @@ has 'encoding'   => is => 'lazy', isa => EncodingType, coerce => TRUE,
 
 has '_l10n'      => is => 'lazy', isa => L10NType,
    default       => sub { Class::Usul::L10N->new( builder => $_[ 0 ] ) },
-   init_arg      => 'l10n', reader => 'l10n';
+   handles       => [ qw(localize) ], init_arg => 'l10n', reader => 'l10n';
 
 has '_lock'      => is => 'lazy', isa => LockType,
    init_arg      => 'lock', reader => 'lock';
@@ -41,15 +41,6 @@ has '_log'       => is => 'lazy', isa => LogType,
 
 sub dumper {
    my $self = shift; return data_dumper( @_ ); # Damm handy for development
-}
-
-sub loc {
-   my ($self, $key, $opts) = @_;
-
-   $opts->{domain_names} ||= [ DEFAULT_L10N_DOMAIN, $opts->{ns} ];
-   $opts->{locale      } ||= $opts->{language};
-
-   return $self->l10n->localize( $key, $opts );
 }
 
 # Private methods
@@ -131,13 +122,6 @@ Defined the application context log. Defaults to a L<Class::Null> object
    $self->dumper( $some_var );
 
 Use L<Data::Printer> to dump arguments for development purposes
-
-=head2 loc
-
-   $local_text = $self->loc( $key, \%options );
-
-Localizes the message. Calls L<Class::Usul::L10N/localize>. Adds the constant
-C<DEFAULT_L10N_DOMAINS> to the list of domain files that are searched
 
 =head2 _build__lock
 

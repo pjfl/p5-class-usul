@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+         - Switched to fields from flds in C::U::IPC
          - Deprecated flds attr in favour of fields in C::U::Response::Table
 
 0.8.209  2012-09-08

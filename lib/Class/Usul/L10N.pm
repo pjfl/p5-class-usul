@@ -38,7 +38,7 @@ has 'tempdir'         => is => 'ro',   isa => Directory, coerce => TRUE,
 has 'use_country'     => is => 'lazy', isa => Bool;
 
 around 'BUILDARGS' => sub {
-   my ($next, $class, @rest) = @_; my $attr = $class->$next( @rest );
+   my ($next, $class, @args) = @_; my $attr = $class->$next( @args );
 
    my $builder = delete $attr->{builder} or return $attr;
    my $config  = $builder->can( q(config) ) ? $builder->config : {};
@@ -65,7 +65,7 @@ sub invalidate_cache {
 sub localize {
    my ($self, $key, $args) = @_;
 
-   $key or return; $key = NUL.$key; chomp $key; $args ||= {};
+   $key or return; $key = q().$key; chomp $key; $args ||= {};
 
    # Lookup the message using the supplied key from the po file
    my $text = $self->_gettext( $key, $args );
@@ -74,7 +74,8 @@ sub localize {
       0 > index $text, LOCALIZE and return $text;
 
       # Expand positional parameters of the form [_<n>]
-      my @args = @{ $args->{params} }; push @args, map { '[?]' } 0 .. 10;
+      my @args = map { defined $_ ? $_ : '[?]' } @{ $args->{params} },
+                 map { '[?]' } 0 .. 9;
 
       $text =~ s{ \[ _ (\d+) \] }{$args[ $1 - 1 ]}gmx; return $text;
    }
@@ -91,11 +92,11 @@ sub localize {
 # Private methods
 
 sub _build_source_name {
-   my $self = shift; return $self->l10n_attributes->{source_name} || q(po);
+   return $_[ 0 ]->l10n_attributes->{source_name} || q(po);
 }
 
 sub _build_use_country {
-   my $self = shift; return $self->l10n_attributes->{use_country} || FALSE;
+   return $_[ 0 ]->l10n_attributes->{use_country} || FALSE;
 }
 
 sub _extract_lang_from {

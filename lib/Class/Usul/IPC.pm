@@ -236,7 +236,7 @@ sub _new_process_table {
 
    return $self->table_class->new
       ( count    => $count,
-        flds     => [ qw(uid pid ppid start time size state tty cmd) ],
+        fields   => [ qw(uid pid ppid start time size state tty cmd) ],
         labels   => { uid   => 'User',   pid   => 'PID',
                       ppid  => 'PPID',   start => 'Start Time',
                       tty   => 'TTY',    time  => 'Time',
