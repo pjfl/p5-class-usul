@@ -8,7 +8,7 @@ use version; our $VERSION = qv( sprintf '0.8.%d', q$Rev$ =~ /\d+/gmx );
 use 5.010;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(arg_list data_dumper merge_attributes);
+use Class::Usul::Functions qw(data_dumper merge_attributes);
 use Class::Usul::Config;
 use Class::Usul::L10N;
 use Class::Usul::Log;
