@@ -192,11 +192,10 @@ sub fatal {
 sub get_line { # General text input routine.
    my ($self, $question, $default, $quit, $width, $multiline, $noecho) = @_;
 
-   $question ||= 'Enter your answer';
-   $default    = defined $default ? $default : NUL;
+   $question ||= 'Enter your answer'; $default = $default // NUL;
 
    my $advice       = $quit ? '('.QUIT.' to quit)' : NUL;
-   my $right_prompt = $advice.($multiline ? NUL : SPC.q([).$default.q(]));
+   my $right_prompt = $advice.($multiline ? NUL : " [${default}]");
    my $left_prompt  = $question;
 
    if (defined $width) {
@@ -245,7 +244,7 @@ sub get_option {
 
    my $opt = $self->get_line( 'Select option', $default, $quit, $width );
 
-   $opt !~ m{ \A \d+ \z }mx and $opt = defined $default ? $default : 0;
+   $opt !~ m{ \A \d+ \z }mx and $opt = $default // 0;
 
    return $opt - 1;
 }
@@ -357,7 +356,7 @@ sub yorn { # General yes or no input routine
    $default = $default ? $yes : $no; $quit = $quit ? QUIT : NUL;
 
    my $advice       = $quit ? "(${yes}/${no}, ${quit}) " : "(${yes}/${no}) ";
-   my $right_prompt = $advice.q([).$default.q(]);
+   my $right_prompt = "${advice}[${default}]";
    my $left_prompt  = $question;
 
    if (defined $width) {
@@ -365,7 +364,7 @@ sub yorn { # General yes or no input routine
       my $right_x   = length $right_prompt;
       my $left_x    = $max_width - $right_x;
 
-      $left_prompt = sprintf '%-*s', $left_x, $question;
+      $left_prompt  = sprintf '%-*s', $left_x, $question;
    }
 
    my $prompt = $left_prompt.SPC.$right_prompt.BRK;
@@ -470,7 +469,7 @@ sub _usage_for {
       no strict q(refs);
 
       if (defined &{ "${class}::${method}" }) {
-         my $selector = Pod::Select->new(); $selector->select( q(/).$method );
+         my $selector = Pod::Select->new(); $selector->select( "/${method}" );
          my $tempfile = $self->file->tempfile;
 
          $selector->parse_from_file( find_source $class, $tempfile->pathname );
@@ -636,7 +635,7 @@ sub __prompt {
 
                $newlines .= "\n";
             }
-            else { __print_fh( $OUT, defined $echo ? $echo : $next ) }
+            else { __print_fh( $OUT, $echo // $next ) }
          }
          else { $input .= $next }
       }
