@@ -26,9 +26,6 @@ has 'doc_title'       => is => 'ro',   isa => NonEmptySimpleStr,
 has 'encoding'        => is => 'ro',   isa => EncodingType, coerce => TRUE,
    default            => DEFAULT_ENCODING;
 
-has 'extension'       => is => 'ro',   isa => NonEmptySimpleStr,
-   default            => CONFIG_EXTN;
-
 has 'home'            => is => 'ro',   isa => Directory, coerce => TRUE,
    documentation      => 'Directory containing the config file',
    required           => TRUE;
@@ -45,8 +42,6 @@ has 'man_page_cmd'    => is => 'ro',   isa => ArrayRef,
 has 'mode'            => is => 'ro',   isa => PositiveInt, default => MODE;
 
 has 'no_thrash'       => is => 'ro',   isa => PositiveInt, default => 3;
-
-has 'pathname'        => is => 'lazy', isa => File, coerce => TRUE;
 
 
 has 'appldir'         => is => 'lazy', isa => Directory, coerce => TRUE;
@@ -65,6 +60,8 @@ has 'logfile'         => is => 'lazy', isa => Path,      coerce => TRUE;
 
 has 'logsdir'         => is => 'lazy', isa => Directory, coerce => TRUE;
 
+has 'pathname'        => is => 'lazy', isa => File,      coerce => TRUE;
+
 has 'root'            => is => 'lazy', isa => Path,      coerce => TRUE;
 
 has 'rundir'          => is => 'lazy', isa => Path,      coerce => TRUE;
@@ -79,6 +76,8 @@ has 'tempdir'         => is => 'lazy', isa => Directory, coerce => TRUE;
 
 has 'vardir'          => is => 'lazy', isa => Path,      coerce => TRUE;
 
+
+has 'extension'       => is => 'lazy', isa => NonEmptySimpleStr;
 
 has 'name'            => is => 'lazy', isa => NonEmptySimpleStr;
 
@@ -143,17 +142,16 @@ sub _build_appldir {
 }
 
 sub _build_binsdir {
-   my ($self, $attr) = @_;
-
-   my $dir = $self->_inflate_path( $attr, qw(appldir bin) );
+   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw(appldir bin) );
 
    return -d $dir ? $dir : untaint_path $Config{installsitescript};
 }
 
 sub _build_ctlfile {
-   my ($self, $attr) = @_; my $file = $self->name.$self->extension;
+   my $name      = $_[ 0 ]->_inflate_symbol( $_[ 1 ], q(name)      );
+   my $extension = $_[ 0 ]->_inflate_symbol( $_[ 1 ], q(extension) );
 
-   return $self->_inflate_path( $attr, q(ctrldir), $file );
+   return $_[ 0 ]->_inflate_path( $_[ 1 ], q(ctrldir), $name.$extension );
 }
 
 sub _build_ctrldir {
@@ -168,38 +166,40 @@ sub _build_dbasedir {
    return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], q(vardir) );
 }
 
-sub _build_localedir {
-   my ($self, $attr) = @_;
+sub _build_extension {
+   return CONFIG_EXTN;
+}
 
-   my $dir = $self->_inflate_path( $attr, qw(vardir locale) );
+sub _build_localedir {
+   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir locale) );
 
    -d $dir and return $dir;
 
    for (map { catdir( @{ $_ } ) } @{ DIRECTORIES() } ) { -d $_ and return $_ }
 
-   return $self->_inflate_path( $attr, qw(tempdir) );
+   return $_[ 0 ]->_inflate_path( $_[ 1 ], qw(tempdir) );
 }
 
 sub _build_logfile {
-   return $_[ 0 ]->_inflate_path( $_[ 1 ], q(logsdir), $_[ 0 ]->name.q(.log) );
+   my $name = $_[ 0 ]->_inflate_symbol( $_[ 1 ], q(name) );
+
+   return $_[ 0 ]->_inflate_path( $_[ 1 ], q(logsdir), "${name}.log" );
 }
 
 sub _build_logsdir {
-   my ($self, $attr) = @_;
+   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir logs) );
 
-   my $dir = $self->_inflate_path( $attr, qw(vardir logs) );
-
-   return -d $dir ? $dir : $self->_inflate_path( $attr, qw(tempdir) );
+   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], qw(tempdir) );
 }
 
 sub _build_name {
-   my $prog = basename( $_[ 0 ]->pathname, EXTNS );
+   my $prog = basename( $_[ 0 ]->_inflate_path( $_[ 1 ], qw(pathname) ), EXTNS);
 
    return (split_on__ $prog, 1) || $prog;
 }
 
 sub _build_owner {
-   return $_[ 0 ]->prefix || q(root);
+   return $_[ 0 ]->_inflate_symbol( $_[ 1 ], q(prefix) ) || q(root);
 }
 
 sub _build_pathname {
@@ -212,17 +212,16 @@ sub _build_path_to {
 }
 
 sub _build_phase {
-   my ($self, $attr) = @_;
-
-   my $verdir  = blessed $self ? basename( $self->appldir )
-               : basename( $self->_inflate_path( $attr, q(appldir) ) );
+   my $verdir  = basename( $_[ 0 ]->_inflate_path( $_[ 1 ], q(appldir) ) );
    my ($phase) = $verdir =~ m{ \A v \d+ \. \d+ p (\d+) \z }msx;
 
    return defined $phase ? $phase : PHASE;
 }
 
 sub _build_prefix {
-   return (split m{ :: }mx, lc $_[ 0 ]->appclass)[ -1 ];
+   my $appclass = $_[ 0 ]->_inflate_symbol( $_[ 1 ], q(appclass) );
+
+   return (split m{ :: }mx, lc $appclass)[ -1 ];
 }
 
 sub _build_root {
@@ -238,11 +237,11 @@ sub _build_rundir {
 }
 
 sub _build_script {
-   return basename( $_[ 0 ]->pathname );
+   return basename( $_[ 0 ]->_inflate_path( $_[ 1 ], qw(pathname) ) );
 }
 
 sub _build_salt {
-   return $_[ 0 ]->prefix;
+   return $_[ 0 ]->_inflate_symbol( $_[ 1 ], q(prefix) );
 }
 
 sub _build_sessdir {
@@ -260,9 +259,9 @@ sub _build_shell {
 }
 
 sub _build_suid {
-   my ($self, $attr) = @_; my $file = $self->prefix.q(_admin);
+   my $prefix = $_[ 0 ]->_inflate_symbol( $_[ 1 ], q(prefix) );
 
-   return $self->_inflate_path( $attr, q(binsdir), $file );
+   return $_[ 0 ]->_inflate_path( $_[ 1 ], q(binsdir), "${prefix}_admin" );
 }
 
 sub _build_tempdir {
@@ -272,11 +271,9 @@ sub _build_tempdir {
 }
 
 sub _build_vardir {
-   my ($self, $attr) = @_;
+   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw(appldir var) );
 
-   my $dir = $self->_inflate_path( $attr, qw(appldir var) );
-
-   return -d $dir ? $dir : $self->_inflate_path( $attr, q(appldir) );
+   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], q(appldir) );
 }
 
 sub _inflate_path {
