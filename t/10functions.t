@@ -53,6 +53,8 @@ is unescape_TT( escape_TT( q([% test %]) ) ), q([% test %]),
 is find_source( q(Class::Usul::Functions) ),
    abs_path( catfile( qw(lib Class Usul Functions.pm) ) ), 'find_source';
 
+is hex2str( '41' ), 'A', 'hex2str - A';
+
 is home2appldir( catdir( qw(opt myapp v0.1 lib MyApp) ) ),
    catdir( qw(opt myapp v0.1) ), 'home2appldir';
 

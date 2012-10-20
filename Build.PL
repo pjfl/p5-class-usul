@@ -24,6 +24,7 @@ Bob->new( {
       'Data::Printer'                 => 0.24,
       'Date::Format'                  => 2.22,
       'DateTime::Format::Epoch'       => 0.11,
+      'Digest::MD5'                   => 2.39,
       'Digest::SHA1'                  => 2.11,
       'Email::Date::Format'           => 1.002,
       'File::DataClass'               => q(0.12.0),

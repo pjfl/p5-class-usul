@@ -7,37 +7,62 @@ use version; our $VERSION = qv( sprintf '0.8.%d', q$Rev$ =~ /\d+/gmx );
 
 use 5.010;
 use Class::Usul::Moose;
-use Class::Usul::Constants;
-use Class::Usul::Functions qw(data_dumper merge_attributes);
 use Class::Usul::Config;
+use Class::Usul::Constants;
+use Class::Usul::Functions qw(data_dumper merge_attributes throw);
 use Class::Usul::L10N;
 use Class::Usul::Log;
 use IPC::SRLock;
 
-coerce ConfigType, from HashRef, via { Class::Usul::Config->new( $_ ) };
+has '_config'        => is => 'ro',   isa => HashRef, default => sub { {} },
+   init_arg          => 'config';
 
-has '_config'    => is => 'ro',   isa => ConfigType, coerce => TRUE,
-   handles       => [ qw(prefix salt) ], init_arg => 'config',
-   reader        => 'config', required => TRUE;
+has 'config_class'   => is => 'ro',   isa => ClassName,
+   documentation     => 'Class used to load and parse config',
+   default           => sub { 'Class::Usul::Config' };
 
-has 'debug',     => is => 'rw',   isa => Bool, default => FALSE,
-   documentation => 'Turn debugging on. Prompts if interactive',
-   trigger       => TRUE;
+has '_config_parser' => is => 'lazy', isa => ConfigType,
+   default           => sub { $_[ 0 ]->config_class->new( $_[ 0 ]->_config ) },
+   handles           => [ qw(prefix salt) ], init_arg => undef,
+   reader            => 'config';
 
-has 'encoding'   => is => 'lazy', isa => EncodingType, coerce => TRUE,
-   documentation => 'Decode/encode input/output using this encoding',
-   default       => sub { $_[ 0 ]->config->encoding };
+has 'debug',         => is => 'rw',   isa => Bool, default => FALSE,
+   documentation     => 'Turn debugging on. Prompts if interactive',
+   trigger           => TRUE;
 
-has '_l10n'      => is => 'lazy', isa => L10NType,
-   default       => sub { Class::Usul::L10N->new( builder => $_[ 0 ] ) },
-   handles       => [ qw(localize) ], init_arg => 'l10n', reader => 'l10n';
+has 'encoding'       => is => 'lazy', isa => EncodingType, coerce => TRUE,
+   documentation     => 'Decode/encode input/output using this encoding',
+   default           => sub { $_[ 0 ]->config->encoding };
 
-has '_lock'      => is => 'lazy', isa => LockType,
-   init_arg      => 'lock', reader => 'lock';
+has '_l10n'          => is => 'lazy', isa => L10NType,
+   default           => sub { Class::Usul::L10N->new( builder => $_[ 0 ] ) },
+   handles           => [ qw(localize) ], init_arg => 'l10n', reader => 'l10n';
 
-has '_log'       => is => 'lazy', isa => LogType,
-   default       => sub { Class::Usul::Log->new( builder => $_[ 0 ] ) },
-   init_arg      => 'log',  reader => 'log';
+has '_lock'          => is => 'lazy', isa => LockType,
+   init_arg          => 'lock', reader => 'lock';
+
+has '_log'           => is => 'lazy', isa => LogType,
+   default           => sub { Class::Usul::Log->new( builder => $_[ 0 ] ) },
+   init_arg          => 'log',  reader => 'log';
+
+sub new_from_class {
+   my ($self, $app_class) = @_;
+
+   $app_class or throw 'Application class not defined';
+   $app_class->can( q(config) )
+      or throw error => 'Class [_1] is missing the config method',
+               args  => [ blessed $app_class || $app_class ];
+
+   my $config  = { %{ $app_class->config || {} } };
+   my $attr    = { %{ delete $config->{ 'Plugin::Usul' } || {} } };
+   my $name    = delete $config->{name}; $config->{appclass} ||= $name;
+   my $myclass = blessed $self || $self;
+
+   $attr->{config} ||= $config;
+   $attr->{debug } ||= $app_class->can( q(debug) ) ? $app_class->debug : FALSE;
+
+   return $myclass->new( $attr );
+}
 
 sub dumper {
    my $self = shift; return data_dumper( @_ ); # Damm handy for development
@@ -103,6 +128,12 @@ The C<$attr> argument is a hash ref containing the object attributes.
 The C<config> attribute should be a hash ref that may define key/value pairs
 that provide filesystem paths for the temporary directory etc.
 
+=item config_class
+
+An instance of this class is instantiated with the C<config> attribute. It
+provides accessor methods with symbol inflation and smart defaults. Defaults
+to L<Class::Usul::Config>
+
 =item debug
 
 Defaults to false
@@ -116,6 +147,15 @@ Decode input and encode output. Defaults to C<UTF-8>
 Defined the application context log. Defaults to a L<Class::Null> object
 
 =head1 Subroutines/Methods
+
+=head2 new_from_class
+
+   $usul_object = $self->new_from_class( $application_class ):
+
+Returns a new instance of self starting only with an application class name.
+The application class in expected to provide C<config> and C<debug> class
+methods. The hash ref C<< $application_class->config >> will be passed as
+the C<config> attribute to the constructor for this class
 
 =head2 dumper
 

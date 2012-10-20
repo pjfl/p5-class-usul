@@ -12,25 +12,28 @@ use Data::Printer alias => q(Dumper), colored => 1, indent => 3,
     filters => { 'File::DataClass::IO' => sub { $_[ 0 ]->pathname }, };
 use Cwd          qw();
 use Digest       qw();
+use Digest::MD5  qw(md5);
 use English      qw(-no_match_vars);
 use File::Basename ();
 use File::Spec;
 use List::Util   qw(first);
 use Path::Class::Dir;
 use Scalar::Util qw(blessed openhandle);
+use Sys::Hostname;
 
-my @_functions;
+my @_functions; my $_bson_id_inc : shared = 0;
 
 BEGIN {
    @_functions = ( qw(abs_path app_prefix arg_list assert_directory
-                      class2appdir classdir classfile create_token
-                      data_dumper distname downgrade elapsed env_prefix
-                      escape_TT exception find_source fold home2appldir
-                      is_arrayref is_coderef is_hashref is_member
-                      merge_attributes my_prefix prefix2class product
-                      say split_on__ squeeze strip_leader sub_name sum
-                      throw trim unescape_TT untaint_cmdline
-                      untaint_identifier untaint_path untaint_string) );
+                      bsonid bsonid_time class2appdir classdir
+                      classfile create_token data_dumper distname
+                      downgrade elapsed env_prefix escape_TT exception
+                      find_source fold hex2str home2appldir is_arrayref
+                      is_coderef is_hashref is_member merge_attributes
+                      my_prefix prefix2class product say split_on__
+                      squeeze strip_leader sub_name sum throw trim
+                      unescape_TT untaint_cmdline untaint_identifier
+                      untaint_path untaint_string) );
 }
 
 use Sub::Exporter -setup => {
@@ -54,6 +57,19 @@ sub arg_list (;@) {
 
 sub assert_directory ($) {
    my $y = abs_path( $_[ 0 ] ) or return; return -d $y ? $y : undef;
+}
+
+sub bsonid () {
+   my $time = pack 'N', time;
+   my $host = substr md5( hostname ), 0, 3;
+   my $proc = pack 'n', $$ % 0xFFFF;
+   my $inc  = substr pack( 'N', $_bson_id_inc++ % 0xFFFFFF ), 1, 3;
+
+   return unpack 'H*', $time.$host.$proc.$inc;
+}
+
+sub bsonid_time ($) {
+   return unpack 'N', substr hex2str( shift ), 0, 4;
 }
 
 sub class2appdir ($) {
@@ -140,6 +156,14 @@ sub fold (&) {
          my $y = $x; $y = $f->( $y, shift ) while (@_); return $y;
       }
    }
+}
+
+sub hex2str (;$) {
+   my @a = split m{}mx, shift // q(); my $str = q();
+
+   while (my ($x, $y) = splice @a, 0, 2) { $str .= pack 'C', hex "${x}${y}" }
+
+   return $str;
 }
 
 sub home2appldir ($) {
@@ -330,6 +354,20 @@ are passed to it
 Untaints directory path. Makes it an absolute path and returns it if it
 exists. Returns undef otherwise
 
+=head2 bsonid
+
+   $bson_id = bsonid;
+
+Generate a new BSON id. Returns a 24 character string of hex digits that
+are reasonably unique across hosts and are in ascending order. Use this
+to create unique ids for data streams like message queues and file feeds
+
+=head2 bsonid_time
+
+   $seconds_elapsed_since_the_epoch = bsonid_time $bson_id;
+
+Returns the time the BSON id was generated as Unix time
+
 =head2 class2appdir
 
    $appdir = class2appdir __PACKAGE__;
@@ -422,6 +460,12 @@ Find absolute path to the source code for the given module
    *sum = fold { $a + $b } 0;
 
 Classic reduce function with optional base value
+
+=head2 hex2str
+
+   $string = hex2str $pairs_of_hex_digits;
+
+Converts the pairs of hex digits into a string of characters
 
 =head2 home2appldir
 

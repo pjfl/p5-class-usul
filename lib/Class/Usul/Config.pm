@@ -9,7 +9,7 @@ use Class::Usul::File;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions       qw(app_prefix class2appdir home2appldir
-                                    split_on__ untaint_path);
+                                    is_arrayref split_on__ untaint_path);
 use Config;
 use English                      qw(-no_match_vars);
 use File::Basename               qw(basename dirname);
@@ -116,6 +116,18 @@ around 'BUILDARGS' => sub {
 
    return $attr;
 };
+
+sub canonicalise {
+   my ($self, $base, $relpath) = @_;
+
+   my @base = ((is_arrayref $base) ? @{ $base } : $base);
+   my @rest = split m{ / }mx, $relpath;
+   my $path = canonpath( untaint_path catdir( @base, @rest ) );
+
+   -d $path and return $path;
+
+   return canonpath( untaint_path catfile( @base, @rest ) );
+}
 
 # Private methods
 
@@ -268,15 +280,13 @@ sub _build_vardir {
 }
 
 sub _inflate_path {
-   my ($self, $attr, $symbol, $relpath) = @_; $attr ||= {}; $relpath ||= NUL;
+   my ($self, $attr, $symbol, $relpath) = @_; $attr ||= {};
 
-   my $base  = $self->_inflate_symbol( $attr, $symbol );
+   my $inflated = $self->_inflate_symbol( $attr, $symbol );
 
-   my @parts = ($base, split m{ / }mx, $relpath);
+   $relpath or return canonpath( untaint_path $inflated );
 
-   my $path  = catdir( @parts ); -d $path or $path = catfile( @parts );
-
-   return untaint_path canonpath( $path );
+   return $self->canonicalise( $inflated, $relpath );
 }
 
 sub _inflate_symbol {
@@ -480,6 +490,14 @@ attribute value
 
 Loads the configuration files if specified. Calls L</inflate_symbol>
 and L</inflate_path>
+
+=head2 canonicalise
+
+   $untainted_canonpath = $self->canonicalise( $base, $relpath );
+
+Appends C<$relpath> to C<$base> using L<File::Spec::Functions>. The C<$base>
+argument can be an array ref or a scalar. The C<$relpath> argument must be
+separated by slashes. The return path is untainted and canonicalised
 
 =head2 _inflate_path
 
