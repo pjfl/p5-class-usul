@@ -7,7 +7,6 @@ use version; our $VERSION = qv( sprintf '0.8.%d', q$Rev$ =~ /\d+/gmx );
 
 use 5.010;
 use Class::Usul::Moose;
-use Class::Usul::Config;
 use Class::Usul::Constants;
 use Class::Usul::Functions qw(data_dumper merge_attributes throw);
 use Class::Usul::L10N;
@@ -17,7 +16,7 @@ use IPC::SRLock;
 has '_config'        => is => 'ro',   isa => HashRef, default => sub { {} },
    init_arg          => 'config';
 
-has 'config_class'   => is => 'ro',   isa => ClassName,
+has 'config_class'   => is => 'ro',   isa => LoadableClass, coerce => TRUE,
    documentation     => 'Class used to load and parse config',
    default           => sub { 'Class::Usul::Config' };
 
@@ -136,9 +135,10 @@ that provide filesystem paths for the temporary directory etc.
 
 =item config_class
 
-An instance of this class is instantiated with the C<config> attribute. It
-provides accessor methods with symbol inflation and smart defaults. Defaults
-to L<Class::Usul::Config>. Use this to add configuration attributes by
+Defaults to L<Class::Usul::Config> and is of type C<LoadableClass>. An
+instance of this class is loaded and instantiated using the hash ref
+in the C<config> attribute. It provides accessor methods with symbol
+inflation and smart defaults. Add configuration attributes by
 subclassing the default
 
 =item debug
