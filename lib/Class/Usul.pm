@@ -45,9 +45,9 @@ has '_log'           => is => 'lazy', isa => LogType,
    init_arg          => 'log',  reader => 'log';
 
 sub new_from_class { # Instantiate from a class name with a config method
-   my ($self, $app_class) = @_; my $myclass = blessed $self || $self;
+   my ($self, $app_class) = @_; my $class = blessed $self || $self;
 
-   return $myclass->new( __get_attr_from_class( $app_class ) );
+   return $class->new( __get_attr_from_class( $app_class ) );
 }
 
 sub dumper {
@@ -78,19 +78,19 @@ sub _trigger_debug { # Propagate the debug state to child objects
 # Private functions
 
 sub __get_attr_from_class { # Coerce a hash ref from a string
-   my $app_class = shift;
+   my $class = shift;
 
-   $app_class or throw 'Application class not defined';
-   $app_class->can( q(config) )
+   defined $class or throw 'Application class not defined';
+   $class->can( q(config) )
       or throw error => 'Class [_1] is missing the config method',
-               args  => [ blessed $app_class || $app_class ];
+               args  => [ $class ];
 
-   my $config = { %{ $app_class->config || {} } };
+   my $config = { %{ $class->config || {} } };
    my $attr   = { %{ delete $config->{ 'Plugin::Usul' } || {} } };
    my $name   = delete $config->{name}; $config->{appclass} ||= $name;
 
    $attr->{config} ||= $config;
-   $attr->{debug } ||= $app_class->can( q(debug) ) ? $app_class->debug : FALSE;
+   $attr->{debug } ||= $class->can( q(debug) ) ? $class->debug : FALSE;
    return $attr;
 }
 
