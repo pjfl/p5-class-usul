@@ -45,23 +45,10 @@ has '_log'           => is => 'lazy', isa => LogType,
    default           => sub { Class::Usul::Log->new( builder => $_[ 0 ] ) },
    init_arg          => 'log',  reader => 'log';
 
-sub new_from_class {
-   my ($self, $app_class) = @_;
+sub new_from_class { # Instantiate from a class name with a config method
+   my ($self, $app_class) = @_; my $myclass = blessed $self || $self;
 
-   $app_class or throw 'Application class not defined';
-   $app_class->can( q(config) )
-      or throw error => 'Class [_1] is missing the config method',
-               args  => [ blessed $app_class || $app_class ];
-
-   my $config  = { %{ $app_class->config || {} } };
-   my $attr    = { %{ delete $config->{ 'Plugin::Usul' } || {} } };
-   my $name    = delete $config->{name}; $config->{appclass} ||= $name;
-   my $myclass = blessed $self || $self;
-
-   $attr->{config} ||= $config;
-   $attr->{debug } ||= $app_class->can( q(debug) ) ? $app_class->debug : FALSE;
-
-   return $myclass->new( $attr );
+   return $myclass->new( __get_attr_from_class( $app_class ) );
 }
 
 sub dumper {
@@ -81,12 +68,31 @@ sub _build__lock { # There is only one lock object. Instantiate on first use
    return $cache = IPC::SRLock->new( $attr );
 }
 
-sub _trigger_debug {
+sub _trigger_debug { # Propagate the debug state to child objects
    my ($self, $debug) = @_;
 
    $self->l10n->debug( $debug ); $self->lock->debug( $debug );
 
    return;
+}
+
+# Private functions
+
+sub __get_attr_from_class { # Coerce a hash ref from a string
+   my $app_class = shift;
+
+   $app_class or throw 'Application class not defined';
+   $app_class->can( q(config) )
+      or throw error => 'Class [_1] is missing the config method',
+               args  => [ blessed $app_class || $app_class ];
+
+   my $config = { %{ $app_class->config || {} } };
+   my $attr   = { %{ delete $config->{ 'Plugin::Usul' } || {} } };
+   my $name   = delete $config->{name}; $config->{appclass} ||= $name;
+
+   $attr->{config} ||= $config;
+   $attr->{debug } ||= $app_class->can( q(debug) ) ? $app_class->debug : FALSE;
+   return $attr;
 }
 
 __PACKAGE__->meta->make_immutable;
@@ -132,7 +138,8 @@ that provide filesystem paths for the temporary directory etc.
 
 An instance of this class is instantiated with the C<config> attribute. It
 provides accessor methods with symbol inflation and smart defaults. Defaults
-to L<Class::Usul::Config>
+to L<Class::Usul::Config>. Use this to add configuration attributes by
+subclassing the default
 
 =item debug
 
