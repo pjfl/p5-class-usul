@@ -66,16 +66,9 @@ sub __has_log_level_methods {
 }
 
 sub __has_min_config_attributes {
-   my $obj  = shift;
+   my $obj = shift; my @config_attr = ( qw(appldir home root tempdir vardir) );
 
-   ($obj->can( q(meta) ) and $obj->meta->can( q(get_attribute_list) ))
-      or return FALSE;
-
-   my $attr = { map { $_ => 1 } $obj->meta->get_attribute_list };
-
-   my @config_attr = ( qw(appldir home root tempdir vardir) );
-
-   exists $attr->{ $_ } or return FALSE for (@config_attr);
+   $obj->can( $_ ) or return FALSE for (@config_attr);
 
    return TRUE;
 }

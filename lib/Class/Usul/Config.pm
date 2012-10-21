@@ -20,9 +20,6 @@ use File::Spec::Functions        qw(canonpath catdir catfile rel2abs tmpdir);
 has 'appclass'        => is => 'ro',   isa => NonEmptySimpleStr,
    required           => TRUE;
 
-has 'doc_title'       => is => 'ro',   isa => NonEmptySimpleStr,
-   default            => 'User Contributed Documentation';
-
 has 'encoding'        => is => 'ro',   isa => EncodingType, coerce => TRUE,
    default            => DEFAULT_ENCODING;
 
@@ -35,11 +32,6 @@ has 'l10n_attributes' => is => 'ro',   isa => HashRef, default => sub { {} };
 has 'lock_attributes' => is => 'ro',   isa => HashRef, default => sub { {} };
 
 has 'log_attributes'  => is => 'ro',   isa => HashRef, default => sub { {} };
-
-has 'man_page_cmd'    => is => 'ro',   isa => ArrayRef,
-   default            => sub { [ qw(nroff -man) ] };
-
-has 'mode'            => is => 'ro',   isa => PositiveInt, default => MODE;
 
 has 'no_thrash'       => is => 'ro',   isa => PositiveInt, default => 3;
 
@@ -81,15 +73,11 @@ has 'extension'       => is => 'lazy', isa => NonEmptySimpleStr;
 
 has 'name'            => is => 'lazy', isa => NonEmptySimpleStr;
 
-has 'owner'           => is => 'lazy', isa => NonEmptySimpleStr;
-
 has 'phase'           => is => 'lazy', isa => PositiveInt;
 
 has 'prefix'          => is => 'lazy', isa => NonEmptySimpleStr;
 
 has 'salt'            => is => 'lazy', isa => NonEmptySimpleStr;
-
-has 'script'          => is => 'lazy', isa => NonEmptySimpleStr;
 
 around 'BUILDARGS' => sub {
    my ($next, $class, @args) = @_; my $attr = $class->$next( @args ); my $paths;
@@ -193,13 +181,9 @@ sub _build_logsdir {
 }
 
 sub _build_name {
-   my $prog = basename( $_[ 0 ]->_inflate_path( $_[ 1 ], qw(pathname) ), EXTNS);
+   my $name = basename( $_[ 0 ]->_inflate_path( $_[ 1 ], q(pathname) ), EXTNS );
 
-   return (split_on__ $prog, 1) || $prog;
-}
-
-sub _build_owner {
-   return $_[ 0 ]->_inflate_symbol( $_[ 1 ], q(prefix) ) || q(root);
+   return (split_on__ $name, 1) || $name;
 }
 
 sub _build_pathname {
@@ -234,10 +218,6 @@ sub _build_rundir {
    my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir run) );
 
    return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], q(vardir) );
-}
-
-sub _build_script {
-   return basename( $_[ 0 ]->_inflate_path( $_[ 1 ], qw(pathname) ) );
 }
 
 sub _build_salt {
@@ -342,53 +322,6 @@ Defines the following list of attributes
 Required string. The classname of the application for which this is the
 configuration class
 
-=item C<doc_title>
-
-String defaults to 'User Contributed Documentation'. Used in the Unix man
-pages
-
-=item C<encoding>
-
-String default to the constant I<DEFAULT_ENCODING>
-
-=item C<extension>
-
-String defaults to the constant I<CONFIG_EXTN>
-
-=item C<home>
-
-Directory containing the config file. Required
-
-=item C<l10n_attributes>
-
-Hash ref of attributes used to construct a L<Class::Usul::L10N> object
-
-=item C<lock_attributes>
-
-Hash ref of attributes used to construct an L<IPC::SRLock> object
-
-=item C<log_attributes>
-
-Hash ref of attributes used to construct a L<Class::Usul::Log> object
-
-=item C<man_page_cmd>
-
-Array ref containing the command and options to produce a man page. Defaults
-to I<man -nroff>
-
-=item C<mode>
-
-Integer defaults to the constant I<PERMS>. The default file creation mask
-
-=item C<no_thrash>
-
-Integer default to 3. Number of seconds to sleep in a polling loop to
-avoid processor thrash
-
-=item C<pathname>
-
-File defaults to the absolute path to the I<PROGRAM_NAME> system constant
-
 =item C<appldir>
 
 Directory. Defaults to the application's install directory
@@ -409,10 +342,34 @@ Directory containing the per program configuration files
 
 Directory containing the data file used to create the applications database
 
+=item C<encoding>
+
+String default to the constant I<DEFAULT_ENCODING>
+
+=item C<extension>
+
+String defaults to the constant I<CONFIG_EXTN>
+
+=item C<home>
+
+Directory containing the config file. Required
+
+=item C<l10n_attributes>
+
+Hash ref of attributes used to construct a L<Class::Usul::L10N> object
+
 =item C<localedir>
 
 Directory containing the GNU Gettext portable object files used to translate
 messages into different languages
+
+=item C<lock_attributes>
+
+Hash ref of attributes used to construct an L<IPC::SRLock> object
+
+=item C<log_attributes>
+
+Hash ref of attributes used to construct a L<Class::Usul::Log> object
 
 =item C<logfile>
 
@@ -422,6 +379,28 @@ File in the C<logsdir> to which this program will log
 
 Directory containing the application log files
 
+=item C<name>
+
+String. Name of the program
+
+=item C<no_thrash>
+
+Integer default to 3. Number of seconds to sleep in a polling loop to
+avoid processor thrash
+
+=item C<pathname>
+
+File defaults to the absolute path to the I<PROGRAM_NAME> system constant
+
+=item C<phase>
+
+Integer. Phase number indicates the type of install, e.g. 1 live, 2 test,
+3 development
+
+=item C<prefix>
+
+String. Program prefix
+
 =item C<root>
 
 Directory. Path to the web applications document root
@@ -429,6 +408,12 @@ Directory. Path to the web applications document root
 =item C<rundir>
 
 Directory. Contains a running programs PID file
+
+=item C<salt>
+
+String. This applications salt for passwords as set by the administrators . It
+is used to perturb the encryption methods. Defaults to the I<prefix>
+attribute value
 
 =item C<sessdir>
 
@@ -451,33 +436,6 @@ application. Defaults to the L<File::Spec> tempdir
 =item C<vardir>
 
 Directory. Contains all of the non program code directories
-
-=item C<name>
-
-String. Name of the program
-
-=item C<owner>
-
-String. Name of the application file owner
-
-=item C<phase>
-
-Integer. Phase number indicates the type of install, e.g. 1 live, 2 test,
-3 development
-
-=item C<prefix>
-
-String. Program prefix
-
-=item C<script>
-
-String. The basename of the I<pathname> attribute
-
-=item C<salt>
-
-String. This applications salt for passwords as set by the administrators . It
-is used to perturb the encryption methods. Defaults to the I<prefix>
-attribute value
 
 =back
 

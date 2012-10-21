@@ -35,8 +35,11 @@ with    q(MooseX::Getopt::Dashes);
 with    q(Class::Usul::TraitFor::LoadingClasses);
 with    q(Class::Usul::TraitFor::UntaintedGetopts);
 
-has '+debug'       => traits => [ 'Getopt' ], cmd_aliases => q(D),
-   cmd_flag        => 'debug';
+has '+config_class' => default => 'Class::Usul::Config::Programs';
+
+has '+debug'        => traits => [ 'Getopt' ], cmd_aliases => q(D),
+   cmd_flag         => 'debug';
+
 
 has 'help_options' => is => 'ro', isa => Bool, default => FALSE,
    documentation   => 'Uses Pod::Usage to describe the program usage options',
