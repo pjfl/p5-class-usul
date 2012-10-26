@@ -404,7 +404,7 @@ sub _build__os {
 
    $path->exists or return {};
 
-   my $cfg  = $self->file->data_load( arrays => [ q(os) ], paths => [ $path ] );
+   my $cfg  = $self->file->data_load( paths => [ $path ] );
 
    return $cfg->{os} || {};
 }
@@ -420,8 +420,7 @@ sub _getopt_full_usage { # Required to stop MX::Getopt from printing usage
 sub _get_debug_option {
    my $self = shift;
 
-   $self->nodebug   and return FALSE;
-   $self->_dont_ask and return $self->debug;
+   ($self->nodebug or $self->_dont_ask) and return $self->debug;
 
    return $self->yorn( 'Do you want debugging turned on', FALSE, TRUE );
 }
@@ -455,7 +454,9 @@ sub _output_usage {
                    -verbose => $verbose } ); # Never returns
    }
 
-   warn ucfirst $self->usage;
+   my $usage = ucfirst $self->usage;
+
+   warn $usage ? $usage : "Did we forget new_with_options?\n";
    exit OK;
 }
 

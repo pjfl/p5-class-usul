@@ -501,7 +501,7 @@ sub __partition_command {
    my $cmd = shift; my $aref = []; my @command = ();
 
    for my $item (grep { defined && length } @{ $cmd }) {
-      if ($item !~ m{ [\<\>\|\&] }mx) { push @{ $aref }, $item }
+      if ($item !~ m{ [^\\][\<\>\|\&] }mx) { push @{ $aref }, $item }
       else { push @command, $aref, $item; $aref = [] }
    }
 

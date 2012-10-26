@@ -33,7 +33,7 @@ BEGIN {
                       my_prefix prefix2class product say split_on__
                       squeeze strip_leader sub_name sum throw trim
                       unescape_TT untaint_cmdline untaint_identifier
-                      untaint_path untaint_string) );
+                      untaint_path untaint_string zip) );
 }
 
 use Sub::Exporter -setup => {
@@ -102,7 +102,7 @@ sub create_token (;$) {
 }
 
 sub data_dumper (;@) {
-   return Dumper( @_ );
+   Dumper( @_ ); return 1;
 }
 
 sub distname ($) {
@@ -255,9 +255,9 @@ sub throw (;@) {
 }
 
 sub trim (;$) {
-   (my $y = $_[ 0 ] || q()) =~ s{ \A \s+ }{}gmx; $y =~ s{ \s+ \z }{}gmx;
+   (my $y = $_[ 0 ] || q()) =~ s{ \A \s+ }{}gmx;
 
-   return $y;
+   chomp $y; $y =~ s{ \s+ \z }{}gmx; return $y;
 }
 
 sub unescape_TT (;$$) {
@@ -289,6 +289,10 @@ sub untaint_string ($;$) {
       or throw( 'String '.($string || 'undef')." contains possible taint\n" );
 
    return $untainted;
+}
+
+sub zip (@) {
+    my $p = @_ / 2; return @_[ map { $_, $_ + $p } 0 .. $p - 1 ];
 }
 
 1;
@@ -578,7 +582,7 @@ C<set_inherited>
 
    $trimmed_string = trim $string_with_leading_and trailing_whitespace;
 
-Remove leading and trailing whitespace
+Remove leading and trailing whitespace including trailing newlines
 
 =head2 unescape_TT
 
@@ -612,6 +616,12 @@ matching regex from L<CatalystX::Usul::Constants>
    $untainted_string = untaint_string $regex, $maybe_tainted_string;
 
 Returns an untainted string or throws
+
+=head2 zip
+
+   %hash = zip @list_of_keys @list_of_values;
+
+Zips two list of equal size together to form a hash
 
 =head1 Diagnostics
 

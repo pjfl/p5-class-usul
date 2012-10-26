@@ -40,11 +40,11 @@ sub data_dump {
 sub data_load {
    my ($self, @rest) = @_; my $args = arg_list @rest; my $attr = {};
 
+   defined $args->{storage_class}
+      and $attr->{storage_class} = delete $args->{storage_class};
+
    defined $args->{arrays}
       and $attr->{storage_attributes}->{force_array} = $args->{arrays};
-
-   defined $args->{storage_class}
-      and $attr->{storage_class} = $args->{storage_class};
 
    return $self->dataclass_schema( $attr )->load( @{ $args->{paths} || [] } );
 }
