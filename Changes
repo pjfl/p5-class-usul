@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+         - Added bsonid64
+
 0.8.215  2012-10-20
          - Factored out the canonicalise function in C::U::Config
          - New functions; bsonid - generates are reasonably unique hex string,

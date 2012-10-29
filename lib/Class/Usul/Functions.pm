@@ -25,13 +25,14 @@ my @_functions; my $_bson_id_inc : shared = 0;
 
 BEGIN {
    @_functions = ( qw(abs_path app_prefix arg_list assert_directory
-                      bsonid bsonid_time class2appdir classdir
-                      classfile create_token data_dumper distname
-                      downgrade elapsed env_prefix escape_TT exception
-                      find_source fold hex2str home2appldir is_arrayref
-                      is_coderef is_hashref is_member merge_attributes
-                      my_prefix prefix2class product say split_on__
-                      squeeze strip_leader sub_name sum throw trim
+                      bsonid bsonid_time bson64id bson64id_time
+                      class2appdir classdir classfile create_token
+                      data_dumper distname downgrade elapsed
+                      env_prefix escape_TT exception find_source fold
+                      hex2str home2appldir is_arrayref is_coderef
+                      is_hashref is_member merge_attributes my_prefix
+                      prefix2class product say split_on__ squeeze
+                      strip_leader sub_name sum thread_id throw trim
                       unescape_TT untaint_cmdline untaint_identifier
                       untaint_path untaint_string zip) );
 }
@@ -59,17 +60,20 @@ sub assert_directory ($) {
    my $y = abs_path( $_[ 0 ] ) or return; return -d $y ? $y : undef;
 }
 
-sub bsonid () {
-   my $time = pack 'N', time;
-   my $host = substr md5( hostname ), 0, 3;
-   my $proc = pack 'n', $$ % 0xFFFF;
-   my $inc  = substr pack( 'N', $_bson_id_inc++ % 0xFFFFFF ), 1, 3;
-
-   return unpack 'H*', $time.$host.$proc.$inc;
+sub bsonid (;$) {
+   return unpack 'H*', _bsonid( $_[ 0 ] );
 }
 
 sub bsonid_time ($) {
-   return unpack 'N', substr hex2str( shift ), 0, 4;
+   return unpack 'N', substr hex2str( $_[ 0 ] ), 0, 4;
+}
+
+sub bson64id (;$) {
+   return _base64_encode_ns( _bsonid( 2 ) );
+}
+
+sub bson64id_time ($) {
+   return unpack 'N', substr _base64_decode_ns( $_[ 0 ] ), 0, 4;
 }
 
 sub class2appdir ($) {
@@ -250,6 +254,10 @@ sub sum (;@) {
    return ((fold { $_[ 0 ] + $_[ 1 ] })->( 0 ))->( @_ );
 }
 
+sub thread_id {
+   return exists $INC{ 'threads.pm' } ? threads->tid() : 0;
+}
+
 sub throw (;@) {
    EXCEPTION_CLASS->throw( @_ );
 }
@@ -293,6 +301,132 @@ sub untaint_string ($;$) {
 
 sub zip (@) {
     my $p = @_ / 2; return @_[ map { $_, $_ + $p } 0 .. $p - 1 ];
+}
+
+# Private functions
+
+sub _base64_char_set () {
+   return [ 0 .. 9, q(A) .. q(Z), q(_), q(a) .. q(z), q(~), q(+) ];
+}
+
+sub _base64_decode_ns ($) {
+   my $x = shift; defined $x or return; my @x = split q(), $x;
+
+   my $index = _index64(); my $j = 0; my $k = 0;
+
+   my $len = length $x; my $pad = 64; my @y = ();
+
+ ROUND: {
+    while ($j < $len) {
+       my @c = (); my $i = 0;
+
+       while ($i < 4) {
+          my $uc = $index->[ ord $x[ $j++ ] ];
+
+          $uc ne q(XX) and $c[ $i++ ] = 0 + $uc; $j == $len or next;
+
+          if ($i < 4) {
+             $i < 2 and last ROUND; $i == 2 and $c[ 2 ] = $pad; $c[ 3 ] = $pad;
+          }
+
+          last;
+       }
+
+      ($c[ 0 ]   == $pad || $c[ 1 ] == $pad) and last;
+       $y[ $k++ ] = ( $c[ 0 ] << 2) | (($c[ 1 ] & 0x30) >> 4);
+       $c[ 2 ]   == $pad and last;
+       $y[ $k++ ] = (($c[ 1 ] & 0x0F) << 4) | (($c[ 2 ] & 0x3C) >> 2);
+       $c[ 3 ]   == $pad and last;
+       $y[ $k++ ] = (($c[ 2 ] & 0x03) << 6) | $c[ 3 ];
+    }
+ }
+
+   return join q(), map { chr $_ } @y;
+}
+
+sub _base64_encode_ns (;$) {
+   my $x = shift; defined $x or return; my @x = split q(), $x;
+
+   my $basis = _base64_char_set; my $len = length $x; my @y = ();
+
+   for (my $i = 0, my $j = 0; $len > 0; $len -= 3, $i += 3) {
+      my $c1 = ord $x[ $i ]; my $c2 = $len > 1 ? ord $x[ $i + 1 ] : 0;
+
+      $y[ $j++ ] = $basis->[ $c1 >> 2 ];
+      $y[ $j++ ] = $basis->[ (($c1 & 0x3) << 4) | (($c2 & 0xF0) >> 4) ];
+
+      if ($len > 2) {
+         my $c3 = ord $x[ $i + 2 ];
+
+         $y[ $j++ ] = $basis->[ (($c2 & 0xF) << 2) | (($c3 & 0xC0) >> 6) ];
+         $y[ $j++ ] = $basis->[ $c3 & 0x3F ];
+      }
+      elsif ($len == 2) {
+         $y[ $j++ ] = $basis->[ ($c2 & 0xF) << 2 ];
+         $y[ $j++ ] = $basis->[ 64 ];
+      }
+      else { # len == 1
+         $y[ $j++ ] = $basis->[ 64 ];
+         $y[ $j++ ] = $basis->[ 64 ];
+      }
+   }
+
+   return join q(), @y;
+}
+
+sub _bsonid (;$) {
+   my $version = shift;
+   my $now     = time;
+   my $time    = _bsonid_time( $now, $version );
+   my $host    = substr md5( hostname ), 0, 3;
+   my $proc    = pack 'n', $$ % 0xFFFF;
+
+   return $time.$host.$proc._bsonid_inc( $now, $version );
+}
+
+sub _bsonid_inc ($;$) {
+   my ($now, $version) = @_; state $id_inc //= 0; state $prev_time //= 0;
+
+   $version or return substr pack( 'N', $_bson_id_inc++ % 0xFFFFFF ), 1, 3;
+
+   $id_inc++; $now > $prev_time and $id_inc = 0; $prev_time = $now;
+
+   $version < 2 and return (substr pack( 'n', thread_id() % 0xFF ), 1, 1)
+                          .(pack 'n', $id_inc % 0xFFFF);
+
+   $version < 3 and return (pack 'n', thread_id() % 0xFFFF )
+                          .(pack 'N', $id_inc % 0xFFFFFFFF );
+
+   return (pack 'n', thread_id() % 0xFFFF )
+         .(substr pack( 'N', $id_inc % 0xFFFFFF ), 1, 3);
+}
+
+sub _bsonid_time ($;$) {
+   my ($now, $version) = @_;
+
+   (not $version or $version < 3) and return pack 'N', $now;
+
+   return (pack 'N', $now >> 32).(pack 'N', $now % 0xFFFFFFFF);
+}
+
+sub _index64 () {
+   return [ qw(XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
+               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
+               XX XX XX XX  XX XX XX XX  XX XX XX 64  XX XX XX XX
+                0  1  2  3   4  5  6  7   8  9 XX XX  XX XX XX XX
+               XX 10 11 12  13 14 15 16  17 18 19 20  21 22 23 24
+               25 26 27 28  29 30 31 32  33 34 35 XX  XX XX XX 36
+               XX 37 38 39  40 41 42 43  44 45 46 47  48 49 50 51
+               52 53 54 55  56 57 58 59  60 61 62 XX  XX XX 63 XX
+
+               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
+               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
+               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
+               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
+               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
+               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
+               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
+               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX) ];
 }
 
 1;
@@ -371,6 +505,19 @@ to create unique ids for data streams like message queues and file feeds
    $seconds_elapsed_since_the_epoch = bsonid_time $bson_id;
 
 Returns the time the BSON id was generated as Unix time
+
+=head2 bson64id
+
+   $base64_encoded_extended_bson64_id = bson64id;
+
+Like L</bsonid> but better thread long running process support. A custom
+Base64 encoding is used to reduce the id length
+
+=head2 bson64id_time
+
+   $seconds_elapsed_since_the_epoch = bson64id_time $bson64_id;
+
+Returns the time the BSON64 id was generated as Unix time
 
 =head2 class2appdir
 
@@ -569,6 +716,12 @@ Returns the name of the method that calls it
    $total = sum 1, 2, 3, 4;
 
 Adds the list of values
+
+=head2 thread_id
+
+   $tid = thread_id;
+
+Returns the id of this thread. Returns zero if threads are not loaded
 
 =head2 throw
 

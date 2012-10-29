@@ -79,6 +79,7 @@ Bob->new( {
 } )->create_build_script; # Goal!
 
 # Local Variables:
+# tab-title: Class::Usul
 # eval: (load-project-state "class-usul")
 # mode: perl
 # tab-width: 3

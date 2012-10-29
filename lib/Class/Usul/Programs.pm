@@ -58,7 +58,7 @@ has 'language'     => is => 'ro', isa => SimpleStr,  default => NUL,
    traits          => [ 'Getopt' ], cmd_aliases => q(L), cmd_flag => 'language';
 
 has 'method'       => is => 'rw', isa => SimpleStr | Undef,  default => NUL,
-   documentation   => 'Name of the method to call. Required',
+   documentation   => 'Name of the method to call',
    traits          => [ 'Getopt' ], cmd_aliases => q(c), cmd_flag => 'command';
 
 has 'nodebug'      => is => 'ro', isa => Bool, default => FALSE,
