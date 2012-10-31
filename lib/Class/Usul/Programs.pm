@@ -321,25 +321,26 @@ sub run {
          $e->out and $self->output( $e->out );
          $self->error( $e->error, { args => $e->args } );
          $self->debug and __print_fh( \*STDERR, $e->stacktrace."\n" );
-         $rv = $e->rv || -1;
+         $rv = $e->rv || (defined $e->rv ? FAILED : UNDEFINED_RV);
       };
-
-      not defined $rv and $rv = -1
-         and $self->error( "Method ${method} error uncaught/rv undefined" );
    }
    else {
       $self->error( "Method ${method} not defined in class ".(blessed $self) );
-      $rv = -1;
+      $rv = UNDEFINED_RV;
    }
 
-   if (defined $rv and not $rv) {
+   if    (defined $rv and $rv >  OK) { $self->output( "Terminated code ${rv}" )}
+   elsif (defined $rv and $rv == OK) {
       $self->output( 'Finished in '.elapsed.' seconds' );
    }
-   elsif (defined $rv) { $self->output( "Terminated code ${rv}" ) }
-   else { $self->output( 'Terminated with undefined rv' ); $rv = FAILED }
+   else {
+      not defined $rv and $rv = UNDEFINED_RV
+         and $self->error( "Method ${method} error uncaught/rv undefined" );
+      $self->output( 'Terminated with undefined rv' );
+   }
 
    $self->file->delete_tmp_files;
-   return $rv || OK;
+   return $rv;
 }
 
 sub warning {
