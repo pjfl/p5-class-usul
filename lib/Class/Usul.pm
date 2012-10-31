@@ -3,7 +3,7 @@
 package Class::Usul;
 
 use strict;
-use version; our $VERSION = qv( sprintf '0.8.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.9.%d', q$Rev$ =~ /\d+/gmx );
 
 use 5.010;
 use Class::Usul::Moose;
@@ -108,7 +108,7 @@ Class::Usul - A base class other packages
 
 =head1 Version
 
-Describes Class::Usul version 0.8.$Revision$
+Describes Class::Usul version 0.9.$Revision$
 
 =head1 Synopsis
 
