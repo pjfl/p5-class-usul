@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+         - Fixed bug in Programs config_class default override
          - Bumped version from 0.8 to 0.9
          - Added bsonid64 to Functions
 
