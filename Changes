@@ -1,5 +1,9 @@
 Revision history for Class::Usul
 
+         - Made the quiet attribute in Programs non resetable
+         - Added the constant UNDEFINED_RV to be -1
+         - Moved all the depends_on calls outside the try/catch blocks in Build
+         - Improved undefined rv logic in Programs run method
          - Fixed bug in Programs config_class default override
          - Bumped version from 0.8 to 0.9
          - Added bsonid64 to Functions

@@ -119,11 +119,10 @@ sub ACTION_install {
 sub ACTION_change_version {
    my $self = shift;
 
-   try {
-      $self->depends_on( q(manifest) );
-      $self->depends_on( q(release)  );
-      $self->_change_version( $self->_get_config );
-   }
+   $self->depends_on( q(manifest) );
+   $self->depends_on( q(release)  );
+
+   try   { $self->_change_version( $self->_get_config ) }
    catch { $self->cli->fatal( $_ ) };
 
    return;
@@ -132,10 +131,9 @@ sub ACTION_change_version {
 sub ACTION_install_local_cpanm {
    my $self = shift;
 
-   try {
-      $self->depends_on( q(install_local_lib) );
-      $self->_install_local_cpanm( $self->_get_local_config );
-   }
+   $self->depends_on( q(install_local_lib) );
+
+   try   { $self->_install_local_cpanm( $self->_get_local_config ) }
    catch { $self->cli->fatal( $_ ) };
 
    return;
@@ -144,13 +142,13 @@ sub ACTION_install_local_cpanm {
 sub ACTION_install_local_deps {
    my $self = shift;
 
+   $self->depends_on( q(install_local_cpanm) );
+
    try {
       my $cfg = $self->_get_local_config;
 
       $ENV{DEVEL_COVER_NO_COVERAGE} = TRUE;     # Devel::Cover
       $ENV{SITEPREFIX} = $cfg->{perlbrew_root}; # XML::DTD
-
-      $self->depends_on( q(install_local_cpanm) );
       $self->_install_local_deps( $cfg );
    }
    catch { $self->cli->fatal( $_ ) };
@@ -175,10 +173,9 @@ sub ACTION_install_local_lib {
 sub ACTION_install_local_perl {
    my $self = shift;
 
-   try {
-      $self->depends_on( q(install_local_perlbrew) );
-      $self->_install_local_perl( $self->_get_local_config );
-   }
+   $self->depends_on( q(install_local_perlbrew) );
+
+   try   { $self->_install_local_perl( $self->_get_local_config ) }
    catch { $self->cli->fatal( $_ ) };
 
    return;
@@ -187,10 +184,9 @@ sub ACTION_install_local_perl {
 sub ACTION_install_local_perlbrew {
    my $self = shift;
 
-   try {
-      $self->depends_on( q(install_local_lib) );
-      $self->_install_local_perlbrew( $self->_get_local_config );
-   }
+   $self->depends_on( q(install_local_lib) );
+
+   try   { $self->_install_local_perlbrew( $self->_get_local_config ) }
    catch { $self->cli->fatal( $_ ) };
 
    return;
@@ -221,9 +217,9 @@ sub ACTION_prereq_diff {
 sub ACTION_release {
    my $self = shift;
 
-   try {
-      $self->depends_on( q(distmeta) );
-      $self->_commit_release( 'release '.$self->_dist_version ) }
+   $self->depends_on( q(distmeta) );
+
+   try   { $self->_commit_release( 'release '.$self->_dist_version ) }
    catch { $self->cli->fatal( $_ ) };
 
    return;
@@ -245,13 +241,9 @@ sub ACTION_restore_local_archive {
 sub ACTION_standalone {
    my $self = shift;
 
-   try {
-      $self->depends_on( q(install_local_deps) );
-      $self->depends_on( q(manifest) );
-      $self->depends_on( q(dist) );
-   }
-   catch { $self->cli->fatal( $_ ) };
-
+   $self->depends_on( q(install_local_deps) );
+   $self->depends_on( q(manifest) );
+   $self->depends_on( q(dist) );
    return;
 }
 
@@ -272,11 +264,10 @@ sub ACTION_uninstall {
 sub ACTION_upload { # Upload the distribution to CPAN
    my $self = shift;
 
-   try {
-      $self->depends_on( q(release) );
-      $self->depends_on( q(dist) );
-      $self->_cpan_upload;
-   }
+   $self->depends_on( q(release) );
+   $self->depends_on( q(dist) );
+
+   try   { $self->_cpan_upload }
    catch { $self->cli->fatal( $_ ) };
 
    return;
@@ -289,7 +280,7 @@ sub class_path {
 }
 
 sub cli { # Self initialising accessor for the command line interface object
-   state $cache; return $cache ||= Class::Usul::Programs->new
+   state $cache; return $cache //= Class::Usul::Programs->new
       ( appclass => $_[ 0 ]->module_name, nodebug => TRUE );
 }
 
@@ -835,7 +826,7 @@ sub _update_changelog {
    else { $text =~ s{   ( \Q$tok\E    )   }{$1\n\n$line}mx }
 
    say 'Updating '.$cfg->{changes_file};
-   $io->close->print( $text );
+   $io->print( $text );
    return;
 }
 

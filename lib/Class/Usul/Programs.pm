@@ -70,14 +70,13 @@ has 'options'      => is => 'ro', isa => HashRef, default => sub { {} },
       'Zero, one or more key/value pairs available to the method call',
    traits          => [ 'Getopt' ], cmd_aliases => q(o), cmd_flag => 'option';
 
-has 'quiet'        => is => 'ro', isa => Bool, default => FALSE,
+has '_quiet'       => is => 'rw', isa => Bool, default => FALSE,
    documentation   => 'Quiet the display of information messages',
    traits          => [ 'Getopt' ], cmd_aliases => q(q), cmd_flag => 'quiet';
 
 has 'version'      => is => 'ro', isa => Bool, default => FALSE,
    documentation   => 'Displays the version number of the program class',
    traits          => [ 'Getopt' ], cmd_aliases => q(V), cmd_flag => 'version';
-
 
 has '_file'    => is => 'lazy', isa => FileType,
    default     => sub { Class::Usul::File->new( builder => $_[ 0 ] ) },
@@ -294,6 +293,14 @@ sub output {
    say $self->add_leader( $text, $args ); $args->{nl} and say;
 
    return;
+}
+
+sub quiet {
+   my ($self, $v) = @_; defined $v or return $self->_quiet; $v = !!$v;
+
+   $v != TRUE and throw 'Cannot turn quiet mode off';
+
+   return $self->_quiet( $v );
 }
 
 sub run {
@@ -930,6 +937,13 @@ The character to echo in place of the one typed
 Prompt string
 
 =back
+
+=head2 quiet
+
+   $bool = $self->quiet( $bool );
+
+Custom accessor/mutator for the C<_quiet> attribute. Will throw if you try
+to turn quiet mode off
 
 =head2 run
 
