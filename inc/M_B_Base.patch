@@ -1,0 +1,30 @@
+--- Base.pm	2012-04-29 00:29:56.000000000 +0100
++++ Base.pm	2012-04-29 19:02:50.000000000 +0100
+@@ -1216,6 +1216,7 @@
+ 
+ sub dist_author   { shift->_pod_parse('author')   }
+ sub dist_abstract { shift->_pod_parse('abstract') }
++sub dist_description { shift->_pod_parse('description') }
+ 
+ sub _pod_parse {
+   my ($self, $part) = @_;
+@@ -4618,6 +4619,7 @@
+   else {
+     # leave alone
+   }
++  ($version = ''.$version) =~ s{ \A v }{}mx;
+   return $version;
+ }
+ 
+@@ -4683,6 +4685,11 @@
+     }
+   }
+ 
++  for my $key (grep { $_ ne q(license) } keys %{ $p->{resources} }) {
++    if (defined (my $value = $p->{resources}{ $key })) {
++      $node->{resources}{ $key } = $value;
++    }
++  }
+ 
+   # add dist_* fields
+   foreach my $f (qw(dist_name dist_version dist_author dist_abstract)) {

@@ -1,0 +1,36 @@
+--- PodParser.pm	2012-04-29 00:30:55.000000000 +0100
++++ PodParser.pm	2012-04-29 19:34:24.000000000 +0100
+@@ -31,11 +31,19 @@
+     last if ($self->{abstract}) = /^  (?:  [a-z0-9:]+  \s+ - \s+  )  (.*\S)  /ix;
+   }
+ 
++  my @description;
++  while (<$fh>) {
++    next unless /^=head1\s+DESCRIPTION/i ... /^=/;
++    push @description, $_ unless /^=/;
++    last if /^=/ and @description;
++  }
++  $self->{description} = \@description;
++
+   my @author;
+   while (<$fh>) {
+     next unless /^=head1\s+AUTHORS?/i ... /^=/;
+     next if /^=/;
+-    push @author, $_ if /\@/;
++    push @author, $_ if /\S+/;
+   }
+   return unless @author;
+   s/^\s+|\s+$//g foreach @author;
+@@ -62,3 +70,12 @@
+ 
+   return $self->{author} || [];
+ }
++
++sub get_description {
++  my $self = shift;
++  return $self->{description} if defined $self->{description};
++
++  $self->parse_from_filehandle($self->{fh});
++
++  return $self->{description} || [];
++}

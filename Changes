@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+         - Added Module::Build patches since referenced by Module::Provision
          - Updated inc::Bob to 1.6
          - Made the quiet attribute in Programs non resetable
          - Added the constant UNDEFINED_RV to be -1
