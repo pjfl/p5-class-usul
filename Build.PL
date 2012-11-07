@@ -27,7 +27,7 @@ Bob->new( {
       'Digest::MD5'                   => 2.39,
       'Digest::SHA1'                  => 2.11,
       'Email::Date::Format'           => 1.002,
-      'File::DataClass'               => q(0.12.0),
+      'File::DataClass'               => q(0.13.0),
       'Getopt::Mixed'                 => 1.10,
       'Git::Class'                    => 0.12,
       'Import::Into'                  => 1.001000,

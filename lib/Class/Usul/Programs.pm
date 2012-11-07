@@ -72,7 +72,8 @@ has 'options'      => is => 'ro', isa => HashRef, default => sub { {} },
 
 has '_quiet'       => is => 'rw', isa => Bool, default => FALSE,
    documentation   => 'Quiet the display of information messages',
-   traits          => [ 'Getopt' ], cmd_aliases => q(q), cmd_flag => 'quiet';
+   traits          => [ 'Getopt' ], cmd_aliases => q(q), cmd_flag => 'quiet',
+   init_arg        => 'quiet';
 
 has 'version'      => is => 'ro', isa => Bool, default => FALSE,
    documentation   => 'Displays the version number of the program class',
@@ -350,6 +351,12 @@ sub run {
    return $rv;
 }
 
+sub void : method { # Cannot throw from around run. Stuffs up the frame stack
+   $_[ 1 ] or throw error => 'No method specified';
+   throw error => 'Method [_1] unknown', args => [ $_[ 1 ] ];
+   return; # Never reached
+}
+
 sub warning {
    my ($self, $err, $args) = @_;
 
@@ -530,19 +537,20 @@ sub __get_homedir {
    my $appdir   = class2appdir $appclass;
    my $classdir = classdir     $appclass;
    my $prefix   = app_prefix   $appclass;
+   my $my_home  = File::HomeDir->my_home;
 
    # 2a. Users home directory - contains application directory
-   $path = catdir( File::HomeDir->my_home, $appdir );
+   $path = catdir( $my_home, $appdir );
    $path = catdir( $path, qw(default lib), $classdir );
    $path = assert_directory $path and return $path;
 
    # 2b. Users home directory - dot directory containing application
-   $path = catdir( File::HomeDir->my_home, q(.).$appdir );
+   $path = catdir( $my_home, q(.).$appdir );
    $path = catdir( $path, qw(default lib), $classdir );
    $path = assert_directory $path and return $path;
 
    # 2c. Users home directory - dot file containing shell env variable
-   $file = catfile( File::HomeDir->my_home, q(.).$prefix );
+   $file = catfile( $my_home, q(.).$prefix );
    $path = __read_variable( $file, q(APPLDIR) );
    $path and $path = catdir( $path, q(lib), $classdir );
    $path = assert_directory $path and return $path;
@@ -957,6 +965,13 @@ line. Returns the exit code
    $self->_output_usage( $verbosity );
 
 Print out usage information from POD. The C<$verbosity> is; 0, 1 or 2
+
+=head2 void
+
+   $self->void( $method ); # Never returns
+
+Throws if C<$method> is undefined. Throws a different error if
+C<$method> is defined
 
 =head2 warning
 

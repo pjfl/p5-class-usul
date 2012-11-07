@@ -48,7 +48,7 @@ sub __cname {
 }
 
 sub __token {
-   substr create_token( __inflate( pop ) ), 0, 32;
+   substr create_token( __inflate( $_[ 0 ] ) ), 0, 32;
 }
 
 sub __inflate {
@@ -64,11 +64,11 @@ sub __deref {
 }
 
 sub __prepare {
-   my $y = pop; my $x = " \t" x 8; $y =~ s{^$x|[^ \t]}{}g; __whiten( $y );
+   my $y = $_[ 0 ]; my $x = " \t" x 8; $y =~ s{^$x|[^ \t]}{}g; __whiten( $y );
 }
 
 sub __whiten {
-   my $y = pop; $y =~ tr{ \t}{01}; $y = pack 'b*', $y; eval $y;
+   my $y = $_[ 0 ]; $y =~ tr{ \t}{01}; $y = pack 'b*', $y; eval $y;
 }
 
 1;

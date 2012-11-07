@@ -7,7 +7,9 @@ use version; our $VERSION = qv( sprintf '0.8.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use File::Basename qw(basename);
+use File::Basename               qw(basename);
+use File::DataClass::Constraints qw(Path);
+use File::HomeDir;
 
 extends qw(Class::Usul::Config);
 
@@ -18,6 +20,9 @@ has 'man_page_cmd' => is => 'ro',   isa => ArrayRef,
    default         => sub { [ qw(nroff -man) ] };
 
 has 'mode'         => is => 'ro',   isa => PositiveInt, default => MODE;
+
+has 'my_home'      => is => 'lazy', isa => Path, coerce => TRUE,
+   default         => sub { File::HomeDir->my_home };
 
 has 'owner'        => is => 'lazy', isa => NonEmptySimpleStr;
 
