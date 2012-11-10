@@ -1,5 +1,10 @@
 Revision history for Class::Usul
 
+         - Bumped IPC::SRLock version to 0.8.200
+         - Config::name now also splits on dash in addittion to underscore
+         - Add split_on_dash to Functions
+         - Changed default mode to 027
+
 0.9.229  2012-11-07
          - Added void method to Programs. A will always throw method for run
          - Added File::HomeDir::my_home to Config::Programs and Programs

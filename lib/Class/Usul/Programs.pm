@@ -19,6 +19,7 @@ use Class::Usul::Functions qw(abs_path app_prefix arg_list assert_directory
                               untaint_identifier untaint_path);
 use Encode                 qw(decode);
 use English                qw(-no_match_vars);
+use File::Basename         qw(dirname);
 use File::Spec::Functions  qw(catdir catfile);
 use IO::Interactive        qw(is_interactive);
 use List::Util             qw(first);

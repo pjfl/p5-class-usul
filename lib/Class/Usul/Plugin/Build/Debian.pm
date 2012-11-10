@@ -44,16 +44,17 @@ sub ACTION_distclean {
 sub ACTION_debian  {
    my $self = shift;
 
+   $ENV{BUILDING_DEBIAN} = TRUE;
+   $ENV{DEB_BUILD_OPTIONS} = q(nocheck);
+
+   $self->depends_on( q(debianclean) );
+   $self->depends_on( q(install_local_deps) );
+   $self->depends_on( q(manifest) );
+   $self->depends_on( q(build) );
+
    try {
       my $cfg = $self->_get_config;
 
-      $ENV{BUILDING_DEBIAN} = TRUE;
-      $ENV{DEB_BUILD_OPTIONS} = q(nocheck);
-
-      $self->depends_on( q(debianclean) );
-      $self->depends_on( q(install_local_deps) );
-      $self->depends_on( q(manifest) );
-      $self->depends_on( q(build) );
       $self->_ask_questions( $cfg );
       $self->_create_debian_package( $cfg );
    }

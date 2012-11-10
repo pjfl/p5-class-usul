@@ -34,7 +34,7 @@ Bob->new( {
       'IO::Interactive'               => q(0.0.5),
       'IPC::Cmd'                      => 0.42,
       'IPC::Open3'                    => 1.02,
-      'IPC::SRLock'                   => q(0.8.0),
+      'IPC::SRLock'                   => q(0.8.200),
       'Log::Handler'                  => 0.63,
       'Module::Build'                 => 0.38,
       'Module::CoreList'              => 2.24,

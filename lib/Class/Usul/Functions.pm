@@ -31,10 +31,11 @@ BEGIN {
                       env_prefix escape_TT exception find_source fold
                       hex2str home2appldir is_arrayref is_coderef
                       is_hashref is_member merge_attributes my_prefix
-                      prefix2class product say split_on__ squeeze
-                      strip_leader sub_name sum thread_id throw trim
-                      unescape_TT untaint_cmdline untaint_identifier
-                      untaint_path untaint_string zip) );
+                      prefix2class product say split_on__
+                      split_on_dash squeeze strip_leader sub_name sum
+                      thread_id throw trim unescape_TT untaint_cmdline
+                      untaint_identifier untaint_path untaint_string
+                      zip) );
 }
 
 use Sub::Exporter -setup => {
@@ -224,7 +225,9 @@ sub product (;@) {
 }
 
 sub say (;@) {
-   my @rest = @_; openhandle *STDOUT or return; chomp( @rest );
+   my @rest = @_; openhandle *STDOUT or return;
+
+   $rest[ 0 ] ||= q(); chomp( @rest );
 
    local ($OFS, $ORS) = $OSNAME eq EVIL ? ("\r\n", "\r\n") : ("\n", "\n");
 
@@ -234,6 +237,10 @@ sub say (;@) {
 
 sub split_on__ (;$$) {
    return (split m{ _ }mx, $_[ 0 ] || q())[ $_[ 1 ] || 0 ];
+}
+
+sub split_on_dash (;$$) {
+   return (split m{ \- }mx, $_[ 0 ] || q())[ $_[ 1 ] || 0 ];
 }
 
 sub squeeze (;$) {
@@ -691,6 +698,13 @@ and then have newlines appended. Throws on IO errors
    $field = split_on__ $string, $field_no;
 
 Splits string by _ (underscore) and returns the requested field. Defaults
+to field zero
+
+=head2 split_on_dash
+
+   $field = split_on_dash $string, $field_no;
+
+Splits string by - (dash) and returns the requested field. Defaults
 to field zero
 
 =head2 squeeze

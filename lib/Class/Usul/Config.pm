@@ -9,7 +9,8 @@ use Class::Usul::File;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions       qw(app_prefix class2appdir home2appldir
-                                    is_arrayref split_on__ untaint_path);
+                                    is_arrayref split_on__ split_on_dash
+                                    untaint_path);
 use Config;
 use English                      qw(-no_match_vars);
 use File::Basename               qw(basename dirname);
@@ -182,7 +183,7 @@ sub _build_logsdir {
 sub _build_name {
    my $name = basename( $_[ 0 ]->_inflate_path( $_[ 1 ], q(pathname) ), EXTNS );
 
-   return (split_on__ $name, 1) || $name;
+   return (split_on__ $name, 1) || (split_on_dash $name, 1) || $name;
 }
 
 sub _build_pathname {
