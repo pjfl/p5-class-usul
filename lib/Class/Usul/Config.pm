@@ -144,7 +144,7 @@ sub _build_ctlfile {
 sub _build_ctrldir {
    my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir etc) );
 
-   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], q(vardir) );
+   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], qw(appldir etc) );
 }
 
 sub _build_dbasedir {
