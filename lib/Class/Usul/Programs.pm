@@ -131,8 +131,6 @@ sub BUILD {
 sub add_leader {
    my ($self, $text, $args) = @_; $args ||= {};
 
-   $text = $self->loc( $text || '[no message]', $args->{args} || [] );
-
    my $leader = exists $args->{no_lead}
               ? NUL : (ucfirst $self->config->name).BRK;
 
@@ -168,22 +166,26 @@ sub dump_self : method {
 }
 
 sub error {
-   my ($self, $err, $args) = @_;
+   my ($self, $text, $args) = @_;
 
-   $self->log->error( $_ ) for (split m{ \n }mx, NUL.$err);
+   $text = $self->loc( $text || '[no message]', $args->{args} || [] );
 
-   __print_fh( \*STDERR, $self->add_leader( $err, $args )."\n" );
+   $self->log->error( $_ ) for (split m{ \n }mx, NUL.$text);
+
+   __print_fh( \*STDERR, $self->add_leader( $text, $args )."\n" );
    return;
 }
 
 sub fatal {
    my ($self, $err, $args) = @_; my (undef, $file, $line) = caller 0;
 
-   $err ||= 'unknown'; my $posn = ' at '.abs_path( $file )." line ${line}";
+   my $posn = ' at '.abs_path( $file )." line ${line}";
 
-   $self->log->alert( $_ ) for (split m{ \n }mx, $err.$posn);
+   my $text = $self->loc( $err || '[no message]', $args->{args} || [] );
 
-   __print_fh( \*STDERR, $self->add_leader( $err, $args ).$posn."\n" );
+   $self->log->alert( $_ ) for (split m{ \n }mx, $text.$posn);
+
+   __print_fh( \*STDERR, $self->add_leader( $text, $args ).$posn."\n" );
 
    $err and blessed $err
         and $err->can( q(stacktrace) )
@@ -253,11 +255,13 @@ sub get_option {
 }
 
 sub info {
-   my ($self, $msg, $args) = @_;
+   my ($self, $text, $args) = @_;
 
-   $self->log->info( $_ ) for (split m{ [\n] }mx, $msg);
+   $text = $self->loc( $text || '[no message]', $args->{args} || [] );
 
-   $self->quiet or say $self->add_leader( $msg, $args );
+   $self->log->info( $_ ) for (split m{ [\n] }mx, $text);
+
+   $self->quiet or say $self->add_leader( $text, $args );
    return;
 }
 
@@ -290,6 +294,8 @@ sub output {
    my ($self, $text, $args) = @_; $args ||= {};
 
    $self->quiet and return; $args->{cl} and say;
+
+   $text = $self->loc( $text || '[no message]', $args->{args} || [] );
 
    say $self->add_leader( $text, $args ); $args->{nl} and say;
 
@@ -358,11 +364,13 @@ sub void : method { # Cannot throw from around run. Stuffs up the frame stack
 }
 
 sub warning {
-   my ($self, $err, $args) = @_;
+   my ($self, $text, $args) = @_;
 
-   $self->log->warn( $_ ) for (split m{ \n }mx, $err);
+   $text = $self->loc( $text || '[no message]', $args->{args} || [] );
 
-   $self->quiet or say $self->add_leader( $err, $args );
+   $self->log->warn( $_ ) for (split m{ \n }mx, $text);
+
+   $self->quiet or say $self->add_leader( $text, $args );
    return;
 }
 
