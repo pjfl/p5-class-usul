@@ -22,11 +22,11 @@ use Sub::Exporter -setup => {
 my $SEED = do { local $RS = undef; <DATA> };
 
 sub decrypt (;$$) {
-   $_[ 0 ] ? __cipher( $_[ 0 ] )->decrypt( decode_base64( $_[ 1 ] ) ) : $_[ 0 ];
+   __cipher( $_[ 0 ] )->decrypt( decode_base64( $_[ 1 ] ) );
 }
 
 sub encrypt (;$$) {
-   $_[ 0 ] ? encode_base64( __cipher( $_[ 0 ] )->encrypt( $_[ 1 ] ) ) : $_[ 0 ];
+   encode_base64( __cipher( $_[ 0 ] )->encrypt( $_[ 1 ] ), NUL );
 }
 
 sub cipher_list () {
