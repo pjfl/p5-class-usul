@@ -4,7 +4,7 @@ package Class::Usul::Response::Meta;
 
 use strict;
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.9.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.10.%d', q$Rev$ =~ /\d+/gmx );
 
 use Moose;
 use YAML::Syck;
@@ -34,7 +34,7 @@ Class::Usul::Response::Meta - Class for CPAN Meta file
 
 =head1 Version
 
-This document describes Class::Usul::Response::Meta version 0.9.$Revision$
+This document describes Class::Usul::Response::Meta version 0.10.$Revision$
 
 =head1 Synopsis
 

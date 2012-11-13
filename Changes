@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+0.10.235 2012-11-13
          - Updated inc::Bob to 1.7. Removed defined ors
          - Switched testing on mswin32 and cygwin on since IPC::SRLock 0.8.201
          - Programs prints stacktraces on errors if debug turned on

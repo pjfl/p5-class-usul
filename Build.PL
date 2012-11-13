@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 use inc::Bob; # Module::Build subclass
-use version; our $VERSION = qv( sprintf '0.9.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.10.%d', q$Rev$ =~ /\d+/gmx );
 
 Bob->new( {
    module     => q(Class::Usul),
@@ -34,7 +34,7 @@ Bob->new( {
       'IO::Interactive'               => q(0.0.5),
       'IPC::Cmd'                      => 0.42,
       'IPC::Open3'                    => 1.02,
-      'IPC::SRLock'                   => q(0.8.201),
+      'IPC::SRLock'                   => q(0.8.202),
       'Log::Handler'                  => 0.63,
       'Module::Build'                 => 0.38,
       'Module::CoreList'              => 2.24,
@@ -59,8 +59,8 @@ Bob->new( {
       'Pod::Parser'                   => 1.37,
       'SVN::Class'                    => 0.12,
       'Scalar::Util'                  => 1.19,
-      'Sub::Exporter::Progressive'    => 0.001006,
       'Sub::Exporter'                 => 0.982,
+      'Sub::Exporter::Progressive'    => 0.001006,
       'Term::ReadKey'                 => 2.30,
       'Text::Autoformat'              => 1.13,
       'Time::Zone'                    => 2.22,

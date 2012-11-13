@@ -4,7 +4,7 @@ package Class::Usul::Programs;
 
 use strict;
 use attributes ();
-use version; our $VERSION = qv( sprintf '0.9.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.10.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::IPC;
@@ -736,7 +736,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes Class::Usul::Programs version 0.9.$Revision$
+This document describes Class::Usul::Programs version 0.10.$Revision$
 
 =head1 Synopsis
 

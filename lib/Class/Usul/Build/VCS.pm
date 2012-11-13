@@ -3,7 +3,7 @@
 package Class::Usul::Build::VCS;
 
 use strict;
-use version; our $VERSION = qv( sprintf '0.9.%d', q$Rev: 818 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.10.%d', q$Rev: 818 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
@@ -95,7 +95,7 @@ Class::Usul::Build::VCS - Version control system
 
 =head1 Version
 
-This document describes Class::Usul::Build::VCS version 0.9.$Revision: 818 $
+This document describes Class::Usul::Build::VCS version 0.10.$Revision: 818 $
 
 =head1 Synopsis
 
