@@ -1,5 +1,5 @@
 # @(#)$Id$
-# Bob-Version: 1.6
+# Bob-Version: 1.7
 
 package CPANTesting;
 
@@ -21,9 +21,7 @@ sub test_exceptions {
 
    $p->{stop_tests} and return 'CPAN Testing stopped in Build.PL';
 
-   $osname eq q(cygwin)  and return 'Cygwin  OS unsupported';
    $osname eq q(mirbsd)  and return 'Mirbsd  OS unsupported';
-   $osname eq q(mswin32) and return 'MSWin32 OS unsupported';
    $host   eq q(slack64) and return "Stopped Bingos ${host}";
    $host   eq q(falco)   and return "Stopped Bingos ${host}";
    return 0;

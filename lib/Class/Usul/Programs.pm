@@ -130,7 +130,7 @@ sub BUILD {
 }
 
 sub add_leader {
-   my ($self, $text, $args) = @_; $args ||= {};
+   my ($self, $text, $args) = @_; $text or return NUL; $args ||= {};
 
    my $leader = exists $args->{no_lead}
               ? NUL : (ucfirst $self->config->name).BRK;
@@ -152,7 +152,9 @@ sub anykey {
 }
 
 sub can_call {
-   return (is_member $_[ 1 ], __list_methods_of( $_[ 0 ] )) ? TRUE : FALSE;
+   return ($_[ 0 ]->can( $_[ 1 ] ) && (is_member $_[ 1 ],
+                                       __list_methods_of( $_[ 0 ] )))
+        ? TRUE : FALSE;
 }
 
 sub debug_flag {
@@ -167,13 +169,14 @@ sub dump_self : method {
 }
 
 sub error {
-   my ($self, $text, $args) = @_;
+   my ($self, $err, $args) = @_;
 
-   $text = $self->loc( $text || '[no message]', $args->{args} || [] );
+   my $text = $self->loc( $err || '[no message]', $args->{args} || [] );
 
    $self->log->error( $_ ) for (split m{ \n }mx, NUL.$text);
 
    __print_fh( \*STDERR, $self->add_leader( $text, $args )."\n" );
+   $self->debug and __output_stacktrace( $err );
    return;
 }
 
@@ -187,11 +190,7 @@ sub fatal {
    $self->log->alert( $_ ) for (split m{ \n }mx, $text.$posn);
 
    __print_fh( \*STDERR, $self->add_leader( $text, $args ).$posn."\n" );
-
-   $err and blessed $err
-        and $err->can( q(stacktrace) )
-        and __print_fh( \*STDERR, $err->stacktrace."\n" );
-
+   __output_stacktrace( $err );
    exit FAILED;
 }
 
@@ -312,35 +311,27 @@ sub quiet {
 }
 
 sub run {
-   my $self = shift; my ($rv, $text);
+   my $self  = shift; my $method = $self->_get_run_method; my $rv;
 
-   my $method = $self->method or $self->_output_usage( 0 );
+   my $text  = 'Started by '.$self->logname.' Version '.$self->VERSION.SPC;
+      $text .= 'Pid '.(abs $PID);
 
-   $text  = 'Started by '.$self->logname.' Version '.$self->VERSION.SPC;
-   $text .= 'Pid '.(abs $PID);
    $self->output( $text );
 
-   if ($self->can( $method ) and $self->can_call( $method )) {
-      umask $self->mode;
-
+   if ($self->can_call( $method )) {
       my $params = exists $self->params->{ $method }
                  ? $self->params->{ $method } : [];
+
+      umask $self->mode;
 
       try { defined ($rv = $self->$method( @{ $params } ))
                or throw error => 'Method [_1] return value undefined',
                         args  => [ $method ];
       }
-      catch {
-         my $e = exception $_;
-
-         $e->out and $self->output( $e->out );
-         $self->error( $e->error, { args => $e->args } );
-         $self->debug and __print_fh( \*STDERR, $e->stacktrace."\n" );
-         $rv = $e->rv || (defined $e->rv ? FAILED : UNDEFINED_RV);
-      };
+      catch { $rv = $self->_catch_run_exception( $_ ) };
    }
    else {
-      $self->error( "Method ${method} not defined in class ".(blessed $self) );
+      $self->error( 'Class '.(blessed $self)." method ${method} not found" );
       $rv = UNDEFINED_RV;
    }
 
@@ -359,7 +350,7 @@ sub run {
 }
 
 sub void : method { # Cannot throw from around run. Stuffs up the frame stack
-   $_[ 1 ] or throw error => 'No method specified';
+   $_[ 1 ] or $_[ 0 ]->_output_usage( 0 );
    throw error => 'Method [_1] unknown', args => [ $_[ 1 ] ];
    return; # Never reached
 }
@@ -433,12 +424,19 @@ sub _build__os {
    return $cfg->{os} || {};
 }
 
+sub _catch_run_exception {
+   my ($self, $error) = @_; my $e = exception $error;
+
+   $e->out and $self->output( $e->out );
+   $self->error( $e->error, { args => $e->args } );
+   $self->debug and __print_fh( \*STDERR, $e->stacktrace."\n" );
+
+   return $e->rv || (defined $e->rv ? FAILED : UNDEFINED_RV);
+}
+
 sub _dont_ask {
    return $_[ 0 ]->debug || $_[ 0 ]->help_flag || $_[ 0 ]->help_options
        || $_[ 0 ]->help_manual || ! is_interactive();
-}
-
-sub _getopt_full_usage { # Required to stop MX::Getopt from printing usage
 }
 
 sub _get_debug_option {
@@ -447,6 +445,24 @@ sub _get_debug_option {
    ($self->nodebug or $self->_dont_ask) and return $self->debug;
 
    return $self->yorn( 'Do you want debugging turned on', FALSE, TRUE );
+}
+
+sub _get_run_method {
+   my $self = shift; my $method = $self->method;
+
+   unless ($method) {
+      if ($method = $self->extra_argv->[ 0 ] and $self->can_call( $method )) {
+         shift @{ $self->extra_argv };
+      }
+      else { $method = NUL }
+   }
+
+   $method ||= 'void'; $method eq 'void' and $self->quiet( TRUE );
+
+   return $method;
+}
+
+sub _getopt_full_usage { # Required to stop MX::Getopt from printing usage
 }
 
 sub _man_page_from {
@@ -603,6 +619,15 @@ sub __map_prompt_args {
    }
 
    return $args;
+}
+
+sub __output_stacktrace {
+   my $e = shift;
+
+   $e and blessed $e and $e->can( q(stacktrace) )
+      and __print_fh( \*STDERR, $e->stacktrace );
+
+   return;
 }
 
 sub __print_fh {

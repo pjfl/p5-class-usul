@@ -17,7 +17,7 @@ BEGIN {
    @_functions = ( qw(nap str2date_time str2time time2str) );
 }
 
-use Sub::Exporter -setup => {
+use Sub::Exporter::Progressive -setup => {
    exports => [ @_functions ],
    groups  => { default => [ qw(str2time time2str) ], },
 };

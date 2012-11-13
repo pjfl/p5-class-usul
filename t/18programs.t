@@ -39,7 +39,7 @@ is $prog->config->script, $name.q(.t), 'Config->script';
 
 is $prog->config->name, $name, 'Config->name';
 
-is $prog->add_leader(), "${name}: [no message]", 'Default leader';
+is $prog->add_leader(), '', 'Default leader';
 
 is $prog->add_leader( 'Dummy' ), '18programs: Dummy', 'Text plus leader';
 

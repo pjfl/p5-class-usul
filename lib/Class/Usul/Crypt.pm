@@ -14,7 +14,7 @@ use English qw(-no_match_vars);
 use MIME::Base64;
 use Sys::Hostname;
 
-use Sub::Exporter -setup => {
+use Sub::Exporter::Progressive -setup => {
    exports => [ qw(decrypt encrypt cipher_list default_cipher) ],
    groups  => { default => [], },
 };

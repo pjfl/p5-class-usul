@@ -31,7 +31,7 @@ BEGIN {
                       UNTAINT_PATH UUID_PATH WIDTH YES) );
 }
 
-use Sub::Exporter -setup => {
+use Sub::Exporter::Progressive -setup => {
    exports => [ @_constants ], groups => { default => [ @_constants ], },
 };
 
