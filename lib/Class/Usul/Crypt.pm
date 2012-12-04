@@ -5,7 +5,7 @@ package Class::Usul::Crypt;
 use strict;
 use warnings;
 use namespace::clean -except => 'meta';
-use version; our $VERSION = qv( sprintf '0.10.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.11.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions qw(create_token is_coderef is_hashref);
@@ -56,7 +56,7 @@ sub __inflate {
 }
 
 sub __compose {
-   __prepare( __deref( $_[ 0 ]->{seed} ) || $SEED ).__deref( $_[ 0 ]->{salt} );
+   __prepare( __deref( $_[ 0 ]->{seed} ) // $SEED ).__deref( $_[ 0 ]->{salt} );
 }
 
 sub __deref {
@@ -68,7 +68,7 @@ sub __prepare {
 }
 
 sub __whiten {
-   my $y = $_[ 0 ]; $y =~ tr{ \t}{01}; $y = pack 'b*', $y; eval $y;
+   my $y = $_[ 0 ] or return ''; $y =~ tr{ \t}{01}; $y = pack 'b*', $y; eval $y;
 }
 
 1;
@@ -81,7 +81,7 @@ Class::Usul::Crypt - Encryption/decryption functions
 
 =head1 Version
 
-0.10.$Revision$
+0.11.$Revision$
 
 =head1 Synopsis
 

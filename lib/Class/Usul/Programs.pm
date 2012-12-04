@@ -4,7 +4,7 @@ package Class::Usul::Programs;
 
 use strict;
 use attributes ();
-use version; our $VERSION = qv( sprintf '0.10.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.11.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::IPC;
@@ -26,7 +26,7 @@ use List::Util             qw(first);
 use Config;
 use Pod::Man;
 use Pod::Usage;
-use File::HomeDir;
+use File::HomeDir          qw();
 use Term::ReadKey;
 use Text::Autoformat;
 use Try::Tiny;
@@ -43,7 +43,7 @@ has '+debug'        => traits => [ 'Getopt' ], cmd_aliases => q(D),
 
 
 has 'help_options' => is => 'ro', isa => Bool, default => FALSE,
-   documentation   => 'Uses Pod::Usage to describe the program usage options',
+   documentation   => 'Uses Pod::Usage to describe the program options',
    traits          => [ 'Getopt' ], cmd_aliases => q(h), cmd_flag => 'help_opt';
 
 has 'help_manual'  => is => 'ro', isa => Bool, default => FALSE,
@@ -318,7 +318,7 @@ sub run {
 
    $self->output( $text );
 
-   if ($self->can_call( $method )) {
+   if ($method eq 'run_chain' or $self->can_call( $method )) {
       my $params = exists $self->params->{ $method }
                  ? $self->params->{ $method } : [];
 
@@ -349,10 +349,11 @@ sub run {
    return $rv;
 }
 
-sub void : method { # Cannot throw from around run. Stuffs up the frame stack
-   $_[ 1 ] or $_[ 0 ]->_output_usage( 0 );
-   throw error => 'Method [_1] unknown', args => [ $_[ 1 ] ];
-   return; # Never reached
+sub run_chain {
+   my ($self, $method) = @_; $method or $self->_output_usage( 0 );
+
+   $self->error( "Method ${method} unknown" );
+   return FAILED;
 }
 
 sub warning {
@@ -457,7 +458,7 @@ sub _get_run_method {
       else { $method = NUL }
    }
 
-   $method ||= 'void'; $method eq 'void' and $self->quiet( TRUE );
+   $method ||= 'run_chain'; $method eq 'run_chain' and $self->quiet( TRUE );
 
    return $method;
 }
@@ -595,11 +596,16 @@ sub __get_homedir {
    for $path (map { catdir( abs_path( $_ ), $classdir ) } @INC) {
       for my $extn (keys %{ Class::Usul::File->extensions }) {
          $file = untaint_path catfile( $path, $prefix.$extn );
+
          -f $file and return dirname( $file );
       }
    }
 
-   # 6. Default to /tmp
+   # 6. Users home directory - dot directory is appldir
+   $path = catfile( $my_home, q(.).$prefix );
+   $path = assert_directory $path and return $path;
+
+   # 7. Default to /tmp
    return untaint_path( File::Spec->tmpdir );
 }
 
@@ -736,7 +742,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes Class::Usul::Programs version 0.10.$Revision$
+This document describes Class::Usul::Programs version 0.11.$Revision$
 
 =head1 Synopsis
 
@@ -994,18 +1000,20 @@ to turn quiet mode off
 Call the method specified by the C<-c> option on the command
 line. Returns the exit code
 
+=head2 run_chain
+
+   $exit_code = $self->chain_controller( $method );
+
+Called by L</run> when C<_get_run_method> cannot determine which method to
+call. Outputs usage if C<$method> is undefined. Logs an error if
+C<$method> is defined but not (by definition a callable method).
+Returns exit code C<FAILED>
+
 =head2 _output_usage
 
    $self->_output_usage( $verbosity );
 
 Print out usage information from POD. The C<$verbosity> is; 0, 1 or 2
-
-=head2 void
-
-   $self->void( $method ); # Never returns
-
-Throws if C<$method> is undefined. Throws a different error if
-C<$method> is defined
 
 =head2 warning
 

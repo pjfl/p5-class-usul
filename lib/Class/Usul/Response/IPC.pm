@@ -4,7 +4,7 @@ package Class::Usul::Response::IPC;
 
 use strict;
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.10.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.11.%d', q$Rev$ =~ /\d+/gmx );
 
 use Moose;
 
@@ -30,7 +30,7 @@ Class::Usul::Response::IPC - Response class for running external programs
 
 =head1 Version
 
-0.10.$Revision$
+0.11.$Revision$
 
 =head1 Synopsis
 

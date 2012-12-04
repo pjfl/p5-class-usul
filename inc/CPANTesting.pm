@@ -21,9 +21,10 @@ sub test_exceptions {
 
    $p->{stop_tests} and return 'CPAN Testing stopped in Build.PL';
 
-   $osname eq q(mirbsd)  and return 'Mirbsd  OS unsupported';
-   $host   eq q(slack64) and return "Stopped Bingos ${host}";
-   $host   eq q(falco)   and return "Stopped Bingos ${host}";
+   $osname eq q(mirbsd)     and return 'Mirbsd  OS unsupported';
+   $host   eq q(slack64)    and return "Stopped Bingos ${host}";
+   $host   eq q(falco)      and return "Stopped Bingos ${host}";
+   $host   eq q(linux-siva) and return "Stopped Kimmel ${host} - bad clock";
    return 0;
 }
 

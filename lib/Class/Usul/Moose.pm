@@ -4,11 +4,9 @@ package Class::Usul::Moose;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.10.%d', q$Rev$ =~ /\d+/gmx );
 use feature ();
+use version; our $VERSION = qv( sprintf '0.11.%d', q$Rev$ =~ /\d+/gmx );
 use namespace::autoclean ();
-no  bareword::filehandles;
-no  multidimensional;
 
 use Class::Usul::Constraints ();
 use Import::Into;
@@ -61,8 +59,6 @@ sub _do_import {
    MooseX::Types::LoadableClass->import( { into => $target },
       qw(LoadableClass LoadableRole) );
 #   MooseX::Types::Varchar->import( { into => $target }, 'Varchar' );
-   bareword::filehandles->unimport();
-   multidimensional->unimport();
    return;
 }
 
@@ -78,7 +74,7 @@ Class::Usul::Moose - Moose, the way I like it.
 
 =head1 Version
 
-0.10.$Revision$
+0.11.$Revision$
 
 =head1 Synopsis
 

@@ -5,7 +5,7 @@ package Class::Usul::Functions;
 use strict;
 use warnings;
 use feature      qw(state);
-use version; our $VERSION = qv( sprintf '0.10.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.11.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Data::Printer alias => q(Dumper), colored => 1, indent => 3,
@@ -25,13 +25,13 @@ my @_functions; my $_bson_id_inc : shared = 0;
 
 BEGIN {
    @_functions = ( qw(abs_path app_prefix arg_list assert_directory
-                      bsonid bsonid_time bson64id bson64id_time
+                      bsonid bsonid_time bson64id bson64id_time build
                       class2appdir classdir classfile create_token
                       data_dumper distname downgrade elapsed
                       env_prefix escape_TT exception find_source fold
-                      hex2str home2appldir is_arrayref is_coderef
+                      fqdn hex2str home2appldir is_arrayref is_coderef
                       is_hashref is_member merge_attributes my_prefix
-                      prefix2class product say split_on__
+                      pad prefix2class product say split_on__
                       split_on_dash squeeze strip_leader sub_name sum
                       thread_id throw trim unescape_TT untaint_cmdline
                       untaint_identifier untaint_path untaint_string
@@ -75,6 +75,10 @@ sub bson64id (;$) {
 
 sub bson64id_time ($) {
    return unpack 'N', substr _base64_decode_ns( $_[ 0 ] ), 0, 4;
+}
+
+sub build (&;$) {
+   my $blck = shift; my $f = shift || sub {}; return sub { $blck->( $f->() ) };
 }
 
 sub class2appdir ($) {
@@ -163,6 +167,10 @@ sub fold (&) {
    }
 }
 
+sub fqdn (;$) {
+   my $x = shift || hostname; return (gethostbyname( $x ))[ 0 ];
+}
+
 sub hex2str (;$) {
    my @a = split m{}mx, shift // q(); my $str = q();
 
@@ -176,7 +184,7 @@ sub home2appldir ($) {
 
    $dir = $dir->parent while ($dir ne $dir->parent and $dir !~ m{ lib \z }mx);
 
-   return $dir->parent;
+   return $dir ne $dir->parent ? $dir->parent : undef;
 }
 
 sub is_arrayref (;$) {
@@ -214,6 +222,20 @@ sub merge_attributes ($$$;$) {
 
 sub my_prefix (;$) {
    return split_on__( File::Basename::basename( $_[ 0 ] || q(), EXTNS ) );
+}
+
+sub pad ($$;$$) {
+   my ($x, $length, $str, $direction) = @_;
+
+   my $x_len = length $x; $x_len >= $length and return $x;
+   my $pad   = substr( ((defined $str && length $str ? $str : q( ))
+                        x ($length - $x_len)), 0, $length - $x_len );
+
+   (not $direction or $direction eq 'right') and return $x.$pad;
+   $direction eq 'left' and return $pad.$x;
+
+   return (substr $pad, 0, int( length $pad / 2 )).$x
+         .(substr $pad, 0, int( 0.99999999 + length $pad / 2 ));
 }
 
 sub prefix2class (;$) {
@@ -301,7 +323,7 @@ sub untaint_string ($;$) {
    my ($regex, $string) = @_; my ($untainted) = ($string || q()) =~ $regex;
 
    (defined $untainted and $untainted eq $string)
-      or throw( 'String '.($string || 'undef')." contains possible taint\n" );
+      or throw( 'String '.($string // 'undef')." contains possible taint\n" );
 
    return $untainted;
 }
@@ -526,6 +548,14 @@ Base64 encoding is used to reduce the id length
 
 Returns the time the BSON64 id was generated as Unix time
 
+=head2 build
+
+   $code_ref = build { }, $code_ref;
+
+Returns a code ref which when called returns the result of calling the block
+passing in the result of calling the optional code ref. Delays the calling
+of the input code ref until the output code ref is called
+
 =head2 class2appdir
 
    $appdir = class2appdir __PACKAGE__;
@@ -619,6 +649,12 @@ Find absolute path to the source code for the given module
 
 Classic reduce function with optional base value
 
+=head2 fqdn
+
+   $domain_name = fqdn $hostname;
+
+Call C<gethostbyname> on the supplied hostname whist defaults to this host
+
 =head2 hex2str
 
    $string = hex2str $pairs_of_hex_digits;
@@ -672,6 +708,14 @@ may be an object in which case its accessor methods are called
 Takes the basename of the supplied argument and returns the first _
 (underscore) separated field. Supplies basename with
 L<extensions|Class::Usul::Constants/EXTNS>
+
+=head2 pad
+
+   $padded_str = pad $unpadded_str, $wanted_length, $pad_char, $direction;
+
+Pad a string out to the wanted length with the C<$pad_char> which
+defaults to a space. Direction can be; I<both>, I<left>, or I<right>
+and defaults to I<right>
 
 =head2 prefix2class
 

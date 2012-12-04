@@ -3,7 +3,7 @@
 package Class::Usul::IPC;
 
 use strict;
-use version; our $VERSION = qv( sprintf '0.10.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.11.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Moose;
@@ -104,7 +104,6 @@ sub popen {
    waitpid $pid, 0; $e and throw $e;
 
    return $self->response_class->new( out => $stdout, stdout => $stdout );
-
 }
 
 sub process_exists {
@@ -254,6 +253,8 @@ sub _run_cmd_ipc_run_args {
 
    $args->{debug      } ||= $self->debug;
    $args->{expected_rv} ||= 0;
+   $args->{tempdir    } ||= $self->file->tempdir;
+   $args->{pid_ref    } ||= $self->file->tempfile( $args->{tempdir} );
    $args->{err        } ||= NUL;
    $args->{out        } ||= NUL;
    $args->{in         } ||= q(stdin);
@@ -286,7 +287,8 @@ sub _run_cmd_using_ipc_run {
 
    my $args     = $self->_run_cmd_ipc_run_args( @rest );
    my $cmd_ref  = __partition_command( $cmd );
-   my $cmd_str  = join SPC, @{ $cmd };
+   my $cmd_str  = join SPC, @{ $cmd }; $args->{async} and $cmd_str .= ' &';
+   my $prog     = basename( $cmd->[ 0 ] );
    my $null     = File::Spec->devnull;
    my $err      = $args->{err};
    my $out      = $args->{out};
@@ -305,12 +307,22 @@ sub _run_cmd_using_ipc_run {
 
    $args->{debug} and $self->log->debug( "Running ${cmd_str}" );
 
-   try   { $rv = __ipc_run_harness( $cmd_ref, @cmd_args ) }
+   try   { $rv = __ipc_run_harness( $args, $cmd_ref, @cmd_args ) }
    catch { throw $_ };
 
    $args->{debug} and $self->log->debug( "Run harness returned ${rv}" );
 
    my $sig = $rv & 127; my $core = $rv & 128; $rv = $rv >> 8;
+
+   if ($args->{async}) {
+      my $pid = $args->{pid_ref}->chomp->getline || -1;
+
+      $out = "Started ${prog}(${pid}) in the background";
+
+      return $self->response_class->new( core => $core, out => $out,
+                                         pid  => $pid,  rv  => $rv,
+                                         sig  => $sig );
+   }
 
    my ($stderr, $stdout);
 
@@ -389,7 +401,7 @@ sub _run_cmd_using_system {
          throw error => $error, args => [ $prog ], rv => $rv;
       }
 
-      my $pid = $args->{pid_ref}->chomp->getline || 'unknown pid';
+      my $pid = $args->{pid_ref}->chomp->getline || -1;
 
       $out = "Started ${prog}(${pid}) in the background";
 
@@ -488,7 +500,20 @@ sub __handler {
 }
 
 sub __ipc_run_harness {
-   my $h = IPC::Run::harness( @_ ); $h->run; return $h->full_result || 0;
+   my ($args, $cmd_ref, @cmd_args) = @_;
+
+   if ($args->{async}) {
+      ref $cmd_ref->[ 0 ] eq 'CODE' and $cmd_ref = $cmd_ref->[ 0 ];
+
+      my $h = IPC::Run::harness( $cmd_ref, @cmd_args, init => sub {
+         $args->{pid_ref}->print( $PID )->close }, '&' );
+
+      $h->start; return 0;
+   }
+
+   my $h = IPC::Run::harness( $cmd_ref, @cmd_args ); $h->run;
+
+   return $h->full_result || 0;
 }
 
 sub __new_proc_process_table {
@@ -552,7 +577,7 @@ Class::Usul::IPC - List/Create/Delete processes
 
 =head1 Version
 
-0.10.$Revision$
+0.11.$Revision$
 
 =head1 Synopsis
 

@@ -3,7 +3,7 @@
 package Class::Usul::Config;
 
 use strict;
-use version; our $VERSION = qv( sprintf '0.10.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.11.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::File;
 use Class::Usul::Moose;
@@ -16,7 +16,8 @@ use English                      qw(-no_match_vars);
 use File::Basename               qw(basename dirname);
 use File::DataClass::Constraints qw(Directory File Path);
 use File::Gettext::Constants;
-use File::Spec::Functions        qw(canonpath catdir catfile rel2abs tmpdir);
+use File::Spec::Functions        qw(canonpath catdir catfile rel2abs rootdir
+                                    tmpdir);
 
 has 'appclass'        => is => 'ro',   isa => NonEmptySimpleStr,
    required           => TRUE;
@@ -121,12 +122,12 @@ sub canonicalise {
 sub _build_appldir {
    my ($self, $appclass, $home) = __unpack( @_ ); my $dir = home2appldir $home;
 
-   -d catdir( $dir, q(bin) )
+   ($dir and -d catdir( $dir, q(bin) ))
       or $dir = catdir( NUL, q(var), (class2appdir $appclass) );
 
-   -d $dir or $dir = home2appldir $home;
+   -d $dir or $dir = $home;
 
-   return rel2abs( untaint_path $dir );
+   return rel2abs( untaint_path ($dir || rootdir) );
 }
 
 sub _build_binsdir {
@@ -288,7 +289,7 @@ sub __is_inflated {
 sub __unpack {
    my ($self, $attr) = @_; $attr ||= {};
 
-   blessed $self and return ($self, $self->appclass, $self->home);
+   blessed $self and return ($self, $self->{appclass}, $self->{home});
 
    return ($self, $attr->{appclass}, $attr->{home});
 }
@@ -307,7 +308,7 @@ Class::Usul::Config - Inflate config values
 
 =head1 Version
 
-Describes Class::Usul::Config version 0.10.$Revision$
+Describes Class::Usul::Config version 0.11.$Revision$
 
 =head1 Synopsis
 
