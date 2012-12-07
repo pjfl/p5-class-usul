@@ -315,7 +315,7 @@ sub _run_cmd_using_ipc_run {
    my $sig = $rv & 127; my $core = $rv & 128; $rv = $rv >> 8;
 
    if ($args->{async}) {
-      my $pid = $args->{pid_ref}->chomp->getline || -1;
+      my $pid = $args->{pid_ref}->chomp->getline || -1; $args->{pid_ref}->close;
 
       $out = "Started ${prog}(${pid}) in the background";
 
@@ -401,7 +401,7 @@ sub _run_cmd_using_system {
          throw error => $error, args => [ $prog ], rv => $rv;
       }
 
-      my $pid = $args->{pid_ref}->chomp->getline || -1;
+      my $pid = $args->{pid_ref}->chomp->getline || -1; $args->{pid_ref}->close;
 
       $out = "Started ${prog}(${pid}) in the background";
 
@@ -490,7 +490,7 @@ sub __handler {
    local $ERRNO; # So that waitpid does not step on existing value
 
    while ((my $child_pid = waitpid -1, WNOHANG) > 0) {
-      if (WIFEXITED( $CHILD_ERROR ) and $child_pid > $WAITEDPID) {
+      if (WIFEXITED( $CHILD_ERROR ) and $child_pid > ($WAITEDPID || 0)) {
          $WAITEDPID = $child_pid; $ERROR = $CHILD_ERROR;
       }
    }
@@ -511,9 +511,10 @@ sub __ipc_run_harness {
       $h->start; return 0;
    }
 
-   my $h = IPC::Run::harness( $cmd_ref, @cmd_args ); $h->run;
+   my $h  = IPC::Run::harness( $cmd_ref, @cmd_args ); $h->run;
+   my $rv = $h->full_result || 0; $rv =~ m{ unknown }msx and throw $rv;
 
-   return $h->full_result || 0;
+   return $rv;
 }
 
 sub __new_proc_process_table {

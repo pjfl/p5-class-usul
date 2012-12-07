@@ -1,5 +1,9 @@
 Revision history for Class::Usul
 
+0.11.238 2012-12-07
+         - Stopped Horne ac4924e6-3efa-11e2-992e-e7c00a4a7996 - old broken
+           version of Perl
+
 0.11.236 2012-12-04
          - Stopped Kimmel 157e3292-38c2-11e2-8ee7-bb3f1c5ae6b4
          - Added another option to Programs::__get_homdir
