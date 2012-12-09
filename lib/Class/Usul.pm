@@ -2,7 +2,6 @@
 
 package Class::Usul;
 
-use strict;
 use version; our $VERSION = qv( sprintf '0.11.%d', q$Rev$ =~ /\d+/gmx );
 
 use 5.010;
@@ -254,3 +253,4 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
 # mode: perl
 # tab-width: 3
 # End:
+

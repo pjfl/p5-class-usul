@@ -1,5 +1,12 @@
 Revision history for Class::Usul
 
+0.11.239 2012-12-09
+         - Stopped Solimano a28e32d4-70d4-1014-a3d4-f5aa727880d3 - bad clock
+           and broken Cwd::abs_path
+         - Dropping out of CPANTS. Disabled the use_strict metric in
+           t/05kwaitee.t. Since Class::Usul::Moose that metric is no longer
+           viable
+
 0.11.238 2012-12-07
          - Stopped Horne ac4924e6-3efa-11e2-992e-e7c00a4a7996 - old broken
            version of Perl

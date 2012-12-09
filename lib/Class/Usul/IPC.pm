@@ -2,7 +2,6 @@
 
 package Class::Usul::IPC;
 
-use strict;
 use version; our $VERSION = qv( sprintf '0.11.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Null;

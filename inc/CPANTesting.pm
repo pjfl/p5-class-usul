@@ -26,6 +26,7 @@ sub test_exceptions {
    $host   eq q(falco)           and return "Stopped Bingos ${host}";
    $host   eq q(linux-siva)      and return "Stopped Kimmel ${host} bad clock";
    $host   =~ m{ nigelhorne }msx and return "Stopped Horne bad Perl version";
+   $host   =~ m{ solimano   }msx and return "Stopped Solimano bad clock";
    return 0;
 }
 

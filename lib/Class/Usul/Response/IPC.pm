@@ -2,11 +2,9 @@
 
 package Class::Usul::Response::IPC;
 
-use strict;
-use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.11.%d', q$Rev$ =~ /\d+/gmx );
 
-use Moose;
+use Class::Usul::Moose;
 
 has 'core'   => is => 'ro', isa => 'Int', default => 0;
 has 'out'    => is => 'ro', isa => 'Str', default => q();

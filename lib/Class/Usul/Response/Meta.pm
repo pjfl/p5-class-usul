@@ -2,11 +2,9 @@
 
 package Class::Usul::Response::Meta;
 
-use strict;
-use namespace::autoclean;
 use version; our $VERSION = qv( sprintf '0.11.%d', q$Rev$ =~ /\d+/gmx );
 
-use Moose;
+use Class::Usul::Moose;
 use YAML::Syck;
 
 has 'abstract' => is => 'ro', isa => 'Maybe[Str]';
