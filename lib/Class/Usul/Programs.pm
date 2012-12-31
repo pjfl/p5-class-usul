@@ -301,6 +301,9 @@ sub output {
    return;
 }
 
+sub print_usage_text { # Required to stop MX::Getopt from printing usage (2)
+}
+
 sub quiet {
    my ($self, $v) = @_; defined $v or return $self->_quiet; $v = !!$v;
 
@@ -462,7 +465,7 @@ sub _get_run_method {
    return $method;
 }
 
-sub _getopt_full_usage { # Required to stop MX::Getopt from printing usage
+sub _getopt_full_usage { # Required to stop MX::Getopt from printing usage (1)
 }
 
 sub _man_page_from {
@@ -957,6 +960,12 @@ I<STDOUT>
    $self->_output_version
 
 Prints out the version of the C::U::Programs subclass and the exits
+
+=head2 print_usage_text
+
+Empty method used to override L<MooseX::Getop::Basic>'s latest API
+incantation. Used to be C<_getopt_full_usage> which we still have to
+maintain because *we* dont't break backward comapatability
 
 =head2 __prompt
 
