@@ -131,8 +131,8 @@ sub BUILD {
 sub add_leader {
    my ($self, $text, $args) = @_; $text or return NUL; $args ||= {};
 
-   my $leader = exists $args->{no_lead}
-              ? NUL : (ucfirst $self->config->name).BRK;
+   my $leader = exists $args->{no_lead} ? NUL
+                                        : (ucfirst $self->config->name).BRK;
 
    if ($args->{fill}) {
       my $width = $args->{width} || WIDTH;
@@ -145,7 +145,7 @@ sub add_leader {
 }
 
 sub anykey {
-   my $prompt = $_[ 1 ] || 'Press any key to continue...';
+   my $prompt = $_[ 1 ] || $_[ 0 ]->loc( 'Press any key to continue...' );
 
    return __prompt( -p => $prompt, -e => NUL, -1 => TRUE );
 }
