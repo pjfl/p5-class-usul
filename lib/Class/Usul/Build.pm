@@ -13,7 +13,7 @@ use Class::Usul::Build::InstallActions;
 use Class::Usul::Build::Questions;
 use Class::Usul::Build::VCS;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(exception say throw);
+use Class::Usul::Functions qw(classdir env_prefix exception say throw);
 use Class::Usul::Programs;
 use Class::Usul::Time      qw(time2str);
 use Config;
@@ -381,6 +381,7 @@ sub _ask_questions {
    # Save the updated config for the install action to use
    my $args = { data => $cfg, path => $self->_get_config_path( $cfg ) };
 
+   $self->cli_info( 'Saving post install config to '.$args->{path} );
    $cli->file->dataclass_schema( $cfg->{config_attrs} )->dump( $args );
    return;
 }
@@ -572,12 +573,15 @@ sub _get_config {
    my $cfg = { %CONFIG, %{ $passed_cfg || {} }, %{ $self->notes } }; my $path;
 
    if ($path = $self->_get_config_path( $cfg ) and -f $path) {
-      my $file = $self->cli( $cfg )->file;
+      my $file = $self->cli->file;
 
-      $cfg = $file->dataclass_schema( $cfg->{config_attrs} )->load( $path );
+      $cache = $cfg
+             = $file->dataclass_schema( $cfg->{config_attrs} )->load( $path );
    }
+   else { $self->cli->warning( 'Path [_1] not found', { args => [ $path ] } ) }
 
-   return $cache = $cfg;
+   $cfg->{version} .= NUL;
+   return $cfg;
 }
 
 sub _get_config_path {
@@ -707,7 +711,10 @@ sub _install_local_perlbrew {
 }
 
 sub _post_install {
-   my ($self, $cfg) = @_;
+   my ($self, $cfg) = @_; my $appclass = $self->module_name;
+
+   $ENV{ (env_prefix $appclass).q(_HOME) }
+      = catdir( $cfg->{base}, q(lib), classdir $appclass );
 
    $cfg->{post_install} and $self->_run_bin_cmd( $cfg, q(post_install) )
       and $self->cli_info( 'Post install complete' );
@@ -770,7 +777,7 @@ sub _run_bin_cmd {
    $self->cli_info( "Running ${cmd}" );
    $cli->run_cmd( $cmd, { err => q(stderr), out => q(stdout) } );
 
-   my $ref; $ref = $self->can( q(hook_).$key ) and $self->$ref( $cfg );
+   my $ref; $ref = $self->can( "hook_${key}" ) and $self->$ref( $cfg );
 
    return TRUE;
 }

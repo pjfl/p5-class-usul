@@ -44,7 +44,15 @@ use Sub::Exporter -setup => {
 };
 
 sub abs_path ($) {
-   return $_[ 0 ] ? Cwd::abs_path( untaint_path( $_[ 0 ] )) : $_[ 0 ];
+   my $y = shift; (defined $y and length $y) or return $y;
+
+   $OSNAME eq EVIL and not -e $y and return untaint_path( $y ); # Hate
+
+   $y = Cwd::abs_path( untaint_path( $y ) );
+
+   $OSNAME eq EVIL and defined $y and $y =~ s{ / }{\\}gmx; # More hate
+
+   return $y;
 }
 
 sub app_prefix ($) {
@@ -58,7 +66,9 @@ sub arg_list (;@) {
 }
 
 sub assert_directory ($) {
-   my $y = abs_path( $_[ 0 ] ) or return; return -d $y ? $y : undef;
+   my $y = abs_path( $_[ 0 ] ); (defined $y and length $y) or return $y;
+
+   return -d $y ? $y : undef;
 }
 
 sub bsonid (;$) {
@@ -488,7 +498,8 @@ Provides globally accessible functions
 
    $absolute_untainted_path = abs_path $some_path;
 
-Untaints path. Makes it an absolute path and returns it. Returns undef otherwise
+Untaints path. Makes it an absolute path and returns it. Returns undef
+otherwise. Traverses the filesystem
 
 =head2 app_prefix
 
@@ -525,7 +536,7 @@ exists. Returns undef otherwise
 
    $bson_id = bsonid;
 
-Generate a new BSON id. Returns a 24 character string of hex digits that
+Generate a new C<BSON> id. Returns a 24 character string of hex digits that
 are reasonably unique across hosts and are in ascending order. Use this
 to create unique ids for data streams like message queues and file feeds
 
@@ -533,7 +544,7 @@ to create unique ids for data streams like message queues and file feeds
 
    $seconds_elapsed_since_the_epoch = bsonid_time $bson_id;
 
-Returns the time the BSON id was generated as Unix time
+Returns the time the C<BSON> id was generated as Unix time
 
 =head2 bson64id
 
@@ -546,7 +557,7 @@ Base64 encoding is used to reduce the id length
 
    $seconds_elapsed_since_the_epoch = bson64id_time $bson64_id;
 
-Returns the time the BSON64 id was generated as Unix time
+Returns the time the C<BSON64> id was generated as Unix time
 
 =head2 build
 
@@ -603,10 +614,11 @@ B<->, e.g. C<App::Munchies> becomes C<App-Munchies>
 
    $sv_pv = downgrade $sv_pvgv;
 
-Horrendus Perl bug is promoting PV and PVMG type scalars to PVGV. Serializing
-these values with L<Storable> throws a can't store SCALAR items errror. This
-functions copys the string value of the input scalar to the output scalar
-but resets the output scalar type to PV
+Horrendous Perl bug is promoting C<PV> and C<PVMG> type scalars to
+C<PVGV>. Serializing these values with L<Storable> throws a can't
+store SCALAR items error. This functions copies the string value of
+the input scalar to the output scalar but resets the output scalar
+type to C<PV>
 
 =head2 elapsed
 

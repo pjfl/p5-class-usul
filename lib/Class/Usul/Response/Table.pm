@@ -49,9 +49,7 @@ Response class for the table widget in L<HTML::FormWidgets>
 
 =head1 Subroutines/Methods
 
-=head2 flds
-
-Deprecated use C<fields> instead
+None
 
 =head1 Diagnostics
 

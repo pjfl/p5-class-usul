@@ -28,7 +28,7 @@ Math::BigInt->config()->{lib} eq q(Math::BigInt::GMP)
 
 use Class::Usul::Time qw(str2date_time str2time time2str);
 
-is time2str( undef, 0 ), q(1970-01-01 01:00:00), 'stamp';
+is time2str( undef, 0 ), q(1970-01-01 00:00:00), 'stamp';
 
 my $dt = q().str2date_time( q(11/9/2007 14:12), q(GMT) );
 

@@ -41,6 +41,7 @@ done_testing();
 __DATA__
 flanigan
 anykey
+api
 appdir
 appldir
 argv
@@ -49,7 +50,11 @@ async
 backend
 basename
 brk
+bson
+bsonid
 buildargs
+canonicalise
+canonicalised
 changelog
 classdir
 classfile
@@ -63,9 +68,12 @@ debian
 distmeta
 distname
 extns
+fh
+fqdn
 gettext
 getopts
 hashref
+hostname
 ids
 io
 installdeps

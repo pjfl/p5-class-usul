@@ -249,8 +249,7 @@ sub str2time ($;$) {
 sub time2str (;$$$) {
    my ($format, $time, $zone) = @_;
 
-   defined $format or $format = '%Y-%m-%d %H:%M:%S';
-   defined $time   or $time   = time;
+   $format //= '%Y-%m-%d %H:%M:%S'; $time //= time; $zone //= 'UTC';
 
    return Date::Format::Generic->time2str( $format, $time, $zone );
 }
@@ -307,7 +306,7 @@ ninth day in November. Timezone optional
 
 Returns a formatted string representation of the given time (supplied
 in seconds elapsed since the epoch). Defaults to ISO format (%Y-%m-%d
-%H:%M:%S) and current time if non supplied
+%H:%M:%S) and current time if non supplied. The timezone defaults to C<UTC>
 
 =head1 Diagnostics
 

@@ -91,7 +91,7 @@ sub q_ver {
 
    my ($major, $minor) = split m{ \. }mx, $ver;
 
-   return $major.q(.).$minor;
+   return "${major}.${minor}";
 }
 
 1;

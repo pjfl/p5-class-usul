@@ -84,8 +84,9 @@ sub __get_attr_from_class { # Coerce a hash ref from a string
       or throw error => 'Class [_1] is missing the config method',
                args  => [ $class ];
 
+   my $key    = CONFIG_KEY;
    my $config = { %{ $class->config || {} } };
-   my $attr   = { %{ delete $config->{ 'Plugin::Usul' } || {} } };
+   my $attr   = { %{ delete $config->{ $key } || {} } };
    my $name   = delete $config->{name}; $config->{appclass} ||= $name;
 
    $attr->{config} ||= $config;

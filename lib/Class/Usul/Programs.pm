@@ -965,7 +965,7 @@ Prints out the version of the C::U::Programs subclass and the exits
 
 Empty method used to override L<MooseX::Getop::Basic>'s latest API
 incantation. Used to be C<_getopt_full_usage> which we still have to
-maintain because *we* dont't break backward comapatability
+maintain because *we* do not break backward compatibility
 
 =head2 __prompt
 

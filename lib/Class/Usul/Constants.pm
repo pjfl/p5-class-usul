@@ -16,19 +16,23 @@ class_has 'Assert'          => is => 'rw', isa => 'Maybe[CodeRef]';
 class_has 'Config_Extn'     => is => 'rw', isa => 'Str',
    default                  => q(.json);
 
+class_has 'Config_Key'      => is => 'rw', isa => 'Str',
+   default                  => q(Plugin::Usul);
+
 class_has 'Exception_Class' => is => 'rw', isa => 'File::DataClass::Exception',
    default                  => q(File::DataClass::Exception);
 
 my @_constants;
 
 BEGIN {
-   @_constants = ( qw(ARRAY ASSERT BRK CODE CONFIG_EXTN DEFAULT_DIR
-                      DEFAULT_ENCODING DEFAULT_L10N_DOMAIN
-                      DIGEST_ALGORITHMS ENCODINGS EVIL EXCEPTION_CLASS EXTNS
-                      FAILED FALSE HASH LANG LBRACE LOCALIZE LOG_LEVELS
-                      MODE NO NUL OK PHASE PREFIX QUIT SEP SPC TRUE
-                      UNDEFINED_RV UNTAINT_CMDLINE UNTAINT_IDENTIFIER
-                      UNTAINT_PATH UUID_PATH WIDTH YES) );
+   @_constants = ( qw(ARRAY ASSERT BRK CODE CONFIG_EXTN CONFIG_KEY
+                      DEFAULT_DIR DEFAULT_ENCODING DEFAULT_L10N_DOMAIN
+                      DIGEST_ALGORITHMS ENCODINGS EVIL EXCEPTION_CLASS
+                      EXTNS FAILED FALSE HASH LANG LBRACE LOCALIZE
+                      LOG_LEVELS MODE NO NUL OK PHASE PREFIX QUIT SEP
+                      SPC TRUE UNDEFINED_RV UNTAINT_CMDLINE
+                      UNTAINT_IDENTIFIER UNTAINT_PATH UUID_PATH WIDTH
+                      YES) );
 }
 
 use Sub::Exporter::Progressive -setup => {
@@ -61,6 +65,7 @@ sub YES      () { q(y)               }
 
 sub ASSERT              () { __PACKAGE__->Assert || sub {} }
 sub CONFIG_EXTN         () { __PACKAGE__->Config_Extn }
+sub CONFIG_KEY          () { __PACKAGE__->Config_Key }
 sub DEFAULT_DIR         () { [ q(), qw(etc default) ] }
 sub DEFAULT_ENCODING    () { q(UTF-8) }
 sub DEFAULT_L10N_DOMAIN () { q(default) }
@@ -128,6 +133,11 @@ String C<CODE>
 
 The default configuration file extension, F<.json>. Change this by
 setting the C<Config_Extn> class attribute
+
+=head2 CONFIG_KEY
+
+Default configuration hash key, C<Plugin::Usul>. Change this by setting
+the C<Config_Key> class attribute
 
 =head2 DEFAULT_DIR
 

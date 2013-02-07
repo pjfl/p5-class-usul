@@ -115,7 +115,7 @@ sub _gettext {
    my $count   = $args->{count} || 1;
    my $default = $args->{no_default} ? NUL : $key;
    my $domain  = $self->_load_domains( $args )
-      or return ($key, $args->{plural_key})[ $count > 1 ] || $default;
+      or return ($default, $args->{plural_key})[ $count > 1 ] || $default;
    # Select either singular or plural translation
    my ($nplurals, $plural) = (1, 0);
 
