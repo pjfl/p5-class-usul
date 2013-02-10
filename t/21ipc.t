@@ -41,39 +41,56 @@ my $prog = Class::Usul::Programs->new( appclass => q(Class::Usul),
                                        method   => q(dump_self),
                                        nodebug  => 1,
                                        quiet    => 1, );
-my $cmd  = "${perl} -e 'print \"Hello World\"'";
 
-is $prog->run_cmd( $cmd )->out, q(Hello World), 'run_cmd system';
+sub run_cmd {
+   my $want = shift; my $r = eval { $prog->run_cmd( @_ ) };
 
-$cmd = "${perl} -e 'exit 1'";
+   $EVAL_ERROR     and return $EVAL_ERROR;
+   $want eq q(out) and return $r->out;
+   $want eq q(rv)  and return $r->rv;
+   return $r;
+}
 
-eval { $prog->run_cmd( $cmd ) }; my $error = $EVAL_ERROR;
+my $cmd = "${perl} -e 'print \"Hello World\"'"; my $r = run_cmd( q(out), $cmd );
 
-ok $error, 'run_cmd system unexpected rv';
+is $r, q(Hello World), 'run_cmd system';
 
-is ref $error, EXCEPTION_CLASS, 'exception is right class';
+$cmd = "${perl} -e 'exit 1'"; $r = run_cmd( q(), $cmd );
 
-ok $prog->run_cmd( $cmd, { expected_rv => 1 } ), 'run_cmd system expected rv';
+is ref $r, EXCEPTION_CLASS, 'exception is right class';
+
+like $r, qr{ Unknown \s+ error }msx, 'run_cmd system unexpected rv';
+
+is run_cmd( q(rv), $cmd, { expected_rv => 1 } ), 1,
+   'run_cmd system expected rv';
+
+like run_cmd( q(out), $cmd, { async => 1 } ), qr{ background }msx,
+   'run_cmd system async';
 
 $cmd = [ $perl, '-e', 'print "Hello World"' ];
 
-is $prog->run_cmd( $cmd )->out, 'Hello World', 'run_cmd IPC::Run';
+is run_cmd( q(out), $cmd ), 'Hello World', 'run_cmd IPC::Run';
 
-eval { $prog->run_cmd( [ $perl, '-e', 'exit 1' ] ) };
+$cmd = [ $perl, '-e', 'exit 1' ];
 
-ok $EVAL_ERROR, 'run_cmd IPC::Run unexpected rv';
+like run_cmd( q(), $cmd ), qr{ Unknown \s+ error }msx,
+   'run_cmd IPC::Run unexpected rv';
 
-ok $prog->run_cmd( [ $perl, '-e', 'exit 1' ], { expected_rv => 1 } ),
+is run_cmd( q(rv), $cmd, { expected_rv => 1 } ), 1,
    'run_cmd IPC::Run expected rv';
 
-like $prog->run_cmd( $cmd, { async => 1 } )->out, qr{ background }msx,
+$cmd = [ $perl, '-e', 'print "Hello World"' ];
+
+like run_cmd( q(out), $cmd, { async => 1 } ), qr{ background }msx,
    'run_cmd IPC::Run async';
 
-like $prog->run_cmd( [ sub { print 'Hello World' } ], { async => 1 } )->out,
-   qr{ background }msx, 'run_cmd IPC::Run async coderef';
+$cmd = [ sub { print 'Hello World' } ];
 
-unlike $prog->run_cmd( [ sub { print 'Hello World' } ], { async => 1 } )->out,
-   qr{ \(-1\) }msx, 'run_cmd IPC::Run async coderef captures pid';
+like run_cmd( q(out), $cmd, { async => 1 } ), qr{ background }msx,
+   'run_cmd IPC::Run async coderef';
+
+unlike run_cmd( q(rv), $cmd, { async => 1 } ), qr{ \(-1\) }msx,
+   'run_cmd IPC::Run async coderef captures pid';
 
 # This fails on some platforms. The stderr is not redirected as expected
 #eval { $prog->run_cmd( "unknown_command_xa23sd3", { debug => 1 } ) };

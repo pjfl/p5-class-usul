@@ -1,5 +1,9 @@
 Revision history for Class::Usul
 
+0.11.245 2013-02-10
+         - Made t/21ipc.t trap errors
+         - Made Time::time2str default to local time zone. Adjusted test
+
 0.11.243 2013-02-07
          - Skipped File::symlink test on MSWin32
          - Made Time::time2str default to UTC

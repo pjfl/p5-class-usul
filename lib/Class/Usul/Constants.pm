@@ -42,7 +42,7 @@ use Sub::Exporter::Progressive -setup => {
 sub ARRAY    () { q(ARRAY)           }
 sub BRK      () { q(: )              }
 sub CODE     () { q(CODE)            }
-sub EVIL     () { q(MSWin32)         }
+sub EVIL     () { q(mswin32)         }
 sub EXTNS    () { ( qw(.pl .pm .t) ) }
 sub FAILED   () { 1                  }
 sub FALSE    () { 0                  }
@@ -314,7 +314,7 @@ Peter Flanigan, C<< <Support at RoxSoft.co.uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2012 Peter Flanigan. All rights reserved
+Copyright (c) 2013 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

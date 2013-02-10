@@ -47,53 +47,57 @@ my $cu     = Class::Usul->new
 
 my $cuf = Class::Usul::File->new( builder => $cu );
 
-isa_ok $cuf, 'Class::Usul::File'; is $cuf->tempdir, q(t), 'tempdir';
+isa_ok $cuf, 'Class::Usul::File'; is $cuf->tempdir, q(t),
+   'Temporary directory is t';
 
 my $tf = [ qw(t test.xml) ];
 
 ok( (grep { m{ name }msx } $cuf->io( $tf )->getlines)[ 0 ] =~ m{ library }msx,
-    'io' );
+    'IO can getlines' );
 
 my $path = $cuf->absolute( [ qw(test test) ], q(test) );
 
-like $path, qr{ test . test . test \z }mx, 'absolute 1';
+like $path, qr{ test . test . test \z }mx, 'Absolute path 1';
 
 $path = $cuf->absolute( q(test), q(test) );
 
-like $path, qr{ test . test \z }mx, 'absolute 2';
+like $path, qr{ test . test \z }mx, 'Absolute path 2';
 
 my $fdcs = $cuf->dataclass_schema->load( $tf );
 
-is $fdcs->{credentials}->{library}->{driver}, q(mysql), 'file_dataclass_schema';
+is $fdcs->{credentials}->{library}->{driver}, q(mysql),
+   'File::Dataclass::Schema can load';
 
 unlink catfile( qw(t ipc_srlock.lck) );
 unlink catfile( qw(t ipc_srlock.shm) );
 
-is $cuf->status_for( $tf )->{size}, 237, 'status_for';
+is $cuf->status_for( $tf )->{size}, 237, 'Status for returns correct file size';
 
-if ($osname ne 'mswin32') {
+if ($osname ne 'mswin32' and $osname ne 'cygwin') {
    my $symlink = catfile( qw(t symlink) );
 
    $cuf->symlink( q(t), q(test.xml), [ qw(t symlink) ] );
 
-   ok -e $symlink, 'symlink'; -e _ and unlink $symlink;
+   ok -e $symlink, 'Creates a symlink'; -e _ and unlink $symlink;
 }
 
 my $tempfile = $cuf->tempfile;
 
-ok( $tempfile, q(call/tempfile) );
+ok( $tempfile, 'Returns tempfile' );
 
-is ref $tempfile->io_handle, q(File::Temp), 'tempfile';
+is ref $tempfile->io_handle, q(File::Temp), 'Tempfile io handle correct class';
 
 $cuf->io( $tempfile->pathname )->touch;
 
-ok( -f $tempfile->pathname, q(touch/tempfile) );
+ok( -f $tempfile->pathname, 'Touches temporary file' );
+
+($osname eq 'mswin32' or $osname eq 'cygwin') and $tempfile->close;
 
 $cuf->delete_tmp_files;
 
-ok( ! -f $tempfile->pathname, q(delete_tmp_files) );
+ok( ! -f $tempfile->pathname, 'Deletes temporary files' );
 
-ok $cuf->tempname =~ m{ $PID .{4} }msx, 'tempname';
+ok $cuf->tempname =~ m{ $PID .{4} }msx, 'Temporary filename correct pattern';
 
 my $io = $cuf->io( q(t) ); my $entry;
 
@@ -101,7 +105,7 @@ while (defined ($entry = $io->next)) {
    $entry->filename eq q(10functions.t) and last;
 }
 
-ok defined $entry && $entry->filename eq q(10functions.t), 'IO::next';
+ok defined $entry && $entry->filename eq q(10functions.t), 'Directory listing';
 
 done_testing;
 
