@@ -34,15 +34,16 @@ use File::Basename;
 use Class::Usul::Programs;
 use Class::Usul::Constants qw(EXCEPTION_CLASS);
 
-my $perl = $EXECUTABLE_NAME;
-my $prog = Class::Usul::Programs->new( appclass => q(Class::Usul),
-                                       config   => { logsdir => q(t),
-                                                     tempdir => q(t), },
-                                       method   => q(dump_self),
-                                       nodebug  => 1,
-                                       quiet    => 1, );
+my $osname = lc $OSNAME;
+my $perl   = $EXECUTABLE_NAME;
+my $prog   = Class::Usul::Programs->new( appclass => q(Class::Usul),
+                                         config   => { logsdir => q(t),
+                                                       tempdir => q(t), },
+                                         method   => q(dump_self),
+                                         nodebug  => 1,
+                                         quiet    => 1, );
 
-sub run_cmd {
+sub run_test {
    my $want = shift; my $r = eval { $prog->run_cmd( @_ ) };
 
    $EVAL_ERROR     and return $EVAL_ERROR;
@@ -51,46 +52,72 @@ sub run_cmd {
    return $r;
 }
 
-my $cmd = "${perl} -e 'print \"Hello World\"'"; my $r = run_cmd( q(out), $cmd );
+my $cmd = "${perl} -v";
+my $r   = run_test( q(out), $cmd );
+my $msg = $osname eq q(mswin32) ? 'run_cmd popen' : 'run_cmd system';
 
-is $r, q(Hello World), 'run_cmd system';
+like $r, qr{ larry \s+ wall }imsx, $msg;
 
-$cmd = "${perl} -e 'exit 1'"; $r = run_cmd( q(), $cmd );
+SKIP: {
+   $osname eq q(mswin32) and skip 'popen test - alread run on MSWin32', 1;
 
-is ref $r, EXCEPTION_CLASS, 'exception is right class';
+   $r = eval { $prog->run_cmd( $cmd ) };
+   $r = $EVAL_ERROR ? $EVAL_ERROR : $r->out;
 
-like $r, qr{ Unknown \s+ error }msx, 'run_cmd system unexpected rv';
+   like $r, qr{ larry \s+ wall }imsx, 'popen';
+}
 
-is run_cmd( q(rv), $cmd, { expected_rv => 1 } ), 1,
-   'run_cmd system expected rv';
+SKIP: {
+   $osname eq q(mswin32) and skip 'expected rv test - not on MSWin32', 3;
 
-like run_cmd( q(out), $cmd, { async => 1 } ), qr{ background }msx,
-   'run_cmd system async';
+   $cmd = "${perl} -e \"exit 1\""; $r = run_test( q(), $cmd );
 
-$cmd = [ $perl, '-e', 'print "Hello World"' ];
+   is ref $r, EXCEPTION_CLASS, 'exception is right class';
 
-is run_cmd( q(out), $cmd ), 'Hello World', 'run_cmd IPC::Run';
+   like $r, qr{ Unknown \s+ error }msx, 'run_cmd system unexpected rv';
 
-$cmd = [ $perl, '-e', 'exit 1' ];
+   is run_test( q(rv), $cmd, { expected_rv => 1 } ), 1,
+      'run_cmd system expected rv';
+}
 
-like run_cmd( q(), $cmd ), qr{ Unknown \s+ error }msx,
-   'run_cmd IPC::Run unexpected rv';
+SKIP: {
+   $osname eq q(mswin32) and skip 'system async test - not on MSWin32', 1;
 
-is run_cmd( q(rv), $cmd, { expected_rv => 1 } ), 1,
-   'run_cmd IPC::Run expected rv';
+   like run_test( q(out), $cmd, { async => 1 } ), qr{ background }msx,
+      'run_cmd system async';
+}
 
-$cmd = [ $perl, '-e', 'print "Hello World"' ];
+SKIP: {
+   $osname eq q(mswin32) and skip 'IPC::Run test - not on MSWin32', 6;
 
-like run_cmd( q(out), $cmd, { async => 1 } ), qr{ background }msx,
-   'run_cmd IPC::Run async';
+   eval { require IPC::Run }; $EVAL_ERROR
+      and skip 'IPC::Run test - not installed', 6;
 
-$cmd = [ sub { print 'Hello World' } ];
+   $cmd = [ $perl, '-v' ];
 
-like run_cmd( q(out), $cmd, { async => 1 } ), qr{ background }msx,
-   'run_cmd IPC::Run async coderef';
+   like run_test( q(out), $cmd ), qr{ larry \s+ wall }imsx, 'run_cmd IPC::Run';
 
-unlike run_cmd( q(rv), $cmd, { async => 1 } ), qr{ \(-1\) }msx,
-   'run_cmd IPC::Run async coderef captures pid';
+   $cmd = [ $perl, '-e', 'exit 1' ];
+
+   like run_test( q(), $cmd ), qr{ Unknown \s+ error }msx,
+      'run_cmd IPC::Run unexpected rv';
+
+   is run_test( q(rv), $cmd, { expected_rv => 1 } ), 1,
+      'run_cmd IPC::Run expected rv';
+
+   $cmd = [ $perl, '-v' ];
+
+   like run_test( q(out), $cmd, { async => 1 } ), qr{ background }msx,
+      'run_cmd IPC::Run async';
+
+   $cmd = [ sub { print 'Hello World' } ];
+
+   like run_test( q(out), $cmd, { async => 1 } ), qr{ background }msx,
+      'run_cmd IPC::Run async coderef';
+
+   unlike run_test( q(rv), $cmd, { async => 1 } ), qr{ \(-1\) }msx,
+      'run_cmd IPC::Run async coderef captures pid';
+}
 
 # This fails on some platforms. The stderr is not redirected as expected
 #eval { $prog->run_cmd( "unknown_command_xa23sd3", { debug => 1 } ) };

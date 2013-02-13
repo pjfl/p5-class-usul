@@ -44,7 +44,7 @@ is str2time( q(2007.07.30), q(BST) ), q(1185750000), 'str2time/4';
 
 is str2time( q(1970/01/01), q(GMT) ), q(0), 'str2time/epoch';
 
-is time2str( q(%Y-%m-%d), 0 ), q(1970-01-01), 'time2str/1';
+is time2str( q(%Y-%m-%d), 0, q(UTC) ), q(1970-01-01), 'time2str/1';
 
 is time2str( q(%Y-%m-%d %H:%M:%S), 1185753932, q(BST) ),
    q(2007-07-30 01:05:32), 'time2str/2';

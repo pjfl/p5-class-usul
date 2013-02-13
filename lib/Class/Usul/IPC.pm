@@ -23,6 +23,8 @@ use Try::Tiny;
 
 our ($ERROR, $WAITEDPID);
 
+my $is_evil = lc $OSNAME eq EVIL ? TRUE : FALSE;
+
 has 'response_class' => is => 'lazy', isa => LoadableClass, coerce => TRUE,
    default           => sub { 'Class::Usul::Response::IPC' };
 
@@ -57,13 +59,11 @@ sub child_list {
 }
 
 sub popen {
-   my ($self, $cmd, @rest) = @_; my ($e, $pid, @ready);
+   my ($self, $cmd, @args) = @_; $cmd or throw 'Command not specified';
 
-   $cmd or throw 'Command not specified';
+   my ($e, $pid, @ready); is_arrayref $cmd and $cmd = join SPC, @{ $cmd };
 
-   is_arrayref $cmd and $cmd = join SPC, @{ $cmd };
-
-   my $args = arg_list @rest;
+   my $args = arg_list @args;
    my $err  = IO::Handle->new();
    my $out  = IO::Handle->new();
    my $in   = IO::Handle->new();
@@ -106,9 +106,9 @@ sub popen {
 }
 
 sub process_exists {
-   my ($self, @rest) = @_; my ($io, $file);
+   my ($self, @args) = @_; my ($io, $file);
 
-   my $args = arg_list @rest; my $pid = $args->{pid};
+   my $args = arg_list @args; my $pid = $args->{pid};
 
    $file = $args->{file} and $io = $self->io( $file ) and $io->is_file
       and $pid = $io->chomp->lock->getline;
@@ -119,7 +119,7 @@ sub process_exists {
 }
 
 sub process_table {
-   my ($self, @rest) = @_; my $args = arg_list @rest;
+   my ($self, @args) = @_; my $args = arg_list @args;
 
    my $pat   = $args->{pattern};
    my $ptype = $args->{type   };
@@ -153,17 +153,18 @@ sub process_table {
 }
 
 sub run_cmd {
-   my ($self, $cmd, @rest) = @_; $cmd or throw 'Run command not specified';
+   my ($self, $cmd, @args) = @_; $cmd or throw 'Run command not specified';
 
    if (is_arrayref $cmd) {
-      if (can_load( modules => { 'IPC::Run' => q(0.84) } )) {
-         return $self->_run_cmd_using_ipc_run( $cmd, @rest );
+      if (can_load( modules => { 'IPC::Run' => q(0.84) } ) and not $is_evil) {
+         return $self->_run_cmd_using_ipc_run( $cmd, @args );
       }
 
       $cmd = join SPC, @{ $cmd };
    }
 
-   return $self->_run_cmd_using_system( $cmd, @rest );
+   return $is_evil ? $self->popen( $cmd, @args )
+                   : $self->_run_cmd_using_system( $cmd, @args );
 }
 
 sub signal_process {
@@ -179,9 +180,9 @@ sub signal_process {
 }
 
 sub signal_process_as_root {
-   my ($self, @rest) = @_; my ($file, $io);
+   my ($self, @args) = @_; my ($file, $io);
 
-   my $args = arg_list @rest;
+   my $args = arg_list @args;
    my $sig  = $args->{sig } || q(TERM);
    my $pids = $args->{pids} || [];
 
@@ -248,7 +249,7 @@ sub _new_process_table {
 }
 
 sub _run_cmd_ipc_run_args {
-   my ($self, @rest) = @_; my $args = arg_list @rest;
+   my ($self, @args) = @_; my $args = arg_list @args;
 
    $args->{debug      } ||= $self->debug;
    $args->{expected_rv} ||= 0;
@@ -264,7 +265,7 @@ sub _run_cmd_ipc_run_args {
 }
 
 sub _run_cmd_system_args {
-   my ($self, @rest) = @_; my $args = arg_list @rest;
+   my ($self, @args) = @_; my $args = arg_list @args;
 
    $args->{debug      } ||= $self->debug;
    $args->{expected_rv} ||= 0;
@@ -282,9 +283,9 @@ sub _run_cmd_system_args {
 }
 
 sub _run_cmd_using_ipc_run {
-   my ($self, $cmd, @rest) = @_; my ($buf_err, $buf_out, $error, $msg, $rv);
+   my ($self, $cmd, @args) = @_; my ($buf_err, $buf_out, $error, $msg, $rv);
 
-   my $args     = $self->_run_cmd_ipc_run_args( @rest );
+   my $args     = $self->_run_cmd_ipc_run_args( @args );
    my $cmd_ref  = __partition_command( $cmd );
    my $cmd_str  = join SPC, @{ $cmd }; $args->{async} and $cmd_str .= ' &';
    my $prog     = basename( $cmd->[ 0 ] );
@@ -348,9 +349,9 @@ sub _run_cmd_using_ipc_run {
 }
 
 sub _run_cmd_using_system {
-   my ($self, $cmd, @rest) = @_; my ($error, $msg, $rv);
+   my ($self, $cmd, @args) = @_; my ($error, $msg, $rv);
 
-   my $args = $self->_run_cmd_system_args( @rest );
+   my $args = $self->_run_cmd_system_args( @args );
    my $prog = basename( (split SPC, $cmd)[ 0 ] );
    my $null = File::Spec->devnull;
    my $err  = $args->{err};
