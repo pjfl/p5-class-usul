@@ -4,7 +4,7 @@ package Class::Usul::Constants;
 
 use strict;
 use namespace::clean -except => 'meta';
-use version; our $VERSION = qv( sprintf '0.11.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.12.%d', q$Rev$ =~ /\d+/gmx );
 
 use Moose;
 use MooseX::ClassAttribute;
@@ -96,7 +96,7 @@ Class::Usul::Constants - Definitions of constant values
 
 =head1 Version
 
-0.11.$Rev$
+0.12.$Rev$
 
 =head1 Synopsis
 

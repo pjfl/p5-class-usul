@@ -1,9 +1,9 @@
-# @(#)$Id: Build.pm 818 2010-01-11 18:32:22Z pjf $
+# @(#)$Id$
 
 package Class::Usul::Build::VCS;
 
 use strict;
-use version; our $VERSION = qv( sprintf '0.11.%d', q$Rev: 818 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.12.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
@@ -95,7 +95,7 @@ Class::Usul::Build::VCS - Version control system
 
 =head1 Version
 
-This document describes Class::Usul::Build::VCS version 0.11.$Revision: 818 $
+This document describes Class::Usul::Build::VCS version 0.12.$Revision$
 
 =head1 Synopsis
 
