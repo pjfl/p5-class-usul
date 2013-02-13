@@ -1,6 +1,6 @@
 Revision history for Class::Usul
 
-0.11.246 2013-02-13
+0.11.247 2013-02-13
          - Forced MSWin32 to use popen instead of run_cmd in C::U::IPC
          - Fixed bug in 14time.t
 
