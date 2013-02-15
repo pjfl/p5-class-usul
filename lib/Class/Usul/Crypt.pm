@@ -30,11 +30,11 @@ sub encrypt (;$$) {
 }
 
 sub cipher_list () {
-   ( qw(Blowfish Rijndael Twofish) );
+   ( qw(Blowfish Rijndael Twofish2) );
 }
 
 sub default_cipher () {
-   q(Twofish);
+   q(Twofish2);
 }
 
 # Private functions

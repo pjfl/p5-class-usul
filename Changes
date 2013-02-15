@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+         - Switched to Crypt::Twofish2. Add C::U::Crypt test
+
 0.12.248 2013-02-13
          - Fixed RCS keyword expansion in C::U::Build::VCS
 

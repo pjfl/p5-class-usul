@@ -18,7 +18,7 @@ Bob->new( {
       'Class::Load'                   => 0.18,
       'Class::Null'                   => 1.09,
       'Crypt::CBC'                    => 2.30,
-      'Crypt::Twofish'                => 2.12,
+      'Crypt::Twofish2'               => 1.02,
       'Data::Printer'                 => 0.24,
       'Date::Format'                  => 2.22,
       'DateTime::Format::Epoch'       => 0.11,
