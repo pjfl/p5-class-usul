@@ -52,19 +52,32 @@ sub run_test {
    return $r;
 }
 
-my $cmd = "${perl} -v";
-my $r   = run_test( q(out), $cmd );
-my $msg = $osname eq q(mswin32) ? 'run_cmd popen' : 'run_cmd system';
-
-like $r, qr{ larry \s+ wall }imsx, $msg;
+my $cmd = "${perl} -v"; my $r;
 
 SKIP: {
-   $osname eq q(mswin32) and skip 'popen test - alread run on MSWin32', 1;
+   $osname ne q(mswin32) and skip 'run_cmd win32 - only on Windoze', 1;
 
    $r = eval { $prog->run_cmd( $cmd ) };
    $r = $EVAL_ERROR ? $EVAL_ERROR : $r->out;
 
+   like $r, qr{ larry \s+ wall }imsx, 'run_cmd win32';
+}
+
+SKIP: {
+   $osname eq q(mswin32) and skip 'popen test - not on MSWin32', 1;
+
+   $r = eval { $prog->ipc->popen( $cmd ) };
+   $r = $EVAL_ERROR ? $EVAL_ERROR : $r->out;
+
    like $r, qr{ larry \s+ wall }imsx, 'popen';
+}
+
+SKIP: {
+   $osname eq q(mswin32) and skip 'run_cmd system test - not on MSWin32', 1;
+
+   $r = run_test( q(out), $cmd );
+
+   like $r, qr{ larry \s+ wall }imsx, 'run_cmd system';
 }
 
 SKIP: {
