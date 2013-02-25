@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+         - Stopped Ciornii c-9d2392d06fcb4 - failed dependency
+           aa18dea5-6bfb-1014-97a2-fbb5402793bb
+
 0.12.250 2013-02-16
          - Robbed an IPC::Open3 implementation from IPC::Cmd for Win32
          - Switched to Crypt::Twofish2. Add C::U::Crypt test

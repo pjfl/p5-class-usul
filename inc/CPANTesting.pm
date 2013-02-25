@@ -24,9 +24,8 @@ sub test_exceptions {
    $osname eq q(mirbsd)          and return 'Mirbsd  OS unsupported';
    $host   eq q(slack64)         and return "Stopped Bingos ${host}";
    $host   eq q(falco)           and return "Stopped Bingos ${host}";
-#   $host   eq q(linux-siva)      and return "Stopped Kimmel ${host} bad clock";
-#   $host   =~ m{ solimano   }msx and return "Stopped Solimano bad clock";
-   $host   =~ m{ nigelhorne }msx and return "Stopped Horne bad Perl version";
+   $host   =~ m{ nigelhorne }msx and return 'Stopped Horne bad Perl version';
+   $host   eq q(c-9d2392d06fcb4) and return "Stopped Ciornii ${host} - failed dependency aa18dea5-6bfb-1014-97a2-fbb5402793bb";
    return 0;
 }
 
