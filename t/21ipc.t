@@ -54,47 +54,75 @@ sub run_test {
 
 my $cmd = "${perl} -v"; my $r;
 
+$r   = eval { $prog->ipc->popen( $cmd ) };
+$r   = $EVAL_ERROR ? $EVAL_ERROR : $r->out;
+
+like $r, qr{ larry \s+ wall }imsx, 'popen';
+
+$cmd = "${perl} -e \"exit 2\"";
+$r   = eval { $prog->ipc->popen( $cmd ) };
+$r   = $EVAL_ERROR ? $EVAL_ERROR : $r->out;
+
+is ref $r, EXCEPTION_CLASS, 'popen exception is right class';
+
+like $r, qr{ Unknown \s+ error }msx, 'popen unexpected rv';
+
+$r   = eval { $prog->ipc->popen( $cmd, { expected_rv => 2 } ) };
+$r   = $EVAL_ERROR ? $EVAL_ERROR : $r->rv;
+
+is $r, 2, 'popen expexted rv';
+
+$cmd = "${perl} -e \"print <>\"";
+$r   = eval { $prog->ipc->popen( $cmd, { in => [ 'some text' ] } ) };
+$r   = $EVAL_ERROR ? $EVAL_ERROR : $r->out;
+
+is $r, 'some text', 'popen captures stdin and stdout';
+
 SKIP: {
-   $osname ne q(mswin32) and skip 'run_cmd win32 - only on Windoze', 1;
+   $osname eq q(mswin32) and skip 'popen_win32 test - not on MSWin32', 5;
 
-   $r = eval { $prog->run_cmd( $cmd ) };
-   $r = $EVAL_ERROR ? $EVAL_ERROR : $r->out;
+   $cmd = "${perl} -v";
+   $r   = eval { $prog->ipc->_popen_for_win32( $cmd ) }; # Don't call this
+   $r   = $EVAL_ERROR ? $EVAL_ERROR : $r->out;
 
-   like $r, qr{ larry \s+ wall }imsx, 'run_cmd win32';
+   like $r, qr{ larry \s+ wall }imsx, 'popen_win32';
+
+   $cmd = "${perl} -e \"exit 2\"";
+   $r   = eval { $prog->ipc->_popen_for_win32( $cmd ) };
+   $r   = $EVAL_ERROR ? $EVAL_ERROR : $r->out;
+
+   is ref $r, EXCEPTION_CLASS, 'popen_win32 exception is right class';
+
+   like $r, qr{ Unknown \s+ error }msx, 'popen_win32 unexpected rv';
+
+   $r   = eval { $prog->ipc->_popen_for_win32( $cmd, { expected_rv => 2 } ) };
+   $r   = $EVAL_ERROR ? $EVAL_ERROR : $r->rv;
+
+   is $r, 2, 'popen_win32 expexted rv';
+
+   $cmd = "${perl} -e \"print <>\"";
+   $r   = eval { $prog->ipc->_popen_for_win32
+                    ( $cmd, { in => [ 'some text' ] } ) };
+   $r   = $EVAL_ERROR ? $EVAL_ERROR : $r->out;
+
+   is $r, 'some text', 'popen_win32 captures stdin and stdout';
 }
 
 SKIP: {
-   $osname eq q(mswin32) and skip 'popen test - not on MSWin32', 1;
+   $osname eq q(mswin32) and skip 'run_cmd system test - not on MSWin32', 5;
 
-   $r = eval { $prog->ipc->popen( $cmd ) };
-   $r = $EVAL_ERROR ? $EVAL_ERROR : $r->out;
-
-   like $r, qr{ larry \s+ wall }imsx, 'popen';
-}
-
-SKIP: {
-   $osname eq q(mswin32) and skip 'run_cmd system test - not on MSWin32', 1;
-
-   $r = run_test( q(out), $cmd );
+   $cmd = "${perl} -v"; $r = run_test( q(out), $cmd );
 
    like $r, qr{ larry \s+ wall }imsx, 'run_cmd system';
-}
 
-SKIP: {
-   $osname eq q(mswin32) and skip 'expected rv test - not on MSWin32', 3;
+   $cmd = "${perl} -e \"exit 2\""; $r = run_test( q(), $cmd );
 
-   $cmd = "${perl} -e \"exit 1\""; $r = run_test( q(), $cmd );
-
-   is ref $r, EXCEPTION_CLASS, 'exception is right class';
+   is ref $r, EXCEPTION_CLASS, 'run_cmd system exception is right class';
 
    like $r, qr{ Unknown \s+ error }msx, 'run_cmd system unexpected rv';
 
-   is run_test( q(rv), $cmd, { expected_rv => 1 } ), 1,
+   is run_test( q(rv), $cmd, { expected_rv => 2 } ), 2,
       'run_cmd system expected rv';
-}
-
-SKIP: {
-   $osname eq q(mswin32) and skip 'system async test - not on MSWin32', 1;
 
    like run_test( q(out), $cmd, { async => 1 } ), qr{ background }msx,
       'run_cmd system async';

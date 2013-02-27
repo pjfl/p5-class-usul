@@ -21,7 +21,7 @@ use Path::Class::Dir;
 use Scalar::Util qw(blessed openhandle);
 use Sys::Hostname;
 
-my @_functions; my $_bson_id_inc : shared = 0; my $osname = lc $OSNAME;
+my @_functions; my $_bson_id_inc : shared = 0;
 
 BEGIN {
    @_functions = ( qw(abs_path app_prefix arg_list assert_directory
@@ -30,8 +30,8 @@ BEGIN {
                       data_dumper distname downgrade elapsed
                       env_prefix escape_TT exception find_source fold
                       fqdn hex2str home2appldir is_arrayref is_coderef
-                      is_hashref is_member merge_attributes my_prefix
-                      pad prefix2class product say split_on__
+                      is_hashref is_member is_win32 merge_attributes
+                      my_prefix pad prefix2class product say split_on__
                       split_on_dash squeeze strip_leader sub_name sum
                       thread_id throw trim unescape_TT untaint_cmdline
                       untaint_identifier untaint_path untaint_string
@@ -46,12 +46,12 @@ use Sub::Exporter -setup => {
 sub abs_path ($) {
    my $y = shift; (defined $y and length $y) or return $y;
 
-   ($osname eq EVIL or $osname eq q(cygwin))
+   (is_win32() or lc $OSNAME eq q(cygwin))
       and not -e $y and return untaint_path( $y ); # Hate
 
    $y = Cwd::abs_path( untaint_path( $y ) );
 
-   $osname eq EVIL and defined $y and $y =~ s{ / }{\\}gmx; # More hate
+   is_win32() and defined $y and $y =~ s{ / }{\\}gmx; # More hate
 
    return $y;
 }
@@ -218,6 +218,10 @@ sub is_member (;@) {
    return (first { $_ eq $candidate } @rest) ? 1 : 0;
 }
 
+sub is_win32 () {
+   return lc $OSNAME eq EVIL ? 1 : 0;
+}
+
 sub merge_attributes ($$$;$) {
    my ($dest, $src, $defaults, $attrs) = @_; my $class = blessed $src;
 
@@ -262,7 +266,7 @@ sub say (;@) {
 
    $rest[ 0 ] ||= q(); chomp( @rest );
 
-   local ($OFS, $ORS) = $osname eq EVIL ? ("\r\n", "\r\n") : ("\n", "\n");
+   local ($OFS, $ORS) = is_win32() ? ("\r\n", "\r\n") : ("\n", "\n");
 
    return print {*STDOUT} @rest
       or throw( error => 'IO error [_1]', args =>[ $ERRNO ] );
@@ -704,6 +708,12 @@ Tests to see if the scalar variable is a hash ref
 
 Tests to see if the first parameter is present in the list of
 remaining parameters
+
+=head2 is_win32
+
+   $bool = is_win32;
+
+Returns true if the C<$OSNAME> is L<evil|Class::Usul::Constants/EVIL>
 
 =head2 merge_attributes
 

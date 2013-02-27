@@ -8,7 +8,7 @@ use Class::Null;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::File;
-use Class::Usul::Functions    qw(arg_list is_arrayref merge_attributes
+use Class::Usul::Functions    qw(arg_list is_arrayref is_win32 merge_attributes
                                  strip_leader throw);
 use Class::Usul::Time         qw(time2str);
 use English                   qw(-no_match_vars);
@@ -24,13 +24,12 @@ use Try::Tiny;
 
 our ($ERROR, $WAITEDPID);
 
-my $is_win32 = lc $OSNAME eq EVIL ? TRUE : FALSE;
-
 has 'response_class' => is => 'lazy', isa => LoadableClass, coerce => TRUE,
    default           => sub { 'Class::Usul::Response::IPC' };
 
 has 'table_class'    => is => 'lazy', isa => LoadableClass, coerce => TRUE,
    default           => sub { 'Class::Usul::Response::Table' };
+
 
 has '_file' => is => 'lazy', isa => FileType,
    default  => sub { Class::Usul::File->new( builder => $_[ 0 ]->usul ) },
@@ -64,55 +63,14 @@ sub popen {
 
    is_arrayref $cmd and $cmd = join SPC, @{ $cmd };
 
-   $is_win32 and return $self->_run_cmd_win32_open3( $cmd, @args );
-
-   my $args = arg_list @args; my ($e, $pid, @ready);
-
-   my $err  = IO::Handle->new();
-   my $out  = IO::Handle->new();
-   my $in   = IO::Handle->new();
-
-   {  local ($CHILD_ERROR, $ERRNO, $WAITEDPID); local $ERROR = FALSE;
-
-      try {
-         local $SIG{CHLD} = \&__handler; local $SIG{PIPE} = \&__cleaner;
-
-         $pid = open3( $in, $out, $err, $cmd );
-
-         for my $line (@{ $args->{in} || [] }) {
-            print {$in} $line
-               or throw error => 'IO error [_1]', args =>[ $ERRNO ];
-         }
-
-         $in->close;
-      }
-      catch { $e = $_ };
-
-      not $e and $e = $ERROR and $e .= " - whilst executing ${cmd}";
-   }
-
-   if ($e) { $err->close; $out->close; throw $e }
-
-   my $stdout; my $selector = IO::Select->new(); $selector->add( $err, $out );
-
-   while (@ready = $selector->can_read) {
-      for my $fh (@ready) {
-         if (fileno $fh == fileno $err) { $e = __read_all_from( $fh ) }
-         else { $stdout = __read_all_from( $fh ) }
-
-         if ($fh->eof) { $selector->remove( $fh ); $fh->close }
-      }
-   }
-
-   waitpid $pid, 0; $e and throw $e;
-
-   return $self->response_class->new( out => $stdout, stdout => $stdout );
+   return is_win32 ? $self->_popen_for_win32( $cmd, @args )
+                   : $self->_popen_for_unix( $cmd, @args );
 }
 
 sub process_exists {
-   my ($self, @args) = @_; my ($io, $file);
+   my ($self, @args) = @_; my $args = arg_list @args;
 
-   my $args = arg_list @args; my $pid = $args->{pid};
+   my $pid = $args->{pid}; my ($io, $file);
 
    $file = $args->{file} and $io = $self->io( $file ) and $io->is_file
       and $pid = $io->chomp->lock->getline;
@@ -160,15 +118,15 @@ sub run_cmd {
    my ($self, $cmd, @args) = @_; $cmd or throw 'Run command not specified';
 
    if (is_arrayref $cmd) {
-      if (can_load( modules => { 'IPC::Run' => q(0.84) } ) and not $is_win32) {
+      if (not is_win32 and can_load( modules => { 'IPC::Run' => q(0.84) } )) {
          return $self->_run_cmd_using_ipc_run( $cmd, @args );
       }
 
       $cmd = join SPC, @{ $cmd };
    }
 
-   return $is_win32 ? $self->_run_cmd_win32_open3( $cmd, @args )
-                    : $self->_run_cmd_using_system( $cmd, @args );
+   return is_win32 ? $self->_popen_for_win32( $cmd, @args )
+                   : $self->_run_cmd_using_system( $cmd, @args );
 }
 
 sub signal_process {
@@ -252,42 +210,200 @@ sub _new_process_table {
         wrap     => { cmd => 1 }, );
 }
 
-sub _run_cmd_ipc_run_args {
-   my ($self, @args) = @_; my $args = arg_list @args;
+sub _popen_for_unix {
+   my ($self, $cmd, @args) = @_;
+
+   my $args  = $self->_run_cmd_common_args( arg_list @args );
+   my $err_h = IO::Handle->new(); my $in_h = IO::Handle->new();
+   my $out_h = IO::Handle->new(); my ($e, $pid, @ready, $stderr, $stdout);
+
+   $args->{debug} and $self->log->debug( "Running ${cmd}" );
+
+   {  local ($CHILD_ERROR, $ERRNO, $WAITEDPID); local $ERROR = FALSE;
+
+      try {
+         local $SIG{CHLD} = \&__handler; local $SIG{PIPE} = \&__cleaner;
+
+         $pid = open3( $in_h, $out_h, $err_h, $cmd );
+
+         if ($args->{in} and $args->{in} ne q(stdin)) {
+            __print_fh( $in_h, $_ ) for (split m{ [\r] }mx, $args->{in});
+         }
+
+         $in_h->close;
+      }
+      catch { $e = $_ };
+
+      if ($e ||= $ERROR) { $err_h->close; $out_h->close; throw $e }
+   }
+
+   my $selector = IO::Select->new(); $selector->add( $err_h, $out_h );
+
+   while (@ready = $selector->can_read) {
+      for my $fh (@ready) {
+         if (fileno $fh == fileno $err_h) { $stderr = __read_all_from( $fh ) }
+         else { $stdout = __read_all_from( $fh ) }
+
+         if ($fh->eof) { $selector->remove( $fh ); $fh->close }
+      }
+   }
+
+   waitpid $pid, 0; my $status = $CHILD_ERROR;
+
+   my $codes = $self->_return_codes_or_throw( $cmd, $args, $status, $ERRNO );
+
+   return $self->response_class->new( core   => $codes->{core},
+                                      out    => $stdout,
+                                      rv     => $codes->{rv},
+                                      sig    => $codes->{sig},
+                                      stderr => $stderr,
+                                      stdout => $stdout );
+}
+
+sub _popen_for_win32 { # Robbed from IPC::Cmd
+   my ($self, $cmd, @args) = @_;
+
+   my $args = $self->_run_cmd_common_args( arg_list @args );
+
+   $args->{err} ||= NUL; $args->{out} ||= NUL;
+
+   my ($out, $stderr, $stdout) = (NUL, NUL, NUL);
+
+   my $errhand = sub {
+      my $buf = shift; defined $buf or return;
+
+      $args->{err} ne q(null)   and $stderr .= $buf;
+      $args->{err} eq q(out)    and $out .= $buf;
+      $args->{err} eq q(stderr) and __print_fh( \*STDERR, $buf );
+      return;
+   };
+
+   my $outhand = sub {
+      my $buf = shift; defined $buf or return; $out .= $buf;
+
+      $args->{out} ne q(null)   and $stdout .= $buf;
+      $args->{out} eq q(stdout) and __print_fh( \*STDOUT, $buf );
+      return;
+   };
+
+   my $pipe = sub {
+      socketpair( $_[ 0 ], $_[ 1 ], AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or return;
+      shutdown  ( $_[ 0 ], 1 );  # No more writing for reader
+      shutdown  ( $_[ 1 ], 0 );  # No more reading for writer
+      return TRUE;
+   };
+
+   my $open3 = sub {
+      local (*TO_CHLD_R,     *TO_CHLD_W);
+      local (*FR_CHLD_R,     *FR_CHLD_W);
+      local (*FR_CHLD_ERR_R, *FR_CHLD_ERR_W);
+
+      $pipe->(*TO_CHLD_R,     *TO_CHLD_W    ) or throw $EXTENDED_OS_ERROR;
+      $pipe->(*FR_CHLD_R,     *FR_CHLD_W    ) or throw $EXTENDED_OS_ERROR;
+      $pipe->(*FR_CHLD_ERR_R, *FR_CHLD_ERR_W) or throw $EXTENDED_OS_ERROR;
+
+      my $pid = IPC::Open3::open3( '>&TO_CHLD_R', '<&FR_CHLD_W',
+                                   '<&FR_CHLD_ERR_W', @_ );
+
+      return ($pid, *TO_CHLD_W, *FR_CHLD_R, *FR_CHLD_ERR_R);
+   };
+
+   $args->{debug} and $self->log->debug( "Running ${cmd}" );
+
+   my ($pid, $in_h, $out_h, $err_h) = $open3->( $cmd );
+
+   if ($args->{in} and $args->{in} ne q(stdin)) {
+      __print_fh( $in_h, $_ ) for (split m{ [\r] }mx, $args->{in});
+   }
+
+   close $in_h; my (%hands, @ready);
+
+   my $selector = IO::Select->new(); $selector->add( $err_h, $out_h );
+
+   $hands{ fileno( $err_h ) } = $errhand; $hands{ fileno( $out_h ) } = $outhand;
+
+   while (@ready = $selector->can_read) {
+      for my $fh (@ready) {
+         my $buf; my $bytes_read = sysread( $fh, $buf, 64 * 1024 );
+
+         if ($bytes_read) { $hands{ fileno( $fh ) }->( "${buf}" ) }
+         else { $selector->remove( $fh ); close $fh }
+      }
+   }
+
+   waitpid $pid, 0; my $status = $CHILD_ERROR;
+
+   my $codes = $self->_return_codes_or_throw( $cmd, $args, $status, $ERRNO );
+
+   return $self->response_class->new( core   => $codes->{core},
+                                      out    => $out,
+                                      rv     => $codes->{rv},
+                                      sig    => $codes->{sig},
+                                      stderr => $stderr,
+                                      stdout => $stdout );
+}
+
+sub _return_codes_or_throw {
+   my ($self, $cmd, $args, $status, $errstr) = @_; $errstr ||= 'Unknown error';
+
+   if ($status == -1) {
+      my $error = 'Program [_1] failed to start: [_2]';
+      my $prog  = basename( (split SPC, $cmd)[ 0 ] );
+
+      throw error => $error, level => 5, args => [ $prog, $errstr ], rv => -1;
+   }
+
+   my $rv = $status >> 8; my $core = $status & 128; my $sig = $status & 127;
+
+   if ($rv > $args->{expected_rv}) {
+      $args->{debug} and $self->log->debug( "RV ${rv}: ${errstr}" );
+      throw error => $errstr, level => 5, rv => $rv;
+   }
+
+   return { core => $core, rv => $rv, sig => $sig, };
+}
+
+sub _run_cmd_common_args {
+   my ($self, $args) = @_;
+
+   is_arrayref $args->{in} and $args->{in} = join "\r", @{ $args->{in} };
 
    $args->{debug      } ||= $self->debug;
    $args->{expected_rv} ||= 0;
+   $args->{in         } ||= q(stdin);
    $args->{tempdir    } ||= $self->file->tempdir;
    $args->{pid_ref    } ||= $self->file->tempfile( $args->{tempdir} );
-   $args->{err        } ||= NUL;
-   $args->{out        } ||= NUL;
-   $args->{in         } ||= q(stdin);
+   return $args;
+}
 
-   is_arrayref $args->{in} and $args->{in} = join "\n", @{ $args->{in} };
+sub _run_cmd_ipc_run_args {
+   my $self = shift; my $args = $self->_run_cmd_common_args( arg_list @_ );
+
+   $args->{err} ||= NUL; $args->{out} ||= NUL;
 
    return $args;
 }
 
 sub _run_cmd_system_args {
-   my ($self, @args) = @_; my $args = arg_list @args;
+   my $self = shift; my $args = $self->_run_cmd_common_args( arg_list @_ );
 
-   $args->{debug      } ||= $self->debug;
-   $args->{expected_rv} ||= 0;
-   $args->{tempdir    } ||= $self->file->tempdir;
-   # Three different semi-random file names in the temp directory
-   $args->{err_ref    } ||= $self->file->tempfile( $args->{tempdir} );
-   $args->{out_ref    } ||= $self->file->tempfile( $args->{tempdir} );
-   $args->{pid_ref    } ||= $self->file->tempfile( $args->{tempdir} );
-   $args->{err        } ||= q(out) if ($args->{async});
-   $args->{err        } ||= $args->{err_ref}->pathname;
-   $args->{out        } ||= $args->{out_ref}->pathname;
-   $args->{in         } ||= q(stdin);
+   if ($args->{in} and $args->{in} ne q(stdin)) {
+      $args->{in_ref} ||= $self->file->tempfile( $args->{tempdir} );
+      $args->{in_ref}->print( $args->{in} );
+      $args->{in} = $args->{in_ref}->pathname;
+   }
 
+   # Different semi-random file names in the temp directory
+   $args->{err_ref} ||= $self->file->tempfile( $args->{tempdir} );
+   $args->{out_ref} ||= $self->file->tempfile( $args->{tempdir} );
+   $args->{err    } ||= q(out) if ($args->{async});
+   $args->{err    } ||= $args->{err_ref}->pathname;
+   $args->{out    } ||= $args->{out_ref}->pathname;
    return $args;
 }
 
 sub _run_cmd_using_ipc_run {
-   my ($self, $cmd, @args) = @_; my ($buf_err, $buf_out, $error, $msg, $rv);
+   my ($self, $cmd, @args) = @_; my ($buf_err, $buf_out, $error, $rv);
 
    my $args     = $self->_run_cmd_ipc_run_args( @args );
    my $cmd_ref  = __partition_command( $cmd );
@@ -342,8 +458,8 @@ sub _run_cmd_using_ipc_run {
    else { $stderr = $error = NUL }
 
    if ($rv > $args->{expected_rv}) {
-      $error ||= 'Unknown error'; $msg = "Return value ${rv} error ${error}";
-      $args->{debug} and $self->log->debug( $msg );
+      $error ||= 'Unknown error';
+      $args->{debug} and $self->log->debug( "RV ${rv}: ${error}" );
       throw error => $error, rv => $rv;
    }
 
@@ -426,110 +542,14 @@ sub _run_cmd_using_system {
    else { $stderr = $error = NUL }
 
    if ($rv > $args->{expected_rv}) {
-      $error ||= 'Unknown error'; $msg = "Return value ${rv} error ${error}";
-      $args->{debug} and $self->log->debug( $msg );
+      $error ||= 'Unknown error';
+      $args->{debug} and $self->log->debug( "RV ${rv}: ${error}" );
       throw error => $error, rv => $rv;
    }
 
    return $self->response_class->new( core   => $core,   out    => $out,
                                       rv     => $rv,     sig    => $sig,
                                       stderr => $stderr, stdout => $stdout );
-}
-
-sub _run_cmd_win32_open3 { # Robbed from IPC::Cmd
-   my ($self, $cmd, @args) = @_; my $args = arg_list @args;
-
-   my ($buff_out, $buff_err, $buffer) = (NUL, NUL, NUL);
-
-   my $outhand = sub {
-      my $buf = shift; defined $buf or return;
-
-      $args->{verbose} and __print_fh( \*STDOUT, $buf );
-      $buffer .= $buf; $buff_out .= $buf;
-      return;
-   };
-
-   my $errhand = sub {
-      my $buf = shift; defined $buf or return;
-
-      $args->{verbose} and __print_fh( \*STDERR, $buf );
-      $buffer .= $buf; $buff_err .= $buf;
-      return;
-   };
-
-   my $pipe = sub {
-      socketpair( $_[ 0 ], $_[ 1 ], AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or return;
-      shutdown  ( $_[ 0 ], 1 );  # No more writing for reader
-      shutdown  ( $_[ 1 ], 0 );  # No more reading for writer
-      return TRUE;
-   };
-
-   my $open3 = sub {
-      local (*TO_CHLD_R,     *TO_CHLD_W);
-      local (*FR_CHLD_R,     *FR_CHLD_W);
-      local (*FR_CHLD_ERR_R, *FR_CHLD_ERR_W);
-
-      $pipe->(*TO_CHLD_R,     *TO_CHLD_W    ) or throw $EXTENDED_OS_ERROR;
-      $pipe->(*FR_CHLD_R,     *FR_CHLD_W    ) or throw $EXTENDED_OS_ERROR;
-      $pipe->(*FR_CHLD_ERR_R, *FR_CHLD_ERR_W) or throw $EXTENDED_OS_ERROR;
-
-      my $pid = IPC::Open3::open3( '>&TO_CHLD_R', '<&FR_CHLD_W',
-                                   '<&FR_CHLD_ERR_W', @_ );
-
-      return ($pid, *TO_CHLD_W, *FR_CHLD_R, *FR_CHLD_ERR_R);
-   };
-
-   $args->{debug} and $self->log->debug( "Running ${cmd}" );
-
-   my ($pid, $to_chld, $fr_chld, $fr_chld_err) = $open3->( $cmd );
-
-   my $in_sel = IO::Select->new(); my $out_sel = IO::Select->new();
-
-   my %objs;
-
-   $objs{ fileno( $fr_chld ) } = $outhand;
-   $objs{ fileno( $fr_chld_err ) } = $errhand;
-
-   $in_sel->add( $fr_chld ); $in_sel->add( $fr_chld_err ); close $to_chld;
-
-   while ($in_sel->count() + $out_sel->count()) {
-      my ($ins, $outs) = IO::Select::select( $in_sel, $out_sel, undef );
-
-      for my $fh (@{ $ins }) {
-         my $obj = $objs{ fileno( $fh ) };
-
-         my $buf; my $bytes_read = sysread( $fh, $buf, 64 * 1024 );
-
-         if (not $bytes_read) { $in_sel->remove( $fh ) }
-         else { $obj->( "${buf}" ) }
-      }
-   }
-
-   waitpid( $pid, 0 ); my $rv = $CHILD_ERROR;
-
-   if ($rv == -1) {
-      my $error = 'Program [_1] failed to start: [_2]';
-      my $prog  = basename( (split SPC, $cmd)[ 0 ] );
-
-      throw error => $error, args => [ $prog, $ERRNO ], rv => -1;
-   }
-
-   my $sig = $rv & 127; my $core = $rv & 128; $rv = $rv >> 8;
-
-   if ($rv > ($args->{expected_rv} // 0)) {
-      my $error = $ERRNO || 'Unknown error';
-      my $msg   = "Return value ${rv} error ${error}";
-
-      $args->{debug} and $self->log->debug( $msg );
-      throw error => $error, rv => $rv;
-   }
-
-   return $self->response_class->new( core   => $core,
-                                      out    => $buffer,
-                                      rv     => $rv,
-                                      sig    => $sig,
-                                      stderr => $buff_err,
-                                      stdout => $buff_out );
 }
 
 sub _set_fields {

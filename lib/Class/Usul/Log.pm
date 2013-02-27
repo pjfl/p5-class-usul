@@ -43,9 +43,9 @@ around 'BUILDARGS' => sub {
 };
 
 sub BUILD {
-   my $self = shift; my $class = blessed $self;
+   my $self = shift; my $class = blessed $self; my $meta = $class->meta;
 
-   my $meta = $class->meta; $meta->make_mutable;
+   $meta->make_mutable;
 
    for my $method (LOG_LEVELS) {
       $meta->has_method( $method ) or $meta->add_method( $method => sub {
@@ -56,15 +56,15 @@ sub BUILD {
          return;
       } );
 
-      my $msg_meth = "${method}_message";
+      my $meth_msg = "${method}_message";
 
-      $meta->has_method( $msg_meth ) or $meta->add_method( $msg_meth => sub {
+      $meta->has_method( $meth_msg ) or $meta->add_method( $meth_msg => sub {
          my ($self, $opts, $msg) = @_; my $text;
 
          my $user = $opts->{user} ? $opts->{user}->username : q(unknown);
 
          $msg ||= NUL; $msg = NUL.$msg; chomp $msg;
-         $text  = (ucfirst $opts->{leader} || NUL).q([).($user || NUL).q(]).SPC;
+         $text  = (ucfirst $opts->{leader} || NUL)."[${user}] ";
          $text .= (ucfirst $msg || 'no message');
          $self->$method( $text );
          return;
