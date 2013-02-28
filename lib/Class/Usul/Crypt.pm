@@ -91,7 +91,7 @@ Class::Usul::Crypt - Encryption/decryption functions
    my $args = 'salt'; # OR
    my $args = { salt => 'salt', seed => 'whiten this' };
 
-   $args->{cipher} = 'Twofish'; # Optionally
+   $args->{cipher} = 'Twofish2'; # Optionally
 
    my $base64_encrypted_text = encrypt( $args, $plain_text );
 
@@ -122,7 +122,7 @@ text result. See the L</encrypt> method
    my $encoded = encrypt( $salt || \%params, $plain );
 
 Encrypts the plain text passed in the C<$plain> argument and returns
-it Base64 encoded. By default L<Crypt::Twofish> is used to do the
+it Base64 encoded. By default L<Crypt::Twofish2> is used to do the
 encryption. The optional C<< $params->{cipher} >> attribute overrides this
 
 =head2 cipher_list
@@ -136,7 +136,7 @@ all be installed
 
    $ciper_name = default_cipher();
 
-Returns I<Twofish>
+Returns I<Twofish2>
 
 =head2 __cipher
 
@@ -159,7 +159,7 @@ None
 
 =item L<Crypt::CBC>
 
-=item L<Crypt::Twofish>
+=item L<Crypt::Twofish2>
 
 =item L<MIME::Base64>
 

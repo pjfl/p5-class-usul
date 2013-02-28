@@ -21,11 +21,15 @@ sub test_exceptions {
 
    $p->{stop_tests} and return 'CPAN Testing stopped in Build.PL';
 
-   $osname eq q(mirbsd)          and return 'Mirbsd  OS unsupported';
-   $host   eq q(slack64)         and return "Stopped Bingos ${host}";
-   $host   eq q(falco)           and return "Stopped Bingos ${host}";
-   $host   =~ m{ nigelhorne }msx and return 'Stopped Horne bad Perl version';
-   $host   eq q(c-9d2392d06fcb4) and return "Stopped Ciornii ${host} - failed dependency aa18dea5-6bfb-1014-97a2-fbb5402793bb";
+   $osname eq q(mirbsd)          and return 'Mirbsd OS unsupported';
+   $host   eq q(slack64)         and return
+      "Stopped Bingos  ${host} - IPC::ShareLite - no space left on device";
+   $host   eq q(falco)           and return
+      "Stopped Bingos  ${host} - IPC::ShareLite - no space left on device";
+   $host   =~ m{ nigelhorne }msx and return
+      "Stopped Horne   ${host} - irrelevant Perl versions";
+   $host   eq q(c-9d2392d06fcb4) and return
+      "Stopped Ciornii ${host} - aa18dea5-6bfb-1014-97a2-fbb5402793bb";
    return 0;
 }
 

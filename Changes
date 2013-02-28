@@ -1,6 +1,7 @@
 Revision history for Class::Usul
 
-         - Corrected pod in C::U::Functions
+0.12.254 2013-02-28
+         - Corrected pod in C::U::Functions and C::U::Crypt
          - Refactored C::U::IPC::popen implementations
          - Stopped Ciornii c-9d2392d06fcb4 - failed dependency
            aa18dea5-6bfb-1014-97a2-fbb5402793bb
