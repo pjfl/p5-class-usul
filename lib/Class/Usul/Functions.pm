@@ -640,7 +640,7 @@ variables
 
 =head2 escape_TT
 
-   $text = escape_TT q([% some_stash_key %]);
+   $text = escape_TT '[% some_stash_key %]';
 
 The left square bracket causes problems in some contexts. Substitute a
 less than symbol instead. Also replaces the right square bracket with
@@ -749,7 +749,7 @@ C<ucfirst>s the list and then C<join>s that with I<::>
 
 =head2 product
 
-   $product = product( 1, 2, 3, 4 );
+   $product = product 1, 2, 3, 4;
 
 Returns the product of the list of numbers
 
@@ -776,13 +776,13 @@ to field zero
 
 =head2 squeeze
 
-   $string = squeeze $string_containing_muliple_spacesd);
+   $string = squeeze $string_containing_muliple_spacesd;
 
 Squeezes multiple whitespace down to a single space
 
 =head2 strip_leader
 
-   $stripped = strip_leader q(my_program: Error message);
+   $stripped = strip_leader 'my_program: Error message';
 
 Strips the leading "program_name: whitespace" from the passed argument
 
@@ -808,13 +808,13 @@ Returns the id of this thread. Returns zero if threads are not loaded
 
    throw error => q(error_key), args => [ q(error_arg) ];
 
-Expose L<CatalystX::Usul::Exception/throw>. C<CX::Usul::Functions> has a
-class attribute I<Exception_Class> which can be set via a call to
-C<set_inherited>
+Expose L<File::DataClass::Exception/throw>. L<Class::Usul::Constants> has a
+class attribute I<Exception_Class> which can be set change the class
+of the thrown exception
 
 =head2 trim
 
-   $trimmed_string = trim $string_with_leading_and trailing_whitespace;
+   $trimmed_string = trim $string_with_leading_and_trailing_whitespace;
 
 Remove leading and trailing whitespace including trailing newlines
 
@@ -853,7 +853,7 @@ Returns an untainted string or throws
 
 =head2 zip
 
-   %hash = zip @list_of_keys @list_of_values;
+   %hash = zip @list_of_keys, @list_of_values;
 
 Zips two list of equal size together to form a hash
 
