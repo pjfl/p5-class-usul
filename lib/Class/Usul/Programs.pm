@@ -229,7 +229,7 @@ sub get_meta {
 
    $path and unshift @paths, $self->io( $path );
 
-   return $meta_class->new( $_ ) for (grep { $_->is_file } @paths);
+   return $meta_class->new( $_ ) for (grep { $_->exists } @paths);
 
    throw 'No META.yml file';
    return;
@@ -428,7 +428,7 @@ sub _build__os {
 }
 
 sub _catch_run_exception {
-   my ($self, $error) = @_; my $e = exception $error;
+   my ($self, $error) = @_; my $e = exception $error or return UNDEFINED_RV;
 
    $e->out and $self->output( $e->out );
    $self->error( $e->error, { args => $e->args } );

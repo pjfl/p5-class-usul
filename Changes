@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+         - Patched undefined error bug in C::U::Programs::run
+         - Fixed existance test in C::U::Programs::get_meta
+
 0.12.254 2013-02-28
          - Corrected pod in C::U::Functions and C::U::Crypt
          - Refactored C::U::IPC::popen implementations
