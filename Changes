@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+0.12.255 2013-03-02
+         - Patched C::U::IPC::popen child handling return values
          - Patched undefined error bug in C::U::Programs::run
          - Fixed existance test in C::U::Programs::get_meta
 

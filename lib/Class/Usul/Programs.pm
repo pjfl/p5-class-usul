@@ -79,6 +79,7 @@ has 'version'      => is => 'ro', isa => Bool, default => FALSE,
    documentation   => 'Displays the version number of the program class',
    traits          => [ 'Getopt' ], cmd_aliases => q(V), cmd_flag => 'version';
 
+
 has '_file'    => is => 'lazy', isa => FileType,
    default     => sub { Class::Usul::File->new( builder => $_[ 0 ] ) },
    handles     => [ qw(io) ], init_arg => undef, reader => 'file';
@@ -326,9 +327,10 @@ sub run {
 
       umask $self->mode;
 
-      try { defined ($rv = $self->$method( @{ $params } ))
-               or throw error => 'Method [_1] return value undefined',
-                        args  => [ $method ];
+      try {
+         defined ($rv = $self->$method( @{ $params } ))
+            or throw error => 'Method [_1] return value undefined',
+                     args  => [ $method ];
       }
       catch { $rv = $self->_catch_run_exception( $_ ) };
    }
@@ -1010,7 +1012,7 @@ line. Returns the exit code
 
 =head2 run_chain
 
-   $exit_code = $self->chain_controller( $method );
+   $exit_code = $self->run_chain( $method );
 
 Called by L</run> when C<_get_run_method> cannot determine which method to
 call. Outputs usage if C<$method> is undefined. Logs an error if
@@ -1069,13 +1071,25 @@ Turning debug on produces some more output
 
 =over 3
 
+=item L<Class::Inspector>
+
 =item L<Class::Usul>
 
-=item L<File::DataClass>
+=item L<Class::Usul::IPC>
 
-=item L<Getopt::Mixed>
+=item L<Class::Usul::File>
+
+=item L<Class::Usul::TraitFor::LoadingClasses>
+
+=item L<Class::Usul::TraitFor::UntaintedGetopts>
+
+=item L<Encode>
+
+=item L<File::HomeDir>
 
 =item L<IO::Interactive>
+
+=item L<MooseX::Getopt::Dashes>
 
 =item L<Term::ReadKey>
 
