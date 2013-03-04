@@ -42,7 +42,7 @@ Bob->new( {
       'MooseX::Aliases'               => 0.10,
       'MooseX::AttributeShortcuts'    => 0.014,
       'MooseX::ClassAttribute'        => 0.10,
-      'MooseX::Getopt::Dashes'        => 0.33,
+      'MooseX::Getopt'                => 0.50,
       'MooseX::MethodAttributes'      => 0.24,
       'MooseX::Role::Parameterized'   => 0.19,
       'MooseX::Role::WithOverloading' => 0.08,

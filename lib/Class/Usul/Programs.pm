@@ -302,7 +302,7 @@ sub output {
    return;
 }
 
-sub print_usage_text { # Required to stop MX::Getopt from printing usage (2)
+sub print_usage_text { # Required to stop MX::Getopt from printing usage
 }
 
 sub quiet {
@@ -330,19 +330,19 @@ sub run {
       try {
          defined ($rv = $self->$method( @{ $params } ))
             or throw error => 'Method [_1] return value undefined',
-                     args  => [ $method ];
+                     args  => [ $method ], rv => UNDEFINED_RV;
       }
-      catch { $rv = $self->_catch_run_exception( $_ ) };
+      catch { $rv = $self->_catch_run_exception( $method, $_ ) };
    }
    else {
       $self->error( 'Class '.(blessed $self)." method ${method} not found" );
       $rv = UNDEFINED_RV;
    }
 
-   if    (defined $rv and $rv >  OK) { $self->output( "Terminated code ${rv}" )}
-   elsif (defined $rv and $rv == OK) {
+   if (defined $rv and $rv == OK) {
       $self->output( 'Finished in '.elapsed.' seconds' );
    }
+   elsif (defined $rv and $rv > OK) { $self->output( "Terminated code ${rv}" ) }
    else {
       not defined $rv and $rv = UNDEFINED_RV
          and $self->error( "Method ${method} error uncaught/rv undefined" );
@@ -430,7 +430,13 @@ sub _build__os {
 }
 
 sub _catch_run_exception {
-   my ($self, $error) = @_; my $e = exception $error or return UNDEFINED_RV;
+   my ($self, $method, $error) = @_; my $e = exception $error;
+
+   unless ($e) {
+      $self->error( 'Method [_1] exception without error',
+                    { args => [ $method ] } );
+      return UNDEFINED_RV;
+   }
 
    $e->out and $self->output( $e->out );
    $self->error( $e->error, { args => $e->args } );
@@ -465,9 +471,6 @@ sub _get_run_method {
    $method ||= 'run_chain'; $method eq 'run_chain' and $self->quiet( TRUE );
 
    return $method;
-}
-
-sub _getopt_full_usage { # Required to stop MX::Getopt from printing usage (1)
 }
 
 sub _man_page_from {

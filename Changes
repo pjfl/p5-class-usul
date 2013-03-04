@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+         - Upped dependency on MooseX::Getopt to 0.50.
+           Removed C::U::Programs::_getopt_full_usage
+
 0.12.260 2013-03-02
          - Patched C::U::IPC::popen child handling return values
          - Patched undefined error bug in C::U::Programs::run
