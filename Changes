@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+         - Consolidated C::U::IPC::popen implementations
          - Upped dependency on MooseX::Getopt to 0.50.
            Removed C::U::Programs::_getopt_full_usage
 
