@@ -111,7 +111,7 @@ around 'BUILDARGS' => sub {
    my $cfg = $attr->{config} ||= {};
 
    $cfg->{appclass} ||= delete $attr->{appclass} || prefix2class $PROGRAM_NAME;
-   $cfg->{home    } ||= __get_homedir ( $cfg->{appclass}, $attr->{home} );
+   $cfg->{home    } ||= __get_apphome ( $cfg->{appclass}, $attr->{home} );
    $cfg->{cfgfiles} ||= __get_cfgfiles( $cfg->{appclass},  $cfg->{home} );
 
    return $attr;
@@ -132,8 +132,8 @@ sub BUILD {
 sub add_leader {
    my ($self, $text, $args) = @_; $text or return NUL; $args ||= {};
 
-   my $leader = exists $args->{no_lead} ? NUL
-                                        : (ucfirst $self->config->name).BRK;
+   my $leader = exists $args->{no_lead}
+              ? NUL : (ucfirst $self->config->name).BRK;
 
    if ($args->{fill}) {
       my $width = $args->{width} || WIDTH;
@@ -536,15 +536,79 @@ sub _usage_for {
 
 # Private functions
 
-sub __get_cfgfiles {
-   my ($appclass, $home) = @_;
+sub __get_apphome {
+   my ($appclass, $home) = @_; my ($file, $path);
 
-   my $prefix = app_prefix $appclass; my $files = []; my $file;
+   # 0. Pass the directory in
+   $path = assert_directory $home and return $path;
+
+   my $app_prefix = app_prefix   $appclass;
+   my $appdir     = class2appdir $appclass;
+   my $classdir   = classdir     $appclass;
+   my $env_prefix = env_prefix   $appclass;
+   my $my_home    = File::HomeDir->my_home;
+
+   # 1a. Environment variable - for application directory
+   $path = $ENV{ "${env_prefix}_HOME" };
+   $path = assert_directory $path and return $path;
+
+   # 1b. Environment variable - for config file
+   $file = $ENV{ "${env_prefix}_CONFIG" };
+   $path = $file ? dirname( $file ) : NUL;
+   $path = assert_directory $path and return $path;
+
+   # 2a. Users home directory - contains application directory
+   $path = catdir( $my_home, $appdir, qw(default lib), $classdir );
+   $path = assert_directory $path and return $path;
+
+   # 2b. Users home directory - dot directory containing application
+   $path = catdir( $my_home, ".${appdir}", qw(default lib), $classdir );
+   $path = assert_directory $path and return $path;
+
+   # 2c. Users home directory - dot file containing shell env variable
+   $file = catfile( $my_home, ".${app_prefix}" );
+   $path = __read_variable( $file, q(APPLDIR) );
+   $path and $path = catdir( $path, q(lib), $classdir );
+   $path = assert_directory $path and return $path;
+
+   # 2d. Users home directory - dot directory is appldir
+   $path = catdir( $my_home, ".${app_prefix}" );
+   $path = assert_directory $path and return $path;
+
+   # 3. Well known path containing shell env file
+   $file = catfile( @{ DEFAULT_DIR() }, $appdir );
+   $path = __read_variable( $file, q(APPLDIR) );
+   $path and $path = catdir( $path, q(lib), $classdir );
+   $path = assert_directory $path and return $path;
+
+   # 4. Default install prefix
+   $path = catdir( @{ PREFIX() }, $appdir, qw(default lib), $classdir );
+   $path = assert_directory $path and return $path;
+
+   # 5. Config file found in @INC
+   for $path (map { catdir( abs_path( $_ ), $classdir ) } @INC) {
+      for my $extn (keys %{ Class::Usul::File->extensions }) {
+         $file = untaint_path catfile( $path, $app_prefix.$extn );
+
+         -f $file and return dirname( $file );
+      }
+   }
+
+   # 6. Default to /tmp
+   return untaint_path( File::Spec->tmpdir );
+}
+
+sub __get_cfgfiles {
+   my ($appclass, $home) = @_; my $files = []; my $file;
+
+   my $app_prefix = app_prefix $appclass;
+   my $env_prefix = env_prefix $appclass;
+   my $suffix     = $ENV{ "${env_prefix}_CONFIG_LOCAL_SUFFIX" } || '_local';
 
    for my $extn (keys %{ Class::Usul::File->extensions }) {
-      $file = untaint_path catfile( $home, "${prefix}${extn}" );
+      $file = untaint_path catfile( $home, "${app_prefix}${extn}" );
       -f $file and push @{ $files }, $file;
-      $file = untaint_path catfile( $home, "${prefix}_local${extn}" );
+      $file = untaint_path catfile( $home, "${app_prefix}${suffix}${extn}" );
       -f $file and push @{ $files }, $file;
    }
 
@@ -555,65 +619,6 @@ sub __get_control_chars {
    my $handle = shift; my %cntl = GetControlChars $handle;
 
    return ((join q(|), values %cntl), %cntl);
-}
-
-sub __get_homedir {
-   my ($appclass, $home) = @_; my ($file, $path);
-
-   # 0. Pass the directory in
-   $path = assert_directory $home and return $path;
-
-   # 1. Environment variable
-   $path = $ENV{ (env_prefix $appclass).q(_HOME) };
-   $path = assert_directory $path and return $path;
-
-   my $appdir   = class2appdir $appclass;
-   my $classdir = classdir     $appclass;
-   my $prefix   = app_prefix   $appclass;
-   my $my_home  = File::HomeDir->my_home;
-
-   # 2a. Users home directory - contains application directory
-   $path = catdir( $my_home, $appdir );
-   $path = catdir( $path, qw(default lib), $classdir );
-   $path = assert_directory $path and return $path;
-
-   # 2b. Users home directory - dot directory containing application
-   $path = catdir( $my_home, q(.).$appdir );
-   $path = catdir( $path, qw(default lib), $classdir );
-   $path = assert_directory $path and return $path;
-
-   # 2c. Users home directory - dot file containing shell env variable
-   $file = catfile( $my_home, q(.).$prefix );
-   $path = __read_variable( $file, q(APPLDIR) );
-   $path and $path = catdir( $path, q(lib), $classdir );
-   $path = assert_directory $path and return $path;
-
-   # 3. Well known path containing shell env file
-   $file = catfile( @{ DEFAULT_DIR() }, $appdir );
-   $path = __read_variable( $file, q(APPLDIR) );
-   $path and $path = catdir( $path, q(lib), $classdir );
-   $path = assert_directory $path and return $path;
-
-   # 4. Default install prefix
-   $path = catdir( @{ PREFIX() }, $appdir );
-   $path = catdir( $path, qw(default lib), $classdir );
-   $path = assert_directory $path and return $path;
-
-   # 5. Config file found in @INC
-   for $path (map { catdir( abs_path( $_ ), $classdir ) } @INC) {
-      for my $extn (keys %{ Class::Usul::File->extensions }) {
-         $file = untaint_path catfile( $path, $prefix.$extn );
-
-         -f $file and return dirname( $file );
-      }
-   }
-
-   # 6. Users home directory - dot directory is appldir
-   $path = catfile( $my_home, q(.).$prefix );
-   $path = assert_directory $path and return $path;
-
-   # 7. Default to /tmp
-   return untaint_path( File::Spec->tmpdir );
 }
 
 sub __list_methods_of {

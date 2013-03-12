@@ -1,5 +1,10 @@
 Revision history for Class::Usul
 
+0.12.264 2013-03-12
+         - Tried to work around NTFS read after write bug in tool chain
+         - Some light refactoring
+         - C::U::Programs::__get_apphome also checks MYAPP_CONFIG env var
+
 0.12.262 2013-03-02
          - Consolidated C::U::IPC::popen implementations
          - Upped dependency on MooseX::Getopt to 0.50.

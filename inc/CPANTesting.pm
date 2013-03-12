@@ -13,6 +13,10 @@ sub is_testing { !! ($ENV{AUTOMATED_TESTING} || $ENV{PERL_CR_SMOKER_CURRENT}
                  || ($ENV{PERL5OPT} || q()) =~ m{ CPAN-Reporter }mx) }
 
 sub should_abort {
+   is_testing() or return 0;
+
+   $ENV{PERL5LIB} =~ m{ Archibald }msx and warn "Host: ${host}\n";
+
    return 0;
 }
 
