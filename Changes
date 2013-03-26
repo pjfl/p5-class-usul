@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+         - Refactored C::U::Programs::get_meta and C::U::Response::Meta
+
 0.12.264 2013-03-12
          - Tried to work around NTFS read after write bug in tool chain
          - Some light refactoring

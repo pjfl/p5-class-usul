@@ -177,7 +177,7 @@ sub _create_debian_copyright {
    my $cli        = $self->cli;
    my $year       = 1900 + (localtime)[ 5 ];
    my $maintainer = $control->source->Maintainer;
-   my $license    = $cfg->{meta_keys}->{ $cli->get_meta->license }
+   my $license    = $cfg->{meta_keys}->{ $cli->get_meta->license->[ 0 ] }
       or throw 'Unknown copyright license';
    my %fields     = ( Name       => $self->dist_name,
                       Maintainer => $maintainer,

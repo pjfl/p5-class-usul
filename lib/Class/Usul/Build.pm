@@ -52,6 +52,7 @@ my %CONFIG =
      manifest_file => q(MANIFEST),
      meta_keys     => {
         perl       => 'Perl_5',
+        perl_5     => 'Perl_5',
         apache     => [ map { "Apache_$_" } qw(1_1 2_0) ],
         artistic   => 'Artistic_1_0',
         artistic_2 => 'Artistic_2_0',

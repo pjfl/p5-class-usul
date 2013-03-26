@@ -47,7 +47,11 @@ is $prog->can_call( 'dump_self' ), 1, 'Can call true';
 
 is $prog->can_call( 'add_leader' ), 0, 'Can call false';
 
-is $prog->get_meta( q(META.yml) )->name, q(Class-Usul), 'Meta file class';
+my $meta = $prog->get_meta;
+
+is $meta->name, q(Class-Usul), 'Meta file class';
+
+like $meta->license->[ 0 ], qr{ perl }mx, 'Meta license';
 
 eval { $prog->file->io( 'Dummy' )->all }; my $e = $EVAL_ERROR || q();
 

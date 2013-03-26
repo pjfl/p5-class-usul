@@ -10,7 +10,6 @@ use Class::Usul::IPC;
 use Class::Usul::File;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Response::Meta;
 use Class::Usul::Functions qw(abs_path app_prefix arg_list assert_directory
                               class2appdir classdir elapsed env_prefix
                               exception find_source is_arrayref is_hashref
@@ -80,30 +79,34 @@ has 'version'      => is => 'ro', isa => Bool, default => FALSE,
    traits          => [ 'Getopt' ], cmd_aliases => q(V), cmd_flag => 'version';
 
 
-has '_file'    => is => 'lazy', isa => FileType,
-   default     => sub { Class::Usul::File->new( builder => $_[ 0 ] ) },
-   handles     => [ qw(io) ], init_arg => undef, reader => 'file';
+has '_file'        => is => 'lazy', isa => FileType,
+   default         => sub { Class::Usul::File->new( builder => $_[ 0 ] ) },
+   handles         => [ qw(io) ], init_arg => undef, reader => 'file';
 
-has '_ipc'     => is => 'lazy', isa => IPCType,
-   default     => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) },
-   handles     => [ qw(run_cmd) ], init_arg => undef, reader => 'ipc';
+has '_ipc'         => is => 'lazy', isa => IPCType,
+   default         => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) },
+   handles         => [ qw(run_cmd) ], init_arg => undef, reader => 'ipc';
 
-has '_logname' => is => 'lazy', isa => NonEmptySimpleStr,
-   default     => sub { untaint_identifier( $ENV{USER} || $ENV{LOGNAME} ) },
-   init_arg    => undef, reader => 'logname';
+has '_logname'     => is => 'lazy', isa => NonEmptySimpleStr,
+   default         => sub { untaint_identifier( $ENV{USER} || $ENV{LOGNAME} ) },
+   init_arg        => undef, reader => 'logname';
 
-has '_mode'    => is => 'rw',   isa => PositiveInt, accessor => 'mode',
-   default     => sub { $_[ 0 ]->config->mode }, init_arg => 'mode',
-   lazy        => TRUE;
+has '_meta_class'  => is => 'lazy', isa => LoadableClass, coerce => TRUE,
+   default         => sub { 'Class::Usul::Response::Meta' },
+   reader          => 'meta_class';
 
-has '_os'      => is => 'lazy', isa => HashRef, init_arg => undef,
-   reader      => 'os';
+has '_mode'        => is => 'rw',   isa => PositiveInt, accessor => 'mode',
+   default         => sub { $_[ 0 ]->config->mode }, init_arg => 'mode',
+   lazy            => TRUE;
 
-has '_params'  => is => 'ro',   isa => HashRef, default => sub { {} },
-   init_arg    => 'params', reader => 'params';
+has '_os'          => is => 'lazy', isa => HashRef, init_arg => undef,
+   reader          => 'os';
 
-has '_pwidth'  => is => 'rw',   isa => PositiveInt, accessor => 'pwidth',
-   default     => 60, init_arg => 'pwidth';
+has '_params'      => is => 'ro',   isa => HashRef, default => sub { {} },
+   init_arg        => 'params', reader => 'params';
+
+has '_pwidth'      => is => 'rw',   isa => PositiveInt, accessor => 'pwidth',
+   default         => 60, init_arg => 'pwidth';
 
 around 'BUILDARGS' => sub {
    my ($next, $class, @args) = @_; my $attr = $class->$next( @args );
@@ -222,18 +225,13 @@ sub get_line { # General text input routine.
 }
 
 sub get_meta {
-   my ($self, $path) = @_; my $meta_class = q(Class::Usul::Response::Meta);
+   my ($self, $dir) = @_; my $cfg = $self->config;
 
-   my @paths = ( $self->config->appldir->catfile( q(META.yml) ),
-                 $self->config->ctrldir->catfile( q(META.yml) ),
-                 $self->io( q(META.yml) ) );
+   my @dirs = ($cfg->appldir, $cfg->ctrldir);
 
-   $path and unshift @paths, $self->io( $path );
+   $dir and unshift @dirs, $self->io( $dir );
 
-   return $meta_class->new( $_ ) for (grep { $_->exists } @paths);
-
-   throw 'No META.yml file';
-   return;
+   return $self->meta_class->new( directories => \@dirs );
 }
 
 sub get_option {
@@ -915,9 +913,9 @@ get a full line of input
    $res_obj = $self->get_meta( $dir );
 
 Extracts; I<name>, I<version>, I<author> and I<abstract> from the
-F<META.yml> file.  Optionally look in C<$dir> for the file instead of
-C<< $self->appldir >>. Returns a response object with accessors
-defined
+F<META.json> or F<META.yml> file.  Looks in the optional C<$dir> directory
+for the file in addition to C<< $self->appldir >> and C<< $self->ctrldir >>.
+Returns a response object with read-only accessors defined
 
 =head2 get_option
 
