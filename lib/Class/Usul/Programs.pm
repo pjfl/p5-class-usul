@@ -39,6 +39,8 @@ has '+config_class' => default => sub { 'Class::Usul::Config::Programs' };
 has '+debug'        => traits => [ 'Getopt' ], cmd_aliases => q(D),
    cmd_flag         => 'debug';
 
+has '+help_flag'    => cmd_aliases => [ qw(usage ?) ];
+
 
 has 'help_options' => is => 'ro', isa => Bool, default => FALSE,
    documentation   => 'Uses Pod::Usage to describe the program options',

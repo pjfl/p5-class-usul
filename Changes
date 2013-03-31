@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+         - Overload MX::Getopt::GLD::help_flag command aliases. No -h
          - Refactored C::U::Programs::get_meta and C::U::Response::Meta
 
 0.12.264 2013-03-12
