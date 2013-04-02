@@ -38,10 +38,10 @@ Bob->new( {
       'Module::CoreList'              => 2.24,
       'Module::Load::Conditional'     => 0.26,
       'Module::Pluggable'             => 3.9,
-      'Moose'                         => 2.0402,
+      'Moose'                         => 2.0801,
       'MooseX::Aliases'               => 0.10,
       'MooseX::AttributeShortcuts'    => 0.014,
-      'MooseX::ClassAttribute'        => 0.10,
+      'MooseX::ClassAttribute'        => 0.27,
       'MooseX::Getopt'                => 0.50,
       'MooseX::MethodAttributes'      => 0.24,
       'MooseX::Role::Parameterized'   => 0.19,
@@ -65,7 +65,8 @@ Bob->new( {
       'Try::Tiny'                     => 0.09,
       'YAML::Syck'                    => 1.05, },
    recommends              => {
-      'App::cpanminus'     => 1.4004,
+      'App::cpanminus'     => 1.6005,
+      'Pod::Markdown'      => 1.322,
       'Proc::ProcessTable' => 0.42, },
    configure_requires      => {
       'version'            => 0.77,

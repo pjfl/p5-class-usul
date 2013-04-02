@@ -13,7 +13,9 @@
 \bblibdirs$
 ^MANIFEST\.skip$
 ^MANIFEST\.SKIP$
-^MYMETA.yml$
+^MYMETA\.yml$
+^MYMETA\.json$
+^README\.md$
 ^SIGNATURE$
 ^Debian_CPANTS.txt$
 
@@ -47,5 +49,4 @@ Thumbs.db
 \bt/ipc_srlock
 \bt/file-dataclass
 \bbuild.xml
-^MYMETA\.json$
 \blib/Class/Usul/class_usul.json

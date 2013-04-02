@@ -111,12 +111,12 @@ has '_pwidth'      => is => 'rw',   isa => PositiveInt, accessor => 'pwidth',
    default         => 60, init_arg => 'pwidth';
 
 around 'BUILDARGS' => sub {
-   my ($next, $class, @args) = @_; my $attr = $class->$next( @args );
+   my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
 
    my $cfg = $attr->{config} ||= {};
 
    $cfg->{appclass} ||= delete $attr->{appclass} || prefix2class $PROGRAM_NAME;
-   $cfg->{home    } ||= __get_apphome ( $cfg->{appclass}, $attr->{home} );
+   $cfg->{home    } ||= __find_apphome( $cfg->{appclass}, $attr->{home} );
    $cfg->{cfgfiles} ||= __get_cfgfiles( $cfg->{appclass},  $cfg->{home} );
 
    return $attr;
@@ -157,9 +157,8 @@ sub anykey {
 }
 
 sub can_call {
-   return ($_[ 0 ]->can( $_[ 1 ] ) && (is_member $_[ 1 ],
-                                       __list_methods_of( $_[ 0 ] )))
-        ? TRUE : FALSE;
+   return ($_[ 0 ]->can( $_[ 1 ] )
+           && (is_member $_[ 1 ], __list_methods_of( $_[ 0 ] ))) ? TRUE : FALSE;
 }
 
 sub debug_flag {
@@ -412,7 +411,7 @@ sub _apply_encoding {
 
    binmode $_, ":encoding(${enc})" for (*STDIN, *STDOUT, *STDERR);
 
-   $_ = decode( $enc , $_ ) for @ARGV;
+   $_ = decode( $enc, $_ ) for @ARGV;
 
    return;
 }
@@ -440,7 +439,7 @@ sub _catch_run_exception {
 
    $e->out and $self->output( $e->out );
    $self->error( $e->error, { args => $e->args } );
-   $self->debug and __print_fh( \*STDERR, $e->stacktrace."\n" );
+   $self->debug and __output_stacktrace( $e );
 
    return $e->rv || (defined $e->rv ? FAILED : UNDEFINED_RV);
 }
@@ -536,7 +535,7 @@ sub _usage_for {
 
 # Private functions
 
-sub __get_apphome {
+sub __find_apphome {
    my ($appclass, $home) = @_; my ($file, $path);
 
    # 0. Pass the directory in
