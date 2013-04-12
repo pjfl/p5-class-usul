@@ -1,5 +1,5 @@
-# @(#)Ident: SubClass.pm 2013-04-02 14:37 pjf ;
-# Bob-Version: 1.9
+# @(#)Ident: SubClass.pm 2013-04-03 17:42 pjf ;
+# Bob-Version: 1.11
 
 use Pod::Select;
 
@@ -14,25 +14,16 @@ sub ACTION_distmeta {
    return $self->SUPER::ACTION_distmeta;
 }
 
-sub create_build_script {
-   my $self = shift; $self->SUPER::create_build_script;
-
-   lc $^O eq 'mswin32' or return;
-   -f 'Build' or warn "NTFS: Read immediately after write bug detected\n";
-   sleep 10; # Allow NTFS to catch up
-   -f 'Build' and return;
-   warn "NTFS: Build file not found... bodging\n";
-   open my $fh, '>', 'Build'; print {$fh} "exit 0;\n"; close $fh; sleep 10;
-   return;
-}
-
 # Private methods
 
 sub _create_readme_md {
    print "Creating README.md using Pod::Markdown\n"; require Pod::Markdown;
 
+   # Monkey patch Pod::Markdown to allow for configurable URL prefixes
+   no warnings qw(redefine); *Pod::Markdown::_resolv_link = \&_my_resolve_link;
+
    my $self   = shift;
-   my $parser = Pod::Markdown->new;
+   my $parser = Pod::Markdown->new( url_prefix => $self->notes->{url_prefix} );
    my $path   = $self->dist_version_from;
 
    open my $in,  '<', $path       or die "Path ${path} cannot open: ${!}";
@@ -40,4 +31,30 @@ sub _create_readme_md {
    open my $out, '>', 'README.md' or die "File README.md cannot open: ${!}";
    print {$out} $parser->as_markdown; close $out;
    return;
+}
+
+sub _my_resolve_link {
+   my ($self, $cmd, $arg) = @_; local $self->_private->{InsideLink} = 1;
+
+   my ($text, $inferred, $name, $section, $type) =
+      map { $_ && $self->interpolate( $_, 1 ) }
+      Pod::ParseLink::parselink( $arg );
+   my $url = q();
+
+   if    ($type eq q(url)) { $url = $name }
+   elsif ($type eq q(man)) {
+      my ($page, $part) = $name =~ m{ \A ([^\(]+) (?:[\(] (\S*) [\)])? }mx;
+      my $prefix = $self->{man_prefix} || q(http://man.he.net/man);
+
+      $url = $prefix.($part || 1).q(/).($page || $name);
+   } else {
+      my $prefix = $self->{url_prefix} || q(http://search.cpan.org/perldoc?);
+
+      $name    and $url  = "${prefix}${name}";
+      $section and $url .= "#${section}";
+   }
+
+   $url and return sprintf '[%s](%s)', ($text || $inferred), $url;
+
+   return sprintf '%s<%s>', $cmd, $arg;
 }

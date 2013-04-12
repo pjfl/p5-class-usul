@@ -1407,8 +1407,6 @@ Edits and stores config information in the file F<build.json>
 
 =item L<Module::Build>
 
-=item L<SVN::Class>
-
 =item L<XML::Simple>
 
 =back

@@ -231,7 +231,7 @@ Patches are welcome
 
 =head1 Author
 
-Peter Flanigan, C<< <Support at RoxSoft.co.uk> >>
+Peter Flanigan, C<< @ <Support at RoxSoft dot co dot uk> >>
 
 =head1 Acknowledgements
 
