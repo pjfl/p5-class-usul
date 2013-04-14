@@ -2,7 +2,7 @@
 
 package Class::Usul;
 
-use version; our $VERSION = qv( sprintf '0.12.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.13.%d', q$Rev$ =~ /\d+/gmx );
 
 use 5.010;
 use Class::Usul::Moose;
@@ -104,11 +104,11 @@ __END__
 
 =head1 Name
 
-Class::Usul - A base class other packages
+Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version 0.12.$Revision$
+Describes Class::Usul version 0.13.$Revision$
 
 =head1 Synopsis
 
@@ -116,15 +116,30 @@ Describes Class::Usul version 0.12.$Revision$
 
    extends qw(Class::Usul);
 
+   $self = Class::Usul->new( $attr );
+
 =head1 Description
 
-These modules provide a set of base classes for Perl packages and applications
+These modules provide a set of base classes for Perl packages and
+applications that provide configuration file loading
+L<Class::Usul::Config>, locking to single thread processes
+L<IPC::SRLock>, logging L<Class::Usul::Log> and localization
+L<Class::Usul::L10N>
+
+The class L<Class::Usul::Programs> is a base class for command line interfaces
+
+Interprocess communication is handled by L<Class::Usul::IPC>
+
+L<Class::Usul::File> makes the functionality of L<File::DataClass> available
+
+The L<Module::Build> subclass L<Class::Usul::Build> adds methods for the
+management and deployment of applications
+
+L<Class::Usul::Moose> is a custom L<Moose> exporter
 
 =head1 Configuration and Environment
 
-   $self = Class::Usul->new( $attr );
-
-The C<$attr> argument is a hash ref containing the object attributes.
+Defines the following attributes;
 
 =over 3
 
@@ -151,7 +166,9 @@ Decode input and encode output. Defaults to C<UTF-8>
 
 =back
 
-Defined the application context log. Defaults to a L<Class::Null> object
+Defines an instance of L<IPC::SRLock>
+
+Defines the application context log. Defaults to a L<Log::Handler> object
 
 =head1 Subroutines/Methods
 
@@ -231,7 +248,7 @@ Patches are welcome
 
 =head1 Author
 
-Peter Flanigan, C<< @ <Support at RoxSoft dot co dot uk> >>
+Peter Flanigan, C<< <pjfl@cpan.org> >>
 
 =head1 Acknowledgements
 

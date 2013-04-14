@@ -1,6 +1,7 @@
 Revision history for Class::Usul
 
-0.12.269 2013-04-12
+0.13.270 2013-04-14
+         - Updated POD
          - Updated inc::Bob to 1.11
 
 0.12.266 2013-04-02

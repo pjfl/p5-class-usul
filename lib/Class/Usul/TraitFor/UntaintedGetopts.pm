@@ -4,7 +4,7 @@ package Class::Usul::TraitFor::UntaintedGetopts;
 
 use strict;
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.12.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.13.%d', q$Rev$ =~ /\d+/gmx );
 
 use Moose::Role;
 use Class::Usul::Functions qw(untaint_cmdline);
@@ -29,7 +29,7 @@ Class::Usul::TraitFor::UntaintedGetopts - Untaints @ARGV before Getopts processe
 
 =head1 Version
 
-0.12.$Revision$
+0.13.$Revision$
 
 =head1 Synopsis
 

@@ -5,7 +5,7 @@ package Class::Usul::Functions;
 use strict;
 use warnings;
 use feature      qw(state);
-use version; our $VERSION = qv( sprintf '0.12.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.13.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Data::Printer alias => q(Dumper), colored => 1, indent => 3,

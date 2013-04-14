@@ -4,7 +4,7 @@ package Class::Usul::Plugin::Build::Debian;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.12.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.13.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions qw(throw);
@@ -464,7 +464,7 @@ Class::Usul::Build::Debian - Create a Debian package from a standalone applicati
 
 =head1 Version
 
-0.12.$Revision$
+0.13.$Revision$
 
 =head1 Synopsis
 
