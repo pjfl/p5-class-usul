@@ -26,6 +26,7 @@ Bob->new( {
       'Digest::SHA1'                  => 2.11,
       'Email::Date::Format'           => 1.002,
       'File::DataClass'               => q(0.16.0),
+      'File::Gettext'                 => q(0.16.0),
       'Getopt::Mixed'                 => 1.10,
       'Git::Class'                    => 0.12,
       'Import::Into'                  => 1.001000,

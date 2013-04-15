@@ -1,6 +1,7 @@
 Revision history for Class::Usul
 
 0.13.270 2013-04-14
+         - Added missing dependency on File::Gettext
          - Updated POD
          - Updated inc::Bob to 1.11
 
