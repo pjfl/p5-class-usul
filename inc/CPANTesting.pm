@@ -16,6 +16,8 @@ sub should_abort {
    is_testing() or return 0;
 
    $ENV{PERL5LIB} =~ m{ Archibald }msx and warn "Host: ${host}\n";
+   $host eq q(xphvmfred) and return
+      "Terminated Stauner ${host} - cc06993e-a5e9-11e2-83b7-87183f85d660";
 
    return 0;
 }

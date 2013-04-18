@@ -1,4 +1,4 @@
-# @(#)Ident: Bob.pm 2013-04-03 17:46 pjf ;
+# @(#)Ident: Bob.pm 2013-04-15 15:23 pjf ;
 
 package Bob;
 
@@ -10,7 +10,7 @@ sub whimper { print {*STDOUT} $_[ 0 ]."\n"; exit 0 }
 
 BEGIN { my $reason; $reason = CPANTesting::should_abort and whimper $reason; }
 
-use version; our $VERSION = qv( '1.11' );
+use version; our $VERSION = qv( '1.12' );
 
 use File::Spec::Functions qw(catfile);
 use Module::Build;
@@ -81,7 +81,7 @@ sub __get_git_repository {
 sub __get_no_index {
    my $p = shift;
 
-   return { directory => $p->{no_index_dir} || [ qw(examples inc t) ] };
+   return { directory => $p->{no_index_dir} || [ qw(examples inc share t) ] };
 }
 
 sub __get_notes {
