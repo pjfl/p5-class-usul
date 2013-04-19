@@ -579,7 +579,8 @@ sub _get_config {
       $cache = $cfg
              = $file->dataclass_schema( $cfg->{config_attrs} )->load( $path );
    }
-   else { $self->cli->warning( 'Path [_1] not found', { args => [ $path ] } ) }
+   # TODO: Is this more trouble than its worth?
+   #else { $self->cli->warning( 'Path [_1] not found', { args => [ $path ] } ) }
 
    $cfg->{version} .= NUL;
    return $cfg;
