@@ -62,6 +62,7 @@ Bob->new( {
       'Sub::Exporter::Progressive'    => 0.001006,
       'Term::ReadKey'                 => 2.30,
       'Text::Autoformat'              => 1.13,
+      'Text::Format'                  => 0.53,
       'Time::Zone'                    => 2.22,
       'Try::Tiny'                     => 0.09,
       'YAML::Syck'                    => 1.05, },
