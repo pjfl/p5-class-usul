@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+         - ::Programs appclass defaults to $self not prefix2class $PROGRAM_NAME
          - Fixed search path prefix in ::TraitFor::LoadingClasses::setup_plugins
 
 0.13.272 2013-04-15

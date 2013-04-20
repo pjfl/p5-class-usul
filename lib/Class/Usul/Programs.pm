@@ -13,8 +13,8 @@ use Class::Usul::Constants;
 use Class::Usul::Functions qw(abs_path app_prefix arg_list assert_directory
                               class2appdir classdir elapsed env_prefix
                               exception find_source is_arrayref is_hashref
-                              is_member prefix2class say throw
-                              untaint_identifier untaint_path);
+                              is_member say throw untaint_identifier
+                              untaint_path);
 use Encode                 qw(decode);
 use English                qw(-no_match_vars);
 use File::Basename         qw(dirname);
@@ -34,6 +34,8 @@ with    q(MooseX::Getopt::Dashes);
 with    q(Class::Usul::TraitFor::LoadingClasses);
 with    q(Class::Usul::TraitFor::UntaintedGetopts);
 
+# Override attributes in base class
+
 has '+config_class' => default => sub { 'Class::Usul::Config::Programs' };
 
 has '+debug'        => traits => [ 'Getopt' ], cmd_aliases => q(D),
@@ -41,6 +43,7 @@ has '+debug'        => traits => [ 'Getopt' ], cmd_aliases => q(D),
 
 has '+help_flag'    => cmd_aliases => [ qw(usage ?) ];
 
+# Public attributes
 
 has 'help_options' => is => 'ro', isa => Bool, default => FALSE,
    documentation   => 'Uses Pod::Usage to describe the program options',
@@ -80,6 +83,7 @@ has 'version'      => is => 'ro', isa => Bool, default => FALSE,
    documentation   => 'Displays the version number of the program class',
    traits          => [ 'Getopt' ], cmd_aliases => q(V), cmd_flag => 'version';
 
+# Private attributes
 
 has '_file'        => is => 'lazy', isa => FileType,
    default         => sub { Class::Usul::File->new( builder => $_[ 0 ] ) },
@@ -115,7 +119,7 @@ around 'BUILDARGS' => sub {
 
    my $cfg = $attr->{config} ||= {};
 
-   $cfg->{appclass} ||= delete $attr->{appclass} || prefix2class $PROGRAM_NAME;
+   $cfg->{appclass} ||= delete $attr->{appclass} || $self;
    $cfg->{home    } ||= __find_apphome( $cfg->{appclass}, $attr->{home} );
    $cfg->{cfgfiles} ||= __get_cfgfiles( $cfg->{appclass},  $cfg->{home} );
 
