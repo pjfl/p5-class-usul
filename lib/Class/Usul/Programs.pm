@@ -3,7 +3,7 @@
 package Class::Usul::Programs;
 
 use attributes ();
-use version; our $VERSION = qv( sprintf '0.13.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.14.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::IPC;
@@ -15,16 +15,16 @@ use Class::Usul::Functions qw(abs_path app_prefix arg_list assert_directory
                               exception find_source is_arrayref is_hashref
                               is_member say throw untaint_identifier
                               untaint_path);
+use Config;
 use Encode                 qw(decode);
 use English                qw(-no_match_vars);
 use File::Basename         qw(dirname);
+use File::HomeDir          qw();
 use File::Spec::Functions  qw(catdir catfile);
 use IO::Interactive        qw(is_interactive);
 use List::Util             qw(first);
-use Config;
 use Pod::Man;
 use Pod::Usage;
-use File::HomeDir          qw();
 use Term::ReadKey;
 use Text::Autoformat;
 use Try::Tiny;
@@ -119,7 +119,7 @@ around 'BUILDARGS' => sub {
 
    my $cfg = $attr->{config} ||= {};
 
-   $cfg->{appclass} ||= delete $attr->{appclass} || $self;
+   $cfg->{appclass} ||= delete $attr->{appclass} || blessed $self || $self;
    $cfg->{home    } ||= __find_apphome( $cfg->{appclass}, $attr->{home} );
    $cfg->{cfgfiles} ||= __get_cfgfiles( $cfg->{appclass},  $cfg->{home} );
 
@@ -473,7 +473,7 @@ sub _get_run_method {
 
    $method ||= 'run_chain'; $method eq 'run_chain' and $self->quiet( TRUE );
 
-   return $method;
+   return $self->method( $method );
 }
 
 sub _man_page_from {
@@ -757,7 +757,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes Class::Usul::Programs version 0.13.$Revision$
+This document describes Class::Usul::Programs version 0.14.$Revision$
 
 =head1 Synopsis
 
