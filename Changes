@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+0.14.278 2013-04-25
+         - Run even fewer tests on Winblows
+
 0.14.277 2013-04-21
          - ::Programs _get_run_method not sets method attribute
          - ::Programs appclass defaults to $self not prefix2class $PROGRAM_NAME

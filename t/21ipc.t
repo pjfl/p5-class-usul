@@ -72,8 +72,12 @@ like popen_test( q(out), $cmd ), qr{ pit \s+ of \s+ fire }msx,
 
 $cmd = "${perl} -e \"print <>\"";
 
-is popen_test( q(out), $cmd, { in => [ 'some text' ] } ), 'some text',
-   'popen captures stdin and stdout';
+SKIP: {
+   $osname eq q(mswin32) and skip 'popen capture stdin - not on MSWin32', 1;
+
+   is popen_test( q(out), $cmd, { in => [ 'some text' ] } ), 'some text',
+      'popen captures stdin and stdout';
+}
 
 sub run_cmd_test {
    my $want = shift; my $r = eval { $prog->run_cmd( @_ ) };
