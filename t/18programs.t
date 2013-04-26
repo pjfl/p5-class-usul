@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.14.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.15.%d', q$Rev$ =~ /\d+/gmx );
 use File::Spec::Functions;
 use FindBin qw( $Bin );
 use lib catdir( $Bin, updir, q(lib) );
@@ -57,7 +57,7 @@ eval { $prog->file->io( 'Dummy' )->all }; my $e = $EVAL_ERROR || q();
 
 like $e, qr{ Dummy \s+ cannot \s+ open }mx, 'Non existant file';
 
-is ref $e, 'File::DataClass::Exception', 'File exception class';
+is ref $e, 'Class::Usul::Exception', 'Our exception class';
 
 unlink $logfile; my $io = $prog->file->io( $logfile ); $io->touch;
 

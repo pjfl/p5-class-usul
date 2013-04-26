@@ -1,5 +1,9 @@
 Revision history for Class::Usul
 
+0.15.279 2013-04-26
+         - Added C::U::Exception from CatalystX::Usul
+         - Added C::U::Lock from CatalystX::Usul
+
 0.14.278 2013-04-25
          - Run even fewer tests on Winblows
 

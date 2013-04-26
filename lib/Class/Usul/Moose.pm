@@ -5,7 +5,7 @@ package Class::Usul::Moose;
 use strict;
 use warnings;
 use feature ();
-use version; our $VERSION = qv( sprintf '0.14.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.15.%d', q$Rev$ =~ /\d+/gmx );
 use namespace::autoclean ();
 
 use Class::Usul::Constraints ();
@@ -74,7 +74,7 @@ Class::Usul::Moose - Moose, the way I like it.
 
 =head1 Version
 
-0.14.$Revision$
+0.15.$Revision$
 
 =head1 Synopsis
 

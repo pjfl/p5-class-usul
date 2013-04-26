@@ -2,7 +2,7 @@
 
 package Class::Usul::Response::Table;
 
-use version; our $VERSION = qv( sprintf '0.14.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.15.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use MooseX::Aliases;
@@ -35,7 +35,7 @@ Class::Usul::Response::Table - Data structure for the table widget
 
 =head1 Version
 
-0.14.$Revision$
+0.15.$Revision$
 
 =head1 Synopsis
 
