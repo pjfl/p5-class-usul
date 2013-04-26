@@ -1,4 +1,4 @@
-# @(#)Ident: Lock.pm 2013-04-26 17:08 pjf ;
+# @(#)Ident: Lock.pm 2013-04-26 19:36 pjf ;
 
 package Class::Usul::Lock;
 
@@ -172,4 +172,3 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
 # mode: perl
 # tab-width: 3
 # End:
-

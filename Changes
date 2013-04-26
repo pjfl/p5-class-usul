@@ -1,6 +1,6 @@
 Revision history for Class::Usul
 
-0.15.280 2013-04-26
+0.15.281 2013-04-26
          - Added exception class test
          - Added C::U::Exception from CatalystX::Usul
          - Added C::U::Lock from CatalystX::Usul
