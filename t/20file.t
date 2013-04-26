@@ -102,10 +102,10 @@ ok $cuf->tempname =~ m{ $PID .{4} }msx, 'Temporary filename correct pattern';
 my $io = $cuf->io( q(t) ); my $entry;
 
 while (defined ($entry = $io->next)) {
-   $entry->filename eq q(10functions.t) and last;
+   $entry->filename eq q(20file.t) and last;
 }
 
-ok defined $entry && $entry->filename eq q(10functions.t), 'Directory listing';
+ok defined $entry && $entry->filename eq q(20file.t), 'Directory listing';
 
 done_testing;
 

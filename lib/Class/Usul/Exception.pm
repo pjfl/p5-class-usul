@@ -1,4 +1,4 @@
-# @(#)Ident: Exception.pm 2013-04-26 17:15 pjf ;
+# @(#)Ident: Exception.pm 2013-04-26 18:24 pjf ;
 
 package Class::Usul::Exception;
 
@@ -12,7 +12,6 @@ use Exception::Class
 
 use base qw(Class::Usul::Exception::Base);
 
-use Carp;
 use English      qw(-no_match_vars);
 use List::Util   qw(first);
 use MRO::Compat;
@@ -83,7 +82,7 @@ sub stacktrace {
 sub throw {
    my ($self, @args) = @_;
 
-   croak __is_one_of_us( $args[ 0 ] ) ? $args[ 0 ] : $self->new( @args );
+   die __is_one_of_us( $args[ 0 ] ) ? $args[ 0 ] : $self->new( @args );
 }
 
 sub throw_on_error {
