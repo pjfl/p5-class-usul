@@ -1,4 +1,4 @@
-# @(#)Ident: 10excepton.t 2013-04-26 19:32 pjf ;
+# @(#)Ident: 10excepton.t 2013-04-27 17:40 pjf ;
 
 use strict;
 use warnings;
@@ -21,15 +21,53 @@ BEGIN {
 use Class::Null;
 use Class::Usul::Exception;
 
-eval { Class::Usul::Exception->throw_on_error }; my $e = $EVAL_ERROR;
+my $class = 'Class::Usul::Exception'; $EVAL_ERROR = undef;
+
+eval { $class->throw_on_error }; my $e = $EVAL_ERROR; $EVAL_ERROR = undef;
 
 ok ! $e, 'No throw without error';
 
-eval { Class::Usul::Exception->throw_on_error( 'PracticeKill' ) };
+eval { $class->throw( 'PracticeKill' ) };
 
-$e = $EVAL_ERROR; like $e, qr{ PracticeKill \s* \z }mx, 'Throws on error';
+$e = $EVAL_ERROR; $EVAL_ERROR = undef; my $min_level = $class->Min_Level;
 
-is ref $e, 'Class::Usul::Exception', 'Good class';
+is ref $e, $class, 'Good class';
+like $e, qr{ \A main \[\d+\] \[ $min_level \] }mx, 'Package and level';
+like $e, qr{ PracticeKill \s* \z   }mx, 'Throws error message';
+is $e->class, $class, 'Default error class';
+
+my ($line1, $line2, $line3);
+
+sub test_throw { $class->throw( 'PracticeKill' ) }; $line1 = __LINE__;
+
+sub test_throw1 { test_throw() }; $line2 = __LINE__;
+
+eval { test_throw1() }; $line3 = __LINE__;
+
+$e = $EVAL_ERROR; $EVAL_ERROR = undef; my @lines = $e->stacktrace;
+
+like $e, qr{ \A main \[ $line1 \] }mx, 'Default leader level';
+is $lines[ 0 ], "main::test_throw line ${line1}", 'Stactrace line 1';
+is $lines[ 1 ], "main::test_throw1 line ${line2}", 'Stactrace line 2';
+is $lines[ 2 ], "main line ${line3}", 'Stactrace line 3';
+
+my $level = $min_level + 2;
+
+sub test_throw2 { $class->throw( error => 'PracticeKill', level => $level ) };
+
+sub test_throw3 { test_throw2() }
+
+sub test_throw4 { test_throw3() }; $line1 = __LINE__;
+
+eval { test_throw4() }; $e = $EVAL_ERROR; $EVAL_ERROR = undef;
+
+like $e, qr{ \A main \[ $line1 \] \[ $level \] }mx, 'Specific leader level';
+
+eval { $class->throw( error => 'PracticeKill', class => 'nonDefault' ) };
+
+$e = $EVAL_ERROR; $EVAL_ERROR = undef;
+
+is $e->class, 'nonDefault', 'Specific error class';
 
 done_testing;
 

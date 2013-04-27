@@ -322,13 +322,11 @@ sub run {
    my $text  = 'Started by '.$self->logname.' Version '.$self->VERSION.SPC;
       $text .= 'Pid '.(abs $PID);
 
-   $self->output( $text );
+   $self->output( $text ); umask $self->mode;
 
    if ($method eq 'run_chain' or $self->can_call( $method )) {
       my $params = exists $self->params->{ $method }
                  ? $self->params->{ $method } : [];
-
-      umask $self->mode;
 
       try {
          defined ($rv = $self->$method( @{ $params } ))
@@ -433,9 +431,9 @@ sub _build__os {
 }
 
 sub _catch_run_exception {
-   my ($self, $method, $error) = @_; my $e = exception $error;
+   my ($self, $method, $error) = @_; my $e;
 
-   unless ($e) {
+   unless ($e = exception $error) {
       $self->error( 'Method [_1] exception without error',
                     { args => [ $method ] } );
       return UNDEFINED_RV;
@@ -646,7 +644,7 @@ sub __output_stacktrace {
    my $e = shift;
 
    $e and blessed $e and $e->can( q(stacktrace) )
-      and __print_fh( \*STDERR, $e->stacktrace );
+      and __print_fh( \*STDERR, NUL.$e->stacktrace );
 
    return;
 }

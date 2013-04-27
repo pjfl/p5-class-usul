@@ -1,4 +1,4 @@
-# @(#)Ident: Exception.pm 2013-04-26 18:24 pjf ;
+# @(#)Ident: Exception.pm 2013-04-27 18:04 pjf ;
 
 package Class::Usul::Exception;
 
@@ -20,7 +20,7 @@ use Scalar::Util qw(blessed);
 BEGIN {
    __PACKAGE__->mk_classdata
       ( 'Ignore', [ qw(Class::Usul::IPC File::DataClass::IO) ] );
-   __PACKAGE__->mk_classdata( 'Min_Level', 3 );
+   __PACKAGE__->mk_classdata( 'Min_Level', 2 );
 }
 
 sub new {
@@ -67,14 +67,15 @@ sub stacktrace {
 
    for my $frame (reverse $self->trace->frames) {
       unless ($l_no = $seen{ $frame->package } and $l_no == $frame->line) {
-         $subr and push @lines, join q( ), $subr, 'line', $frame->line;
+         push @lines, join q( ), ($subr || $frame->package),
+            'line', $frame->line;
          $seen{ $frame->package } = $frame->line;
       }
 
       $subr = $frame->subroutine;
    }
 
-   defined $skip or $skip = 1; pop @lines while ($skip--);
+   defined $skip or $skip = 0; pop @lines while ($skip--);
 
    return wantarray ? reverse @lines : (join "\n", reverse @lines)."\n";
 }
@@ -96,15 +97,15 @@ sub throw_on_error {
 # Private subroutines
 
 sub __get_leader {
-   my $opts = shift; my $level = 3; my ($leader, $line, $package);
+   my $opts = shift; my ($leader, $line, $package);
 
-   my $min  = delete $opts->{level} || __PACKAGE__->Min_Level();
+   my $min =__PACKAGE__->Min_Level(); my $level = delete $opts->{level} || $min;
 
    do {
       ($package, $line) = (caller( $level ))[ 0, 2 ];
-      $leader = "${package}[${line}]: ";
+      $leader = "${package}[${line}][${level}]: "; $level++;
    }
-   while (++$level < $min or __is_member( $package, __PACKAGE__->Ignore()) );
+   while (__is_member( $package, __PACKAGE__->Ignore()) );
 
    return $leader;
 }

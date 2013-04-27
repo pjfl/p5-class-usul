@@ -411,7 +411,7 @@ sub _run_cmd_using_ipc_run {
    if ($rv > $opts->{expected_rv}) {
       $error ||= 'Unknown error';
       $opts->{debug} and $self->log->debug( "RV ${rv}: ${error}" );
-      throw error => $error, rv => $rv;
+      throw error => $error, out => $out, rv => $rv;
    }
 
    return $self->response_class->new( core   => $core,   out    => $out,
@@ -492,7 +492,7 @@ sub _run_cmd_using_system {
    if ($rv > $opts->{expected_rv}) {
       $error ||= 'Unknown error';
       $opts->{debug} and $self->log->debug( "RV ${rv}: ${error}" );
-      throw error => $error, rv => $rv;
+      throw error => $error, out => $out, rv => $rv;
    }
 
    return $self->response_class->new( core   => $core,   out    => $out,
