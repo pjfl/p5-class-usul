@@ -36,6 +36,8 @@ sub test_exceptions {
       "Stopped Horne   ${host} - irrelevant Perl versions";
    $host   eq q(c-9d2392d06fcb4) and return
       "Stopped Ciornii ${host} - aa18dea5-6bfb-1014-97a2-fbb5402793bb";
+   $host   eq q(k83)             and return
+      "Stopped Konig   ${host} - cfd60888-aea9-11e2-882d-0004c1508286";
    return 0;
 }
 

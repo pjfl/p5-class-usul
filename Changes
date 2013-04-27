@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+0.15.282 2013-04-27
+         - Stopped Konig CPAN Testing - cfd60888-aea9-11e2-882d-0004c1508286
+
 0.15.281 2013-04-26
          - Added exception class test
          - Added C::U::Exception from CatalystX::Usul
