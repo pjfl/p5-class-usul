@@ -6,6 +6,7 @@ use strict;
 use namespace::clean -except => 'meta';
 use version; our $VERSION = qv( sprintf '0.15.%d', q$Rev$ =~ /\d+/gmx );
 
+use Class::Usul::Exception;
 use File::DataClass::Constants ();
 use Moose;
 use MooseX::ClassAttribute;
@@ -18,7 +19,7 @@ class_has 'Config_Extn'     => is => 'rw', isa => 'Str',
 class_has 'Config_Key'      => is => 'rw', isa => 'Str',
    default                  => q(Plugin::Usul);
 
-class_has 'Exception_Class' => is => 'rw', isa => 'Str',
+class_has 'Exception_Class' => is => 'rw', isa => 'ClassName',
    default                  => q(Class::Usul::Exception);
 
 my @_constants;

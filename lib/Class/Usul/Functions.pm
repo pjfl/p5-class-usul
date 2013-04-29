@@ -808,7 +808,7 @@ Returns the id of this thread. Returns zero if threads are not loaded
 
    throw error => q(error_key), args => [ q(error_arg) ];
 
-Expose L<File::DataClass::Exception/throw>. L<Class::Usul::Constants> has a
+Expose L<Class::Usul::Exception/throw>. L<Class::Usul::Constants> has a
 class attribute I<Exception_Class> which can be set change the class
 of the thrown exception
 
