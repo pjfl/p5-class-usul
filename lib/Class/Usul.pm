@@ -8,6 +8,7 @@ use 5.010;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions qw(data_dumper merge_attributes throw);
+use Class::Usul::Exception;
 use Class::Usul::L10N;
 use Class::Usul::Log;
 use IPC::SRLock;

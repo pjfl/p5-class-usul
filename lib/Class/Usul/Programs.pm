@@ -6,8 +6,6 @@ use attributes ();
 use version; our $VERSION = qv( sprintf '0.15.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Inspector;
-use Class::Usul::IPC;
-use Class::Usul::File;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions qw(abs_path app_prefix arg_list assert_directory
@@ -15,6 +13,8 @@ use Class::Usul::Functions qw(abs_path app_prefix arg_list assert_directory
                               exception find_source is_arrayref is_hashref
                               is_member say throw untaint_identifier
                               untaint_path);
+use Class::Usul::File;
+use Class::Usul::IPC;
 use Config;
 use Encode                 qw(decode);
 use English                qw(-no_match_vars);

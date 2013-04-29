@@ -152,7 +152,7 @@ sub escape_TT (;$$) {
 }
 
 sub exception (;@) {
-   return EXCEPTION_CLASS->catch( @_ );
+   return EXCEPTION_CLASS->caught( @_ );
 }
 
 sub find_source ($) {

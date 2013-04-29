@@ -44,7 +44,7 @@ sub _do_import {
       ( into => $target, also => $opts->{also} || [] );
 
    feature->import( qw(state switch) );
-   namespace::autoclean->import( -cleanee => $target );
+   $opts->{no_autoclean} or namespace::autoclean->import( -cleanee => $target );
    $class->$import( { into => $target } );
    Class::Usul::Constraints->import( { into => $target }, q(:all) );
    MooseX::AttributeShortcuts->import::into( $target );

@@ -9,7 +9,6 @@ use version; our $VERSION = qv( sprintf '0.15.%d', q$Rev$ =~ /\d+/gmx );
 use Encode                      qw(find_encoding);
 use Class::Load                 qw(load_first_existing_class);
 use Class::Usul::Constants;
-use Class::Usul::Functions;
 use MooseX::Types -declare => [ qw(BaseType ClassName ConfigType EncodingType
                                    FileType IPCType L10NType LockType LogType
                                    NullLoadingClass RequestType) ];
@@ -46,7 +45,9 @@ subtype LockType, as Object,
 
 subtype LogType, as Object,
    where   { $_->isa( q(Class::Null) ) or __has_log_level_methods( $_ ) },
-   message { 'Object '.(blessed $_ || $_).' is missing a log level method' };
+   message { blessed $_
+                ? 'Object '.(blessed $_).' is missing a log level method'
+                : "Scalar ${_} is not on object reference" };
 
 subtype NullLoadingClass, as MooseClassName;
 coerce  NullLoadingClass,
@@ -55,7 +56,9 @@ coerce  NullLoadingClass,
 
 subtype RequestType, as Object,
    where   { $_->can( q(params) ) },
-   message { 'Object '.(blessed $_ || $_).' is missing a params method' };
+   message { blessed $_
+                ? 'Object '.(blessed $_).' is missing a params method'
+                : "Scalar ${_} is not on object reference" };
 
 sub __has_log_level_methods {
    my $obj = shift;
