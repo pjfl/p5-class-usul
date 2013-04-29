@@ -1,11 +1,11 @@
-# @(#)$Id$
+# @(#)$Ident: Moose.pm 2013-04-29 19:13 pjf ;
 
 package Class::Usul::Moose;
 
 use strict;
 use warnings;
 use feature ();
-use version; our $VERSION = qv( sprintf '0.17.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.17.%d', q$Rev: 3 $ =~ /\d+/gmx );
 use namespace::autoclean ();
 
 use Class::Usul::Constraints ();
@@ -74,7 +74,7 @@ Class::Usul::Moose - Moose, the way I like it.
 
 =head1 Version
 
-This documents version v0.17.$Rev: 2 $
+This documents version v0.17.$Rev: 3 $
 
 =head1 Synopsis
 

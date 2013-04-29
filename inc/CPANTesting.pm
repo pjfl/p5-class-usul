@@ -1,4 +1,4 @@
-# @(#)$Id$
+# @(#)$Ident: CPANTesting.pm 2013-04-29 19:24 pjf ;
 # Bob-Version: 1.7
 
 package CPANTesting;

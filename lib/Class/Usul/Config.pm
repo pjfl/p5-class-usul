@@ -1,8 +1,8 @@
-# @(#)$Id$
+# @(#)$Ident: Config.pm 2013-04-29 19:11 pjf ;
 
 package Class::Usul::Config;
 
-use version; our $VERSION = qv( sprintf '0.17.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.17.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Class::Usul::File;
 use Class::Usul::Moose;
@@ -307,7 +307,7 @@ Class::Usul::Config - Inflate config values
 
 =head1 Version
 
-Describes Class::Usul::Config version v0.17.$Rev: 2 $
+Describes Class::Usul::Config version v0.17.$Rev: 3 $
 
 =head1 Synopsis
 
