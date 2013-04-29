@@ -2,7 +2,7 @@
 
 package Class::Usul::IPC;
 
-use version; our $VERSION = qv( sprintf '0.17.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.17.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Moose;
@@ -654,7 +654,7 @@ Class::Usul::IPC - List/Create/Delete processes
 
 =head1 Version
 
-0.16.$Rev: 1 $
+This documents version v0.17.$Rev: 2 $
 
 =head1 Synopsis
 

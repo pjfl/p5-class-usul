@@ -4,7 +4,7 @@ package Class::Usul::TraitFor::LoadingClasses;
 
 use strict;
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.17.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.17.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Moose::Role;
 use Class::MOP;
@@ -96,7 +96,7 @@ Class::Usul::TraitFor::LoadingClasses - Load classes at runtime
 
 =head1 Version
 
-0.16.$Rev: 1 $
+This documents version v0.17.$Rev: 2 $
 
 =head1 Synopsis
 
