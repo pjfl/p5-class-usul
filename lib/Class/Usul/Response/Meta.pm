@@ -2,7 +2,7 @@
 
 package Class::Usul::Response::Meta;
 
-use version; our $VERSION = qv( sprintf '0.15.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::File;
@@ -56,7 +56,7 @@ Class::Usul::Response::Meta - Class for CPAN Meta file
 
 =head1 Version
 
-This document describes Class::Usul::Response::Meta version 0.15.$Revision$
+This document describes Class::Usul::Response::Meta version 0.16.$Revision$
 
 =head1 Synopsis
 

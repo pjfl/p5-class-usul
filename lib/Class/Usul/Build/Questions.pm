@@ -3,7 +3,7 @@
 package Class::Usul::Build::Questions;
 
 use strict;
-use version; our $VERSION = qv( sprintf '0.15.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
@@ -106,7 +106,7 @@ Class::Usul::Build::Questions - Things to ask when Build runs install
 
 =head1 Version
 
-Describes Class::Usul::Build::Questions version 0.15.$Revision$
+Describes Class::Usul::Build::Questions version 0.16.$Revision$
 
 =head1 Synopsis
 

@@ -2,7 +2,7 @@
 
 package Class::Usul::L10N;
 
-use version; our $VERSION = qv( sprintf '0.15.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Moose;

@@ -2,7 +2,7 @@
 
 package Class::Usul::Log;
 
-use version; our $VERSION = qv( sprintf '0.15.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Moose;
@@ -112,7 +112,7 @@ Class::Usul::Log - Create methods for each logging level that encode their outpu
 
 =head1 Version
 
-0.15.$Revision$
+0.16.$Revision$
 
 =head1 Synopsis
 

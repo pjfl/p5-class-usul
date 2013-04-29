@@ -1,10 +1,10 @@
-# @(#)Ident: Exception.pm 2013-04-29 13:20 pjf ;
+# @(#)Ident: Exception.pm 2013-04-29 14:42 pjf ;
 
 package Class::Usul::Exception;
 
 # Package namespace::autoclean does not play nice with overload
 use namespace::clean -except => 'meta';
-use version; our $VERSION = qv( sprintf '0.15.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev$ =~ /\d+/gmx );
 
 use Moose;
 use MooseX::Types::Common::String  qw(SimpleStr);
@@ -13,11 +13,15 @@ use MooseX::Types::Moose           qw(Int);
 
 extends q(File::DataClass::Exception);
 
-has 'out'  => is => 'ro', isa => SimpleStr, default => q();
+push @{ File::DataClass::Exception->Ignore }, 'Class::Usul::IPC';
 
-has 'rv'   => is => 'ro', isa => Int, default => 1;
+has '+class' => default => __PACKAGE__;
 
-has 'time' => is => 'ro', isa => PositiveInt, default => CORE::time();
+has 'out'    => is => 'ro', isa => SimpleStr, default => q();
+
+has 'rv'     => is => 'ro', isa => Int, default => 1;
+
+has 'time'   => is => 'ro', isa => PositiveInt, default => CORE::time();
 
 __PACKAGE__->meta->make_immutable;
 
@@ -33,7 +37,7 @@ Class::Usul::Exception - Exception handling
 
 =head1 Version
 
-This documents version v0.15.$Rev$ of L<Class::Usul::Exception>
+This documents version v0.16.$Rev$ of L<Class::Usul::Exception>
 
 =head1 Synopsis
 
@@ -68,10 +72,14 @@ L</throw> method with automatic re-throw upon detection of self,
 conditional throw if an exception was caught and a simplified
 stacktrace
 
+Error objects are overloaded to stringify to the full error message plus a
+leader
+
 =head1 Configuration and Environment
 
-The C<$Class::Usul::Exception::Ignore> package variable is an array ref of
-methods whose presence should be ignored by the error message leader
+The C<< File::DataClass::Exception->Ignore >> class attribute is an
+array ref of methods whose presence should be ignored by the error
+message leader
 
 Defines the following list of read only attributes;
 
@@ -133,10 +141,6 @@ A loadable class which defaults to L<Devel::StackTrace>
 
 =head1 Subroutines/Methods
 
-=head2 BUILD
-
-Forces the instantiation of the C<trace> attribute
-
 =head2 as_string
 
    $error_text = $self->as_string;
@@ -192,27 +196,13 @@ None
 
 =item L<overload>
 
-=item L<Devel::StackTrace>
-
-=item L<List::Util>
-
 =item L<Moose>
-
-=item L<MooseX::ClassAttribute>
-
-=item L<MooseX::AttributeShortcuts>
-
-=item L<MooseX::Types>
 
 =item L<MooseX::Types::Common::String>
 
 =item L<MooseX::Types::Common::Numeric>
 
-=item L<MooseX::Types::LoadableClass>
-
 =item L<MooseX::Types::Moose>
-
-=item L<Scalar::Util>
 
 =back
 

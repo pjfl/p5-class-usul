@@ -2,7 +2,7 @@
 
 package Class::Usul::Lock;
 
-use version; our $VERSION = qv( sprintf '0.15.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
@@ -66,7 +66,7 @@ Class::Usul::Lock - Command line access to the L<IPC::SRLock> methods
 
 =head1 Version
 
-This documents version v0.15.$Rev$ of L<Class::Usul::Lock>
+This documents version v0.16.$Rev$ of L<Class::Usul::Lock>
 
 =head1 Synopsis
 
