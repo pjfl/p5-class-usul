@@ -1,4 +1,4 @@
-# @(#)Ident: Exception.pm 2013-04-29 02:39 pjf ;
+# @(#)Ident: Exception.pm 2013-04-29 04:27 pjf ;
 
 package Class::Usul::Exception;
 
@@ -10,52 +10,40 @@ use version; our $VERSION = qv( sprintf '0.15.%d', q$Rev$ =~ /\d+/gmx );
 use Moose;
 use MooseX::ClassAttribute;
 use MooseX::AttributeShortcuts;
-use MooseX::Types     -declare => [ q(StackTrace) ];
 use MooseX::Types::Common::String  qw(NonEmptySimpleStr SimpleStr);
 use MooseX::Types::Common::Numeric qw(PositiveInt);
-use MooseX::Types::LoadableClass   qw(LoadableClass);
-use MooseX::Types::Moose           qw(ArrayRef HashRef Int Object);
-use English                        qw(-no_match_vars);
-use List::Util                     qw(first);
-use Scalar::Util                   qw(weaken);
-
-# Type constraints
-subtype StackTrace, as Object,
-   where   { $_->can( q(frames) ) },
-   message { blessed $_ ? 'Object '.(blessed $_).' is missing a frames method'
-                        : "Scalar ${_} is not on object reference" };
+use MooseX::Types::Moose           qw(ArrayRef Int);
 
 # Class attributes
-class_has 'Ignore' => is => 'rw',   isa => ArrayRef,
+class_has 'Ignore' => is => 'rw', isa => ArrayRef,
    default         => sub { [ qw(Class::Usul::IPC File::DataClass::IO) ] };
 
 # Object attributes (public)
-has 'args'         => is => 'ro',   isa => ArrayRef, default => sub { [] };
+has 'args'   => is => 'ro',   isa => ArrayRef, default => sub { [] };
 
-has 'class'        => is => 'ro',   isa => NonEmptySimpleStr,
-   default         => __PACKAGE__;
+has 'class'  => is => 'ro',   isa => NonEmptySimpleStr,
+   default   => __PACKAGE__;
 
-has 'error'        => is => 'ro',   isa => NonEmptySimpleStr,
-   default         => 'Unknown error';
+has 'error'  => is => 'ro',   isa => NonEmptySimpleStr,
+   default   => 'Unknown error';
 
-has 'leader'       => is => 'lazy', isa => NonEmptySimpleStr;
+has 'ignore' => is => 'ro',   isa => ArrayRef,
+   default   => sub { __PACKAGE__->Ignore }, init_arg => undef;
 
-has 'level'        => is => 'ro',   isa => PositiveInt, default => 1;
+has 'leader' => is => 'lazy', isa => NonEmptySimpleStr;
 
-has 'out'          => is => 'ro',   isa => SimpleStr, default => q();
+has 'level'  => is => 'ro',   isa => PositiveInt, default => 1;
 
-has 'rv'           => is => 'ro',   isa => Int, default => 1;
+has 'out'    => is => 'ro',   isa => SimpleStr, default => q();
 
-has 'time'         => is => 'ro',   isa => PositiveInt, default => CORE::time();
+has 'rv'     => is => 'ro',   isa => Int, default => 1;
 
-has 'trace'        => is => 'lazy', isa => StackTrace,
-   handles         => [ qw(frames) ], init_arg => undef;
+has 'time'   => is => 'ro',   isa => PositiveInt, default => CORE::time();
 
-has 'trace_args'   => is => 'lazy', isa => HashRef;
+with q(Class::Usul::TraitFor::ThrowingExceptions);
+with q(Class::Usul::TraitFor::TracingStacks);
 
-has 'trace_class'  => is => 'ro',   isa => LoadableClass, coerce => 1,
-   default         => sub { q(Devel::StackTrace) };
-
+# Construction
 around 'BUILDARGS' => sub {
    my ($next, $self, @args) = @_; my $attr = __get_attr( @args );
 
@@ -64,10 +52,7 @@ around 'BUILDARGS' => sub {
    return $attr;
 };
 
-sub BUILD {
-   my $self = shift; $self->trace; return;
-}
-
+# Public methods
 sub as_string {
    my $self = shift; my $text = $self->error or return;
 
@@ -81,115 +66,11 @@ sub as_string {
    return $self->leader.$text;
 }
 
-sub caught {
-   my ($self, @args) = @_; my $attr = __get_attr( @args );
-
-   my $error = $attr->{error} ||= $EVAL_ERROR; $error or return;
-
-   return __is_one_of_us( $error ) ? $error : $self->new( $attr );
-}
-
-sub stacktrace {
-   my ($self, $skip) = @_; my ($l_no, @lines, %seen, $subr);
-
-   for my $frame (reverse $self->frames) {
-      unless ($l_no = $seen{ $frame->package } and $l_no == $frame->line) {
-         push @lines, join q( ), ($subr || $frame->package),
-            'line', $frame->line;
-         $seen{ $frame->package } = $frame->line;
-      }
-
-      $subr = $frame->subroutine;
-   }
-
-   defined $skip or $skip = 0; pop @lines while ($skip--);
-
-   return wantarray ? reverse @lines : (join "\n", reverse @lines)."\n";
-}
-
-sub throw {
-   my ($self, @args) = @_;
-
-   die __is_one_of_us( $args[ 0 ] ) ? $args[ 0 ] : $self->new( @args );
-}
-
-sub throw_on_error {
-   my ($self, @args) = @_; my $e;
-
-   $e = $self->caught( @args ) and $self->throw( $e );
-
-   return;
-}
-
-sub trace_frame_filter { # Lifted from StackTrace::Auto
-   my $self = shift; my $found_mark = 0; weaken( $self );
-
-   return sub {
-      my ($raw)    = @_;
-      my  $sub     = $raw->{caller}->[ 3 ];
-     (my  $package = $sub) =~ s{ :: \w+ \z }{}mx;
-
-      if    ($found_mark == 3) { return 1 }
-      elsif ($found_mark == 2) {
-         $sub =~ m{ ::new \z }mx and $self->isa( $package ) and return 0;
-         $found_mark++; return 1;
-      }
-      elsif ($found_mark == 1) {
-         $sub =~ m{ ::new \z }mx and $self->isa( $package ) and $found_mark++;
-         return 0;
-      }
-
-      $raw->{caller}->[ 3 ] =~ m{ ::_build_trace \z }mx and $found_mark++;
-      return 0;
-   }
-}
-
-# Private methods
-sub _build_leader {
-   my $self = shift; my $level = $self->level;
-
-   my @frames = $self->frames; my ($leader, $line, $package);
-
-   do {
-      if ($package = $frames[ $level ]->package) {
-         $line   = $frames[ $level ]->line;
-         $leader = "${package}[${line}][${level}]: "; $level++;
-      }
-      else { $leader = $package = q() }
-   }
-   while ($package and __is_member( $package, __PACKAGE__->Ignore()) );
-
-   return $leader;
-}
-
-sub _build_trace {
-   return $_[ 0 ]->trace_class->new( %{ $_[ 0 ]->trace_args } );
-}
-
-sub _build_trace_args {
-   return { no_refs          => 1,
-            respect_overload => 0,
-            max_arg_length   => 0,
-            frame_filter     => $_[ 0 ]->trace_frame_filter, };
-}
-
 # Private functions
 sub __get_attr {
    return ($_[ 0 ] && ref $_[ 0 ] eq q(HASH)) ? { %{ $_[ 0 ] } }
         : (defined $_[ 1 ])                   ? { @_ }
                                               : { error => $_[ 0 ] };
-}
-
-sub __is_member {
-   my ($candidate, @args) = @_; $candidate or return;
-
-   $args[ 0 ] && ref $args[ 0 ] eq q(ARRAY) and @args = @{ $args[ 0 ] };
-
-   return (first { $_ eq $candidate } @args) ? 1 : 0;
-}
-
-sub __is_one_of_us {
-   return $_[ 0 ] && blessed $_[ 0 ] && $_[ 0 ]->isa( __PACKAGE__ );
 }
 
 __PACKAGE__->meta->make_immutable;
