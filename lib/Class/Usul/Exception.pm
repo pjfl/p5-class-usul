@@ -1,77 +1,23 @@
-# @(#)Ident: Exception.pm 2013-04-29 04:27 pjf ;
+# @(#)Ident: Exception.pm 2013-04-29 13:20 pjf ;
 
 package Class::Usul::Exception;
 
 # Package namespace::autoclean does not play nice with overload
 use namespace::clean -except => 'meta';
-use overload '""' => sub { shift->as_string }, fallback => 1;
 use version; our $VERSION = qv( sprintf '0.15.%d', q$Rev$ =~ /\d+/gmx );
 
 use Moose;
-use MooseX::ClassAttribute;
-use MooseX::AttributeShortcuts;
-use MooseX::Types::Common::String  qw(NonEmptySimpleStr SimpleStr);
+use MooseX::Types::Common::String  qw(SimpleStr);
 use MooseX::Types::Common::Numeric qw(PositiveInt);
-use MooseX::Types::Moose           qw(ArrayRef Int);
+use MooseX::Types::Moose           qw(Int);
 
-# Class attributes
-class_has 'Ignore' => is => 'rw', isa => ArrayRef,
-   default         => sub { [ qw(Class::Usul::IPC File::DataClass::IO) ] };
+extends q(File::DataClass::Exception);
 
-# Object attributes (public)
-has 'args'   => is => 'ro',   isa => ArrayRef, default => sub { [] };
+has 'out'  => is => 'ro', isa => SimpleStr, default => q();
 
-has 'class'  => is => 'ro',   isa => NonEmptySimpleStr,
-   default   => __PACKAGE__;
+has 'rv'   => is => 'ro', isa => Int, default => 1;
 
-has 'error'  => is => 'ro',   isa => NonEmptySimpleStr,
-   default   => 'Unknown error';
-
-has 'ignore' => is => 'ro',   isa => ArrayRef,
-   default   => sub { __PACKAGE__->Ignore }, init_arg => undef;
-
-has 'leader' => is => 'lazy', isa => NonEmptySimpleStr;
-
-has 'level'  => is => 'ro',   isa => PositiveInt, default => 1;
-
-has 'out'    => is => 'ro',   isa => SimpleStr, default => q();
-
-has 'rv'     => is => 'ro',   isa => Int, default => 1;
-
-has 'time'   => is => 'ro',   isa => PositiveInt, default => CORE::time();
-
-with q(Class::Usul::TraitFor::ThrowingExceptions);
-with q(Class::Usul::TraitFor::TracingStacks);
-
-# Construction
-around 'BUILDARGS' => sub {
-   my ($next, $self, @args) = @_; my $attr = __get_attr( @args );
-
-   $attr->{error} and $attr->{error} .= q() and chomp $attr->{error};
-
-   return $attr;
-};
-
-# Public methods
-sub as_string {
-   my $self = shift; my $text = $self->error or return;
-
-   # Expand positional parameters of the form [_<n>]
-   0 > index $text, q([_)  and return $self->leader.$text;
-
-   my @args = map { $_ // '[?]' } @{ $self->args }, map { '[?]' } 0 .. 9;
-
-   $text =~ s{ \[ _ (\d+) \] }{$args[ $1 - 1 ]}gmx;
-
-   return $self->leader.$text;
-}
-
-# Private functions
-sub __get_attr {
-   return ($_[ 0 ] && ref $_[ 0 ] eq q(HASH)) ? { %{ $_[ 0 ] } }
-        : (defined $_[ 1 ])                   ? { @_ }
-                                              : { error => $_[ 0 ] };
-}
+has 'time' => is => 'ro', isa => PositiveInt, default => CORE::time();
 
 __PACKAGE__->meta->make_immutable;
 

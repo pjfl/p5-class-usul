@@ -357,7 +357,7 @@ sub run {
 sub run_chain {
    my ($self, $method) = @_; $method or $self->_output_usage( 0 );
 
-   $self->error( "Method ${method} unknown" );
+   $self->fatal( exception "Method ${method} unknown" );
    return FAILED;
 }
 
