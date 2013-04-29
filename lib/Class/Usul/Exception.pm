@@ -4,7 +4,7 @@ package Class::Usul::Exception;
 
 # Package namespace::autoclean does not play nice with overload
 use namespace::clean -except => 'meta';
-use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.17.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moose;
 use MooseX::Types::Common::String  qw(SimpleStr);
@@ -37,7 +37,7 @@ Class::Usul::Exception - Exception handling
 
 =head1 Version
 
-This documents version v0.16.$Rev$ of L<Class::Usul::Exception>
+This documents version v0.17.$Rev: 1 $ of L<Class::Usul::Exception>
 
 =head1 Synopsis
 

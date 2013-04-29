@@ -2,7 +2,7 @@
 
 package Class::Usul::Config::Programs;
 
-use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.17.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
@@ -51,7 +51,7 @@ Class::Usul::Config::Programs - Additional configuration attributes for CLI prog
 
 =head1 Version
 
-0.16.$Revision$
+0.16.$Rev: 1 $
 
 =head1 Synopsis
 

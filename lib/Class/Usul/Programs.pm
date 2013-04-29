@@ -3,7 +3,7 @@
 package Class::Usul::Programs;
 
 use attributes ();
-use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.17.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Moose;
@@ -755,7 +755,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes Class::Usul::Programs version 0.16.$Revision$
+This document describes Class::Usul::Programs version 0.16.$Rev: 1 $
 
 =head1 Synopsis
 

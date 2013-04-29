@@ -4,7 +4,7 @@ package Class::Usul::Time;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.17.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Date::Format  ();
 use Time::HiRes qw(usleep);
@@ -266,7 +266,7 @@ Class::Usul::Time - Class methods for date and time manipulation
 
 =head1 Version
 
-$Revision$
+$Rev: 1 $
 
 =head1 Synopsis
 
