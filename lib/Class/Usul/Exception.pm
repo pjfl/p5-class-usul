@@ -1,4 +1,4 @@
-# @(#)Ident: Exception.pm 2013-04-29 14:42 pjf ;
+# @(#)Ident: Exception.pm 2013-04-29 17:22 pjf ;
 
 package Class::Usul::Exception;
 
@@ -13,7 +13,7 @@ use MooseX::Types::Moose           qw(Int);
 
 extends q(File::DataClass::Exception);
 
-push @{ File::DataClass::Exception->Ignore }, 'Class::Usul::IPC';
+File::DataClass::Exception->ignore_class( 'Class::Usul::IPC' );
 
 has '+class' => default => __PACKAGE__;
 
