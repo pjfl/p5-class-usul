@@ -1,15 +1,13 @@
-# @(#)Ident: Exception.pm 2013-04-29 17:22 pjf ;
+# @(#)Ident: Exception.pm 2013-04-30 19:08 pjf ;
 
 package Class::Usul::Exception;
 
-# Package namespace::autoclean does not play nice with overload
-use namespace::clean -except => 'meta';
-use version; our $VERSION = qv( sprintf '0.17.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use namespace::autoclean;
+use version; our $VERSION = qv( sprintf '0.17.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
 use Moose;
-use MooseX::Types::Common::String  qw(SimpleStr);
 use MooseX::Types::Common::Numeric qw(PositiveInt);
-use MooseX::Types::Moose           qw(Int);
+use MooseX::Types::Moose           qw(Int Str);
 
 extends q(File::DataClass::Exception);
 
@@ -17,7 +15,7 @@ File::DataClass::Exception->ignore_class( 'Class::Usul::IPC' );
 
 has '+class' => default => __PACKAGE__;
 
-has 'out'    => is => 'ro', isa => SimpleStr, default => q();
+has 'out'    => is => 'ro', isa => Str, default => q();
 
 has 'rv'     => is => 'ro', isa => Int, default => 1;
 
@@ -37,7 +35,7 @@ Class::Usul::Exception - Exception handling
 
 =head1 Version
 
-This documents version v0.17.$Rev: 1 $ of L<Class::Usul::Exception>
+This documents version v0.17.$Rev: 5 $ of L<Class::Usul::Exception>
 
 =head1 Synopsis
 

@@ -1,6 +1,7 @@
 Revision history for Class::Usul
 
-0.17.3    2013-04-29 20:33:55
+0.17.5    2013-04-30 20:10:54
+          - Bumped F:DC dependency
           - Raised exception level in C:U:Functions::untaint_string
           - Fixed Indent keyword expansion
           - Fixed POD version numbers
