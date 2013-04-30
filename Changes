@@ -1,6 +1,7 @@
 Revision history for Class::Usul
 
-0.17.5    2013-04-30 20:10:54
+0.17.6    2013-04-30 22:55:01
+          - Use F:DC:Exception::Simple
           - Bumped F:DC dependency
           - Raised exception level in C:U:Functions::untaint_string
           - Fixed Indent keyword expansion
