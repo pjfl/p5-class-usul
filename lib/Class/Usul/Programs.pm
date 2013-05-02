@@ -1,9 +1,9 @@
-# @(#)$Ident: Programs.pm 2013-04-29 19:13 pjf ;
+# @(#)$Ident: Programs.pm 2013-05-02 14:04 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
-use version; our $VERSION = qv( sprintf '0.17.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.17.%d', q$Rev: 8 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Moose;
@@ -28,6 +28,7 @@ use Pod::Usage;
 use Term::ReadKey;
 use Text::Autoformat;
 use Try::Tiny;
+use User::pwent;
 
 extends q(Class::Usul);
 with    q(MooseX::Getopt::Dashes);
@@ -94,7 +95,6 @@ has '_ipc'         => is => 'lazy', isa => IPCType,
    handles         => [ qw(run_cmd) ], init_arg => undef, reader => 'ipc';
 
 has '_logname'     => is => 'lazy', isa => NonEmptySimpleStr,
-   default         => sub { untaint_identifier( $ENV{USER} || $ENV{LOGNAME} ) },
    init_arg        => undef, reader => 'logname';
 
 has '_meta_class'  => is => 'lazy', isa => LoadableClass, coerce => TRUE,
@@ -416,6 +416,11 @@ sub _apply_encoding {
    $_ = decode( $enc, $_ ) for @ARGV;
 
    return;
+}
+
+sub _build__logname {
+   return untaint_identifier( $ENV{USER} || $ENV{LOGNAME}
+                              || getpwuid( $UID )->name || 'unknown' );
 }
 
 sub _build__os {
@@ -755,7 +760,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes Class::Usul::Programs version v0.17.$Rev: 3 $
+This document describes Class::Usul::Programs version v0.17.$Rev: 8 $
 
 =head1 Synopsis
 
