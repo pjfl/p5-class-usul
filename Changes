@@ -1,6 +1,7 @@
 Revision history for Class::Usul
 
-0.17.6    2013-04-30 22:55:01
+0.17.9    2013-05-02 15:24:05
+          - Bumped F::DC version number
           - Try harder to derive the logname in Programs
           - Use F:DC:Exception
           - Bumped F:DC dependency
