@@ -5,7 +5,7 @@ package Class::Usul::Build;
 use strict;
 use warnings;
 use feature qw(state);
-use version; our $VERSION = qv( sprintf '0.17.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use parent  qw(Module::Build);
 use lib;
 
@@ -1129,7 +1129,7 @@ Class::Usul::Build - M::B utility methods
 
 =head1 Version
 
-This document describes Class::Usul::Build version v0.17.$Rev: 3 $
+This document describes Class::Usul::Build version v0.18.$Rev: 1 $
 
 =head1 Synopsis
 

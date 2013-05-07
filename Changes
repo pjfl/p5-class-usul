@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+0.18.1    2013-05-08 00:25:08
+          - Exception class loads ErrorLeader trait
+
 0.17.9    2013-05-02 15:24:05
           - Bumped F::DC version number
           - Try harder to derive the logname in Programs

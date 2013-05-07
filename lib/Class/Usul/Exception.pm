@@ -1,15 +1,17 @@
-# @(#)Ident: Exception.pm 2013-05-01 19:33 pjf ;
+# @(#)Ident: Exception.pm 2013-05-07 23:19 pjf ;
 
 package Class::Usul::Exception;
 
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.17.%d', q$Rev: 7 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moose;
 use MooseX::Types::Common::Numeric qw(PositiveInt);
 use MooseX::Types::Moose           qw(Int Str);
 
 extends q(File::DataClass::Exception);
+
+File::DataClass::Exception->add_roles( 'ErrorLeader' );
 
 File::DataClass::Exception->ignore_class( 'Class::Usul::IPC' );
 
@@ -35,7 +37,7 @@ Class::Usul::Exception - Exception handling
 
 =head1 Version
 
-This documents version v0.17.$Rev: 7 $ of L<Class::Usul::Exception>
+This documents version v0.18.$Rev: 1 $ of L<Class::Usul::Exception>
 
 =head1 Synopsis
 

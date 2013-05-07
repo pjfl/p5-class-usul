@@ -2,7 +2,7 @@
 
 package Class::Usul;
 
-use version; our $VERSION = qv( sprintf '0.17.%d', q$Rev: 9 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use 5.010;
 use Class::Usul::Moose;
@@ -108,7 +108,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.17.$Rev: 9 $
+Describes Class::Usul version v0.18.$Rev: 1 $
 
 =head1 Synopsis
 

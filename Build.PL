@@ -1,9 +1,9 @@
-# @(#)$Ident: Build.PL 2013-05-02 14:23 pjf ;
+# @(#)$Ident: Build.PL 2013-05-07 23:22 pjf ;
 
 use strict;
 use warnings;
 use inc::Bob; # Module::Build subclass
-use version; our $VERSION = qv( sprintf '0.17.%d', q$Rev: 9 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 Bob->new( {
    module    => q(Class::Usul),
@@ -25,7 +25,7 @@ Bob->new( {
       'Digest::MD5'                   => 2.39,
       'Digest::SHA1'                  => 2.11,
       'Email::Date::Format'           => 1.002,
-      'File::DataClass'               => q(0.19.0),
+      'File::DataClass'               => q(0.20.0),
       'File::Gettext'                 => q(0.16.0),
       'Getopt::Mixed'                 => 1.10,
       'Git::Class'                    => 0.12,
@@ -33,7 +33,7 @@ Bob->new( {
       'IO::Interactive'               => q(0.0.5),
       'IPC::Cmd'                      => 0.42,
       'IPC::Open3'                    => 1.02,
-      'IPC::SRLock'                   => q(0.9.0),
+      'IPC::SRLock'                   => q(0.11.0),
       'Log::Handler'                  => 0.63,
       'Module::Build'                 => 0.38,
       'Module::CoreList'              => 2.24,

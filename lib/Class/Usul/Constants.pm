@@ -3,7 +3,7 @@
 package Class::Usul::Constants;
 
 use namespace::clean -except => 'meta';
-use version; our $VERSION = qv( sprintf '0.17.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Exception;
 use File::DataClass::Constants ();
@@ -95,7 +95,7 @@ Class::Usul::Constants - Definitions of constant values
 
 =head1 Version
 
-This documents version v0.17.$Rev: 4 $
+This documents version v0.18.$Rev: 1 $
 
 =head1 Synopsis
 
