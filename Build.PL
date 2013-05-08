@@ -1,9 +1,9 @@
-# @(#)$Ident: Build.PL 2013-05-07 23:22 pjf ;
+# @(#)$Ident: Build.PL 2013-05-08 20:40 pjf ;
 
 use strict;
 use warnings;
 use inc::Bob; # Module::Build subclass
-use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 Bob->new( {
    module    => q(Class::Usul),
@@ -65,7 +65,8 @@ Bob->new( {
       'Text::Format'                  => 0.53,
       'Time::Zone'                    => 2.22,
       'Try::Tiny'                     => 0.09,
-      'YAML::Syck'                    => 1.05, },
+      'YAML::Syck'                    => 1.05,
+      'Unexpected'                    => q(0.1.0), },
    recommends              => {
       'App::cpanminus'     => 1.6005,
       'Pod::Markdown'      => 1.322,
