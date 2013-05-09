@@ -1,9 +1,9 @@
-# @(#)Ident: Exception.pm 2013-05-08 21:02 pjf ;
+# @(#)Ident: Exception.pm 2013-05-09 14:17 pjf ;
 
 package Class::Usul::Exception;
 
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Moose;
 use MooseX::Types::Common::Numeric qw(PositiveInt);
@@ -20,7 +20,8 @@ has 'out'    => is => 'ro', isa => Str, default => q();
 
 has 'rv'     => is => 'ro', isa => Int, default => 1;
 
-has 'time'   => is => 'ro', isa => PositiveInt, default => CORE::time();
+has 'time'   => is => 'ro', isa => PositiveInt, default => CORE::time(),
+   init_arg  => undef;
 
 __PACKAGE__->meta->make_immutable;
 
@@ -38,7 +39,7 @@ Class::Usul::Exception - Exception handling
 
 =head1 Version
 
-This documents version v0.18.$Rev: 2 $ of L<Class::Usul::Exception>
+This documents version v0.18.$Rev: 3 $ of L<Class::Usul::Exception>
 
 =head1 Synopsis
 

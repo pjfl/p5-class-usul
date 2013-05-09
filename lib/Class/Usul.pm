@@ -1,8 +1,8 @@
-# @(#)$Ident: Usul.pm 2013-05-08 21:17 pjf ;
+# @(#)$Ident: Usul.pm 2013-05-09 15:44 pjf ;
 
 package Class::Usul;
 
-use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use 5.010;
 use Class::Usul::Moose;
@@ -61,7 +61,8 @@ sub _build__lock { # There is only one lock object. Instantiate on first use
    my $config = $self->config; my $attr = { %{ $config->lock_attributes } };
 
    merge_attributes $attr, $self,   {}, [ qw(debug log) ];
-   merge_attributes $attr, $config, {}, [ qw(tempdir) ];
+   merge_attributes $attr, $config, { exception_class => EXCEPTION_CLASS },
+      [ qw(exception_class tempdir) ];
 
    return $cache = IPC::SRLock->new( $attr );
 }
@@ -108,7 +109,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.18.$Rev: 2 $
+Describes Class::Usul version v0.18.$Rev: 3 $
 
 =head1 Synopsis
 
