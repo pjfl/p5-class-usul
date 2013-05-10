@@ -1,6 +1,7 @@
 Revision history for Class::Usul
 
-0.18.3    2013-05-09 17:00:56
+0.18.4    2013-05-10 19:41:50
+          - Removed unused dependencies. Added comments
           - Pass ::Exception to IPC::SRLock in Usul
           - Exception class depends on Unexpected
           - Exception class loads ErrorLeader trait

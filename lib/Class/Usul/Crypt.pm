@@ -1,11 +1,11 @@
-# @(#)$Ident: Crypt.pm 2013-04-29 19:12 pjf ;
+# @(#)$Ident: Crypt.pm 2013-05-10 16:58 pjf ;
 
 package Class::Usul::Crypt;
 
 use strict;
 use warnings;
 use namespace::clean -except => 'meta';
-use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions qw(create_token is_coderef is_hashref);
@@ -21,6 +21,7 @@ use Sub::Exporter::Progressive -setup => {
 
 my $SEED = do { local $RS = undef; <DATA> };
 
+# Public functions
 sub decrypt (;$$) {
    __cipher( $_[ 0 ] )->decrypt( decode_base64( $_[ 1 ] ) );
 }
@@ -38,7 +39,6 @@ sub default_cipher () {
 }
 
 # Private functions
-
 sub __cipher {
    Crypt::CBC->new( -cipher => __cname( $_[ 0 ] ), -key => __token( $_[ 0 ] ) );
 }
@@ -81,7 +81,7 @@ Class::Usul::Crypt - Encryption/decryption functions
 
 =head1 Version
 
-This documents version v0.18.$Rev: 1 $
+This documents version v0.18.$Rev: 4 $
 
 =head1 Synopsis
 

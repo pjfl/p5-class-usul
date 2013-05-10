@@ -1,11 +1,11 @@
-# @(#)$Ident: Functions.pm 2013-04-29 21:41 pjf ;
+# @(#)$Ident: Functions.pm 2013-05-10 17:31 pjf ;
 
 package Class::Usul::Functions;
 
 use strict;
 use warnings;
 use feature      qw(state);
-use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Data::Printer alias => q(Dumper), colored => 1, indent => 3,
@@ -43,6 +43,7 @@ use Sub::Exporter -setup => {
    groups  => { default => [ qw(is_member) ], },
 };
 
+# Public functions
 sub abs_path ($) {
    my $y = shift; (defined $y and length $y) or return $y;
 
@@ -351,7 +352,6 @@ sub zip (@) {
 }
 
 # Private functions
-
 sub _base64_char_set () {
    return [ 0 .. 9, q(A) .. q(Z), q(_), q(a) .. q(z), q(~), q(+) ];
 }
@@ -488,7 +488,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.18.$Rev: 1 $
+This documents version v0.18.$Rev: 4 $
 
 =head1 Synopsis
 

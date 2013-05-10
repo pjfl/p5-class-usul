@@ -1,8 +1,8 @@
-# @(#)$Ident: Config.pm 2013-04-29 19:11 pjf ;
+# @(#)$Ident: Config.pm 2013-05-10 16:48 pjf ;
 
 package Class::Usul::Config;
 
-use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Usul::File;
 use Class::Usul::Moose;
@@ -18,6 +18,7 @@ use File::Gettext::Constants;
 use File::Spec::Functions        qw(canonpath catdir catfile rel2abs rootdir
                                     tmpdir);
 
+# Public attributes
 has 'appclass'        => is => 'ro',   isa => NonEmptySimpleStr,
    required           => TRUE;
 
@@ -80,6 +81,7 @@ has 'prefix'          => is => 'lazy', isa => NonEmptySimpleStr;
 
 has 'salt'            => is => 'lazy', isa => NonEmptySimpleStr;
 
+# Construction
 around 'BUILDARGS' => sub {
    my ($next, $class, @args) = @_; my $attr = $class->$next( @args ); my $paths;
 
@@ -104,6 +106,7 @@ around 'BUILDARGS' => sub {
    return $attr;
 };
 
+# Public methods
 sub canonicalise {
    my ($self, $base, $relpath) = @_;
 
@@ -117,7 +120,6 @@ sub canonicalise {
 }
 
 # Private methods
-
 sub _build_appldir {
    my ($self, $appclass, $home) = __unpack( @_ ); my $dir = home2appldir $home;
 
@@ -126,7 +128,7 @@ sub _build_appldir {
 
    -d $dir or $dir = $home;
 
-   return rel2abs( untaint_path ($dir || rootdir) );
+   return rel2abs( untaint_path( $dir || rootdir ) );
 }
 
 sub _build_binsdir {
@@ -307,7 +309,7 @@ Class::Usul::Config - Inflate config values
 
 =head1 Version
 
-Describes Class::Usul::Config version v0.18.$Rev: 1 $
+Describes Class::Usul::Config version v0.18.$Rev: 4 $
 
 =head1 Synopsis
 

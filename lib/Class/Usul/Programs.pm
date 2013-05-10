@@ -1,9 +1,9 @@
-# @(#)$Ident: Programs.pm 2013-05-02 14:04 pjf ;
+# @(#)$Ident: Programs.pm 2013-05-10 16:25 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
-use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Moose;
@@ -36,7 +36,6 @@ with    q(Class::Usul::TraitFor::LoadingClasses);
 with    q(Class::Usul::TraitFor::UntaintedGetopts);
 
 # Override attributes in base class
-
 has '+config_class' => default => sub { 'Class::Usul::Config::Programs' };
 
 has '+debug'        => traits => [ 'Getopt' ], cmd_aliases => q(D),
@@ -45,7 +44,6 @@ has '+debug'        => traits => [ 'Getopt' ], cmd_aliases => q(D),
 has '+help_flag'    => cmd_aliases => [ qw(usage ?) ];
 
 # Public attributes
-
 has 'help_options' => is => 'ro', isa => Bool, default => FALSE,
    documentation   => 'Uses Pod::Usage to describe the program options',
    traits          => [ 'Getopt' ], cmd_aliases => q(h), cmd_flag => 'help_opt';
@@ -85,7 +83,6 @@ has 'version'      => is => 'ro', isa => Bool, default => FALSE,
    traits          => [ 'Getopt' ], cmd_aliases => q(V), cmd_flag => 'version';
 
 # Private attributes
-
 has '_file'        => is => 'lazy', isa => FileType,
    default         => sub { Class::Usul::File->new( builder => $_[ 0 ] ) },
    handles         => [ qw(io) ], init_arg => undef, reader => 'file';
@@ -114,6 +111,7 @@ has '_params'      => is => 'ro',   isa => HashRef, default => sub { {} },
 has '_pwidth'      => is => 'rw',   isa => PositiveInt, accessor => 'pwidth',
    default         => 60, init_arg => 'pwidth';
 
+# Construction
 around 'BUILDARGS' => sub {
    my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
 
@@ -138,6 +136,7 @@ sub BUILD {
    return;
 }
 
+# Public methods
 sub add_leader {
    my ($self, $text, $args) = @_; $text or return NUL; $args ||= {};
 
@@ -405,7 +404,6 @@ sub yorn { # General yes or no input routine
 }
 
 # Private methods
-
 sub _apply_encoding {
    my $self = shift; my $enc = $self->encoding;
 
@@ -541,7 +539,6 @@ sub _usage_for {
 }
 
 # Private functions
-
 sub __find_apphome {
    my ($appclass, $home) = @_; my ($file, $path);
 
@@ -760,7 +757,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes Class::Usul::Programs version v0.18.$Rev: 1 $
+This document describes Class::Usul::Programs version v0.18.$Rev: 4 $
 
 =head1 Synopsis
 

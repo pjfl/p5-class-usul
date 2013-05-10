@@ -1,8 +1,8 @@
-# @(#)$Ident: Usul.pm 2013-05-09 15:44 pjf ;
+# @(#)$Ident: Usul.pm 2013-05-10 18:11 pjf ;
 
 package Class::Usul;
 
-use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use 5.010;
 use Class::Usul::Moose;
@@ -12,6 +12,7 @@ use Class::Usul::L10N;
 use Class::Usul::Log;
 use IPC::SRLock;
 
+# Public attributes
 has '_config'        => is => 'ro',   isa => HashRef, default => sub { {} },
    init_arg          => 'config';
 
@@ -43,18 +44,18 @@ has '_log'           => is => 'lazy', isa => LogType,
    default           => sub { Class::Usul::Log->new( builder => $_[ 0 ] ) },
    init_arg          => 'log',  reader => 'log';
 
+# Public methods
 sub new_from_class { # Instantiate from a class name with a config method
    my ($self, $app_class) = @_; my $class = blessed $self || $self;
 
    return $class->new( __get_attr_from_class( $app_class ) );
 }
 
-sub dumper {
-   my $self = shift; return data_dumper( @_ ); # Damm handy for development
+sub dumper { # Damm handy for development
+   my $self = shift; return data_dumper( @_ );
 }
 
 # Private methods
-
 sub _build__lock { # There is only one lock object. Instantiate on first use
    my $self = shift; state $cache; $cache and return $cache;
 
@@ -76,7 +77,6 @@ sub _trigger_debug { # Propagate the debug state to child objects
 }
 
 # Private functions
-
 sub __get_attr_from_class { # Coerce a hash ref from a string
    my $class = shift;
 
@@ -109,7 +109,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.18.$Rev: 3 $
+Describes Class::Usul version v0.18.$Rev: 4 $
 
 =head1 Synopsis
 

@@ -1,8 +1,8 @@
-# @(#)$Ident: L10N.pm 2013-04-29 19:13 pjf ;
+# @(#)$Ident: L10N.pm 2013-05-10 17:47 pjf ;
 
 package Class::Usul::L10N;
 
-use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Moose;
@@ -14,6 +14,7 @@ use File::Gettext;
 use File::Spec;
 use Try::Tiny;
 
+# Public attributes
 has 'debug'           => is => 'rw',   isa => Bool, default => FALSE;
 
 has 'l10n_attributes' => is => 'ro',   isa => HashRef, default => sub { {} };
@@ -36,6 +37,7 @@ has 'tempdir'         => is => 'ro',   isa => Directory, coerce => TRUE,
 
 has 'use_country'     => is => 'lazy', isa => Bool;
 
+# Construction
 around 'BUILDARGS' => sub {
    my ($next, $class, @args) = @_; my $attr = $class->$next( @args );
 
@@ -49,6 +51,7 @@ around 'BUILDARGS' => sub {
    return $attr;
 };
 
+# Public methods
 sub get_po_header {
    my ($self, $args) = @_;
    my $domain        = $self->_load_domains( $args || {} ) or return {};
@@ -89,7 +92,6 @@ sub localize {
 }
 
 # Private methods
-
 sub _build_source_name {
    return $_[ 0 ]->l10n_attributes->{source_name} || q(po);
 }
@@ -184,7 +186,7 @@ Class::Usul::L10N - Localize text strings
 
 =head1 Version
 
-This documents version v0.18.$Rev: 1 $
+This documents version v0.18.$Rev: 4 $
 
 =head1 Synopsis
 

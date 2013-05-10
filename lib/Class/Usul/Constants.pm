@@ -1,14 +1,13 @@
-# @(#)$Ident: Constants.pm 2013-04-29 19:41 pjf ;
+# @(#)$Ident: Constants.pm 2013-05-10 16:55 pjf ;
 
 package Class::Usul::Constants;
 
 use namespace::clean -except => 'meta';
-use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
-use Class::Usul::Exception;
-use File::DataClass::Constants ();
 use Moose;
 use MooseX::ClassAttribute;
+use Class::Usul::Exception;
 
 class_has 'Assert'          => is => 'rw', isa => 'Maybe[CodeRef]';
 
@@ -95,7 +94,7 @@ Class::Usul::Constants - Definitions of constant values
 
 =head1 Version
 
-This documents version v0.18.$Rev: 1 $
+This documents version v0.18.$Rev: 4 $
 
 =head1 Synopsis
 
@@ -162,7 +161,7 @@ out loud
 =head2 EXCEPTION_CLASS
 
 The name of the class used to throw exceptions. Defaults to
-L<File::DataClass::Exception> but can be changed by setting the
+L<Class::Usul::Exception> but can be changed by setting the
 C<Exception_Class> class attribute
 
 =head2 EXTNS

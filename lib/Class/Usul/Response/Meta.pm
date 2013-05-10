@@ -1,8 +1,8 @@
-# @(#)$Ident: Meta.pm 2013-04-29 19:26 pjf ;
+# @(#)$Ident: Meta.pm 2013-05-10 15:43 pjf ;
 
 package Class::Usul::Response::Meta;
 
-use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::File;
@@ -38,7 +38,7 @@ around 'BUILDARGS' => sub {
       }
    }
 
-   throw error => 'No META.json or META.yml file', level => 7;
+   throw error => 'No META.json or META.yml file', level => 5;
    return;
 };
 
@@ -56,7 +56,7 @@ Class::Usul::Response::Meta - Class for CPAN Meta file
 
 =head1 Version
 
-This document describes Class::Usul::Response::Meta version v0.16.$Rev: 1 $
+This document describes Class::Usul::Response::Meta version v0.16.$Rev: 4 $
 
 =head1 Synopsis
 

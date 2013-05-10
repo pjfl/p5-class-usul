@@ -1,8 +1,8 @@
-# @(#)$Ident: IPC.pm 2013-04-29 19:13 pjf ;
+# @(#)$Ident: IPC.pm 2013-05-10 17:39 pjf ;
 
 package Class::Usul::IPC;
 
-use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Moose;
@@ -24,13 +24,14 @@ use Try::Tiny;
 
 our ($CHILD_ENUM, $CHILD_PID);
 
+# Public attributes
 has 'response_class' => is => 'lazy', isa => LoadableClass, coerce => TRUE,
    default           => sub { 'Class::Usul::Response::IPC' };
 
 has 'table_class'    => is => 'lazy', isa => LoadableClass, coerce => TRUE,
    default           => sub { 'Class::Usul::Response::Table' };
 
-
+# Private attributes
 has '_file' => is => 'lazy', isa => FileType,
    default  => sub { Class::Usul::File->new( builder => $_[ 0 ]->usul ) },
    handles  => [ qw(io) ], init_arg => undef, reader => 'file';
@@ -39,6 +40,7 @@ has '_usul' => is => 'ro',   isa => BaseType,
    handles  => [ qw(config debug lock log) ], init_arg => 'builder',
    reader   => 'usul', required => TRUE, weak_ref => TRUE;
 
+# Public methods
 sub child_list {
    my ($self, $pid, $procs) = @_; my ($child, $ppt); my @pids = ();
 
@@ -77,7 +79,6 @@ sub popen { # Robbed from IPC::Cmd
       $opts->{err} eq q(stderr) and __print_fh( \*STDERR, $buf );
       return;
    };
-
    my $outhand = sub {
       my $buf = shift; defined $buf or return; $out .= $buf;
 
@@ -85,14 +86,12 @@ sub popen { # Robbed from IPC::Cmd
       $opts->{out} eq q(stdout) and __print_fh( \*STDOUT, $buf );
       return;
    };
-
    my $pipe = sub {
       socketpair( $_[ 0 ], $_[ 1 ], AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or return;
       shutdown  ( $_[ 0 ], 1 );  # No more writing for reader
       shutdown  ( $_[ 1 ], 0 );  # No more reading for writer
       return TRUE;
    };
-
    my $open3 = sub {
       local (*TO_CHLD_R,     *TO_CHLD_W);
       local (*FR_CHLD_R,     *FR_CHLD_W);
@@ -261,7 +260,6 @@ sub signal_process_as_root {
 }
 
 # Private methods
-
 sub _default_run_options {
    my ($self, @opts) = @_; my $opts = arg_list @opts;
 
@@ -542,8 +540,7 @@ sub _set_fields {
    return $flds;
 }
 
-# Private subroutines
-
+# Private functions
 sub __cleaner {
    local $OS_ERROR; # So that wait does not step on existing value
 
@@ -654,7 +651,7 @@ Class::Usul::IPC - List/Create/Delete processes
 
 =head1 Version
 
-This documents version v0.18.$Rev: 1 $
+This documents version v0.18.$Rev: 4 $
 
 =head1 Synopsis
 
