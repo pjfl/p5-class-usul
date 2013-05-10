@@ -1,8 +1,8 @@
-# @(#)$Ident: 07podspelling.t 2013-04-29 19:21 pjf ;
+# @(#)$Ident: 07podspelling.t 2013-05-10 21:05 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 5 $ =~ /\d+/gmx );
 use File::Spec::Functions qw(catdir catfile updir);
 use FindBin qw( $Bin );
 use lib catdir( $Bin, updir, q(lib) );
@@ -70,6 +70,8 @@ distname
 extns
 fh
 fqdn
+fullname
+gecos
 gettext
 getopts
 hashref
@@ -81,7 +83,10 @@ isa
 json
 lbrace
 loc
+loginid
+logname
 lookup
+MSWin
 multi
 namespace
 nul
@@ -106,6 +111,7 @@ svn
 symlink
 tempdir
 tempname
+Twofish
 twofish
 undef
 unescape
@@ -118,4 +124,3 @@ uuid
 vcs
 yaml
 yorn
-Twofish

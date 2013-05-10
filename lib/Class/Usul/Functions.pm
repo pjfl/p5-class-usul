@@ -1,12 +1,13 @@
-# @(#)$Ident: Functions.pm 2013-05-10 17:31 pjf ;
+# @(#)$Ident: Functions.pm 2013-05-10 21:03 pjf ;
 
 package Class::Usul::Functions;
 
 use strict;
 use warnings;
 use feature      qw(state);
-use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
+use Class::Null;
 use Class::Usul::Constants;
 use Data::Printer alias => q(Dumper), colored => 1, indent => 3,
     filters => { 'File::DataClass::IO' => sub { $_[ 0 ]->pathname }, };
@@ -20,6 +21,7 @@ use List::Util   qw(first);
 use Path::Class::Dir;
 use Scalar::Util qw(blessed openhandle);
 use Sys::Hostname;
+use User::pwent;
 
 my @_functions; my $_bson_id_inc : shared = 0;
 
@@ -29,13 +31,14 @@ BEGIN {
                       class2appdir classdir classfile create_token
                       data_dumper distname downgrade elapsed
                       env_prefix escape_TT exception find_source fold
-                      fqdn hex2str home2appldir is_arrayref is_coderef
-                      is_hashref is_member is_win32 merge_attributes
-                      my_prefix pad prefix2class product say split_on__
-                      split_on_dash squeeze strip_leader sub_name sum
-                      thread_id throw trim unescape_TT untaint_cmdline
-                      untaint_identifier untaint_path untaint_string
-                      zip) );
+                      fqdn fullname get_user hex2str home2appldir
+                      is_arrayref is_coderef is_hashref is_member
+                      is_win32 loginid logname merge_attributes
+                      my_prefix pad prefix2class product say
+                      split_on__ split_on_dash squeeze strip_leader
+                      sub_name sum thread_id throw trim unescape_TT
+                      untaint_cmdline untaint_identifier untaint_path
+                      untaint_string zip) );
 }
 
 use Sub::Exporter -setup => {
@@ -183,6 +186,16 @@ sub fqdn (;$) {
    my $x = shift || hostname; return (gethostbyname( $x ))[ 0 ];
 }
 
+sub fullname () {
+   my $y = (split m{ \s* , \s * }msx, (get_user()->gecos || q()))[ 0 ];
+
+   return untaint_cmdline( $y );
+}
+
+sub get_user () {
+   return is_win32() ? Class::Null->new : getpwuid( $UID );
+}
+
 sub hex2str (;$) {
    my @a = split m{}mx, shift // q(); my $str = q();
 
@@ -221,6 +234,14 @@ sub is_member (;@) {
 
 sub is_win32 () {
    return lc $OSNAME eq EVIL ? 1 : 0;
+}
+
+sub loginid () {
+   return untaint_cmdline( get_user()->name || 'unknown' );
+}
+
+sub logname () {
+   return untaint_cmdline( $ENV{USER} || $ENV{LOGNAME} || loginid() );
 }
 
 sub merge_attributes ($$$;$) {
@@ -488,7 +509,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.18.$Rev: 4 $
+This documents version v0.18.$Rev: 5 $
 
 =head1 Synopsis
 
@@ -535,7 +556,7 @@ are passed to it
 
 =head2 assert_directory
 
-   $untained_path = assert_directory $path_to_directory;
+   $untainted_path = assert_directory $path_to_directory;
 
 Untaints directory path. Makes it an absolute path and returns it if it
 exists. Returns undef otherwise
@@ -675,6 +696,21 @@ Classic reduce function with optional base value
 
 Call C<gethostbyname> on the supplied hostname whist defaults to this host
 
+=head2 fullname
+
+   $fullname = fullname;
+
+Returns the untainted first sub field from the gecos attribute of the
+object returned by a call to L</get_user>. Returns the null string if
+the gecos attribute value is false
+
+=head2 get_user
+
+   $user_object = get_user;
+
+Returns the user object from a call to C<getpwuid> with get L<User::pwent>
+package loaded. On MSWin32 systems returns an instance of L<Class::Null>
+
 =head2 hex2str
 
    $string = hex2str $pairs_of_hex_digits;
@@ -717,6 +753,21 @@ remaining parameters
    $bool = is_win32;
 
 Returns true if the C<$OSNAME> is L<evil|Class::Usul::Constants/EVIL>
+
+=head2 loginid
+
+   $loginid = loginid;
+
+Returns the untainted name attribute of the object returned by a call
+to L</get_user> or 'unknown' if the name attribute value is false
+
+=head2 logname
+
+   $logname = logname;
+
+Returns untainted the first true value returned by; the environment
+variable C<USER>, the environment variable C<LOGNAME>, and the
+function L</loginid>
 
 =head2 merge_attributes
 

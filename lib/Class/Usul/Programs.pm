@@ -1,9 +1,9 @@
-# @(#)$Ident: Programs.pm 2013-05-10 16:25 pjf ;
+# @(#)$Ident: Programs.pm 2013-05-10 20:36 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
-use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Moose;
@@ -11,7 +11,7 @@ use Class::Usul::Constants;
 use Class::Usul::Functions qw(abs_path app_prefix arg_list assert_directory
                               class2appdir classdir elapsed env_prefix
                               exception find_source is_arrayref is_hashref
-                              is_member say throw untaint_identifier
+                              is_member logname say throw untaint_identifier
                               untaint_path);
 use Class::Usul::File;
 use Class::Usul::IPC;
@@ -28,7 +28,6 @@ use Pod::Usage;
 use Term::ReadKey;
 use Text::Autoformat;
 use Try::Tiny;
-use User::pwent;
 
 extends q(Class::Usul);
 with    q(MooseX::Getopt::Dashes);
@@ -90,9 +89,6 @@ has '_file'        => is => 'lazy', isa => FileType,
 has '_ipc'         => is => 'lazy', isa => IPCType,
    default         => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) },
    handles         => [ qw(run_cmd) ], init_arg => undef, reader => 'ipc';
-
-has '_logname'     => is => 'lazy', isa => NonEmptySimpleStr,
-   init_arg        => undef, reader => 'logname';
 
 has '_meta_class'  => is => 'lazy', isa => LoadableClass, coerce => TRUE,
    default         => sub { 'Class::Usul::Response::Meta' },
@@ -318,7 +314,7 @@ sub quiet {
 sub run {
    my $self  = shift; my $method = $self->_get_run_method; my $rv;
 
-   my $text  = 'Started by '.$self->logname.' Version '.$self->VERSION.SPC;
+   my $text  = 'Started by '.logname.' Version '.$self->VERSION.SPC;
       $text .= 'Pid '.(abs $PID);
 
    $self->output( $text ); umask $self->mode;
@@ -414,11 +410,6 @@ sub _apply_encoding {
    $_ = decode( $enc, $_ ) for @ARGV;
 
    return;
-}
-
-sub _build__logname {
-   return untaint_identifier( $ENV{USER} || $ENV{LOGNAME}
-                              || getpwuid( $UID )->name || 'unknown' );
 }
 
 sub _build__os {
@@ -757,7 +748,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes Class::Usul::Programs version v0.18.$Rev: 4 $
+This document describes Class::Usul::Programs version v0.18.$Rev: 5 $
 
 =head1 Synopsis
 
