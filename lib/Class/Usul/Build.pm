@@ -1,19 +1,19 @@
-# @(#)$Ident: Build.pm 2013-05-11 09:14 pjf ;
+# @(#)$Ident: Build.pm 2013-05-11 09:49 pjf ;
 
 package Class::Usul::Build;
 
 use strict;
 use warnings;
 use feature qw(state);
-use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 1 $ =~ /\d+/gmx );
-use parent  qw(Module::Build);
+use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use parent 'Module::Build';
 use lib;
 
 use Class::Usul::Build::InstallActions;
 use Class::Usul::Build::Questions;
 use Class::Usul::Build::VCS;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(classdir env_prefix exception say throw);
+use Class::Usul::Functions qw(classdir env_prefix say throw);
 use Class::Usul::Programs;
 use Class::Usul::Time      qw(time2str);
 use Config;
@@ -22,11 +22,9 @@ use File::Basename         qw(dirname);
 use File::Copy             qw(copy);
 use File::Find             qw(find);
 use File::Spec::Functions  qw(catdir catfile updir);
-use Module::CoreList;
 use Module::Metadata;
 use MRO::Compat;
 use Perl::Version;
-use Pod::Eventual::Simple;
 use Scalar::Util           qw(blessed);
 use Try::Tiny;
 
@@ -69,23 +67,12 @@ my %CONFIG =
 # Around these M::B actions
 
 sub ACTION_distmeta {
-   my $self = shift; my $cfg;
+   my $self = shift;
 
-   try {
-      $cfg = $self->_get_config;
-      # Optionally create a README.pod file
-      $self->notes->{create_readme_pod} and podselect( {
-         -output => q(README.pod) }, $self->dist_version_from );
-
-      $self->_update_changelog( $cfg, $self->_dist_version );
-   }
+   try   { $self->_update_changelog( self->_get_config, $self->_dist_version ) }
    catch { $self->cli->fatal( $_ ) };
 
    $self->next::method();
-
-   try   { $self->_write_license_file( $cfg ) }
-   catch { $self->cli->fatal( $_ ) };
-
    return;
 }
 
@@ -699,22 +686,7 @@ sub _vcs_class {
    return __PACKAGE__.q(::VCS);
 }
 
-sub _write_license_file {
-   my ($self, $cfg) = @_; my $cli = $self->cli;
-
-   my $license = $cfg->{meta_keys}->{ $self->license } or return;
-      $license = ref $license ? $license->[ -1 ] : $license;
-   my $class   = q(Software::License::).$license;
-
-   $cli->ensure_class_loaded( $class );
-   say 'Creating '.$cfg->{license_file};
-   $license = $class->new( { holder => $cli->get_meta->author->[ 0 ] } );
-   $cli->io( $cfg->{license_file} )->print( $license->fulltext );
-   return;
-}
-
 # Private functions
-
 sub __local_kshrc_content {
    my $cfg = shift; my $content;
 
@@ -834,7 +806,7 @@ Class::Usul::Build - M::B utility methods
 
 =head1 Version
 
-This document describes Class::Usul::Build version v0.19.$Rev: 1 $
+This document describes Class::Usul::Build version v0.19.$Rev: 2 $
 
 =head1 Synopsis
 
