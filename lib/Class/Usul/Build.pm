@@ -1,11 +1,11 @@
-# @(#)$Ident: Build.pm 2013-05-11 09:49 pjf ;
+# @(#)$Ident: Build.pm 2013-05-11 13:01 pjf ;
 
 package Class::Usul::Build;
 
 use strict;
 use warnings;
 use feature qw(state);
-use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 3 $ =~ /\d+/gmx );
 use parent 'Module::Build';
 use lib;
 
@@ -227,20 +227,7 @@ sub ACTION_uninstall {
    return;
 }
 
-sub ACTION_upload { # Upload the distribution to CPAN
-   my $self = shift;
-
-   $self->depends_on( q(release) );
-   $self->depends_on( q(dist) );
-
-   try   { $self->_cpan_upload }
-   catch { $self->cli->fatal( $_ ) };
-
-   return;
-}
-
 # Public object methods in the M::B namespace
-
 sub class_path {
    return catfile( q(lib), split m{ :: }mx, $_[ 1 ].q(.pm) );
 }
@@ -374,17 +361,6 @@ sub _copy_file {
    -d $dir or $cli->io( $dir )->mkpath( oct q(02750) );
 
    copy( $src, $dir );
-   return;
-}
-
-sub _cpan_upload {
-   my $self = shift; my $cli = $self->cli; my $args = $self->_read_pauserc;
-
-   $args->{subdir} = lc $self->dist_name;
-   exists $args->{dry_run} or $args->{dry_run}
-      = $cli->yorn( 'Really upload to CPAN', FALSE, TRUE, 0 );
-   $cli->ensure_class_loaded( q(CPAN::Uploader) );
-   CPAN::Uploader->upload_file( $self->dist_dir.q(.tar.gz), $args );
    return;
 }
 
@@ -589,21 +565,6 @@ sub _question_class {
    return __PACKAGE__.q(::Questions);
 }
 
-sub _read_pauserc {
-   my $self   = shift; my $cli = $self->cli;
-
-   my $dir = $ENV{HOME} || File::Spec->curdir; my $args = {};
-
-   for ($cli->io( [ $dir, q(.pause) ] )->chomp->getlines) {
-      ($_ and $_ !~ m{ \A \s* \# }mx) or next;
-      my ($k, $v) = m{ \A \s* (\w+) \s+ (.+) \z }mx;
-      exists $args->{ $k } and throw "Multiple enties for ${k}";
-      $args->{ $k } = $v;
-   }
-
-   return $args;
-}
-
 sub _run_bin_cmd {
    my ($self, $cfg, $key) = @_; my $cli = $self->cli; my $cmd;
 
@@ -806,7 +767,7 @@ Class::Usul::Build - M::B utility methods
 
 =head1 Version
 
-This document describes Class::Usul::Build version v0.19.$Rev: 2 $
+This document describes Class::Usul::Build version v0.19.$Rev: 3 $
 
 =head1 Synopsis
 
