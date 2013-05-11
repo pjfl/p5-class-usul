@@ -1,11 +1,11 @@
-# @(#)$Ident: Build.pm 2013-04-29 19:11 pjf ;
+# @(#)$Ident: Build.pm 2013-05-11 01:01 pjf ;
 
 package Class::Usul::Build;
 
 use strict;
 use warnings;
 use feature qw(state);
-use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 6 $ =~ /\d+/gmx );
 use parent  qw(Module::Build);
 use lib;
 
@@ -116,19 +116,6 @@ sub ACTION_install {
 }
 
 # New M::B actions
-
-sub ACTION_change_version {
-   my $self = shift;
-
-   $self->depends_on( q(manifest) );
-   $self->depends_on( q(release)  );
-
-   try   { $self->_change_version( $self->_get_config ) }
-   catch { $self->cli->fatal( $_ ) };
-
-   return;
-}
-
 sub ACTION_install_local_cpanm {
    my $self = shift;
 
@@ -387,25 +374,6 @@ sub _ask_questions {
    return;
 }
 
-sub _change_version {
-   my ($self, $cfg) = @_; my $cli = $self->cli;
-
-   my $comp = $cli->get_line( 'Enter major/minor 0 or 1',  1, TRUE, 0 );
-   my $bump = $cli->get_line( 'Enter increment/decrement', 0, TRUE, 0 )
-           or return;
-   my $ver  = $self->_dist_version or return;
-   my $from = __tag_from_version( $ver );
-
-   $ver->component( $comp, $ver->component( $comp ) + $bump );
-   $comp == 0 and $ver->component( 1, 0 );
-   $self->_update_version( $from, __tag_from_version( $ver ) );
-   $self->_create_tag_release( $from );
-   $self->_update_changelog( $cfg, $ver = $self->_dist_version );
-   $self->_commit_release( 'first '.__tag_from_version( $ver ) );
-   $self->_rebuild_build;
-   return;
-}
-
 sub _commit_release {
    my ($self, $msg) = @_; my $vcs = $self->_vcs or return;
 
@@ -469,15 +437,6 @@ sub _cpan_upload {
       = $cli->yorn( 'Really upload to CPAN', FALSE, TRUE, 0 );
    $cli->ensure_class_loaded( q(CPAN::Uploader) );
    CPAN::Uploader->upload_file( $self->dist_dir.q(.tar.gz), $args );
-   return;
-}
-
-sub _create_tag_release {
-   my ($self, $tag) = @_; my $vcs = $self->_vcs or return;
-
-   say "Creating tagged release v${tag}";
-
-   $vcs->tag( $tag ); $vcs->error and say @{ $vcs->error };
    return;
 }
 
@@ -756,13 +715,6 @@ sub _read_pauserc {
    return $args;
 }
 
-sub _rebuild_build {
-   my $self = shift; my $cmd = [ $EXECUTABLE_NAME, q(Build.PL) ];
-
-   $self->cli->run_cmd( $cmd, { err => q(out) } );
-   return;
-}
-
 sub _run_bin_cmd {
    my ($self, $cfg, $key) = @_; my $cli = $self->cli; my $cmd;
 
@@ -836,21 +788,6 @@ sub _update_changelog {
 
    say 'Updating '.$cfg->{changes_file};
    $io->print( $text );
-   return;
-}
-
-sub _update_version {
-   my ($self, $from, $to) = @_;
-
-   my $cli   =  $self->cli;
-   my $prog  =  $EXECUTABLE_NAME;
-   my $cmd   =  $self->notes->{version_pattern} or return;
-      $cmd   =~ s{ \$\{from\} }{$from}gmx;
-      $cmd   =~ s{ \$\{to\} }{$to}gmx;
-      $cmd   =  [ q(xargs), q(-i), $prog, q(-pi), q(-e), "'".$cmd."'", q({}) ];
-   my $paths =  [ map { "$_\n" } @{ $self->_source_paths } ];
-
-   $cli->file->popen( $cmd, { err => q(out), in => $paths } );
    return;
 }
 
@@ -1129,7 +1066,7 @@ Class::Usul::Build - M::B utility methods
 
 =head1 Version
 
-This document describes Class::Usul::Build version v0.18.$Rev: 1 $
+This document describes Class::Usul::Build version v0.18.$Rev: 6 $
 
 =head1 Synopsis
 
@@ -1158,12 +1095,6 @@ will be installed and which additional actions will take place. Should
 be generic enough for any web application
 
 =head1 ACTIONS
-
-=head2 ACTION_change_version
-
-=head2 change_version
-
-Changes the C<$VERSION> strings in all of the projects files
 
 =head2 ACTION_distmeta
 

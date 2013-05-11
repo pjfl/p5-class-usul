@@ -1,6 +1,7 @@
 Revision history for Class::Usul
 
-0.18.5    2013-05-10 22:06:18
+0.18.6    2013-05-11 03:09:23
+          - Bumped IPC::SRLock version dependency
           - Added fullname, get_user, loginid, and logname to ::Functions
           - Removed unused dependencies. Added comments
           - Pass ::Exception to IPC::SRLock in Usul
