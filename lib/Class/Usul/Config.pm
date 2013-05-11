@@ -2,7 +2,7 @@
 
 package Class::Usul::Config;
 
-use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::File;
 use Class::Usul::Moose;
@@ -309,7 +309,7 @@ Class::Usul::Config - Inflate config values
 
 =head1 Version
 
-Describes Class::Usul::Config version v0.18.$Rev: 4 $
+Describes Class::Usul::Config version v0.19.$Rev: 1 $
 
 =head1 Synopsis
 

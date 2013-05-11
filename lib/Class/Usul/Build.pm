@@ -1,11 +1,11 @@
-# @(#)$Ident: Build.pm 2013-05-11 01:01 pjf ;
+# @(#)$Ident: Build.pm 2013-05-11 09:14 pjf ;
 
 package Class::Usul::Build;
 
 use strict;
 use warnings;
 use feature qw(state);
-use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 6 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use parent  qw(Module::Build);
 use lib;
 
@@ -193,15 +193,6 @@ sub ACTION_local_archive {
    return;
 }
 
-sub ACTION_prereq_diff {
-   my $self = shift;
-
-   try   { $self->_prereq_diff( $self->_get_config ) }
-   catch { $self->cli->fatal( $_ ) };
-
-   return;
-}
-
 sub ACTION_release {
    my $self = shift;
 
@@ -382,36 +373,6 @@ sub _commit_release {
    return;
 }
 
-sub _consolidate {
-   my ($self, $used) = @_; my (%dists, %result);
-
-   $self->cli->ensure_class_loaded( q(CPAN) );
-
-   for my $used_key (keys %{ $used }) {
-      my ($curr_dist, $module, $used_dist); my $try_module = $used_key;
-
-      while ($curr_dist = __dist_from_module( $try_module )
-             and (not $used_dist
-                  or  $curr_dist->base_id eq $used_dist->base_id)) {
-         $module = $try_module;
-         $used_dist or $used_dist = $curr_dist;
-         $try_module =~ m{ :: }mx or last;
-         $try_module =~ s{ :: [^:]+ \z }{}mx;
-      }
-
-      unless ($module) {
-         $result{ $used_key } = $used->{ $used_key }; next;
-      }
-
-      exists $dists{ $module } and next;
-      $dists{ $module } = $self->_version_from_module( $module );
-   }
-
-   $result{ $_ } = $dists{ $_ } for (keys %dists);
-
-   return \%result;
-}
-
 sub _copy_file {
    my ($self, $src, $dest) = @_; my $cli = $self->cli;
 
@@ -440,27 +401,6 @@ sub _cpan_upload {
    return;
 }
 
-sub _dependencies {
-   my ($self, $paths) = @_; my $used = {};
-
-   for my $path (@{ $paths }) {
-      my $lines = __read_non_pod_lines( $path );
-
-      for my $line (split m{ \n }mx, $lines) {
-         my $modules = __parse_depends_line( $line ); $modules->[ 0 ] or next;
-
-         for (@{ $modules }) {
-            __looks_like_version( $_ ) and $used->{perl} = $_ and next;
-
-            not exists $used->{ $_ }
-               and $used->{ $_ } = $self->_version_from_module( $_ );
-         }
-      }
-   }
-
-   return $used;
-}
-
 sub _dist_version {
    my $self = shift;
    my $info = Module::Metadata->new_from_file( $self->dist_version_from );
@@ -481,31 +421,6 @@ sub _extract_tarball {
    }
 
    return;
-}
-
-sub _filter_dependents {
-   my ($self, $cfg, $used) = @_;
-
-   my $perl_version = $used->{perl} || $self->requires->{perl};
-   my $core_modules = $Module::CoreList::version{ $perl_version };
-   my $provides     = $self->cli->get_meta->provides;
-
-   return $self->_consolidate( { map   { $_ => $used->{ $_ }              }
-                                 grep  { not exists $core_modules->{ $_ } }
-                                 grep  { not exists $provides->{ $_ }     }
-                                 keys %{ $used } } );
-}
-
-sub _filter_build_requires_paths {
-   return [ grep { m{ \.t \z }mx } @{ $_[ 1 ] } ];
-}
-
-sub _filter_configure_requires_paths {
-   return [ grep { $_ eq q(Build.PL) } @{ $_[ 1 ] } ];
-}
-
-sub _filter_requires_paths {
-   return [ grep { not m{ \.t \z }mx and $_ ne q(Build.PL) } @{ $_[ 1 ] } ];
 }
 
 sub _get_archive_names {
@@ -683,19 +598,6 @@ sub _post_install {
    return;
 }
 
-sub _prereq_diff {
-   my ($self, $cfg) = @_;
-
-   my $field   = $self->args->{ARGV}->[ 0 ] || q(requires);
-   my $filter  = q(_filter_).$field.q(_paths);
-   my $prereqs = $self->prereq_data->{ $field };
-   my $depends = $self->_dependencies( $self->$filter( $self->_source_paths ) );
-   my $used    = $self->_filter_dependents( $cfg, $depends );
-
-   __say_diffs( __compare_prereqs_with_used( $field, $prereqs, $used ) );
-   return;
-}
-
 sub _question_class {
    return __PACKAGE__.q(::Questions);
 }
@@ -755,14 +657,6 @@ sub _setup_plugins {
           search_paths => [ q(::Plugin::Build) ], } );
 }
 
-sub _source_paths {
-   my $self = shift; my $cli = $self->cli;
-
-   return [ grep { __is_perl_script( $cli, $_ ) }
-            map  { s{ \s+ }{ }gmx; (split SPC, $_)[ 0 ] }
-            $cli->io( $CONFIG{manifest_file} )->chomp->getlines ];
-}
-
 sub _uninstall {
    my ($self, $cfg) = @_;
 
@@ -805,14 +699,6 @@ sub _vcs_class {
    return __PACKAGE__.q(::VCS);
 }
 
-sub _version_from_module {
-   my ($self, $module) = @_; my $version;
-
-   eval "no warnings; require ${module}; \$version = ${module}->VERSION;";
-
-   return exception() || ! $version ? undef : $version;
-}
-
 sub _write_license_file {
    my ($self, $cfg) = @_; my $cli = $self->cli;
 
@@ -828,62 +714,6 @@ sub _write_license_file {
 }
 
 # Private functions
-
-sub __compare_prereqs_with_used {
-   my ($field, $prereqs, $used) = @_;
-
-   my $result     = {};
-   my $add_key    = "Would add these to the ${field} in Build.PL";
-   my $remove_key = "Would remove these from the ${field} in Build.PL";
-   my $update_key = "Would update these in the ${field} in Build.PL";
-
-   for (grep { defined $used->{ $_ } } keys %{ $used }) {
-      if (exists $prereqs->{ $_ }) {
-         my $oldver = version->new( $prereqs->{ $_ } );
-         my $newver = version->new( $used->{ $_ }    );
-
-         if ($newver != $oldver) {
-            $result->{ $update_key }->{ $_ }
-               = $prereqs->{ $_ }.q( => ).$used->{ $_ };
-         }
-      }
-      else { $result->{ $add_key }->{ $_ } = $used->{ $_ } }
-   }
-
-   for (keys %{ $prereqs }) {
-      exists $used->{ $_ }
-         or $result->{ $remove_key }->{ $_ } = $prereqs->{ $_ };
-   }
-
-   return $result;
-}
-
-sub __dist_from_module {
-   my $module = CPAN::Shell->expand( q(Module), $_[ 0 ] );
-
-   return $module ? $module->distribution : undef;
-}
-
-sub __draw_line {
-    return say q(-) x ($_[ 0 ] || 60);
-}
-
-sub __extract_statements_from {
-   my $line = shift;
-
-   return grep { length }
-          map  { s{ \A \s+ }{}mx; s{ \s+ \z }{}mx; $_ } split m{ ; }mx, $line;
-}
-
-sub __is_perl_script {
-   my ($cli, $path) = @_;
-
-   $path =~ m{ (?: \.pm | \.t | \.pl ) \z }imx and return TRUE;
-
-   my $line = $cli->io( $path )->getline;
-
-   return $line =~ m{ \A \#! (?: .* ) perl (?: \s | \z ) }mx ? TRUE : FALSE;
-}
 
 sub __local_kshrc_content {
    my $cfg = shift; my $content;
@@ -952,45 +782,6 @@ RC
    return $content;
 }
 
-sub __looks_like_version {
-    my $ver = shift;
-
-    return defined $ver && $ver =~ m{ \A v? \d+ (?: \.[\d_]+ )? \z }mx;
-}
-
-sub __parse_depends_line {
-   my $line = shift; my $modules = [];
-
-   for my $stmt (__extract_statements_from( $line )) {
-      if ($stmt =~ m{ \A (?: use | require ) \s+ }mx) {
-         my (undef, $module, $rest) = split m{ \s+ }mx, $stmt, 3;
-
-         # Skip common pragma and things that don't look like module names
-         $module =~ m{ \A (?: lib | strict | warnings ) \z }mx and next;
-         $module =~ m{ [^\.:\w] }mx and next;
-
-         push @{ $modules }, $module eq q(base) || $module eq q(parent)
-                          ? ($module, __parse_list( $rest )) : $module;
-      }
-      elsif ($stmt =~ m{ \A (?: with | extends ) \s+ (.+) }mx) {
-         push @{ $modules }, __parse_list( $1 );
-      }
-   }
-
-   return $modules;
-}
-
-sub __parse_list {
-   my $string = shift;
-
-   $string =~ s{ \A q w* [\(/] \s* }{}mx;
-   $string =~ s{ \s* [\)/] \z }{}mx;
-   $string =~ s{ [\'\"] }{}gmx;
-   $string =~ s{ , }{ }gmx;
-
-   return grep { length && !m{ [^\.:\w] }mx } split m{ \s+ }mx, $string;
-}
-
 sub __perl_version_is_installed {
    my ($cli, $cfg) = @_; my $perl_ver = $cfg->{perl_ver};
 
@@ -1001,13 +792,6 @@ sub __perl_version_is_installed {
 
 sub __perlbrew_mirror_is_set {
    return -f catfile( $_[ 0 ]->{perlbrew_root}, q(Conf.pm) );
-}
-
-sub __read_non_pod_lines {
-   my $path = shift; my $p = Pod::Eventual::Simple->read_file( $path );
-
-   return join "\n", map  { $_->{content} }
-                     grep { $_->{type} eq q(nonpod) } @{ $p };
 }
 
 sub __run_perlbrew {
@@ -1023,22 +807,6 @@ sub __run_perlbrew {
    $ENV{PERLBREW_PERL} = $cfg->{perl_ver     };
 
    return $cli->run_cmd( $cmd );
-}
-
-sub __say_diffs {
-   my $diffs = shift; __draw_line();
-
-   for my $table (sort keys %{ $diffs }) {
-      say $table; __draw_line();
-
-      for (sort keys %{ $diffs->{ $table } }) {
-         say "'$_' => '".$diffs->{ $table }->{ $_ }."',";
-      }
-
-      __draw_line();
-   }
-
-   return;
 }
 
 sub __tag_from_version {
@@ -1066,7 +834,7 @@ Class::Usul::Build - M::B utility methods
 
 =head1 Version
 
-This document describes Class::Usul::Build version v0.18.$Rev: 6 $
+This document describes Class::Usul::Build version v0.19.$Rev: 1 $
 
 =head1 Synopsis
 

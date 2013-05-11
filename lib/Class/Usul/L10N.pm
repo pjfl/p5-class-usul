@@ -2,7 +2,7 @@
 
 package Class::Usul::L10N;
 
-use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Moose;
@@ -186,7 +186,7 @@ Class::Usul::L10N - Localize text strings
 
 =head1 Version
 
-This documents version v0.18.$Rev: 4 $
+This documents version v0.19.$Rev: 1 $
 
 =head1 Synopsis
 

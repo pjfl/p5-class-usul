@@ -4,7 +4,7 @@ package Class::Usul::Constraints;
 
 use strict;
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.18.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Encode                      qw(find_encoding);
 use Class::Load                 qw(load_first_existing_class);
@@ -92,7 +92,7 @@ Class::Usul::Constraints - Defines Moose type constraints
 
 =head1 Version
 
-This document describes Class::Usul::Constraints version v0.18.$Rev: 1 $
+This document describes Class::Usul::Constraints version v0.19.$Rev: 1 $
 
 =head1 Synopsis
 
