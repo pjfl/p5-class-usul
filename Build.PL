@@ -1,9 +1,9 @@
-# @(#)$Ident: Build.PL 2013-05-11 09:52 pjf ;
+# @(#)$Ident: Build.PL 2013-05-11 20:31 pjf ;
 
 use strict;
 use warnings;
 use inc::Bob; # Module::Build subclass
-use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 Bob->new( {
    module    => q(Class::Usul),
@@ -32,10 +32,7 @@ Bob->new( {
       'IO::Interactive'               => q(0.0.6),
       'IPC::SRLock'                   => q(0.11.11),
       'Log::Handler'                  => 0.63,
-      'Module::Build'                 => 0.4004,
-      'Module::Load::Conditional'     => 0.26,
       'Module::Metadata'              => 1.000011,
-      'Module::Pluggable'             => 3.9,
       'Moose'                         => 2.0802,
       'MooseX::Aliases'               => 0.10,
       'MooseX::AttributeShortcuts'    => 0.014,
