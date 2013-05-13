@@ -1,11 +1,11 @@
-# @(#)$Ident: Functions.pm 2013-05-13 02:32 pjf ;
+# @(#)$Ident: Functions.pm 2013-05-13 14:52 pjf ;
 
 package Class::Usul::Functions;
 
 use strict;
 use warnings;
 use feature      qw(state);
-use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 6 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 8 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -271,8 +271,8 @@ sub pad ($$;$$) {
    (not $direction or $direction eq 'right') and return $x.$pad;
    $direction eq 'left' and return $pad.$x;
 
-   return (substr $pad, 0, int( length $pad / 2 )).$x
-         .(substr $pad, 0, int( 0.99999999 + length $pad / 2 ));
+   return (substr $pad, 0, int( (length $pad) / 2 )).$x
+         .(substr $pad, 0, int( 0.99999999 + (length $pad) / 2 ));
 }
 
 sub prefix2class (;$) {
@@ -509,7 +509,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.19.$Rev: 6 $
+This documents version v0.19.$Rev: 8 $
 
 =head1 Synopsis
 

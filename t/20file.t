@@ -1,8 +1,8 @@
-# @(#)$Ident: 20file.t 2013-04-29 19:20 pjf ;
+# @(#)$Ident: 20file.t 2013-05-13 13:35 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 8 $ =~ /\d+/gmx );
 use File::Spec::Functions;
 use FindBin qw( $Bin );
 use lib catdir( $Bin, updir, q(lib) );
@@ -17,9 +17,9 @@ BEGIN {
             and plan skip_all => $current->notes->{stop_tests};
 }
 
-use Class::Null;
+use Class::Usul;
+use Class::Usul::File;
 use English qw( -no_match_vars );
-use Exception::Class ( q(TestException) => { fields => [ qw(arg1 arg2) ] } );
 
 {  package Logger;
 
@@ -32,18 +32,15 @@ use Exception::Class ( q(TestException) => { fields => [ qw(arg1 arg2) ] } );
    sub warn  { warn '[WARNING] '.$_[ 1 ] }
 }
 
-use Class::Usul;
-use Class::Usul::File;
-
 my $osname = lc $OSNAME;
 my $cu     = Class::Usul->new
-   ( config       => {
+   ( config     => {
       appclass  => q(Class::Usul),
       home      => catdir( qw(lib Class Usul) ),
       localedir => catdir( qw(t locale) ),
       tempdir   => q(t), },
-     debug        => 0,
-     log          => Logger->new, );
+     debug      => 0,
+     log        => Logger->new, );
 
 my $cuf = Class::Usul::File->new( builder => $cu );
 

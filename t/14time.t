@@ -1,8 +1,8 @@
-# @(#)$Ident: 14time.t 2013-04-29 19:21 pjf ;
+# @(#)$Ident: 14time.t 2013-05-13 13:35 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 8 $ =~ /\d+/gmx );
 use File::Spec::Functions;
 use FindBin qw( $Bin );
 use lib catdir( $Bin, updir, q(lib) );
@@ -17,10 +17,7 @@ BEGIN {
             and plan skip_all => $current->notes->{stop_tests};
 }
 
-use Class::Null;
 use English qw( -no_match_vars );
-use Exception::Class ( q(TestException) => { fields => [ qw(arg1 arg2) ] } );
-
 use Math::BigInt;
 
 Math::BigInt->config()->{lib} eq q(Math::BigInt::GMP)
