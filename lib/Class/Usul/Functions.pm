@@ -1,11 +1,11 @@
-# @(#)$Ident: Functions.pm 2013-05-10 21:03 pjf ;
+# @(#)$Ident: Functions.pm 2013-05-13 02:32 pjf ;
 
 package Class::Usul::Functions;
 
 use strict;
 use warnings;
 use feature      qw(state);
-use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 6 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -189,7 +189,7 @@ sub fqdn (;$) {
 sub fullname () {
    my $y = (split m{ \s* , \s * }msx, (get_user()->gecos || q()))[ 0 ];
 
-   return untaint_cmdline( $y );
+   return untaint_cmdline( $y || q());
 }
 
 sub get_user () {
@@ -509,7 +509,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.19.$Rev: 1 $
+This documents version v0.19.$Rev: 6 $
 
 =head1 Synopsis
 

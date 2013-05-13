@@ -1,6 +1,7 @@
 Revision history for Class::Usul
 
-0.19.5    2013-05-13 03:14:43
+0.19.6    2013-05-13 03:36:06
+          - Fixed undef bug in ::Functions::fullname
           - Tightened ::Crypt::Util
           - Added ::Crypt::Util
           - Moved cpan_upload to  Module::Provision
