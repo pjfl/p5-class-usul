@@ -1,16 +1,17 @@
-# @(#)Ident: Util.pm 2013-05-12 22:38 pjf ;
+# @(#)Ident: Util.pm 2013-05-13 02:11 pjf ;
 
 package Class::Usul::Crypt::Util;
 
 use strict;
 use warnings;
 use feature qw(state);
-use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use namespace::clean -except => 'meta';
+use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Crypt     qw(decrypt default_cipher encrypt);
 use Class::Usul::File;
-use Class::Usul::Functions qw(throw);
+use Class::Usul::Functions qw(merge_attributes throw);
 use Scalar::Util           qw(blessed);
 use Try::Tiny;
 
@@ -49,26 +50,21 @@ sub __extract_crypt_params {
         ? ($1, $2) : $_[ 0 ] ? ($_[ 0 ]) : (default_cipher, $_[ 0 ]);
 }
 
-sub __get_config_attr {
-   return [ qw(ctrldir prefix salt seed suid tempdir) ];
-}
+sub __get_cached_crypt_args { # Sets salt and seed keys in args hash
+   my $params = shift; state $cache; $cache and return $cache;
 
-sub __get_cached_crypt_args {
-   my $config = shift || {}; state $cache; $cache and return $cache;
+   my $args   = { salt => $params->{salt} || $params->{prefix} || NUL };
+   my $file   = $params->{prefix} || q(seed);
 
-   my $args   = { salt => $config->{salt} || $config->{prefix} || NUL };
-   my $file   = $config->{prefix} || q(seed);
+   if ($params->{read_secure}) { # munchies_admin -qnc read_secure --
+      my $cmd = $params->{read_secure}." ${file}.key";
 
-   if ($args->{seed} = $config->{seed}) {
-      if ($args->{seed} eq q(read_secure)) {
-         my $cmd = $config->{suid}." -qnc read_secure -- ${file}.key";
-
-         try   { $args->{seed} = qx( $cmd ) }
-         catch { throw "Reading secure file: ${_}" }
-      }
+      try   { $args->{seed} = qx( $cmd ) }
+      catch { throw "Reading secure file: ${_}" }
    }
+   elsif ($params->{seed}) { $args->{seed} = $params->{seed} }
    else {
-      my $dir  = $config->{ctrldir} || $config->{tempdir};
+      my $dir  = $params->{ctrldir} || $params->{tempdir};
       my $path = Class::Usul::File->io( [ $dir, "${file}.key" ] );
 
       $path->exists and $path->is_readable and $args->{seed} = $path->all;
@@ -78,19 +74,15 @@ sub __get_cached_crypt_args {
 }
 
 sub __get_crypt_args {
-   my ($config, $cipher) = @_; blessed $config and __visit( $config );
+   my ($config, $cipher) = @_; my $params = {};
 
-   my $args = __get_cached_crypt_args( $config ); $args->{cipher} = $cipher;
+   # Works if config is an object or a hash
+   merge_attributes $params, $config, {},
+      [ qw(ctrldir prefix read_secure salt seed suid tempdir) ];
+
+   my $args = __get_cached_crypt_args( $params ); $args->{cipher} = $cipher;
 
    return $args;
-}
-
-sub __visit {
-   my $config = shift;
-
-   $config->can( $_ ) and $config->$_() for (@{ __get_config_attr() });
-
-   return;
 }
 
 1;
@@ -113,7 +105,7 @@ Class::Usul::Crypt::Util - Decrypts/Encrypts password from/to configuration file
 
 =head1 Version
 
-This documents version v0.19.$Rev: 4 $ of L<Class::Usul::Crypt::Util>
+This documents version v0.19.$Rev: 5 $ of L<Class::Usul::Crypt::Util>
 
 =head1 Description
 
@@ -127,13 +119,13 @@ Implements a functional interface
 
 =head2 decrypt_from_config
 
-   $plain_text = decrypt_from_config( $config, $password );
+   $plain_text = decrypt_from_config( $params, $password );
 
 Strips the C<{Twofish2}> prefix and then decrypts the password
 
 =head2 encrypt_for_config
 
-   $encrypted_value = encrypt_for_config( $config, $plain_text );
+   $encrypted_value = encrypt_for_config( $params, $plain_text );
 
 Returns the encrypted value of the plain value prefixed with C<{Twofish2}>
 for storage in a configuration file
@@ -156,9 +148,9 @@ specified by the L<default cipher|Class::Usul::Crypt/default_cipher> function
 
 =head2 __get_crypt_args
 
-   \%crypt_args = __get_crpyt_args( $config );
+   \%crypt_args = __get_crpyt_args( $params, $cipher );
 
-Returns the hash ref passed to L<Class::Usul::Crypt/encrypt>
+Returns the argument hash ref passed to L<Class::Usul::Crypt/encrypt>
 and L<Class::Usul::Crypt/decrypt>
 
 =head1 Diagnostics

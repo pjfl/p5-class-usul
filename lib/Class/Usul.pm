@@ -1,8 +1,8 @@
-# @(#)$Ident: Usul.pm 2013-05-12 22:40 pjf ;
+# @(#)$Ident: Usul.pm 2013-05-13 02:14 pjf ;
 
 package Class::Usul;
 
-use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
 use 5.01;
 use Class::Usul::Moose;
@@ -109,7 +109,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.19.$Rev: 4 $
+Describes Class::Usul version v0.19.$Rev: 5 $
 
 =head1 Synopsis
 
