@@ -1,19 +1,17 @@
-# @(#)$Ident: Build.PL 2013-05-13 13:36 pjf ;
+# @(#)$Ident: Build.PL 2013-05-14 21:40 pjf ;
 
 use strict;
 use warnings;
 use inc::Bob; # Module::Build subclass
-use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 8 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.20.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 Bob->new( {
    module    => q(Class::Usul),
    home_page => q(http://www.roxsoft.co.uk),
    requires  => {
       'perl'                          => 5.01,
-      'local::lib'                    => 1.008004,
       'namespace::autoclean'          => 0.13,
       'namespace::clean'              => 0.23,
-      'parent'                        => 0.224,
       'Class::Inspector'              => 1.24,
       'Class::Load'                   => 0.18,
       'Class::Null'                   => 2.101420,
@@ -32,7 +30,6 @@ Bob->new( {
       'IO::Interactive'               => q(0.0.6),
       'IPC::SRLock'                   => q(0.11.11),
       'Log::Handler'                  => 0.63,
-      'Module::Metadata'              => 1.000011,
       'Moose'                         => 2.0802,
       'MooseX::Aliases'               => 0.10,
       'MooseX::AttributeShortcuts'    => 0.014,
@@ -42,9 +39,7 @@ Bob->new( {
       'MooseX::Types'                 => 0.35,
       'MooseX::Types::Common'         => 0.001008,
       'MooseX::Types::LoadableClass'  => 0.008,
-      'MRO::Compat'                   => 0.11,
       'Path::Class'                   => 0.23,
-      'Perl::Version'                 => 1.011,
       'SVN::Class'                    => 0.16,
       'Sub::Exporter'                 => 0.982,
       'Sub::Exporter::Progressive'    => 0.001006,

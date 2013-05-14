@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+0.20.1    2013-05-14 22:43:53
+          - Moved ::Build to own distribution
+
 0.19.8    2013-05-13 17:51:51
           - Moved build plugin
           - Fixed typo in ::Build

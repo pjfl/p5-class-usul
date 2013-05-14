@@ -2,7 +2,7 @@
 
 package Class::Usul::Response::IPC;
 
-use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.20.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 
@@ -28,7 +28,7 @@ Class::Usul::Response::IPC - Response class for running external programs
 
 =head1 Version
 
-This documents version v0.19.$Rev: 1 $
+This documents version v0.20.$Rev: 1 $
 
 =head1 Synopsis
 
