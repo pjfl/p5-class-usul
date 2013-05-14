@@ -1,11 +1,11 @@
-# @(#)$Ident: Build.pm 2013-05-14 17:05 pjf ;
+# @(#)$Ident: Build.pm 2013-05-14 18:43 pjf ;
 
 package Class::Usul::Build;
 
 use strict;
 use warnings;
 use feature qw(state);
-use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 9 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 10 $ =~ /\d+/gmx );
 use parent 'Module::Build';
 use lib;
 
@@ -604,7 +604,7 @@ sub _setup_plugins {
    # Load CX::U::Plugin::Build::* plugins. Can haz plugins for M::B!
    state $cache; return $cache ||= $_[ 0 ]->cli->setup_plugins
       ( { child_class  => blessed $_[ 0 ],
-          search_paths => [ q(::Plugin::Build) ], } );
+          search_paths => [ q(::Build::Plugin) ], } );
 }
 
 sub _uninstall {
@@ -769,7 +769,7 @@ Class::Usul::Build - M::B utility methods
 
 =head1 Version
 
-This document describes Class::Usul::Build version v0.19.$Rev: 9 $
+This document describes Class::Usul::Build version v0.19.$Rev: 10 $
 
 =head1 Synopsis
 
