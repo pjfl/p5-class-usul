@@ -1,9 +1,9 @@
-# @(#)$Ident: Build.PL 2013-05-14 21:40 pjf ;
+# @(#)$Ident: Build.PL 2013-05-14 21:56 pjf ;
 
 use strict;
 use warnings;
 use inc::Bob; # Module::Build subclass
-use version; our $VERSION = qv( sprintf '0.20.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.20.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 Bob->new( {
    module    => q(Class::Usul),
@@ -21,11 +21,9 @@ Bob->new( {
       'Date::Format'                  => 2.24,
       'DateTime::Format::Epoch'       => 0.13,
       'Digest::SHA1'                  => 2.11,
-      'Email::Date::Format'           => 1.002,
       'File::DataClass'               => q(0.20.0),
       'File::Gettext'                 => q(0.16.0),
       'File::HomeDir'                 => 0.93,
-      'Git::Class'                    => 0.12,
       'Import::Into'                  => 1.001000,
       'IO::Interactive'               => q(0.0.6),
       'IPC::SRLock'                   => q(0.11.11),
@@ -40,12 +38,10 @@ Bob->new( {
       'MooseX::Types::Common'         => 0.001008,
       'MooseX::Types::LoadableClass'  => 0.008,
       'Path::Class'                   => 0.23,
-      'SVN::Class'                    => 0.16,
       'Sub::Exporter'                 => 0.982,
       'Sub::Exporter::Progressive'    => 0.001006,
       'Term::ReadKey'                 => 2.30,
       'Text::Autoformat'              => 1.669002,
-      'Text::Format'                  => 0.53,
       'Time::Zone'                    => 2.24,
       'Try::Tiny'                     => 0.09,
       'Unexpected'                    => q(0.1.0),
