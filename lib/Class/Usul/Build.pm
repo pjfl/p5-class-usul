@@ -1,11 +1,11 @@
-# @(#)$Ident: Build.pm 2013-05-11 13:01 pjf ;
+# @(#)$Ident: Build.pm 2013-05-14 17:05 pjf ;
 
 package Class::Usul::Build;
 
 use strict;
 use warnings;
 use feature qw(state);
-use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.19.%d', q$Rev: 9 $ =~ /\d+/gmx );
 use parent 'Module::Build';
 use lib;
 
@@ -69,7 +69,9 @@ my %CONFIG =
 sub ACTION_distmeta {
    my $self = shift;
 
-   try   { $self->_update_changelog( self->_get_config, $self->_dist_version ) }
+   try   {
+      $self->_update_changelog( $self->_get_config, $self->_dist_version );
+   }
    catch { $self->cli->fatal( $_ ) };
 
    $self->next::method();
@@ -767,7 +769,7 @@ Class::Usul::Build - M::B utility methods
 
 =head1 Version
 
-This document describes Class::Usul::Build version v0.19.$Rev: 3 $
+This document describes Class::Usul::Build version v0.19.$Rev: 9 $
 
 =head1 Synopsis
 
