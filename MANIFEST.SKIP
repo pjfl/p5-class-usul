@@ -66,3 +66,5 @@ Thumbs.db
 \bt/file-dataclass
 \bbuild.xml
 \blib/Class/Usul/class_usul.json
+\blib/Class/Usul/Build$
+\blib/Class/Usul/Build.pm$

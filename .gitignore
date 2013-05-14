@@ -22,3 +22,4 @@ README.pod
 t/ipc_srlock*
 *.tar.gz
 Class-Usul-*
+lib/Class/Usul/Build.pm
