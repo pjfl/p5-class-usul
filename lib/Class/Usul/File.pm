@@ -2,7 +2,7 @@
 
 package Class::Usul::File;
 
-use version; our $VERSION = qv( sprintf '0.20.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
@@ -128,7 +128,7 @@ Class::Usul::File - File and directory IO base class
 
 =head1 Version
 
-This documents version v0.20.$Rev: 1 $
+This documents version v0.21.$Rev: 1 $
 
 =head1 Synopsis
 

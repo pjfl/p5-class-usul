@@ -1,17 +1,17 @@
-# @(#)$Ident: Programs.pm 2013-05-10 20:36 pjf ;
+# @(#)$Ident: Programs.pm 2013-05-15 17:20 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
-use version; our $VERSION = qv( sprintf '0.20.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions qw(abs_path app_prefix arg_list assert_directory
-                              class2appdir classdir elapsed env_prefix
+                              class2appdir classdir elapsed emit env_prefix
                               exception find_source is_arrayref is_hashref
-                              is_member logname say throw untaint_identifier
+                              is_member logname throw untaint_identifier
                               untaint_path);
 use Class::Usul::File;
 use Class::Usul::IPC;
@@ -94,9 +94,9 @@ has '_meta_class'  => is => 'lazy', isa => LoadableClass, coerce => TRUE,
    default         => sub { 'Class::Usul::Response::Meta' },
    reader          => 'meta_class';
 
-has '_mode'        => is => 'rw',   isa => PositiveInt, accessor => 'mode',
-   default         => sub { $_[ 0 ]->config->mode }, init_arg => 'mode',
-   lazy            => TRUE;
+has '_mode'        => is => 'rw',   isa => PositiveOrZeroInt,
+   accessor        => 'mode', default => sub { $_[ 0 ]->config->mode },
+   init_arg        => 'mode', lazy => TRUE;
 
 has '_os'          => is => 'lazy', isa => HashRef, init_arg => undef,
    reader          => 'os';
@@ -259,7 +259,7 @@ sub info {
 
    $self->log->info( $_ ) for (split m{ [\n] }mx, $text);
 
-   $self->quiet or say $self->add_leader( $text, $args );
+   $self->quiet or emit $self->add_leader( $text, $args );
    return;
 }
 
@@ -273,7 +273,7 @@ sub interpolate_cmd {
 }
 
 sub list_methods : method {
-   say __list_methods_of( shift ); return OK;
+   emit __list_methods_of( shift ); return OK;
 }
 
 sub loc {
@@ -291,11 +291,11 @@ sub loc {
 sub output {
    my ($self, $text, $args) = @_; $args ||= {};
 
-   $self->quiet and return; $args->{cl} and say;
+   $self->quiet and return; $args->{cl} and emit;
 
    $text = $self->loc( $text || '[no message]', $args->{args} || [] );
 
-   say $self->add_leader( $text, $args ); $args->{nl} and say;
+   emit $self->add_leader( $text, $args ); $args->{nl} and emit;
 
    return;
 }
@@ -363,7 +363,7 @@ sub warning {
 
    $self->log->warn( $_ ) for (split m{ \n }mx, $text);
 
-   $self->quiet or say $self->add_leader( $text, $args );
+   $self->quiet or emit $self->add_leader( $text, $args );
    return;
 }
 
@@ -479,7 +479,7 @@ sub _man_page_from {
    my $cmd      = $cfg->man_page_cmd || [];
 
    $parser->parse_from_file( NUL.$src->pathname, $tempfile->pathname );
-   say $self->run_cmd( [ @{ $cmd }, $tempfile->pathname ] )->out;
+   emit $self->run_cmd( [ @{ $cmd }, $tempfile->pathname ] )->out;
    return OK;
 }
 
@@ -748,7 +748,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes Class::Usul::Programs version v0.20.$Rev: 1 $
+This document describes Class::Usul::Programs version v0.21.$Rev: 1 $
 
 =head1 Synopsis
 

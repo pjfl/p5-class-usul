@@ -1,12 +1,12 @@
-# @(#)Ident: Lock.pm 2013-04-26 19:36 pjf ;
+# @(#)Ident: Lock.pm 2013-05-15 17:20 pjf ;
 
 package Class::Usul::Lock;
 
-use version; our $VERSION = qv( sprintf '0.20.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(say);
+use Class::Usul::Functions qw(emit);
 use Class::Usul::Time;
 
 extends q(Class::Usul::Programs);
@@ -31,7 +31,7 @@ sub list : method {
       $line  = $ref->{key}.q(,).$ref->{pid}.q(,);
       $line .= time2str( '%Y-%m-%d %H:%M:%S', $ref->{stime} ).q(,);
       $line .= $ref->{timeout};
-      say $line;
+      emit $line;
    }
 
    return OK;
@@ -66,7 +66,7 @@ Class::Usul::Lock - Command line access to the L<IPC::SRLock> methods
 
 =head1 Version
 
-This documents version v0.20.$Rev: 1 $ of L<Class::Usul::Lock>
+This documents version v0.21.$Rev: 1 $ of L<Class::Usul::Lock>
 
 =head1 Synopsis
 

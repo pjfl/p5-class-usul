@@ -1,11 +1,11 @@
-# @(#)$Ident: Functions.pm 2013-05-13 14:52 pjf ;
+# @(#)$Ident: Functions.pm 2013-05-15 17:19 pjf ;
 
 package Class::Usul::Functions;
 
 use strict;
 use warnings;
 use feature      qw(state);
-use version; our $VERSION = qv( sprintf '0.20.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -29,12 +29,12 @@ BEGIN {
    @_functions = ( qw(abs_path app_prefix arg_list assert_directory
                       bsonid bsonid_time bson64id bson64id_time build
                       class2appdir classdir classfile create_token
-                      data_dumper distname downgrade elapsed
+                      data_dumper distname downgrade elapsed emit
                       env_prefix escape_TT exception find_source fold
                       fqdn fullname get_user hex2str home2appldir
                       is_arrayref is_coderef is_hashref is_member
                       is_win32 loginid logname merge_attributes
-                      my_prefix pad prefix2class product say
+                      my_prefix pad prefix2class product
                       split_on__ split_on_dash squeeze strip_leader
                       sub_name sum thread_id throw trim unescape_TT
                       untaint_cmdline untaint_identifier untaint_path
@@ -139,6 +139,17 @@ sub downgrade (;$) {
 
 sub elapsed () {
    return time - $BASETIME;
+}
+
+sub emit (;@) {
+   my @rest = @_; openhandle *STDOUT or return;
+
+   $rest[ 0 ] ||= q(); chomp( @rest );
+
+   local ($OFS, $ORS) = is_win32() ? ("\r\n", "\r\n") : ("\n", "\n");
+
+   return print {*STDOUT} @rest
+      or throw( error => 'IO error [_1]', args =>[ $ERRNO ] );
 }
 
 sub env_prefix ($) {
@@ -281,17 +292,6 @@ sub prefix2class (;$) {
 
 sub product (;@) {
    return ((fold { $_[ 0 ] * $_[ 1 ] })->( 1 ))->( @_ );
-}
-
-sub say (;@) {
-   my @rest = @_; openhandle *STDOUT or return;
-
-   $rest[ 0 ] ||= q(); chomp( @rest );
-
-   local ($OFS, $ORS) = is_win32() ? ("\r\n", "\r\n") : ("\n", "\n");
-
-   return print {*STDOUT} @rest
-      or throw( error => 'IO error [_1]', args =>[ $ERRNO ] );
 }
 
 sub split_on__ (;$$) {
@@ -509,7 +509,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.20.$Rev: 1 $
+This documents version v0.21.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -654,6 +654,13 @@ type to C<PV>
    $elapsed_seconds = elapsed;
 
 Returns the number of seconds elapsed since the process started
+
+=head2 emit
+
+   emit @lines_of_text;
+
+Prints to I<STDOUT> the lines of text passed to it. Lines are C<chomp>ed
+and then have newlines appended. Throws on IO errors
 
 =head2 env_prefix
 
@@ -806,13 +813,6 @@ C<ucfirst>s the list and then C<join>s that with I<::>
    $product = product 1, 2, 3, 4;
 
 Returns the product of the list of numbers
-
-=head2 say
-
-   say @lines_of_text;
-
-Prints to I<STDOUT> the lines of text passed to it. Lines are C<chomp>ed
-and then have newlines appended. Throws on IO errors
 
 =head2 split_on__
 

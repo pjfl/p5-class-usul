@@ -1,8 +1,8 @@
-# @(#)$Ident: 18programs.t 2013-04-29 19:20 pjf ;
+# @(#)$Ident: 18programs.t 2013-05-15 17:24 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.20.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use File::Spec::Functions;
 use FindBin qw( $Bin );
 use lib catdir( $Bin, updir, q(lib) );
@@ -22,7 +22,6 @@ use File::Basename qw(basename);
 use Test::Deep;
 
 use Class::Usul::Programs;
-use Class::Usul::Functions qw(say);
 
 my $name    = basename( $0, qw(.t) );
 my $logfile = catfile( q(t), $name.q(.log) );

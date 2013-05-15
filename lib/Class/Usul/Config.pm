@@ -1,8 +1,8 @@
-# @(#)$Ident: Config.pm 2013-05-10 16:48 pjf ;
+# @(#)$Ident: Config.pm 2013-05-15 13:36 pjf ;
 
 package Class::Usul::Config;
 
-use version; our $VERSION = qv( sprintf '0.20.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::File;
 use Class::Usul::Moose;
@@ -75,7 +75,7 @@ has 'extension'       => is => 'lazy', isa => NonEmptySimpleStr;
 
 has 'name'            => is => 'lazy', isa => NonEmptySimpleStr;
 
-has 'phase'           => is => 'lazy', isa => PositiveInt;
+has 'phase'           => is => 'lazy', isa => PositiveOrZeroInt;
 
 has 'prefix'          => is => 'lazy', isa => NonEmptySimpleStr;
 
@@ -309,7 +309,7 @@ Class::Usul::Config - Inflate config values
 
 =head1 Version
 
-Describes Class::Usul::Config version v0.20.$Rev: 1 $
+Describes Class::Usul::Config version v0.21.$Rev: 1 $
 
 =head1 Synopsis
 

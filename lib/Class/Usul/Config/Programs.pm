@@ -1,8 +1,8 @@
-# @(#)$Ident: Programs.pm 2013-04-29 19:28 pjf ;
+# @(#)$Ident: Programs.pm 2013-05-15 13:31 pjf ;
 
 package Class::Usul::Config::Programs;
 
-use version; our $VERSION = qv( sprintf '0.20.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
@@ -18,7 +18,7 @@ has 'doc_title'    => is => 'ro',   isa => NonEmptySimpleStr,
 has 'man_page_cmd' => is => 'ro',   isa => ArrayRef,
    default         => sub { [ qw(nroff -man) ] };
 
-has 'mode'         => is => 'ro',   isa => PositiveInt, default => MODE;
+has 'mode'         => is => 'ro',   isa => PositiveOrZeroInt, default => MODE;
 
 has 'my_home'      => is => 'lazy', isa => Path, coerce => TRUE,
    default         => sub { File::HomeDir->my_home };
@@ -51,7 +51,7 @@ Class::Usul::Config::Programs - Additional configuration attributes for CLI prog
 
 =head1 Version
 
-This documents version v0.20.$Rev: 1 $
+This documents version v0.21.$Rev: 1 $
 
 =head1 Synopsis
 
