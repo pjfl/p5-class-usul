@@ -1,6 +1,7 @@
 Revision history for Class::Usul
 
-0.20.3    2013-05-14 23:17:06
+0.20.4    2013-05-15 02:02:37
+          - Fixed throw levels since Unexpected
           - Added Build.pm to .gitignore
           - Removed unwanted dependencies
           - Moved ::Build to own distribution

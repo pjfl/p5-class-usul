@@ -1,8 +1,8 @@
-# @(#)$Ident: IPC.pm 2013-05-10 17:39 pjf ;
+# @(#)$Ident: IPC.pm 2013-05-15 01:00 pjf ;
 
 package Class::Usul::IPC;
 
-use version; our $VERSION = qv( sprintf '0.20.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.20.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Moose;
@@ -312,14 +312,14 @@ sub _return_codes_or_throw {
       my $error = 'Program [_1] failed to start: [_2]';
       my $prog  = basename( (split SPC, $cmd)[ 0 ] );
 
-      throw error => $error, level => 5, args => [ $prog, $e_str ], rv => -1;
+      throw error => $error, level => 3, args => [ $prog, $e_str ], rv => -1;
    }
 
    my $rv = $e_num >> 8; my $core = $e_num & 128; my $sig = $e_num & 127;
 
    if ($rv > $opts->{expected_rv}) {
       $opts->{debug} and $self->log->debug( "RV ${rv}: ${e_str}" );
-      throw error => $e_str, level => 5, rv => $rv;
+      throw error => $e_str, level => 3, rv => $rv;
    }
 
    return { core => $core, rv => $rv, sig => $sig, };
@@ -651,7 +651,7 @@ Class::Usul::IPC - List/Create/Delete processes
 
 =head1 Version
 
-This documents version v0.20.$Rev: 1 $
+This documents version v0.20.$Rev: 4 $
 
 =head1 Synopsis
 
