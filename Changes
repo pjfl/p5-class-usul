@@ -1,6 +1,7 @@
 Revision history for Class::Usul
 
-0.21.2    2013-05-15 21:25:16
+0.21.3    2013-05-16 11:50:25
+          - Bumped F::DC version number
           - Reworked ::Functions::untaint_string
           - Renamed ::Functions::say to emit - shit, shit, shit
 

@@ -1,9 +1,9 @@
-# @(#)$Ident: Build.PL 2013-05-14 21:56 pjf ;
+# @(#)$Ident: Build.PL 2013-05-16 10:49 pjf ;
 
 use strict;
 use warnings;
 use inc::Bob; # Module::Build subclass
-use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 Bob->new( {
    module    => q(Class::Usul),
@@ -21,7 +21,7 @@ Bob->new( {
       'Date::Format'                  => 2.24,
       'DateTime::Format::Epoch'       => 0.13,
       'Digest::SHA1'                  => 2.11,
-      'File::DataClass'               => q(0.20.0),
+      'File::DataClass'               => q(0.20.10),
       'File::Gettext'                 => q(0.16.0),
       'File::HomeDir'                 => 0.93,
       'Import::Into'                  => 1.001000,
