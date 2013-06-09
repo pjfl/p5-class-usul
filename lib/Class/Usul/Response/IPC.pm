@@ -1,18 +1,19 @@
-# @(#)$Ident: IPC.pm 2013-04-29 19:26 pjf ;
+# @(#)$Ident: IPC.pm 2013-05-31 01:21 pjf ;
 
 package Class::Usul::Response::IPC;
 
-use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 
-has 'core'   => is => 'ro', isa => 'Int', default => 0;
-has 'out'    => is => 'ro', isa => 'Str', default => q();
-has 'pid'    => is => 'ro', isa => 'Maybe[Int]';
-has 'rv'     => is => 'ro', isa => 'Int', default => 0;
-has 'sig'    => is => 'ro', isa => 'Maybe[Int]';
-has 'stderr' => is => 'ro', isa => 'Str', default => q();
-has 'stdout' => is => 'ro', isa => 'Str', default => q();
+has 'core'    => is => 'ro', isa => Int, default => 0;
+has 'harness' => is => 'ro', isa => Object | Undef;
+has 'out'     => is => 'ro', isa => Str, default => q();
+has 'pid'     => is => 'ro', isa => Int | Undef;
+has 'rv'      => is => 'ro', isa => Int, default => 0;
+has 'sig'     => is => 'ro', isa => Int | Undef;
+has 'stderr'  => is => 'ro', isa => Str, default => q();
+has 'stdout'  => is => 'ro', isa => Str, default => q();
 
 __PACKAGE__->meta->make_immutable;
 
@@ -28,7 +29,7 @@ Class::Usul::Response::IPC - Response class for running external programs
 
 =head1 Version
 
-This documents version v0.21.$Rev: 1 $
+This documents version v0.21.$Rev: 4 $
 
 =head1 Synopsis
 

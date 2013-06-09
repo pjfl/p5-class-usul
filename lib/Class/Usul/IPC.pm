@@ -1,8 +1,8 @@
-# @(#)$Ident: IPC.pm 2013-05-15 01:00 pjf ;
+# @(#)$Ident: IPC.pm 2013-06-02 23:31 pjf ;
 
 package Class::Usul::IPC;
 
-use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Moose;
@@ -352,7 +352,7 @@ sub _run_cmd_system_args {
 }
 
 sub _run_cmd_using_ipc_run {
-   my ($self, $cmd, @opts) = @_; my ($buf_err, $buf_out, $error, $rv);
+   my ($self, $cmd, @opts) = @_; my ($buf_err, $buf_out, $error, $h, $rv);
 
    my $opts     = $self->_run_cmd_ipc_run_args( @opts );
    my $cmd_ref  = __partition_command( $cmd );
@@ -365,18 +365,21 @@ sub _run_cmd_using_ipc_run {
    my @cmd_args = ();
 
    if    ($in  eq q(null))   { push @cmd_args, q(0<).$null      }
+   elsif (blessed $in)       { push @cmd_args, "0<${in}"        }
    elsif ($in  ne q(stdin))  { push @cmd_args, q(0<), \$in      }
 
    if    ($out eq q(null))   { push @cmd_args, q(1>).$null      }
+   elsif (blessed $out)      { push @cmd_args, "1>${out}"       }
    elsif ($out ne q(stdout)) { push @cmd_args, q(1>), \$buf_out }
 
    if    ($err eq q(out))    { push @cmd_args, q(2>&1)          }
    elsif ($err eq q(null))   { push @cmd_args, q(2>).$null      }
+   elsif (blessed $err)      { push @cmd_args, "2>${err}"       }
    elsif ($err ne q(stderr)) { push @cmd_args, q(2>), \$buf_err }
 
    $opts->{debug} and $self->log->debug( "Running ${cmd_str}" );
 
-   try   { $rv = __ipc_run_harness( $opts, $cmd_ref, @cmd_args ) }
+   try   { ($rv, $h) = __ipc_run_harness( $opts, $cmd_ref, @cmd_args ) }
    catch { throw $_ };
 
    $opts->{debug} and $self->log->debug( "Run harness returned ${rv}" );
@@ -388,19 +391,20 @@ sub _run_cmd_using_ipc_run {
 
       $out = "Started ${prog}(${pid}) in the background";
 
-      return $self->response_class->new( core => $core, out => $out,
-                                         pid  => $pid,  rv  => $rv,
-                                         sig  => $sig );
+      return $self->response_class->new( core => $core, harness => $h,
+                                         out  => $out,  pid     => $pid,
+                                         rv   => $rv,   sig     => $sig );
    }
 
    my ($stderr, $stdout);
 
    if ($out ne q(null) and $out ne q(stdout)) {
-      $out = __run_cmd_filter_out( $stdout = $buf_out );
+       not blessed $out and $out = __run_cmd_filter_out( $stdout = $buf_out );
    }
    else { $out = $stdout = NUL }
 
-   if ($err eq q(out)) { $stderr = $stdout; $error = $out; chomp $error }
+   if    ($err eq q(out)) { $stderr = $stdout; $error = $out; chomp $error }
+   elsif (blessed $err)   { $stderr = $error = $err->all; chomp $error }
    elsif ($err ne q(null) and $err ne q(stderr)) {
       $stderr = $error = $buf_err; chomp $error;
    }
@@ -577,13 +581,13 @@ sub __ipc_run_harness {
       my $h = IPC::Run::harness( $cmd_ref, @cmd_args, init => sub {
          $opts->{pid_ref}->print( $PID )->close }, '&' );
 
-      $h->start; return 0;
+      $h->start; return (0, $h);
    }
 
    my $h  = IPC::Run::harness( $cmd_ref, @cmd_args ); $h->run;
    my $rv = $h->full_result || 0; $rv =~ m{ unknown }msx and throw $rv;
 
-   return $rv;
+   return ($rv, $h);
 }
 
 sub __new_proc_process_table {
@@ -651,7 +655,7 @@ Class::Usul::IPC - List/Create/Delete processes
 
 =head1 Version
 
-This documents version v0.21.$Rev: 1 $
+This documents version v0.21.$Rev: 4 $
 
 =head1 Synopsis
 
