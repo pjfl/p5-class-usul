@@ -1,91 +1,99 @@
-# @(#)$Ident: Config.pm 2013-05-15 13:36 pjf ;
+# @(#)$Ident: Config.pm 2013-06-15 23:12 pjf ;
 
 package Class::Usul::Config;
 
-use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use namespace::sweep;
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
-use Class::Usul::File;
-use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions       qw(app_prefix class2appdir home2appldir
-                                    is_arrayref split_on__ split_on_dash
-                                    untaint_path);
+use Class::Usul::File;
+use Class::Usul::Functions  qw( app_prefix class2appdir home2appldir
+                                is_arrayref split_on__ split_on_dash
+                                untaint_path );
+use Class::Usul::Types      qw( EncodingType HashRef NonEmptySimpleStr
+                                NonZeroPositiveInt PositiveInt );
 use Config;
-use English                      qw(-no_match_vars);
-use File::Basename               qw(basename dirname);
-use File::DataClass::Constraints qw(Directory File Path);
+use English                 qw( -no_match_vars );
+use File::Basename          qw( basename dirname );
+use File::DataClass::Types  qw( Directory File Path );
 use File::Gettext::Constants;
-use File::Spec::Functions        qw(canonpath catdir catfile rel2abs rootdir
-                                    tmpdir);
+use File::Spec::Functions   qw( canonpath catdir catfile rel2abs rootdir
+                                tmpdir );
+use Moo;
+use Scalar::Util            qw( blessed );
 
 # Public attributes
-has 'appclass'        => is => 'ro',   isa => NonEmptySimpleStr,
+has 'appclass'        => is => 'ro', isa => NonEmptySimpleStr,
    required           => TRUE;
 
-has 'encoding'        => is => 'ro',   isa => EncodingType, coerce => TRUE,
-   default            => DEFAULT_ENCODING;
+has 'encoding'        => is => 'ro', isa => EncodingType,
+   coerce             => EncodingType->coercion, default => DEFAULT_ENCODING;
 
-has 'home'            => is => 'ro',   isa => Directory, coerce => TRUE,
+has 'home'            => is => 'ro', isa => Directory,
    documentation      => 'Directory containing the config file',
-   required           => TRUE;
+   coerce             => Directory->coercion, required => TRUE;
 
-has 'l10n_attributes' => is => 'ro',   isa => HashRef, default => sub { {} };
+has 'l10n_attributes' => is => 'ro', isa => HashRef, default => sub { {} };
 
-has 'lock_attributes' => is => 'ro',   isa => HashRef, default => sub { {} };
+has 'lock_attributes' => is => 'ro', isa => HashRef, default => sub { {} };
 
-has 'log_attributes'  => is => 'ro',   isa => HashRef, default => sub { {} };
+has 'log_attributes'  => is => 'ro', isa => HashRef, default => sub { {} };
 
-has 'no_thrash'       => is => 'ro',   isa => PositiveInt, default => 3;
-
-
-has 'appldir'         => is => 'lazy', isa => Directory, coerce => TRUE;
-
-has 'binsdir'         => is => 'lazy', isa => Path,      coerce => TRUE;
-
-has 'ctlfile'         => is => 'lazy', isa => Path,      coerce => TRUE;
-
-has 'ctrldir'         => is => 'lazy', isa => Path,      coerce => TRUE;
-
-has 'dbasedir'        => is => 'lazy', isa => Path,      coerce => TRUE;
-
-has 'localedir'       => is => 'lazy', isa => Directory, coerce => TRUE;
-
-has 'logfile'         => is => 'lazy', isa => Path,      coerce => TRUE;
-
-has 'logsdir'         => is => 'lazy', isa => Directory, coerce => TRUE;
-
-has 'pathname'        => is => 'lazy', isa => File,      coerce => TRUE;
-
-has 'root'            => is => 'lazy', isa => Path,      coerce => TRUE;
-
-has 'rundir'          => is => 'lazy', isa => Path,      coerce => TRUE;
-
-has 'sessdir'         => is => 'lazy', isa => Path,      coerce => TRUE;
-
-has 'shell'           => is => 'lazy', isa => File,      coerce => TRUE;
-
-has 'suid'            => is => 'lazy', isa => Path,      coerce => TRUE;
-
-has 'tempdir'         => is => 'lazy', isa => Directory, coerce => TRUE;
-
-has 'vardir'          => is => 'lazy', isa => Path,      coerce => TRUE;
+has 'no_thrash'       => is => 'ro', isa => NonZeroPositiveInt, default => 3;
 
 
-has 'extension'       => is => 'lazy', isa => NonEmptySimpleStr;
+has 'appldir'   => is => 'lazy', isa => Directory,
+   coerce       => Directory->coercion;
 
-has 'name'            => is => 'lazy', isa => NonEmptySimpleStr;
+has 'binsdir'   => is => 'lazy', isa => Path, coerce => Path->coercion;
 
-has 'phase'           => is => 'lazy', isa => PositiveOrZeroInt;
+has 'ctlfile'   => is => 'lazy', isa => Path, coerce => Path->coercion;
 
-has 'prefix'          => is => 'lazy', isa => NonEmptySimpleStr;
+has 'ctrldir'   => is => 'lazy', isa => Path, coerce => Path->coercion;
 
-has 'salt'            => is => 'lazy', isa => NonEmptySimpleStr;
+has 'dbasedir'  => is => 'lazy', isa => Path, coerce => Path->coercion;
+
+has 'localedir' => is => 'lazy', isa => Directory,
+   coerce       => Directory->coercion;
+
+has 'logfile'   => is => 'lazy', isa => Path, coerce => Path->coercion;
+
+has 'logsdir'   => is => 'lazy', isa => Directory,
+   coerce       => Directory->coercion;
+
+has 'pathname'  => is => 'lazy', isa => File, coerce => File->coercion;
+
+has 'root'      => is => 'lazy', isa => Path, coerce => Path->coercion;
+
+has 'rundir'    => is => 'lazy', isa => Path, coerce => Path->coercion;
+
+has 'sessdir'   => is => 'lazy', isa => Path, coerce => Path->coercion;
+
+has 'shell'     => is => 'lazy', isa => File, coerce => File->coercion;
+
+has 'suid'      => is => 'lazy', isa => Path, coerce => Path->coercion;
+
+has 'tempdir'   => is => 'lazy', isa => Directory,
+   coerce       => Directory->coercion;
+
+has 'vardir'    => is => 'lazy', isa => Path, coerce => Path->coercion;
+
+
+has 'extension' => is => 'lazy', isa => NonEmptySimpleStr;
+
+has 'name'      => is => 'lazy', isa => NonEmptySimpleStr;
+
+has 'phase'     => is => 'lazy', isa => PositiveInt;
+
+has 'prefix'    => is => 'lazy', isa => NonEmptySimpleStr;
+
+has 'salt'      => is => 'lazy', isa => NonEmptySimpleStr;
 
 # Construction
 around 'BUILDARGS' => sub {
-   my ($next, $class, @args) = @_; my $attr = $class->$next( @args ); my $paths;
+   my ($orig, $class, @args) = @_; my $attr = $orig->( $class, @args );
 
-   if ($paths = delete $attr->{cfgfiles} and $paths->[ 0 ]) {
+   my $paths; if ($paths = delete $attr->{cfgfiles} and $paths->[ 0 ]) {
       my $loaded = Class::Usul::File->data_load( paths => $paths );
 
       $attr = { %{ $loaded || {} }, %{ $attr } };
@@ -165,7 +173,7 @@ sub _build_localedir {
 
    -d $dir and return $dir;
 
-   for (map { catdir( @{ $_ } ) } @{ DIRECTORIES() } ) { -d $_ and return $_ }
+   for (map { catdir( @{ $_ } ) } @{ LOCALE_DIRS() } ) { -d $_ and return $_ }
 
    return $_[ 0 ]->_inflate_path( $_[ 1 ], qw(tempdir) );
 }
@@ -279,7 +287,6 @@ sub _inflate_symbol {
 }
 
 # Private functions
-
 sub __is_inflated {
    my ($attr, $attr_name) = @_;
 
@@ -295,8 +302,6 @@ sub __unpack {
    return ($self, $attr->{appclass}, $attr->{home});
 }
 
-__PACKAGE__->meta->make_immutable;
-
 1;
 
 __END__
@@ -309,7 +314,7 @@ Class::Usul::Config - Inflate config values
 
 =head1 Version
 
-Describes Class::Usul::Config version v0.21.$Rev: 1 $
+Describes Class::Usul::Config version v0.22.$Rev: 1 $
 
 =head1 Synopsis
 

@@ -1,36 +1,38 @@
-# @(#)$Ident: Usul.pm 2013-05-16 10:49 pjf ;
+# @(#)$Ident: Usul.pm 2013-06-23 01:43 pjf ;
 
 package Class::Usul;
 
-use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use 5.010001;
+use namespace::sweep;
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
-use 5.01;
-use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(data_dumper merge_attributes throw);
+use Class::Usul::Functions  qw( data_dumper merge_attributes throw );
 use Class::Usul::L10N;
 use Class::Usul::Log;
+use Class::Usul::Types      qw( Bool ConfigType EncodingType HashRef
+                                L10NType LoadableClass LockType LogType );
 use IPC::SRLock;
+use Moo;
+use Scalar::Util            qw( blessed );
 
 # Public attributes
 has '_config'        => is => 'ro',   isa => HashRef, default => sub { {} },
    init_arg          => 'config';
 
-has 'config_class'   => is => 'ro',   isa => LoadableClass, coerce => TRUE,
-   documentation     => 'Class used to load and parse config',
-   default           => sub { 'Class::Usul::Config' };
+has 'config_class'   => is => 'ro',   isa => LoadableClass,
+   coerce            => LoadableClass->coercion,
+   default           => 'Class::Usul::Config';
 
 has '_config_parser' => is => 'lazy', isa => ConfigType,
    default           => sub { $_[ 0 ]->config_class->new( $_[ 0 ]->_config ) },
-   handles           => [ qw(prefix salt) ], init_arg => undef,
+   handles           => [ qw( prefix salt ) ], init_arg => undef,
    reader            => 'config';
 
 has 'debug',         => is => 'rw',   isa => Bool, default => FALSE,
-   documentation     => 'Turn debugging on. Prompts if interactive',
    trigger           => TRUE;
 
-has 'encoding'       => is => 'lazy', isa => EncodingType, coerce => TRUE,
-   documentation     => 'Decode/encode input/output using this encoding',
+has 'encoding'       => is => 'lazy', isa => EncodingType,
    default           => sub { $_[ 0 ]->config->encoding };
 
 has '_l10n'          => is => 'lazy', isa => L10NType,
@@ -48,7 +50,7 @@ has '_log'           => is => 'lazy', isa => LogType,
 sub new_from_class { # Instantiate from a class name with a config method
    my ($self, $app_class) = @_; my $class = blessed $self || $self;
 
-   return $class->new( __get_attr_from_class( $app_class ) );
+   return $class->new( __build_attr_from_class( $app_class ) );
 }
 
 sub dumper { # Damm handy for development
@@ -77,7 +79,7 @@ sub _trigger_debug { # Propagate the debug state to child objects
 }
 
 # Private functions
-sub __get_attr_from_class { # Coerce a hash ref from a string
+sub __build_attr_from_class { # Coerce a hash ref from a string
    my $class = shift;
 
    defined $class or throw 'Application class not defined';
@@ -95,8 +97,6 @@ sub __get_attr_from_class { # Coerce a hash ref from a string
    return $attr;
 }
 
-__PACKAGE__->meta->make_immutable;
-
 1;
 
 __END__
@@ -109,7 +109,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.21.$Rev: 3 $
+Describes Class::Usul version v0.22.$Rev: 1 $
 
 =head1 Synopsis
 

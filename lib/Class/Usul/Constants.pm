@@ -1,41 +1,28 @@
-# @(#)$Ident: Constants.pm 2013-05-10 16:55 pjf ;
+# @(#)$Ident: Constants.pm 2013-06-23 00:34 pjf ;
 
 package Class::Usul::Constants;
 
-use namespace::clean -except => 'meta';
-use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use 5.010001;
+use strict;
+use warnings;
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use parent 'Exporter::TypeTiny';
 
-use Moose;
-use MooseX::ClassAttribute;
 use Class::Usul::Exception;
 
-class_has 'Assert'          => is => 'rw', isa => 'Maybe[CodeRef]';
+our @EXPORT = qw( ARRAY ASSERT BRK CODE CONFIG_EXTN DEFAULT_DIR
+                  DEFAULT_ENCODING DEFAULT_L10N_DOMAIN
+                  DIGEST_ALGORITHMS ENCODINGS EVIL EXCEPTION_CLASS
+                  EXTNS FAILED FALSE HASH LANG LBRACE LOCALIZE
+                  LOG_LEVELS MODE NO NUL OK PHASE PREFIX QUIT SEP
+                  SPC TRUE UNDEFINED_RV UNTAINT_CMDLINE
+                  UNTAINT_IDENTIFIER UNTAINT_PATH USUL_CONFIG_KEY
+                  UUID_PATH WIDTH YES );
 
-class_has 'Config_Extn'     => is => 'rw', isa => 'Str',
-   default                  => q(.json);
-
-class_has 'Config_Key'      => is => 'rw', isa => 'Str',
-   default                  => q(Plugin::Usul);
-
-class_has 'Exception_Class' => is => 'rw', isa => 'ClassName',
-   default                  => q(Class::Usul::Exception);
-
-my @_constants;
-
-BEGIN {
-   @_constants = ( qw(ARRAY ASSERT BRK CODE CONFIG_EXTN DEFAULT_DIR
-                      DEFAULT_ENCODING DEFAULT_L10N_DOMAIN
-                      DIGEST_ALGORITHMS ENCODINGS EVIL EXCEPTION_CLASS
-                      EXTNS FAILED FALSE HASH LANG LBRACE LOCALIZE
-                      LOG_LEVELS MODE NO NUL OK PHASE PREFIX QUIT SEP
-                      SPC TRUE UNDEFINED_RV UNTAINT_CMDLINE
-                      UNTAINT_IDENTIFIER UNTAINT_PATH USUL_CONFIG_KEY
-                      UUID_PATH WIDTH YES) );
-}
-
-use Sub::Exporter::Progressive -setup => {
-   exports => [ @_constants ], groups => { default => [ @_constants ], },
-};
+my $Assert          = sub {};
+my $Config_Extn     = '.json';
+my $Config_Key      = 'Plugin::Usul';
+my $Exception_Class = 'Class::Usul::Exception';
 
 sub ARRAY    () { q(ARRAY)           }
 sub BRK      () { q(: )              }
@@ -61,7 +48,7 @@ sub TRUE     () { 1                  }
 sub WIDTH    () { 80                 }
 sub YES      () { q(y)               }
 
-sub ASSERT              () { __PACKAGE__->Assert || sub {} }
+sub ASSERT              () { __PACKAGE__->Assert }
 sub CONFIG_EXTN         () { __PACKAGE__->Config_Extn }
 sub DEFAULT_DIR         () { [ q(), qw(etc default) ] }
 sub DEFAULT_ENCODING    () { q(UTF-8) }
@@ -77,10 +64,41 @@ sub UNTAINT_PATH        () { qr{ \A ([^\$%;|&><\*]+) \z }mx }
 sub USUL_CONFIG_KEY     () { __PACKAGE__->Config_Key }
 sub UUID_PATH           () { [ q(), qw(proc sys kernel random uuid) ] }
 
-__PACKAGE__->meta->make_immutable;
+sub Assert {
+   my ($self, $subr) = @_; defined $subr or return $Assert;
 
-no MooseX::ClassAttribute;
-no Moose;
+   ref $subr eq 'CODE' or Class::Usul::Exception->throw
+      ( 'Assert subroutine ${subr} is not a code ref' );
+
+   return $Assert = $subr;
+}
+
+sub Config_Extn {
+   my ($self, $extn) = @_; defined $extn or return $Config_Extn;
+
+   (length $extn < 255 and $extn !~ m{ \n }mx) or Class::Usul::Exception->throw
+      ( 'Config Extn ${extn} is not a simple string' );
+
+   return $Config_Extn = $extn;
+}
+
+sub Config_Key {
+   my ($self, $key) = @_; defined $key or return $Config_Key;
+
+   (length $key < 255 and $key !~ m{ \n }mx) or Class::Usul::Exception->throw
+      ( 'Config Key ${key} is not a simple string' );
+
+   return $Config_Key = $key;
+}
+
+sub Exception_Class{
+   my ($self, $class) = @_; defined $class or return $Exception_Class;
+
+   $class->can( q(throw) ) or Class::Usul::Exception->throw
+      ( "Exception Class ${class} is not loaded or has no throw method" );
+
+   return $Exception_Class = $class;
+}
 
 1;
 
@@ -94,7 +112,7 @@ Class::Usul::Constants - Definitions of constant values
 
 =head1 Version
 
-This documents version v0.21.$Rev: 1 $
+This documents version v0.22.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -284,15 +302,9 @@ None
 
 =over 3
 
-=item L<File::DataClass::Constants>
+=item L<Exporter>
 
-=item L<File::DataClass::Exception>
-
-=item L<Moose>
-
-=item L<MooseX::ClassAttribute>
-
-=item L<Sub::Exporter>
+=item L<Class::Usul::Exception>
 
 =back
 

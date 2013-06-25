@@ -1,13 +1,12 @@
-# @(#)Ident: Exception.pm 2013-05-09 14:17 pjf ;
+# @(#)Ident: Exception.pm 2013-06-24 13:54 pjf ;
 
 package Class::Usul::Exception;
 
-use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use namespace::sweep;
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
-use Moose;
-use MooseX::Types::Common::Numeric qw(PositiveInt);
-use MooseX::Types::Moose           qw(Int Str);
+use Moo;
+use Unexpected::Types qw( Int NonZeroPositiveInt Str );
 
 extends q(Unexpected);
 with    q(Unexpected::TraitFor::ErrorLeader);
@@ -20,10 +19,8 @@ has 'out'    => is => 'ro', isa => Str, default => q();
 
 has 'rv'     => is => 'ro', isa => Int, default => 1;
 
-has 'time'   => is => 'ro', isa => PositiveInt, default => CORE::time(),
+has 'time'   => is => 'ro', isa => NonZeroPositiveInt, default => CORE::time(),
    init_arg  => undef;
-
-__PACKAGE__->meta->make_immutable;
 
 1;
 
@@ -39,7 +36,7 @@ Class::Usul::Exception - Exception handling
 
 =head1 Version
 
-This documents version v0.21.$Rev: 1 $ of L<Class::Usul::Exception>
+This documents version v0.22.$Rev: 1 $ of L<Class::Usul::Exception>
 
 =head1 Synopsis
 
@@ -175,17 +172,9 @@ None
 
 =over 3
 
-=item L<namespace::clean>
+=item L<Moo>
 
-=item L<overload>
-
-=item L<Moose>
-
-=item L<MooseX::Types::Common::String>
-
-=item L<MooseX::Types::Common::Numeric>
-
-=item L<MooseX::Types::Moose>
+=item L<Unexpected>
 
 =back
 

@@ -1,22 +1,21 @@
-# @(#)$Ident: LoadingClasses.pm 2013-04-29 19:27 pjf ;
+# @(#)$Ident: LoadingClasses.pm 2013-06-23 22:07 pjf ;
 
 package Class::Usul::TraitFor::LoadingClasses;
 
-use strict;
-use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use namespace::sweep;
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
-use Moose::Role;
-use Class::MOP;
+use Class::Load             qw( is_class_loaded load_class );
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(find_source throw);
-use File::Basename         qw(basename);
-use File::Spec::Functions  qw(catfile);
+use Class::Usul::Functions  qw( find_source throw );
+use File::Basename          qw( basename );
+use File::Spec::Functions   qw( catfile );
 use Module::Pluggable::Object;
+use Moo::Role;
+use Scalar::Util            qw( blessed );
 use Try::Tiny;
 
-sub build_subcomponents {
-   # Voodo by mst. Finds and loads component subclasses
+sub build_subcomponents { # Voodo by mst. Finds and loads component subclasses
    my ($self, $base_class) = @_; my $my_class = blessed $self || $self;
 
   (my $dir = find_source $base_class) =~ s{ [.]pm \z }{}msx;
@@ -35,11 +34,11 @@ sub build_subcomponents {
 sub ensure_class_loaded {
    my ($self, $class, $opts) = @_; $opts ||= {};
 
-   my $package_defined = sub { Class::MOP::is_class_loaded( $class ) };
+   my $package_defined = sub { is_class_loaded( $class ) };
 
    not $opts->{ignore_loaded} and $package_defined->() and return TRUE;
 
-   try { Class::MOP::load_class( $class ) } catch { throw $_ };
+   try { load_class( $class ) } catch { throw $_ };
 
    $package_defined->()
       or throw error => 'Class [_1] loaded but package undefined',
@@ -96,7 +95,7 @@ Class::Usul::TraitFor::LoadingClasses - Load classes at runtime
 
 =head1 Version
 
-This documents version v0.21.$Rev: 1 $
+This documents version v0.22.$Rev: 1 $
 
 =head1 Synopsis
 

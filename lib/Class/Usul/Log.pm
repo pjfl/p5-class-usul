@@ -1,16 +1,21 @@
-# @(#)$Ident: Log.pm 2013-04-29 19:13 pjf ;
+# @(#)$Ident: Log.pm 2013-06-14 14:12 pjf ;
 
 package Class::Usul::Log;
 
-use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use namespace::sweep;
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Null;
-use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions       qw(merge_attributes);
+use Class::Usul::Functions  qw( merge_attributes );
+use Class::Usul::Types      qw( Bool EncodingType HashRef
+                                LoadableClass LogType Undef );
 use Encode;
-use File::Basename               qw(dirname);
-use File::DataClass::Constraints qw(Path);
+use File::Basename          qw( dirname );
+use File::DataClass::Types  qw( Path );
+use Moo;
+use MooX::ClassStash;
+use Scalar::Util            qw( blessed );
 
 has '_debug_flag'     => is => 'ro',   isa => Bool, init_arg => 'debug',
    default            => FALSE;
@@ -23,14 +28,15 @@ has '_log'            => is => 'lazy', isa => LogType, init_arg => 'log';
 has '_log_attributes' => is => 'ro',   isa => HashRef,
    init_arg           => 'log_attributes', default => sub { {} };
 
-has '_log_class'      => is => 'lazy', isa => LoadableClass, coerce => TRUE,
+has '_log_class'      => is => 'lazy', isa => LoadableClass,
+   coerce             => LoadableClass->coercion,
    default            => sub { 'Log::Handler' }, init_arg => 'log_class';
 
-has '_logfile'        => is => 'ro',   isa => Path | Undef, coerce => TRUE,
-   init_arg           => 'logfile';
+has '_logfile'        => is => 'ro',   isa => Path | Undef,
+   coerce             => Path->coercion, init_arg => 'logfile';
 
 around 'BUILDARGS' => sub {
-   my ($next, $class, @rest) = @_; my $attr = $class->$next( @rest );
+   my ($orig, $class, @args) = @_; my $attr = $orig->( $class, @args );
 
    my $builder = delete $attr->{builder} or return $attr;
    my $config  = $builder->can( q(config) ) ? $builder->config : {};
@@ -43,9 +49,7 @@ around 'BUILDARGS' => sub {
 };
 
 sub BUILD {
-   my $self = shift; my $class = blessed $self; my $meta = $class->meta;
-
-   $meta->make_mutable;
+   my $self = shift; my $class = blessed $self; my $meta = $class->class_stash;
 
    for my $method (LOG_LEVELS) {
       $meta->has_method( $method ) or $meta->add_method( $method => sub {
@@ -71,7 +75,6 @@ sub BUILD {
       } );
    }
 
-   $meta->make_immutable;
    return;
 }
 
@@ -80,7 +83,6 @@ sub fh {
 }
 
 # Private methods
-
 sub _build__log {
    my $self    = shift;
    my $attr    = { %{ $self->_log_attributes } };
@@ -98,8 +100,6 @@ sub _build__log {
    return $self->_log_class->new( %{ $attr } );
 }
 
-__PACKAGE__->meta->make_immutable;
-
 1;
 
 __END__
@@ -112,7 +112,7 @@ Class::Usul::Log - Create methods for each logging level that encode their outpu
 
 =head1 Version
 
-This documents version v0.21.$Rev: 1 $
+This documents version v0.22.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -200,7 +200,7 @@ None
 
 =item L<Encode>
 
-=item L<File::DataClass::Constraints>
+=item L<File::DataClass::Types>
 
 =item L<Log::Handler>
 

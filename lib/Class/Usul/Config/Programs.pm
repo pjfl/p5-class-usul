@@ -1,26 +1,29 @@
-# @(#)$Ident: Programs.pm 2013-05-15 13:31 pjf ;
+# @(#)$Ident: Programs.pm 2013-06-24 13:56 pjf ;
 
 package Class::Usul::Config::Programs;
 
-use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use namespace::sweep;
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
-use Class::Usul::Moose;
 use Class::Usul::Constants;
-use File::Basename               qw(basename);
-use File::DataClass::Constraints qw(Path);
+use Class::Usul::Types      qw( ArrayRef NonEmptySimpleStr PositiveInt );
+use File::Basename          qw( basename );
+use File::DataClass::Types  qw( Path );
 use File::HomeDir;
+use Moo;
 
-extends qw(Class::Usul::Config);
+extends q(Class::Usul::Config);
 
 has 'doc_title'    => is => 'ro',   isa => NonEmptySimpleStr,
    default         => 'User Contributed Documentation';
 
 has 'man_page_cmd' => is => 'ro',   isa => ArrayRef,
-   default         => sub { [ qw(nroff -man) ] };
+   default         => sub { [ qw( nroff -man ) ] };
 
-has 'mode'         => is => 'ro',   isa => PositiveOrZeroInt, default => MODE;
+has 'mode'         => is => 'ro',   isa => PositiveInt, default => MODE;
 
-has 'my_home'      => is => 'lazy', isa => Path, coerce => TRUE,
+has 'my_home'      => is => 'lazy', isa => Path,
+   coerce          => Path->coercion,
    default         => sub { File::HomeDir->my_home };
 
 has 'owner'        => is => 'lazy', isa => NonEmptySimpleStr;
@@ -28,7 +31,6 @@ has 'owner'        => is => 'lazy', isa => NonEmptySimpleStr;
 has 'script'       => is => 'lazy', isa => NonEmptySimpleStr;
 
 # Private methods
-
 sub _build_owner {
    return $_[ 0 ]->_inflate_symbol( $_[ 1 ], q(prefix) ) || q(root);
 }
@@ -36,8 +38,6 @@ sub _build_owner {
 sub _build_script {
    return basename( $_[ 0 ]->_inflate_path( $_[ 1 ], qw(pathname) ) );
 }
-
-__PACKAGE__->meta->make_immutable;
 
 1;
 
@@ -51,13 +51,13 @@ Class::Usul::Config::Programs - Additional configuration attributes for CLI prog
 
 =head1 Version
 
-This documents version v0.21.$Rev: 1 $
+This documents version v0.22.$Rev: 1 $
 
 =head1 Synopsis
 
    package Class::Usul::Programs;
 
-   use Class::Usul::Moose;
+   use Moo;
 
    extends q(Class::Usul);
 

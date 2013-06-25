@@ -1,41 +1,38 @@
-# @(#)$Ident: Crypt.pm 2013-05-10 16:58 pjf ;
+# @(#)$Ident: Crypt.pm 2013-06-24 01:04 pjf ;
 
 package Class::Usul::Crypt;
 
 use strict;
 use warnings;
-use namespace::clean -except => 'meta';
-use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(create_token is_coderef is_hashref);
+use Class::Usul::Functions  qw( create_token is_coderef is_hashref );
 use Crypt::CBC;
-use English qw(-no_match_vars);
+use English                 qw( -no_match_vars );
+use Exporter 5.57           qw( import );
 use MIME::Base64;
 use Sys::Hostname;
 
-use Sub::Exporter::Progressive -setup => {
-   exports => [ qw(decrypt encrypt cipher_list default_cipher) ],
-   groups  => { default => [], },
-};
+our @EXPORT_OK = qw( cipher_list decrypt default_cipher encrypt );
 
 my $SEED = do { local $RS = undef; <DATA> };
 
 # Public functions
-sub decrypt (;$$) {
-   __cipher( $_[ 0 ] )->decrypt( decode_base64( $_[ 1 ] ) );
-}
-
-sub encrypt (;$$) {
-   encode_base64( __cipher( $_[ 0 ] )->encrypt( $_[ 1 ] ), NUL );
-}
-
 sub cipher_list () {
-   ( qw(Blowfish Rijndael Twofish2) );
+   return ( qw(Blowfish Rijndael Twofish2) );
+}
+
+sub decrypt (;$$) {
+   return __cipher( $_[ 0 ] )->decrypt( decode_base64( $_[ 1 ] ) );
 }
 
 sub default_cipher () {
-   q(Twofish2);
+   return 'Twofish2';
+}
+
+sub encrypt (;$$) {
+   return encode_base64( __cipher( $_[ 0 ] )->encrypt( $_[ 1 ] ), NUL );
 }
 
 # Private functions
@@ -56,11 +53,15 @@ sub __inflate {
 }
 
 sub __compose {
-   __prepare( __deref( $_[ 0 ]->{seed} ) // $SEED ).__deref( $_[ 0 ]->{salt} );
+   __evaluate( __deref( $_[ 0 ]->{seed} ) // $SEED ).__deref( $_[ 0 ]->{salt} );
 }
 
 sub __deref {
    (is_coderef $_[ 0 ]) ? $_[ 0 ]->() : $_[ 0 ];
+}
+
+sub __evaluate {
+   $_[ 0 ] ? eval __prepare( $_[ 0 ] ) : q();
 }
 
 sub __prepare {
@@ -68,7 +69,7 @@ sub __prepare {
 }
 
 sub __whiten {
-   my $y = $_[ 0 ] or return ''; $y =~ tr{ \t}{01}; $y = pack 'b*', $y; eval $y;
+   my $y = $_[ 0 ]; $y =~ tr{ \t}{01}; pack 'b*', $y;
 }
 
 1;
@@ -81,7 +82,7 @@ Class::Usul::Crypt - Encryption/decryption functions
 
 =head1 Version
 
-This documents version v0.21.$Rev: 1 $
+This documents version v0.22.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -161,9 +162,9 @@ None
 
 =item L<Crypt::Twofish2>
 
-=item L<MIME::Base64>
+=item L<Exporter>
 
-=item L<Sub::Exporter>
+=item L<MIME::Base64>
 
 =back
 

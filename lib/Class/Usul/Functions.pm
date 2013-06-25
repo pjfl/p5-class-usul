@@ -1,50 +1,47 @@
-# @(#)$Ident: Functions.pm 2013-05-15 20:24 pjf ;
+# @(#)$Ident: Functions.pm 2013-06-23 00:36 pjf ;
 
 package Class::Usul::Functions;
 
+use 5.010001;
 use strict;
 use warnings;
-use feature      qw(state);
-use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use parent 'Exporter::TypeTiny';
 
 use Class::Null;
 use Class::Usul::Constants;
+use Cwd            qw( );
 use Data::Printer alias => q(Dumper), colored => 1, indent => 3,
     filters => { 'File::DataClass::IO' => sub { $_[ 0 ]->pathname }, };
-use Cwd          qw();
-use Digest       qw();
-use Digest::MD5  qw(md5);
-use English      qw(-no_match_vars);
-use File::Basename ();
+use Digest         qw( );
+use Digest::MD5    qw( md5 );
+use English        qw( -no_match_vars );
+use File::Basename   ( );
 use File::Spec;
-use List::Util   qw(first);
+use List::Util     qw( first );
 use Path::Class::Dir;
-use Scalar::Util qw(blessed openhandle);
+use Scalar::Util   qw( blessed openhandle );
 use Sys::Hostname;
 use User::pwent;
 
-my @_functions; my $_bson_id_inc : shared = 0;
+our @EXPORT      = qw( is_member );
+our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
+                       assert_directory bsonid bsonid_time bson64id
+                       bson64id_time build class2appdir classdir
+                       classfile create_token data_dumper distname
+                       downgrade elapsed emit env_prefix escape_TT
+                       exception find_source fold fqdn fullname get_user
+                       hex2str home2appldir is_arrayref is_coderef
+                       is_hashref is_win32 loginid logname
+                       merge_attributes my_prefix pad prefix2class
+                       product split_on__ split_on_dash squeeze
+                       strip_leader sub_name sum thread_id throw trim
+                       unescape_TT untaint_cmdline untaint_identifier
+                       untaint_path untaint_string zip );
+our %EXPORT_TAGS =   ( all => [ @EXPORT, @EXPORT_OK ], );
 
-BEGIN {
-   @_functions = ( qw(abs_path app_prefix arg_list assert_directory
-                      bsonid bsonid_time bson64id bson64id_time build
-                      class2appdir classdir classfile create_token
-                      data_dumper distname downgrade elapsed emit
-                      env_prefix escape_TT exception find_source fold
-                      fqdn fullname get_user hex2str home2appldir
-                      is_arrayref is_coderef is_hashref is_member
-                      is_win32 loginid logname merge_attributes
-                      my_prefix pad prefix2class product
-                      split_on__ split_on_dash squeeze strip_leader
-                      sub_name sum thread_id throw trim unescape_TT
-                      untaint_cmdline untaint_identifier untaint_path
-                      untaint_string zip) );
-}
-
-use Sub::Exporter -setup => {
-   exports => [ @_functions, assert => sub { ASSERT } ],
-   groups  => { default => [ qw(is_member) ], },
-};
+my $Assert               = ASSERT;
+my $BSON_Id_Inc : shared = 0;
 
 # Public functions
 sub abs_path ($) {
@@ -68,6 +65,10 @@ sub arg_list (;@) {
    return $_[ 0 ] && ref $_[ 0 ] eq q(HASH) ? { %{ $_[ 0 ] } }
         : $_[ 0 ]                           ? { @_ }
                                             : {};
+}
+
+sub assert (;@) {
+   return $Assert->( @_ );
 }
 
 sub assert_directory ($) {
@@ -459,7 +460,7 @@ sub _bsonid (;$) {
 sub _bsonid_inc ($;$) {
    my ($now, $version) = @_; state $id_inc //= 0; state $prev_time //= 0;
 
-   $version or return substr pack( 'N', $_bson_id_inc++ % 0xFFFFFF ), 1, 3;
+   $version or return substr pack( 'N', $BSON_Id_Inc++ % 0xFFFFFF ), 1, 3;
 
    $id_inc++; $now > $prev_time and $id_inc = 0; $prev_time = $now;
 
@@ -513,7 +514,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.21.$Rev: 2 $
+This documents version v0.22.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -554,7 +555,7 @@ parameters
    assert $ioc_object, $condition, $message;
 
 By default does nothing. Does not evaluate the passed parameters. The
-L<assert constant|CatalystX::Usul::Constants/ASSERT> can be set via
+L<assert|Classs::Usul::Constants/ASSERT> constant can be set via
 an inherited class attribute to do something useful with whatever parameters
 are passed to it
 

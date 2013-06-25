@@ -3,7 +3,7 @@
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use File::Spec::Functions qw(catdir updir);
 use FindBin qw( $Bin );
 use lib catdir( $Bin, updir, q(lib) );
@@ -32,9 +32,9 @@ usul_cli - A command line interface to OO methods
 
 Calls the named method
 
-=item B<usul_cli> B<-H>|B<-h>
+=item B<usul_cli> B<-H> | B<-h> | B<-?> [I<method>]
 
-Display man page/usage string
+Display man page | program options | usage string or method docs
 
 =item B<usul_cli> B<-nc> list_methods
 
@@ -140,7 +140,7 @@ Peter Flanigan, C<< <Support at RoxSoft.co.uk> >>
 
 =head1 LICENSE and COPYRIGHT
 
-Copyright (c) 2012 Peter Flanigan. All rights reserved
+Copyright (c) 2013 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

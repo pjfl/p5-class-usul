@@ -1,24 +1,25 @@
-# @(#)$Ident: Meta.pm 2013-05-15 00:59 pjf ;
+# @(#)$Ident: Meta.pm 2013-06-14 12:40 pjf ;
 
 package Class::Usul::Response::Meta;
 
-use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
-use Class::Usul::Moose;
 use Class::Usul::File;
-use Class::Usul::Functions qw(is_arrayref throw);
-use Cwd                    qw(getcwd);
+use Class::Usul::Functions  qw( is_arrayref throw );
+use Class::Usul::Types      qw( ArrayRef HashRef Maybe Str );
+use Cwd                     qw( getcwd );
+use Moo;
 use YAML::Syck;
 
-has 'abstract' => is => 'ro', isa => 'Maybe[Str]';
-has 'author'   => is => 'ro', isa => 'Maybe[ArrayRef]';
-has 'license'  => is => 'ro', isa => 'Maybe[ArrayRef]';
-has 'name'     => is => 'ro', isa => 'Maybe[Str]';
-has 'provides' => is => 'ro', isa => 'Maybe[HashRef]';
-has 'version'  => is => 'ro', isa => 'Maybe[Str]';
+has 'abstract' => is => 'ro', isa => Maybe[Str];
+has 'author'   => is => 'ro', isa => Maybe[ArrayRef];
+has 'license'  => is => 'ro', isa => Maybe[ArrayRef];
+has 'name'     => is => 'ro', isa => Maybe[Str];
+has 'provides' => is => 'ro', isa => Maybe[HashRef];
+has 'version'  => is => 'ro', isa => Maybe[Str];
 
 around 'BUILDARGS' => sub {
-   my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
+   my ($orig, $self, @args) = @_; my $attr = $orig->( $self, @args );
 
    my $file_class = 'Class::Usul::File';
 
@@ -41,8 +42,6 @@ around 'BUILDARGS' => sub {
    throw error => 'No META.json or META.yml file', level => 3;
    return;
 };
-
-__PACKAGE__->meta->make_immutable;
 
 1;
 

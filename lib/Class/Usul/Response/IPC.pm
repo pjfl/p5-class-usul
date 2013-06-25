@@ -1,10 +1,12 @@
-# @(#)$Ident: IPC.pm 2013-05-31 01:21 pjf ;
+# @(#)$Ident: IPC.pm 2013-06-14 12:39 pjf ;
 
 package Class::Usul::Response::IPC;
 
-use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use namespace::sweep;
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
-use Class::Usul::Moose;
+use Class::Usul::Types qw( Int Object Str Undef );
+use Moo;
 
 has 'core'    => is => 'ro', isa => Int, default => 0;
 has 'harness' => is => 'ro', isa => Object | Undef;
@@ -14,8 +16,6 @@ has 'rv'      => is => 'ro', isa => Int, default => 0;
 has 'sig'     => is => 'ro', isa => Int | Undef;
 has 'stderr'  => is => 'ro', isa => Str, default => q();
 has 'stdout'  => is => 'ro', isa => Str, default => q();
-
-__PACKAGE__->meta->make_immutable;
 
 1;
 
@@ -29,7 +29,7 @@ Class::Usul::Response::IPC - Response class for running external programs
 
 =head1 Version
 
-This documents version v0.21.$Rev: 4 $
+This documents version v0.22.$Rev: 1 $
 
 =head1 Synopsis
 

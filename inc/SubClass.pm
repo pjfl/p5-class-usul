@@ -1,5 +1,4 @@
-# @(#)Ident: SubClass.pm 2013-04-03 17:42 pjf ;
-# Bob-Version: 1.11
+# @(#)Ident: SubClass.pm 2013-05-17 02:54 pjf ;
 
 use Pod::Select;
 
@@ -14,8 +13,13 @@ sub ACTION_distmeta {
    return $self->SUPER::ACTION_distmeta;
 }
 
-# Private methods
+sub ACTION_test {
+   my $self = shift; delete $ENV{AUTHOR_TESTING};
 
+   return $self->SUPER::ACTION_test;
+}
+
+# Private methods
 sub _create_readme_md {
    print "Creating README.md using Pod::Markdown\n"; require Pod::Markdown;
 
@@ -47,7 +51,8 @@ sub _my_resolve_link {
       my $prefix = $self->{man_prefix} || q(http://man.he.net/man);
 
       $url = $prefix.($part || 1).q(/).($page || $name);
-   } else {
+   }
+   else {
       my $prefix = $self->{url_prefix} || q(http://search.cpan.org/perldoc?);
 
       $name    and $url  = "${prefix}${name}";

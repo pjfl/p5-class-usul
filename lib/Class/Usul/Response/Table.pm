@@ -1,18 +1,18 @@
-# @(#)$Ident: Table.pm 2013-04-29 19:26 pjf ;
+# @(#)$Ident: Table.pm 2013-06-14 12:39 pjf ;
 
 package Class::Usul::Response::Table;
 
-use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use namespace::sweep;
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
-use Class::Usul::Moose;
-use MooseX::Aliases;
+use Class::Usul::Types qw( ArrayRef HashRef Int Str );
+use Moo;
 
 has 'caption'  => is => 'ro', isa => Str,           default => q();
 has 'class'    => is => 'ro', isa => HashRef | Str, default => q();
 has 'classes'  => is => 'ro', isa => HashRef,       default => sub { {} };
 has 'count'    => is => 'ro', isa => Int,           default => 0;
-has 'fields'   => is => 'ro', isa => ArrayRef,      default => sub { [] },
-   alias       => q(flds);
+has 'fields'   => is => 'ro', isa => ArrayRef,      default => sub { [] };
 has 'hclass'   => is => 'ro', isa => HashRef,       default => sub { {} };
 has 'labels'   => is => 'ro', isa => HashRef,       default => sub { {} };
 has 'sizes'    => is => 'ro', isa => HashRef,       default => sub { {} };
@@ -20,8 +20,6 @@ has 'typelist' => is => 'ro', isa => HashRef,       default => sub { {} };
 has 'values'   => is => 'ro', isa => ArrayRef,      default => sub { [] };
 has 'widths'   => is => 'ro', isa => HashRef,       default => sub { {} };
 has 'wrap'     => is => 'ro', isa => HashRef,       default => sub { {} };
-
-__PACKAGE__->meta->make_immutable;
 
 1;
 
@@ -35,7 +33,7 @@ Class::Usul::Response::Table - Data structure for the table widget
 
 =head1 Version
 
-This documents version v0.21.$Rev: 1 $
+This documents version v0.22.$Rev: 1 $
 
 =head1 Synopsis
 

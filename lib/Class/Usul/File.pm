@@ -1,22 +1,25 @@
-# @(#)$Ident: File.pm 2013-04-29 19:12 pjf ;
+# @(#)$Ident: File.pm 2013-06-14 13:11 pjf ;
 
 package Class::Usul::File;
 
-use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use namespace::sweep;
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
-use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions   qw(arg_list create_token is_arrayref throw);
-use English                  qw(-no_match_vars);
-use File::DataClass::Constants ();
-use File::DataClass::IO        ();
+use Class::Usul::Functions   qw( arg_list create_token is_arrayref throw );
+use Class::Usul::Types       qw( Object );
+use English                  qw( -no_match_vars );
+use File::DataClass::Constants ( );
+use File::DataClass::IO        ( );
 use File::DataClass::Schema;
-use File::Spec::Functions    qw(catdir catfile);
+use File::Spec::Functions    qw( catdir catfile );
+use Moo;
+use Scalar::Util             qw( blessed );
 
 File::DataClass::Constants->Exception_Class( EXCEPTION_CLASS );
 
 has '_usul' => is => 'ro', isa => Object,
-   handles  => [ qw(config debug lock log) ], init_arg => 'builder',
+   handles  => [ qw( config debug lock log ) ], init_arg => 'builder',
    reader   => 'usul', required => TRUE, weak_ref => TRUE;
 
 sub absolute {
@@ -114,8 +117,6 @@ sub uuid {
    return $_[ 0 ]->io( $_[ 1 ] || UUID_PATH )->lock->chomp->getline;
 }
 
-__PACKAGE__->meta->make_immutable;
-
 1;
 
 __END__
@@ -128,7 +129,7 @@ Class::Usul::File - File and directory IO base class
 
 =head1 Version
 
-This documents version v0.21.$Rev: 1 $
+This documents version v0.22.$Rev: 1 $
 
 =head1 Synopsis
 

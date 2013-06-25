@@ -1,24 +1,21 @@
-# @(#)Ident: Util.pm 2013-05-13 02:11 pjf ;
+# @(#)Ident: Util.pm 2013-06-24 16:29 pjf ;
 
 package Class::Usul::Crypt::Util;
 
+use 5.010001;
 use strict;
 use warnings;
-use feature qw(state);
-use namespace::clean -except => 'meta';
-use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
-use Class::Usul::Crypt     qw(decrypt default_cipher encrypt);
+use Class::Usul::Crypt      qw( decrypt default_cipher encrypt );
 use Class::Usul::File;
-use Class::Usul::Functions qw(merge_attributes throw);
-use Scalar::Util           qw(blessed);
+use Class::Usul::Functions  qw( merge_attributes throw );
+use Exporter 5.57           qw( import );
+use Scalar::Util            qw( blessed );
 use Try::Tiny;
 
-use Sub::Exporter::Progressive -setup => {
-   exports => [ qw(decrypt_from_config encrypt_for_config is_encrypted) ],
-   groups  => { default => [], },
-};
+our @EXPORT_OK = qw( decrypt_from_config encrypt_for_config is_encrypted );
 
 # Public functions
 sub decrypt_from_config {
@@ -105,7 +102,7 @@ Class::Usul::Crypt::Util - Decrypts/Encrypts password from/to configuration file
 
 =head1 Version
 
-This documents version v0.21.$Rev: 1 $ of L<Class::Usul::Crypt::Util>
+This documents version v0.22.$Rev: 1 $ of L<Class::Usul::Crypt::Util>
 
 =head1 Description
 
@@ -165,7 +162,7 @@ None
 
 =item L<Try::Tiny>
 
-=item L<Sub::Exporter::Progressive>
+=item L<Exporter>
 
 =back
 

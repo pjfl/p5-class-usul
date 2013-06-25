@@ -1,115 +1,128 @@
-# @(#)$Ident: Programs.pm 2013-05-15 17:20 pjf ;
+# @(#)$Ident: Programs.pm 2013-06-25 13:40 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
-use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use namespace::sweep;
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Inspector;
-use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(abs_path app_prefix arg_list assert_directory
-                              class2appdir classdir elapsed emit env_prefix
-                              exception find_source is_arrayref is_hashref
-                              is_member logname throw untaint_identifier
-                              untaint_path);
+use Class::Usul::Functions  qw( abs_path app_prefix arg_list assert_directory
+                                class2appdir classdir elapsed emit env_prefix
+                                exception find_source is_arrayref is_hashref
+                                is_member logname throw untaint_identifier
+                                untaint_path );
 use Class::Usul::File;
 use Class::Usul::IPC;
+use Class::Usul::Types      qw( ArrayRef Bool EncodingType FileType HashRef
+                                IPCType LoadableClass NonZeroPositiveInt
+                                PositiveInt SimpleStr );
 use Config;
-use Encode                 qw(decode);
-use English                qw(-no_match_vars);
-use File::Basename         qw(dirname);
-use File::HomeDir          qw();
-use File::Spec::Functions  qw(catdir catfile);
-use IO::Interactive        qw(is_interactive);
-use List::Util             qw(first);
+use English                 qw( -no_match_vars );
+use File::Basename          qw( dirname );
+use File::DataClass::Types  qw( Directory );
+use File::HomeDir           qw( );
+use File::Spec::Functions   qw( catdir catfile );
+use IO::Interactive         qw( is_interactive );
+use List::Util              qw( first );
+use Moo;
+use MooX::Options;
 use Pod::Man;
 use Pod::Usage;
+use Scalar::Util            qw( blessed );
 use Term::ReadKey;
 use Text::Autoformat;
 use Try::Tiny;
 
 extends q(Class::Usul);
-with    q(MooseX::Getopt::Dashes);
 with    q(Class::Usul::TraitFor::LoadingClasses);
 with    q(Class::Usul::TraitFor::UntaintedGetopts);
 
 # Override attributes in base class
-has '+config_class' => default => sub { 'Class::Usul::Config::Programs' };
-
-has '+debug'        => traits => [ 'Getopt' ], cmd_aliases => q(D),
-   cmd_flag         => 'debug';
-
-has '+help_flag'    => cmd_aliases => [ qw(usage ?) ];
+has '+config_class'   => default => sub { 'Class::Usul::Config::Programs' };
 
 # Public attributes
-has 'help_options' => is => 'ro', isa => Bool, default => FALSE,
-   documentation   => 'Uses Pod::Usage to describe the program options',
-   traits          => [ 'Getopt' ], cmd_aliases => q(h), cmd_flag => 'help_opt';
+option 'debug'        => is => 'rw',   isa => Bool, default => FALSE,
+   documentation      => 'Turn debugging on. Prompts if interactive',
+   short              => 'D', trigger => TRUE;
 
-has 'help_manual'  => is => 'ro', isa => Bool, default => FALSE,
-   documentation   => 'Uses Pod::Man to display the program documentation',
-   traits          => [ 'Getopt' ], cmd_aliases => q(H), cmd_flag => 'man_page';
+option 'encoding'     => is => 'lazy', isa => EncodingType,
+   documentation      => 'Decode/encode input/output using this encoding',
+   default            => sub { $_[ 0 ]->config->encoding };
 
-has 'home'         => is => 'ro', isa => SimpleStr,
-   documentation   => 'Directory containing the configuration file',
-   traits          => [ 'Getopt' ], cmd_flag => 'home';
+option 'help_manual'  => is => 'ro',   isa => Bool, default => FALSE,
+   documentation      => 'Displays the documentation for the program',
+   short              => 'H';
 
-has 'language'     => is => 'ro', isa => SimpleStr,  default => NUL,
-   documentation   => 'Loads the specified language message catalog',
-   traits          => [ 'Getopt' ], cmd_aliases => q(L), cmd_flag => 'language';
+option 'help_options' => is => 'ro',   isa => Bool, default => FALSE,
+   documentation      => 'Describes program options and methods',
+   short              => 'h';
 
-has 'method'       => is => 'rw', isa => SimpleStr | Undef,  default => NUL,
-   documentation   => 'Name of the method to call',
-   traits          => [ 'Getopt' ], cmd_aliases => q(c), cmd_flag => 'command';
+option 'help_usage'   => is => 'ro',   isa => Bool, default => FALSE,
+   documentation      => 'Displays this command line usage',
+   short              => '?';
 
-has 'nodebug'      => is => 'ro', isa => Bool, default => FALSE,
-   documentation   => 'Do not prompt for debugging',
-   traits          => [ 'Getopt' ], cmd_aliases => q(n), cmd_flag => 'nodebug';
+option 'home'         => is => 'lazy', isa => Directory, format => 's',
+   documentation      => 'Directory containing the configuration file',
+   default            => sub { $_[ 0 ]->config->home },
+   coerce             => Directory->coercion;
 
-has 'options'      => is => 'ro', isa => HashRef, default => sub { {} },
-   documentation   =>
+option 'language'     => is => 'ro',   isa => SimpleStr, format => 's',
+   documentation      => 'Loads the specified language message catalog',
+   default            => NUL, short => 'L';
+
+option 'method'       => is => 'rw',   isa => SimpleStr, format => 's',
+   documentation      => 'Name of the method to call',
+   default            => NUL, order => 1, short => 'c';
+
+option 'nodebug'      => is => 'ro',   isa => Bool, default => FALSE,
+   documentation      => 'Do not prompt for debugging',
+   short              => 'n';
+
+option 'options'      => is => 'ro',   isa => HashRef, format => 's%',
+   documentation      =>
       'Zero, one or more key/value pairs available to the method call',
-   traits          => [ 'Getopt' ], cmd_aliases => q(o), cmd_flag => 'option';
+   default            => sub { {} }, short => 'o';
 
-has '_quiet'       => is => 'rw', isa => Bool, default => FALSE,
-   documentation   => 'Quiet the display of information messages',
-   traits          => [ 'Getopt' ], cmd_aliases => q(q), cmd_flag => 'quiet',
-   init_arg        => 'quiet';
+option 'quiet_flag'   => is => 'rw',   isa => Bool, default => FALSE,
+   documentation      => 'Quiet the display of information messages',
+   short              => 'q';
 
-has 'version'      => is => 'ro', isa => Bool, default => FALSE,
-   documentation   => 'Displays the version number of the program class',
-   traits          => [ 'Getopt' ], cmd_aliases => q(V), cmd_flag => 'version';
+option 'version'      => is => 'ro',   isa => Bool, default => FALSE,
+   documentation      => 'Displays the version number of the program class',
+   short              => 'V';
 
 # Private attributes
-has '_file'        => is => 'lazy', isa => FileType,
-   default         => sub { Class::Usul::File->new( builder => $_[ 0 ] ) },
-   handles         => [ qw(io) ], init_arg => undef, reader => 'file';
+has '_file'       => is => 'lazy', isa => FileType,
+   default        => sub { Class::Usul::File->new( builder => $_[ 0 ] ) },
+   handles        => [ qw(io) ], init_arg => undef, reader => 'file';
 
-has '_ipc'         => is => 'lazy', isa => IPCType,
-   default         => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) },
-   handles         => [ qw(run_cmd) ], init_arg => undef, reader => 'ipc';
+has '_ipc'        => is => 'lazy', isa => IPCType,
+   default        => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) },
+   handles        => [ qw(run_cmd) ], init_arg => undef, reader => 'ipc';
 
-has '_meta_class'  => is => 'lazy', isa => LoadableClass, coerce => TRUE,
-   default         => sub { 'Class::Usul::Response::Meta' },
-   reader          => 'meta_class';
+has '_meta_class' => is => 'lazy', isa => LoadableClass,
+   coerce         => LoadableClass->coercion,
+   default        => sub { 'Class::Usul::Response::Meta' },
+   reader         => 'meta_class';
 
-has '_mode'        => is => 'rw',   isa => PositiveOrZeroInt,
-   accessor        => 'mode', default => sub { $_[ 0 ]->config->mode },
-   init_arg        => 'mode', lazy => TRUE;
+has '_mode'       => is => 'rw',   isa => PositiveInt,
+   accessor       => 'mode', default => sub { $_[ 0 ]->config->mode },
+   init_arg       => 'mode', lazy => TRUE;
 
-has '_os'          => is => 'lazy', isa => HashRef, init_arg => undef,
-   reader          => 'os';
+has '_os'         => is => 'lazy', isa => HashRef, init_arg => undef,
+   reader         => 'os';
 
-has '_params'      => is => 'ro',   isa => HashRef, default => sub { {} },
-   init_arg        => 'params', reader => 'params';
+has '_params'     => is => 'ro',   isa => HashRef, default => sub { {} },
+   init_arg       => 'params', reader => 'params';
 
-has '_pwidth'      => is => 'rw',   isa => PositiveInt, accessor => 'pwidth',
-   default         => 60, init_arg => 'pwidth';
+has '_pwidth'     => is => 'rw',   isa => NonZeroPositiveInt,
+   accessor       => 'pwidth', default => 60, init_arg => 'pwidth';
 
 # Construction
 around 'BUILDARGS' => sub {
-   my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
+   my ($orig, $self, @args) = @_; my $attr = $orig->( $self, @args );
 
    my $cfg = $attr->{config} ||= {};
 
@@ -121,12 +134,12 @@ around 'BUILDARGS' => sub {
 };
 
 sub BUILD {
-   my $self = shift; $self->_apply_encoding;
+   my $self = shift; $self->_apply_stdio_encoding;
 
-   $self->help_flag    and $self->_output_usage( 0 );
-   $self->help_options and $self->_output_usage( 1 );
-   $self->help_manual  and $self->_output_usage( 2 );
-   $self->version      and $self->_output_version;
+   $self->help_usage   and $self->_exit_usage( 0 );
+   $self->help_options and $self->_exit_usage( 1 );
+   $self->help_manual  and $self->_exit_usage( 2 );
+   $self->version      and $self->_exit_version;
 
    $self->debug( $self->_get_debug_option );
    return;
@@ -252,6 +265,10 @@ sub get_option {
    return $opt - 1;
 }
 
+sub help : method {
+   my $self = shift; $self->_output_usage( 0 ); return OK;
+}
+
 sub info {
    my ($self, $text, $args) = @_;
 
@@ -300,15 +317,12 @@ sub output {
    return;
 }
 
-sub print_usage_text { # Required to stop MX::Getopt from printing usage
-}
-
 sub quiet {
-   my ($self, $v) = @_; defined $v or return $self->_quiet; $v = !!$v;
+   my ($self, $v) = @_; defined $v or return $self->quiet_flag; $v = !!$v;
 
    $v != TRUE and throw 'Cannot turn quiet mode off';
 
-   return $self->_quiet( $v );
+   return $self->quiet_flag( $v );
 }
 
 sub run {
@@ -350,7 +364,7 @@ sub run {
 }
 
 sub run_chain {
-   my ($self, $method) = @_; $method or $self->_output_usage( 0 );
+   my ($self, $method) = @_; $method or $self->_exit_usage( 0 );
 
    $self->fatal( exception "Method ${method} unknown" );
    return FAILED;
@@ -400,14 +414,12 @@ sub yorn { # General yes or no input routine
 }
 
 # Private methods
-sub _apply_encoding {
+sub _apply_stdio_encoding {
    my $self = shift; my $enc = $self->encoding;
 
    autoflush STDOUT TRUE; autoflush STDERR TRUE;
 
    binmode $_, ":encoding(${enc})" for (*STDIN, *STDOUT, *STDERR);
-
-   $_ = decode( $enc, $_ ) for @ARGV;
 
    return;
 }
@@ -441,8 +453,16 @@ sub _catch_run_exception {
 }
 
 sub _dont_ask {
-   return $_[ 0 ]->debug || $_[ 0 ]->help_flag || $_[ 0 ]->help_options
+   return $_[ 0 ]->debug || $_[ 0 ]->help_usage || $_[ 0 ]->help_options
        || $_[ 0 ]->help_manual || ! is_interactive();
+}
+
+sub _exit_usage {
+   exit $_[ 0 ]->_output_usage( $_[ 1 ] );
+}
+
+sub _exit_version {
+   $_[ 0 ]->output( 'Version '.$_[ 0 ]->VERSION ); exit OK;
 }
 
 sub _get_debug_option {
@@ -484,27 +504,22 @@ sub _man_page_from {
 }
 
 sub _output_usage {
-   my ($self, $verbose) = @_;
+   my ($self, $verbose) = @_; my $method = $self->extra_argv->[ 0 ];
 
-   my $method = $self->extra_argv ? $self->extra_argv->[ 0 ] : undef;
+   $method and $self->can_call( $method )
+      and return $self->_usage_for( $method );
 
-   $method and $self->can_call( $method ) and exit $self->_usage_for( $method );
-
-   $verbose > 1 and exit $self->_man_page_from( $self->config );
+   $verbose > 1 and return $self->_man_page_from( $self->config );
 
    if ($verbose > 0) {
       pod2usage( { -input   => NUL.$self->config->pathname, -message => SPC,
                    -verbose => $verbose } ); # Never returns
    }
 
-   my $usage = ucfirst $self->usage;
+   my $usage = ucfirst $self->options_usage;
 
    warn $usage ? $usage : "Did we forget new_with_options?\n";
-   exit OK;
-}
-
-sub _output_version {
-   $_[ 0 ]->output( 'Version '.$_[ 0 ]->VERSION ); exit OK;
+   return FAILED;
 }
 
 sub _usage_for {
@@ -617,7 +632,7 @@ sub __get_control_chars {
 
 sub __list_methods_of {
    return map  { s{ \A .+ :: }{}msx; $_ }
-          grep { my $method = $_; grep { $_ eq q(method) }
+          grep { my $method = $_; grep { $_ eq 'method' }
                                   attributes::get( \&{ $method } ) }
               @{ Class::Inspector->methods
                     ( blessed $_[ 0 ] || $_[ 0 ], 'full', 'public' ) };
@@ -734,8 +749,6 @@ sub __restore_mode {
    my $handle = shift; ReadMode q(restore), $handle; return;
 }
 
-__PACKAGE__->meta->make_immutable;
-
 1;
 
 __END__
@@ -748,7 +761,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes Class::Usul::Programs version v0.21.$Rev: 1 $
+This document describes Class::Usul::Programs version v0.22.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -864,6 +877,18 @@ Calls L<Class::Usul::localize|Class::Usul/localize> with
 the passed args. Logs the result at the error level, then adds the
 program leader and prints the result to I<STDERR>
 
+=head2 _exit_usage
+
+   $self->_exit_usage( $verbosity );
+
+Print out usage information from POD. The C<$verbosity> is; 0, 1 or 2
+
+=head2 _exit_version
+
+   $self->_exit_version
+
+Prints out the version of the C::U::Programs subclass and the exits
+
 =head2 fatal
 
    $self->fatal( $text, $args );
@@ -959,12 +984,6 @@ Calls L<Class::Usul::localize|Class::Usul/localize> with
 the passed args. Adds the program leader and prints the result to
 I<STDOUT>
 
-=head2 _output_version
-
-   $self->_output_version
-
-Prints out the version of the C::U::Programs subclass and the exits
-
 =head2 print_usage_text
 
 Empty method used to override L<MooseX::Getop::Basic>'s latest API
@@ -1002,7 +1021,7 @@ Prompt string
 
    $bool = $self->quiet( $bool );
 
-Custom accessor/mutator for the C<_quiet> attribute. Will throw if you try
+Custom accessor/mutator for the C<quiet_flag> attribute. Will throw if you try
 to turn quiet mode off
 
 =head2 run
@@ -1020,12 +1039,6 @@ Called by L</run> when C<_get_run_method> cannot determine which method to
 call. Outputs usage if C<$method> is undefined. Logs an error if
 C<$method> is defined but not (by definition a callable method).
 Returns exit code C<FAILED>
-
-=head2 _output_usage
-
-   $self->_output_usage( $verbosity );
-
-Print out usage information from POD. The C<$verbosity> is; 0, 1 or 2
 
 =head2 warning
 

@@ -1,26 +1,19 @@
-# @(#)$Ident: Time.pm 2013-04-29 19:14 pjf ;
+# @(#)$Ident: Time.pm 2013-06-17 23:45 pjf ;
 
 package Class::Usul::Time;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
-use Date::Format  ();
-use Time::HiRes qw(usleep);
+use Date::Format    ( );
+use Exporter 5.57 qw( import );
+use Time::HiRes   qw( usleep );
 use Time::Local;
 use Time::Zone;
 
-my @_functions;
-
-BEGIN {
-   @_functions = ( qw(nap str2date_time str2time time2str) );
-}
-
-use Sub::Exporter::Progressive -setup => {
-   exports => [ @_functions ],
-   groups  => { default => [ qw(str2time time2str) ], },
-};
+our @EXPORT     = qw( str2time time2str );
+our @EXPORT_OK  = qw( nap str2date_time str2time time2str );
 
 sub nap ($) {
    my $period = shift;
@@ -266,7 +259,7 @@ Class::Usul::Time - Class methods for date and time manipulation
 
 =head1 Version
 
-This documents version v0.21.$Rev: 1 $
+This documents version v0.22.$Rev: 1 $
 
 =head1 Synopsis
 

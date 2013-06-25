@@ -1,43 +1,48 @@
-# @(#)$Ident: IPC.pm 2013-06-02 23:31 pjf ;
+# @(#)$Ident: IPC.pm 2013-06-14 14:26 pjf ;
 
 package Class::Usul::IPC;
 
-use version; our $VERSION = qv( sprintf '0.21.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use namespace::sweep;
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Null;
-use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::File;
-use Class::Usul::Functions    qw(arg_list is_arrayref is_coderef is_win32
-                                 merge_attributes strip_leader throw);
-use Class::Usul::Time         qw(time2str);
-use English                   qw(-no_match_vars);
-use File::Basename            qw(basename);
+use Class::Usul::Functions    qw( arg_list is_arrayref is_coderef is_win32
+                                  merge_attributes strip_leader throw );
+use Class::Usul::Time         qw( time2str );
+use Class::Usul::Types        qw( BaseType FileType LoadableClass );
+use English                   qw( -no_match_vars );
+use File::Basename            qw( basename );
 use File::Spec;
 use IO::Handle;
 use IO::Select;
 use IPC::Open3;
-use Module::Load::Conditional qw(can_load);
-use POSIX                     qw(WIFEXITED WNOHANG);
-use Socket                    qw(AF_UNIX SOCK_STREAM PF_UNSPEC);
+use Module::Load::Conditional qw( can_load );
+use Moo;
+use POSIX                     qw( WIFEXITED WNOHANG );
+use Scalar::Util              qw( blessed );
+use Socket                    qw( AF_UNIX SOCK_STREAM PF_UNSPEC );
 use Try::Tiny;
 
 our ($CHILD_ENUM, $CHILD_PID);
 
 # Public attributes
-has 'response_class' => is => 'lazy', isa => LoadableClass, coerce => TRUE,
-   default           => sub { 'Class::Usul::Response::IPC' };
+has 'response_class' => is => 'lazy', isa => LoadableClass,
+   coerce            => LoadableClass->coercion,
+   default           => 'Class::Usul::Response::IPC';
 
-has 'table_class'    => is => 'lazy', isa => LoadableClass, coerce => TRUE,
-   default           => sub { 'Class::Usul::Response::Table' };
+has 'table_class'    => is => 'lazy', isa => LoadableClass,
+   coerce            => LoadableClass->coercion,
+   default           => 'Class::Usul::Response::Table';
 
 # Private attributes
 has '_file' => is => 'lazy', isa => FileType,
    default  => sub { Class::Usul::File->new( builder => $_[ 0 ]->usul ) },
-   handles  => [ qw(io) ], init_arg => undef, reader => 'file';
+   handles  => [ qw( io ) ], init_arg => undef, reader => 'file';
 
 has '_usul' => is => 'ro',   isa => BaseType,
-   handles  => [ qw(config debug lock log) ], init_arg => 'builder',
+   handles  => [ qw( config debug lock log ) ], init_arg => 'builder',
    reader   => 'usul', required => TRUE, weak_ref => TRUE;
 
 # Public methods
@@ -641,8 +646,6 @@ sub __run_cmd_filter_out {
                      split m{ [\n] }msx, $_[ 0 ];
 }
 
-__PACKAGE__->meta->make_immutable;
-
 1;
 
 __END__
@@ -655,7 +658,7 @@ Class::Usul::IPC - List/Create/Delete processes
 
 =head1 Version
 
-This documents version v0.21.$Rev: 4 $
+This documents version v0.22.$Rev: 1 $
 
 =head1 Synopsis
 
