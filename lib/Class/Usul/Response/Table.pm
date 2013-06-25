@@ -1,9 +1,9 @@
-# @(#)$Ident: Table.pm 2013-06-14 12:39 pjf ;
+# @(#)$Ident: Table.pm 2013-06-25 21:21 pjf ;
 
 package Class::Usul::Response::Table;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Usul::Types qw( ArrayRef HashRef Int Str );
 use Moo;
@@ -33,7 +33,7 @@ Class::Usul::Response::Table - Data structure for the table widget
 
 =head1 Version
 
-This documents version v0.22.$Rev: 1 $
+This documents version v0.22.$Rev: 2 $
 
 =head1 Synopsis
 
@@ -45,15 +45,43 @@ This documents version v0.22.$Rev: 1 $
 
 Response class for the table widget in L<HTML::FormWidgets>
 
+=head1 Configuration and Environment
+
+Defines the following attributes;
+
+=over 3
+
+=item C<caption>
+
+=item C<class>
+
+=item C<classes>
+
+=item C<count>
+
+=item C<fields>
+
+=item C<hclass>
+
+=item C<labels>
+
+=item C<sizes>
+
+=item C<typelist>
+
+=item C<values>
+
+=item C<widths>
+
+=item C<wrap>
+
+=back
+
 =head1 Subroutines/Methods
 
 None
 
 =head1 Diagnostics
-
-None
-
-=head1 Configuration and Environment
 
 None
 

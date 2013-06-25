@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 2 $ =~ /\d+/gmx );
 use File::Spec::Functions;
 use FindBin qw( $Bin );
 use lib catdir( $Bin, updir, q(lib) );
@@ -21,7 +21,7 @@ eval { require Test::Kwalitee; };
 plan skip_all => 'Test::Kwalitee not installed' if ($EVAL_ERROR);
 
 # Since we now use a custom Moose exporter this metric is no longer valid
-Test::Kwalitee->import( tests => [ qw(-use_strict) ] );
+Test::Kwalitee->import( tests => [ qw(-no_symlinks -use_strict) ] );
 
 unlink q(Debian_CPANTS.txt);
 

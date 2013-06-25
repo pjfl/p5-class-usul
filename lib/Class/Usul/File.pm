@@ -1,13 +1,13 @@
-# @(#)$Ident: File.pm 2013-06-14 13:11 pjf ;
+# @(#)$Ident: File.pm 2013-06-25 19:44 pjf ;
 
 package Class::Usul::File;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions   qw( arg_list create_token is_arrayref throw );
-use Class::Usul::Types       qw( Object );
+use Class::Usul::Types       qw( BaseType );
 use English                  qw( -no_match_vars );
 use File::DataClass::Constants ( );
 use File::DataClass::IO        ( );
@@ -18,10 +18,12 @@ use Scalar::Util             qw( blessed );
 
 File::DataClass::Constants->Exception_Class( EXCEPTION_CLASS );
 
-has '_usul' => is => 'ro', isa => Object,
+# Private attributes
+has '_usul' => is => 'ro', isa => BaseType,
    handles  => [ qw( config debug lock log ) ], init_arg => 'builder',
-   reader   => 'usul', required => TRUE, weak_ref => TRUE;
+   required => TRUE, weak_ref => TRUE;
 
+# Public methods
 sub absolute {
    my ($self, $base, $path) = @_; $base ||= NUL; $path or return NUL;
 
@@ -54,7 +56,7 @@ sub data_load {
 sub dataclass_schema {
    my ($self, @rest) = @_; my $attr = arg_list @rest;
 
-   if (blessed $self) { $attr->{builder} = $self->usul }
+   if (blessed $self) { $attr->{builder} = $self->_usul }
    else { $attr->{cache_class} = q(none) }
 
    $attr->{storage_class} ||= q(Any);
@@ -129,7 +131,7 @@ Class::Usul::File - File and directory IO base class
 
 =head1 Version
 
-This documents version v0.22.$Rev: 1 $
+This documents version v0.22.$Rev: 2 $
 
 =head1 Synopsis
 

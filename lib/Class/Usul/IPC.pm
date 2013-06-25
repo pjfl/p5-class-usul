@@ -1,9 +1,9 @@
-# @(#)$Ident: IPC.pm 2013-06-14 14:26 pjf ;
+# @(#)$Ident: IPC.pm 2013-06-25 21:35 pjf ;
 
 package Class::Usul::IPC;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -29,21 +29,21 @@ our ($CHILD_ENUM, $CHILD_PID);
 
 # Public attributes
 has 'response_class' => is => 'lazy', isa => LoadableClass,
-   coerce            => LoadableClass->coercion,
-   default           => 'Class::Usul::Response::IPC';
+   default           => 'Class::Usul::Response::IPC',
+   coerce            => LoadableClass->coercion;
 
 has 'table_class'    => is => 'lazy', isa => LoadableClass,
-   coerce            => LoadableClass->coercion,
-   default           => 'Class::Usul::Response::Table';
+   default           => 'Class::Usul::Response::Table',
+   coerce            => LoadableClass->coercion;
 
 # Private attributes
 has '_file' => is => 'lazy', isa => FileType,
-   default  => sub { Class::Usul::File->new( builder => $_[ 0 ]->usul ) },
-   handles  => [ qw( io ) ], init_arg => undef, reader => 'file';
+   default  => sub { Class::Usul::File->new( builder => $_[ 0 ]->_usul ) },
+   handles  => [ qw( io tempdir tempfile ) ], init_arg => undef;
 
 has '_usul' => is => 'ro',   isa => BaseType,
    handles  => [ qw( config debug lock log ) ], init_arg => 'builder',
-   reader   => 'usul', required => TRUE, weak_ref => TRUE;
+   required => TRUE, weak_ref => TRUE;
 
 # Public methods
 sub child_list {
@@ -273,8 +273,8 @@ sub _default_run_options {
    $opts->{debug      } ||= $self->debug;
    $opts->{expected_rv} ||= 0;
    $opts->{in         } ||= q(stdin);
-   $opts->{tempdir    } ||= $self->file->tempdir;
-   $opts->{pid_ref    } ||= $self->file->tempfile( $opts->{tempdir} );
+   $opts->{tempdir    } ||= $self->tempdir;
+   $opts->{pid_ref    } ||= $self->tempfile( $opts->{tempdir} );
    return $opts;
 }
 
@@ -342,14 +342,14 @@ sub _run_cmd_system_args {
    my $self = shift; my $opts = $self->_default_run_options( @_ );
 
    if ($opts->{in} ne q(stdin)) {
-      $opts->{in_ref} ||= $self->file->tempfile( $opts->{tempdir} );
+      $opts->{in_ref} ||= $self->tempfile( $opts->{tempdir} );
       $opts->{in_ref}->print( $opts->{in} );
       $opts->{in} = $opts->{in_ref}->pathname;
    }
 
    # Different semi-random file names in the temp directory
-   $opts->{err_ref} ||= $self->file->tempfile( $opts->{tempdir} );
-   $opts->{out_ref} ||= $self->file->tempfile( $opts->{tempdir} );
+   $opts->{err_ref} ||= $self->tempfile( $opts->{tempdir} );
+   $opts->{out_ref} ||= $self->tempfile( $opts->{tempdir} );
    $opts->{err    } ||= q(out) if ($opts->{async});
    $opts->{err    } ||= $opts->{err_ref}->pathname;
    $opts->{out    } ||= $opts->{out_ref}->pathname;
@@ -658,7 +658,7 @@ Class::Usul::IPC - List/Create/Delete processes
 
 =head1 Version
 
-This documents version v0.22.$Rev: 1 $
+This documents version v0.22.$Rev: 2 $
 
 =head1 Synopsis
 

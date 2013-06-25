@@ -1,10 +1,10 @@
-# @(#)$Ident: Crypt.pm 2013-06-24 01:04 pjf ;
+# @(#)$Ident: Crypt.pm 2013-06-25 19:09 pjf ;
 
 package Class::Usul::Crypt;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( create_token is_coderef is_hashref );
@@ -61,11 +61,11 @@ sub __deref {
 }
 
 sub __evaluate {
-   $_[ 0 ] ? eval __prepare( $_[ 0 ] ) : q();
+   $_[ 0 ] ? eval __whiten( __prepare( $_[ 0 ] ) ) : q();
 }
 
 sub __prepare {
-   my $y = $_[ 0 ]; my $x = " \t" x 8; $y =~ s{^$x|[^ \t]}{}g; __whiten( $y );
+   my $y = $_[ 0 ]; my $x = " \t" x 8; $y =~ s{^$x|[^ \t]}{}g; $y;
 }
 
 sub __whiten {
@@ -82,7 +82,7 @@ Class::Usul::Crypt - Encryption/decryption functions
 
 =head1 Version
 
-This documents version v0.22.$Rev: 1 $
+This documents version v0.22.$Rev: 2 $
 
 =head1 Synopsis
 

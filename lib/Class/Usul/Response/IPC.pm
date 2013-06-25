@@ -1,9 +1,9 @@
-# @(#)$Ident: IPC.pm 2013-06-14 12:39 pjf ;
+# @(#)$Ident: IPC.pm 2013-06-25 23:02 pjf ;
 
 package Class::Usul::Response::IPC;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Usul::Types qw( Int Object Str Undef );
 use Moo;
@@ -29,7 +29,7 @@ Class::Usul::Response::IPC - Response class for running external programs
 
 =head1 Version
 
-This documents version v0.22.$Rev: 1 $
+This documents version v0.22.$Rev: 2 $
 
 =head1 Synopsis
 
@@ -48,23 +48,35 @@ This class defined these attributes:
 
 =over 3
 
-=item core
+=item C<core>
 
 True if external commands core dumped
 
-=item out
+=item C<harness>
+
+The L<IPC::Run> harness object if one was used
+
+=item C<out>
 
 Processed output from the command
 
-=item sig
+=item C<pid>
+
+The id of the child process
+
+=item C<sig>
 
 Signal that caused the program to terminate
 
-=item stderr
+=item C<rv>
+
+The return value of from running the command
+
+=item C<stderr>
 
 The standard error output from the command
 
-=item stdout
+=item C<stdout>
 
 The standard output from the command
 

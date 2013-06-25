@@ -1,11 +1,11 @@
-# @(#)$Ident: Constants.pm 2013-06-23 00:34 pjf ;
+# @(#)$Ident: Constants.pm 2013-06-25 20:53 pjf ;
 
 package Class::Usul::Constants;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 2 $ =~ /\d+/gmx );
 use parent 'Exporter::TypeTiny';
 
 use Class::Usul::Exception;
@@ -112,7 +112,7 @@ Class::Usul::Constants - Definitions of constant values
 
 =head1 Version
 
-This documents version v0.22.$Rev: 1 $
+This documents version v0.22.$Rev: 2 $
 
 =head1 Synopsis
 
@@ -123,6 +123,22 @@ This documents version v0.22.$Rev: 1 $
 =head1 Description
 
 Exports a list of subroutines each of which returns a constants value
+
+=head1 Configuration and Environment
+
+Defines the following class attributes;
+
+=over 3
+
+=item C<Assert>
+
+=item C<Config_Extn>
+
+=item C<Config_Key>
+
+=item C<Exception_Class>
+
+=back
 
 =head1 Subroutines/Methods
 
@@ -291,10 +307,6 @@ Default terminal screen width in characters
 The character y
 
 =head1 Diagnostics
-
-None
-
-=head1 Configuration and Environment
 
 None
 

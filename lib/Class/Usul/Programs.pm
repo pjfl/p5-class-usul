@@ -1,10 +1,10 @@
-# @(#)$Ident: Programs.pm 2013-06-25 13:40 pjf ;
+# @(#)$Ident: Programs.pm 2013-06-25 23:04 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Constants;
@@ -72,9 +72,16 @@ option 'language'     => is => 'ro',   isa => SimpleStr, format => 's',
    documentation      => 'Loads the specified language message catalog',
    default            => NUL, short => 'L';
 
+has 'meta_class'      => is => 'lazy', isa => LoadableClass,
+   default            => 'Class::Usul::Response::Meta',
+   coerce             => LoadableClass->coercion;
+
 option 'method'       => is => 'rw',   isa => SimpleStr, format => 's',
    documentation      => 'Name of the method to call',
    default            => NUL, order => 1, short => 'c';
+
+has 'mode'            => is => 'rw',   isa => PositiveInt,
+   default            => sub { $_[ 0 ]->config->mode }, lazy => TRUE;
 
 option 'nodebug'      => is => 'ro',   isa => Bool, default => FALSE,
    documentation      => 'Do not prompt for debugging',
@@ -84,6 +91,10 @@ option 'options'      => is => 'ro',   isa => HashRef, format => 's%',
    documentation      =>
       'Zero, one or more key/value pairs available to the method call',
    default            => sub { {} }, short => 'o';
+
+has 'params'          => is => 'ro',   isa => HashRef, default => sub { {} };
+
+has 'pwidth'          => is => 'rw',   isa => NonZeroPositiveInt, default => 60;
 
 option 'quiet_flag'   => is => 'rw',   isa => Bool, default => FALSE,
    documentation      => 'Quiet the display of information messages',
@@ -96,29 +107,14 @@ option 'version'      => is => 'ro',   isa => Bool, default => FALSE,
 # Private attributes
 has '_file'       => is => 'lazy', isa => FileType,
    default        => sub { Class::Usul::File->new( builder => $_[ 0 ] ) },
-   handles        => [ qw(io) ], init_arg => undef, reader => 'file';
+   handles        => [ qw( io ) ], init_arg => undef, reader => 'file';
 
 has '_ipc'        => is => 'lazy', isa => IPCType,
    default        => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) },
-   handles        => [ qw(run_cmd) ], init_arg => undef, reader => 'ipc';
-
-has '_meta_class' => is => 'lazy', isa => LoadableClass,
-   coerce         => LoadableClass->coercion,
-   default        => sub { 'Class::Usul::Response::Meta' },
-   reader         => 'meta_class';
-
-has '_mode'       => is => 'rw',   isa => PositiveInt,
-   accessor       => 'mode', default => sub { $_[ 0 ]->config->mode },
-   init_arg       => 'mode', lazy => TRUE;
+   handles        => [ qw( run_cmd ) ], init_arg => undef, reader => 'ipc';
 
 has '_os'         => is => 'lazy', isa => HashRef, init_arg => undef,
    reader         => 'os';
-
-has '_params'     => is => 'ro',   isa => HashRef, default => sub { {} },
-   init_arg       => 'params', reader => 'params';
-
-has '_pwidth'     => is => 'rw',   isa => NonZeroPositiveInt,
-   accessor       => 'pwidth', default => 60, init_arg => 'pwidth';
 
 # Construction
 around 'BUILDARGS' => sub {
@@ -417,9 +413,9 @@ sub yorn { # General yes or no input routine
 sub _apply_stdio_encoding {
    my $self = shift; my $enc = $self->encoding;
 
-   autoflush STDOUT TRUE; autoflush STDERR TRUE;
-
    binmode $_, ":encoding(${enc})" for (*STDIN, *STDOUT, *STDERR);
+
+   autoflush STDOUT TRUE; autoflush STDERR TRUE;
 
    return;
 }
@@ -761,7 +757,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes Class::Usul::Programs version v0.22.$Rev: 1 $
+This document describes version v0.22.$Rev: 2 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 
@@ -786,39 +782,60 @@ Supports this list of command line options
 
 =over 3
 
-=item c method
+=item C<c method>
 
 The method in the subclass to dispatch to
 
-=item D
+=item C<D>
 
 Turn debugging on
 
-=item H
+=item C<H help_manual>
 
 Print long help text extracted from this POD
 
-=item h
+=item C<h help_options>
 
 Print short help text extracted from this POD
 
-=item L language
+=item C<? help_usage>
+
+=item C<L language>
 
 Print error messages in the selected language. If no language is
 supplied print the error code and attributes
 
-=item n
+=item C<n nodebug>
 
 Do not prompt to turn debugging on
 
-=item o key=value
+=item C<o options key=value>
 
 The method that is dispatched to can access the key/value pairs
-from the C<< $self->vars >> hash ref
+from the C<< $self->options >> hash ref
 
-=item q
+=item C<q>
 
 Quietens the usual started/finished information messages
+
+=item C<version>
+
+Prints the programs version number and exits
+
+=back
+
+Defines these attributes;
+
+=over 3
+
+=item C<config_class>
+
+Overrides the default in the base class, setting it to
+C<Class::Usul::Config::Programs>
+
+=item C<params>
+
+List of value that are passed to the method called by L</run>
 
 =back
 

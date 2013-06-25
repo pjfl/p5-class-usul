@@ -1,10 +1,10 @@
-# @(#)$Ident: L10N.pm 2013-06-24 16:29 pjf ;
+# @(#)$Ident: L10N.pm 2013-06-25 23:04 pjf ;
 
 package Class::Usul::L10N;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -21,10 +21,10 @@ use Try::Tiny;
 # Public attributes
 has 'debug'           => is => 'rw',   isa => Bool, default => FALSE;
 
-has 'l10n_attributes' => is => 'ro',   isa => HashRef, default => sub { {} };
-
 has 'domain_names'    => is => 'ro',   isa => ArrayRef[Str],
    default            => sub { [ q(messages) ] };
+
+has 'l10n_attributes' => is => 'ro',   isa => HashRef, default => sub { {} };
 
 has 'localedir'       => is => 'ro',   isa => Path | Undef,
    coerce             => Path->coercion;
@@ -81,8 +81,8 @@ sub localize {
       0 > index $text, LOCALIZE and return $text;
 
       # Expand positional parameters of the form [_<n>]
-      my @args = map { defined $_ ? $_ : '[?]' } @{ $args->{params} },
-                 map { '[?]' } 0 .. 9;
+      my @args = map { $_ // '[?]' } @{ $args->{params} },
+                 map {       '[?]' } 0 .. 9;
 
       $text =~ s{ \[ _ (\d+) \] }{$args[ $1 - 1 ]}gmx; return $text;
    }
@@ -189,7 +189,7 @@ Class::Usul::L10N - Localize text strings
 
 =head1 Version
 
-This documents version v0.22.$Rev: 1 $
+This documents version v0.22.$Rev: 2 $
 
 =head1 Synopsis
 
@@ -219,7 +219,33 @@ then the language and country are used from I<locale>. By default
 I<use_country> is false and only the language from the I<locale>
 attribute is used
 
+Defines the following attributes;
+
+=over 3
+
+=item C<domain_names>
+
+=item C<l10n_attributes>
+
+=item C<localedir>
+
+=item C<lock>
+
+=item C<log>
+
+=item C<source_name>
+
+=item C<tempdir>
+
+=item C<use_country>
+
+=back
+
 =head1 Subroutines/Methods
+
+=head2 BUILDARGS
+
+Monkey with the constructors signature
 
 =head2 BUILD
 

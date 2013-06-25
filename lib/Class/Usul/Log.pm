@@ -1,9 +1,9 @@
-# @(#)$Ident: Log.pm 2013-06-14 14:12 pjf ;
+# @(#)$Ident: Log.pm 2013-06-25 20:25 pjf ;
 
 package Class::Usul::Log;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -112,7 +112,7 @@ Class::Usul::Log - Create methods for each logging level that encode their outpu
 
 =head1 Version
 
-This documents version v0.22.$Rev: 1 $
+This documents version v0.22.$Rev: 2 $
 
 =head1 Synopsis
 
@@ -170,6 +170,10 @@ Path to the logfile
 =back
 
 =head1 Subroutines/Methods
+
+=head2 BUILDARGS
+
+Monkey with the constructors signature
 
 =head2 BUILD
 

@@ -1,9 +1,9 @@
-# @(#)$Ident: Build.PL 2013-06-25 17:54 pjf ;
+# @(#)$Ident: Build.PL 2013-06-25 21:41 pjf ;
 
 use strict;
 use warnings;
 use inc::Bob; # Module::Build subclass
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 Bob->new( {
    module    => q(Class::Usul),
@@ -27,7 +27,7 @@ Bob->new( {
       'File::HomeDir'             => 0.93,
       'Getopt::Long::Descriptive' => 0.093,
       'IO::Interactive'           => q(0.0.6),
-      'IPC::SRLock'               => q(0.11.11),
+      'IPC::SRLock'               => q(0.12.0),
       'JSON'                      => 2.50,
       'Log::Handler'              => 0.63,
       'Moo'                       => 1.002,
@@ -39,7 +39,7 @@ Bob->new( {
       'Text::Autoformat'          => 1.669002,
       'Time::Zone'                => 2.24,
       'Try::Tiny'                 => 0.09,
-      'Type::Tiny'                => 0.008,
+      'Type::Tiny'                => 0.012,
       'Unexpected'                => q(0.4.0),
       'YAML::Syck'                => 1.17, },
    recommends              => {
