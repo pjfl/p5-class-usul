@@ -1,11 +1,11 @@
-# @(#)$Ident: Constants.pm 2013-06-25 20:53 pjf ;
+# @(#)$Ident: Constants.pm 2013-06-25 23:13 pjf ;
 
 package Class::Usul::Constants;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 3 $ =~ /\d+/gmx );
 use parent 'Exporter::TypeTiny';
 
 use Class::Usul::Exception;
@@ -67,8 +67,8 @@ sub UUID_PATH           () { [ q(), qw(proc sys kernel random uuid) ] }
 sub Assert {
    my ($self, $subr) = @_; defined $subr or return $Assert;
 
-   ref $subr eq 'CODE' or Class::Usul::Exception->throw
-      ( 'Assert subroutine ${subr} is not a code ref' );
+   ref $subr eq 'CODE' or $self->Exception_Class->throw
+      ( 'Assert subroutine ${subr} is not a code reference' );
 
    return $Assert = $subr;
 }
@@ -76,8 +76,8 @@ sub Assert {
 sub Config_Extn {
    my ($self, $extn) = @_; defined $extn or return $Config_Extn;
 
-   (length $extn < 255 and $extn !~ m{ \n }mx) or Class::Usul::Exception->throw
-      ( 'Config Extn ${extn} is not a simple string' );
+   (length $extn < 255 and $extn !~ m{ \n }mx) or $self->Exception_Class->throw
+      ( 'Config extension ${extn} is not a simple string' );
 
    return $Config_Extn = $extn;
 }
@@ -85,17 +85,17 @@ sub Config_Extn {
 sub Config_Key {
    my ($self, $key) = @_; defined $key or return $Config_Key;
 
-   (length $key < 255 and $key !~ m{ \n }mx) or Class::Usul::Exception->throw
-      ( 'Config Key ${key} is not a simple string' );
+   (length $key < 255 and $key !~ m{ \n }mx) or $self->Exception_Class->throw
+      ( 'Config key ${key} is not a simple string' );
 
    return $Config_Key = $key;
 }
 
-sub Exception_Class{
+sub Exception_Class {
    my ($self, $class) = @_; defined $class or return $Exception_Class;
 
    $class->can( q(throw) ) or Class::Usul::Exception->throw
-      ( "Exception Class ${class} is not loaded or has no throw method" );
+      ( "Exception class ${class} is not loaded or has no throw method" );
 
    return $Exception_Class = $class;
 }
@@ -112,7 +112,7 @@ Class::Usul::Constants - Definitions of constant values
 
 =head1 Version
 
-This documents version v0.22.$Rev: 2 $
+This documents version v0.22.$Rev: 3 $
 
 =head1 Synopsis
 

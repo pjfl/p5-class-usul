@@ -1,10 +1,10 @@
-# @(#)$Ident: L10N.pm 2013-06-25 23:04 pjf ;
+# @(#)$Ident: L10N.pm 2013-06-26 02:11 pjf ;
 
 package Class::Usul::L10N;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -150,7 +150,7 @@ sub _gettext {
    sub _load_domains {
       my ($self, $args) = @_; my $charset;
 
-#      assert $self, sub { $args->{locale} }, 'No locale id';
+      assert $self, sub { $args->{locale} }, 'No locale id';
 
       my $locale = $args->{locale} or return;
       my $lang   = $self->_extract_lang_from( $locale );
@@ -189,7 +189,7 @@ Class::Usul::L10N - Localize text strings
 
 =head1 Version
 
-This documents version v0.22.$Rev: 2 $
+This documents version v0.22.$Rev: 3 $
 
 =head1 Synopsis
 

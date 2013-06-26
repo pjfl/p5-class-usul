@@ -1,8 +1,8 @@
-# @(#)$Ident: 11functions.t 2013-05-13 15:10 pjf ;
+# @(#)$Ident: 11functions.t 2013-06-26 01:12 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 3 $ =~ /\d+/gmx );
 use File::Spec::Functions;
 use FindBin qw( $Bin );
 use lib catdir( $Bin, updir, q(lib) );
@@ -17,6 +17,12 @@ BEGIN {
             and plan skip_all => $current->notes->{stop_tests};
 }
 
+use Class::Usul::Constants ();
+
+BEGIN {
+   Class::Usul::Constants->Assert( sub { 1 } );
+}
+
 use Class::Usul::Functions qw(:all);
 use English qw( -no_match_vars );
 
@@ -29,6 +35,8 @@ is app_prefix( undef ), q(), 'app_prefix - undef arg';
 my $list = arg_list( 'key1' => 'value1', 'key2' => 'value2' );
 
 is $list->{key2}, q(value2), 'arg_list';
+
+is assert, 1, 'assert - can set coderef';
 
 like assert_directory( q(t) ), qr{ t \z }mx, 'assert_directory - true';
 ok ! assert_directory( q(dummy) ),           'assert_directory - false';

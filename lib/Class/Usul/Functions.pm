@@ -1,11 +1,11 @@
-# @(#)$Ident: Functions.pm 2013-06-23 00:36 pjf ;
+# @(#)$Ident: Functions.pm 2013-06-26 00:54 pjf ;
 
 package Class::Usul::Functions;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 3 $ =~ /\d+/gmx );
 use parent 'Exporter::TypeTiny';
 
 use Class::Null;
@@ -38,9 +38,9 @@ our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
                        strip_leader sub_name sum thread_id throw trim
                        unescape_TT untaint_cmdline untaint_identifier
                        untaint_path untaint_string zip );
+our %EXPORT_REFS =   ( assert => sub { ASSERT } );
 our %EXPORT_TAGS =   ( all => [ @EXPORT, @EXPORT_OK ], );
 
-my $Assert               = ASSERT;
 my $BSON_Id_Inc : shared = 0;
 
 # Public functions
@@ -65,10 +65,6 @@ sub arg_list (;@) {
    return $_[ 0 ] && ref $_[ 0 ] eq q(HASH) ? { %{ $_[ 0 ] } }
         : $_[ 0 ]                           ? { @_ }
                                             : {};
-}
-
-sub assert (;@) {
-   return $Assert->( @_ );
 }
 
 sub assert_directory ($) {
@@ -482,6 +478,15 @@ sub _bsonid_time ($;$) {
    return (pack 'N', $now >> 32).(pack 'N', $now % 0xFFFFFFFF);
 }
 
+sub _exporter_fail {
+    my ($class, $name, $value, $globals) = @_;
+
+    exists $EXPORT_REFS{ $name }
+       and return ( $name => $EXPORT_REFS{ $name }->() );
+
+    throw( "Could not find sub '${name}' to export in package '${class}'" );
+}
+
 sub _index64 () {
    return [ qw(XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
                XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
@@ -514,7 +519,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.22.$Rev: 1 $
+This documents version v0.22.$Rev: 3 $
 
 =head1 Synopsis
 
