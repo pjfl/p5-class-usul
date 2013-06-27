@@ -1,9 +1,9 @@
-# @(#)$Ident: Programs.pm 2013-06-24 13:56 pjf ;
+# @(#)$Ident: Programs.pm 2013-06-26 20:55 pjf ;
 
 package Class::Usul::Config::Programs;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Types      qw( ArrayRef NonEmptySimpleStr PositiveInt );
@@ -22,8 +22,7 @@ has 'man_page_cmd' => is => 'ro',   isa => ArrayRef,
 
 has 'mode'         => is => 'ro',   isa => PositiveInt, default => MODE;
 
-has 'my_home'      => is => 'lazy', isa => Path,
-   coerce          => Path->coercion,
+has 'my_home'      => is => 'lazy', isa => Path, coerce => Path->coercion,
    default         => sub { File::HomeDir->my_home };
 
 has 'owner'        => is => 'lazy', isa => NonEmptySimpleStr;
@@ -51,7 +50,7 @@ Class::Usul::Config::Programs - Additional configuration attributes for CLI prog
 
 =head1 Version
 
-This documents version v0.22.$Rev: 1 $
+This documents version v0.22.$Rev: 4 $
 
 =head1 Synopsis
 

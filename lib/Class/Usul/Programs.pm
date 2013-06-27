@@ -1,10 +1,10 @@
-# @(#)$Ident: Programs.pm 2013-06-25 23:04 pjf ;
+# @(#)$Ident: Programs.pm 2013-06-27 04:52 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Constants;
@@ -105,16 +105,15 @@ option 'version'      => is => 'ro',   isa => Bool, default => FALSE,
    short              => 'V';
 
 # Private attributes
-has '_file'       => is => 'lazy', isa => FileType,
-   default        => sub { Class::Usul::File->new( builder => $_[ 0 ] ) },
-   handles        => [ qw( io ) ], init_arg => undef, reader => 'file';
+has '_file' => is => 'lazy', isa => FileType,
+   default  => sub { Class::Usul::File->new( builder => $_[ 0 ] ) },
+   handles  => [ qw( io ) ], init_arg => undef, reader => 'file';
 
-has '_ipc'        => is => 'lazy', isa => IPCType,
-   default        => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) },
-   handles        => [ qw( run_cmd ) ], init_arg => undef, reader => 'ipc';
+has '_ipc'  => is => 'lazy', isa => IPCType,
+   default  => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) },
+   handles  => [ qw( run_cmd ) ], init_arg => undef, reader => 'ipc';
 
-has '_os'         => is => 'lazy', isa => HashRef, init_arg => undef,
-   reader         => 'os';
+has '_os'   => is => 'lazy', isa => HashRef, init_arg => undef, reader => 'os';
 
 # Construction
 around 'BUILDARGS' => sub {
@@ -519,22 +518,26 @@ sub _output_usage {
 }
 
 sub _usage_for {
-   my ($self, $method) = @_; my @classes = (blessed $self);
+   my ($self, $method) = @_; $method = untaint_identifier $method; require mro;
 
-   $method = untaint_identifier $method;
+   my @classes = @{ mro::get_linear_isa( blessed $self ) }; my %seen = ();
 
    while (my $class = shift @classes) {
-      no strict q(refs);
+      $seen{ $class } and next; $seen{ $class }++;
 
-      if (defined &{ "${class}::${method}" }) {
+      my $methods = Class::Inspector->methods( $class, 'public' );
+
+      if (is_member $method, $methods) {
          my $selector = Pod::Select->new(); $selector->select( "/${method}" );
          my $tempfile = $self->file->tempfile;
 
          $selector->parse_from_file( find_source $class, $tempfile->pathname );
-         return $self->_man_page_from( $tempfile );
+         $tempfile->stat->{size} > 0
+            and return $self->_man_page_from( $tempfile );
       }
 
-      push @classes, $_ for (@{ "${class}::ISA" });
+      exists $Role::Tiny::APPLIED_TO{ $class }
+         and push @classes, keys %{ $Role::Tiny::APPLIED_TO{ $class } };
    }
 
    return FAILED;
@@ -757,7 +760,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes version v0.22.$Rev: 2 $ of L<Class::Usul::Programs>
+This document describes version v0.22.$Rev: 4 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 
@@ -977,9 +980,9 @@ program leader and prints the result to I<STDOUT>
 Calls C<_interpolate_${cmd}_cmd> to apply the arguments to the command in a
 command specific way
 
-=head2 list_methods
+=head2 list_methods - Lists available command line methods
 
-   $self->list_methods
+   $self->list_methods;
 
 Lists the methods (marked by the I<method> subroutine attribute) that can
 be called via the L<run method|/run>

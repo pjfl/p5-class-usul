@@ -1,9 +1,9 @@
-# @(#)$Ident: IPC.pm 2013-06-25 21:35 pjf ;
+# @(#)$Ident: IPC.pm 2013-06-27 14:46 pjf ;
 
 package Class::Usul::IPC;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -416,7 +416,7 @@ sub _run_cmd_using_ipc_run {
    else { $stderr = $error = NUL }
 
    if ($rv > $opts->{expected_rv}) {
-      $error ||= 'Unknown error';
+      $error ||= "Unknown error rv ${rv}";
       $opts->{debug} and $self->log->debug( "RV ${rv}: ${error}" );
       throw error => $error, out => $out, rv => $rv;
    }
@@ -497,7 +497,7 @@ sub _run_cmd_using_system {
    else { $stderr = $error = NUL }
 
    if ($rv > $opts->{expected_rv}) {
-      $error ||= 'Unknown error';
+      $error ||= "Unknown error rv ${rv}";
       $opts->{debug} and $self->log->debug( "RV ${rv}: ${error}" );
       throw error => $error, out => $out, rv => $rv;
    }
@@ -658,7 +658,7 @@ Class::Usul::IPC - List/Create/Delete processes
 
 =head1 Version
 
-This documents version v0.22.$Rev: 2 $
+This documents version v0.22.$Rev: 4 $
 
 =head1 Synopsis
 
