@@ -1,10 +1,10 @@
-# @(#)$Ident: Programs.pm 2013-06-27 04:52 pjf ;
+# @(#)$Ident: Programs.pm 2013-06-28 18:38 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Constants;
@@ -98,7 +98,7 @@ has 'pwidth'          => is => 'rw',   isa => NonZeroPositiveInt, default => 60;
 
 option 'quiet_flag'   => is => 'rw',   isa => Bool, default => FALSE,
    documentation      => 'Quiet the display of information messages',
-   short              => 'q';
+   init_arg           => 'quiet', short => 'q';
 
 option 'version'      => is => 'ro',   isa => Bool, default => FALSE,
    documentation      => 'Displays the version number of the program class',
@@ -760,7 +760,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes version v0.22.$Rev: 4 $ of L<Class::Usul::Programs>
+This document describes version v0.22.$Rev: 5 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 
