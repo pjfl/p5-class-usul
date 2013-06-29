@@ -1,10 +1,10 @@
-# @(#)$Ident: Programs.pm 2013-06-28 18:38 pjf ;
+# @(#)$Ident: Programs.pm 2013-06-29 00:35 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 5 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 6 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Constants;
@@ -72,16 +72,9 @@ option 'language'     => is => 'ro',   isa => SimpleStr, format => 's',
    documentation      => 'Loads the specified language message catalog',
    default            => NUL, short => 'L';
 
-has 'meta_class'      => is => 'lazy', isa => LoadableClass,
-   default            => 'Class::Usul::Response::Meta',
-   coerce             => LoadableClass->coercion;
-
 option 'method'       => is => 'rw',   isa => SimpleStr, format => 's',
    documentation      => 'Name of the method to call',
    default            => NUL, order => 1, short => 'c';
-
-has 'mode'            => is => 'rw',   isa => PositiveInt,
-   default            => sub { $_[ 0 ]->config->mode }, lazy => TRUE;
 
 option 'nodebug'      => is => 'ro',   isa => Bool, default => FALSE,
    documentation      => 'Do not prompt for debugging',
@@ -92,28 +85,40 @@ option 'options'      => is => 'ro',   isa => HashRef, format => 's%',
       'Zero, one or more key/value pairs available to the method call',
    default            => sub { {} }, short => 'o';
 
-has 'params'          => is => 'ro',   isa => HashRef, default => sub { {} };
-
-has 'pwidth'          => is => 'rw',   isa => NonZeroPositiveInt, default => 60;
-
-option 'quiet_flag'   => is => 'rw',   isa => Bool, default => FALSE,
+option 'quiet'        => is => 'ro',   isa => Bool, default => FALSE,
    documentation      => 'Quiet the display of information messages',
-   init_arg           => 'quiet', short => 'q';
+   reader             => 'quiet_flag', short => 'q';
 
 option 'version'      => is => 'ro',   isa => Bool, default => FALSE,
    documentation      => 'Displays the version number of the program class',
    short              => 'V';
 
+has 'meta_class'  => is => 'lazy', isa => LoadableClass,
+   default        => 'Class::Usul::Response::Meta',
+   coerce         => LoadableClass->coercion;
+
+has 'mode'        => is => 'rw',   isa => PositiveInt,
+   default        => sub { $_[ 0 ]->config->mode }, lazy => TRUE;
+
+has 'params'      => is => 'ro',   isa => HashRef, default => sub { {} };
+
+has 'pwidth'      => is => 'rw',   isa => NonZeroPositiveInt, default => 60;
+
 # Private attributes
-has '_file' => is => 'lazy', isa => FileType,
-   default  => sub { Class::Usul::File->new( builder => $_[ 0 ] ) },
-   handles  => [ qw( io ) ], init_arg => undef, reader => 'file';
+has '_file'       => is => 'lazy', isa => FileType,
+   default        => sub { Class::Usul::File->new( builder => $_[ 0 ] ) },
+   handles        => [ qw( io ) ], init_arg => undef, reader => 'file';
 
-has '_ipc'  => is => 'lazy', isa => IPCType,
-   default  => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) },
-   handles  => [ qw( run_cmd ) ], init_arg => undef, reader => 'ipc';
+has '_ipc'        => is => 'lazy', isa => IPCType,
+   default        => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) },
+   handles        => [ qw( run_cmd ) ], init_arg => undef, reader => 'ipc';
 
-has '_os'   => is => 'lazy', isa => HashRef, init_arg => undef, reader => 'os';
+has '_os'         => is => 'lazy', isa => HashRef, init_arg => undef,
+   reader         => 'os';
+
+has '_quiet_flag' => is => 'rw',   isa => Bool,
+   default        => sub { $_[ 0 ]->quiet_flag },
+   init_arg       => 'quiet', lazy => TRUE, writer => '_set__quiet_flag';
 
 # Construction
 around 'BUILDARGS' => sub {
@@ -313,11 +318,11 @@ sub output {
 }
 
 sub quiet {
-   my ($self, $v) = @_; defined $v or return $self->quiet_flag; $v = !!$v;
+   my ($self, $v) = @_; defined $v or return $self->_quiet_flag; $v = !!$v;
 
    $v != TRUE and throw 'Cannot turn quiet mode off';
 
-   return $self->quiet_flag( $v );
+   return $self->_set__quiet_flag( $v );
 }
 
 sub run {
@@ -499,7 +504,7 @@ sub _man_page_from {
 }
 
 sub _output_usage {
-   my ($self, $verbose) = @_; my $method = $self->extra_argv->[ 0 ];
+   my ($self, $verbose) = @_; my $method = shift @{ $self->extra_argv };
 
    $method and $self->can_call( $method )
       and return $self->_usage_for( $method );
@@ -528,7 +533,7 @@ sub _usage_for {
       my $methods = Class::Inspector->methods( $class, 'public' );
 
       if (is_member $method, $methods) {
-         my $selector = Pod::Select->new(); $selector->select( "/${method}" );
+         my $selector = Pod::Select->new(); $selector->select( "/${method}.*" );
          my $tempfile = $self->file->tempfile;
 
          $selector->parse_from_file( find_source $class, $tempfile->pathname );
@@ -760,7 +765,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes version v0.22.$Rev: 5 $ of L<Class::Usul::Programs>
+This document describes version v0.22.$Rev: 6 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 
@@ -817,7 +822,7 @@ Do not prompt to turn debugging on
 The method that is dispatched to can access the key/value pairs
 from the C<< $self->options >> hash ref
 
-=item C<q>
+=item C<q quiet_flag>
 
 Quietens the usual started/finished information messages
 
