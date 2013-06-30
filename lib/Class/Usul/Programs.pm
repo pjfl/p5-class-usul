@@ -1,10 +1,10 @@
-# @(#)$Ident: Programs.pm 2013-06-30 15:42 pjf ;
+# @(#)$Ident: Programs.pm 2013-06-30 16:12 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 7 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 8 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Constants;
@@ -808,7 +808,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes version v0.22.$Rev: 7 $ of L<Class::Usul::Programs>
+This document describes version v0.22.$Rev: 8 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 
@@ -931,7 +931,7 @@ the I<method> method attribute
 
 Returns the command line debug flag to match the current debug state
 
-=head2 dump_self - Dumps the invocant
+=head2 dump_self - Dumps the program object
 
    $self->dump_self;
 

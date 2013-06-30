@@ -1,9 +1,9 @@
-# @(#)Ident: Lock.pm 2013-06-23 23:26 pjf ;
+# @(#)Ident: Lock.pm 2013-06-30 16:08 pjf ;
 
 package Class::Usul::Lock;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 8 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( emit );
@@ -13,7 +13,6 @@ use Moo;
 use MooX::Options;
 
 extends q(Class::Usul::Programs);
-with    q(Class::Usul::TraitFor::UntaintedGetopts);
 
 option 'lock_key'     => is => 'ro', format => 's',
    documentation      => 'Key used to set/reset a lock',
@@ -67,7 +66,7 @@ Class::Usul::Lock - Command line access to the L<IPC::SRLock> methods
 
 =head1 Version
 
-This documents version v0.22.$Rev: 1 $ of L<Class::Usul::Lock>
+This documents version v0.22.$Rev: 8 $ of L<Class::Usul::Lock>
 
 =head1 Synopsis
 

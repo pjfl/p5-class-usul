@@ -1,9 +1,9 @@
-# @(#)$Ident: UntaintedGetopts.pm 2013-06-25 16:01 pjf ;
+# @(#)$Ident: UntaintedGetopts.pm 2013-06-30 16:12 pjf ;
 
 package Class::Usul::TraitFor::UntaintedGetopts;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 8 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( untaint_cmdline );
@@ -150,7 +150,7 @@ Class::Usul::TraitFor::UntaintedGetopts - Untaints @ARGV before Getopts processe
 
 =head1 Version
 
-This documents version v0.22.$Rev: 1 $
+This documents version v0.22.$Rev: 8 $
 
 =head1 Synopsis
 
@@ -163,6 +163,10 @@ This documents version v0.22.$Rev: 1 $
 Untaints @ARGV before Getopts processes it
 
 =head1 Subroutines/Methods
+
+=head2 extra_argv
+
+Returns an array ref containing the remaining command line arguments
 
 =head2 parse_options
 
