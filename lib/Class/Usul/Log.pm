@@ -1,9 +1,9 @@
-# @(#)$Ident: Log.pm 2013-06-25 20:25 pjf ;
+# @(#)$Ident: Log.pm 2013-06-30 15:40 pjf ;
 
 package Class::Usul::Log;
 
-use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use namespace::clean -except => [ qw( class_stash meta ) ];
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 7 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -112,7 +112,7 @@ Class::Usul::Log - Create methods for each logging level that encode their outpu
 
 =head1 Version
 
-This documents version v0.22.$Rev: 2 $
+This documents version v0.22.$Rev: 7 $
 
 =head1 Synopsis
 

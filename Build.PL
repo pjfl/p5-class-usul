@@ -1,9 +1,9 @@
-# @(#)$Ident: Build.PL 2013-06-25 21:41 pjf ;
+# @(#)$Ident: Build.PL 2013-06-29 21:51 pjf ;
 
 use strict;
 use warnings;
 use inc::Bob; # Module::Build subclass
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 7 $ =~ /\d+/gmx );
 
 Bob->new( {
    module    => q(Class::Usul),
@@ -34,6 +34,7 @@ Bob->new( {
       'MooX::ClassStash'          => 0.005,
       'MooX::Options'             => 3.83,
       'Path::Class'               => 0.23,
+      'Pod::Eventual'             => 0.093330,
       'Regexp::Common'            => 2010010201,
       'Term::ReadKey'             => 2.30,
       'Text::Autoformat'          => 1.669002,

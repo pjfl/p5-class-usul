@@ -1,17 +1,17 @@
-# @(#)$Ident: Programs.pm 2013-06-29 00:35 pjf ;
+# @(#)$Ident: Programs.pm 2013-06-30 15:42 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 6 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 7 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( abs_path app_prefix arg_list assert_directory
                                 class2appdir classdir elapsed emit env_prefix
                                 exception find_source is_arrayref is_hashref
-                                is_member logname throw untaint_identifier
+                                is_member logname pad throw untaint_identifier
                                 untaint_path );
 use Class::Usul::File;
 use Class::Usul::IPC;
@@ -28,6 +28,7 @@ use IO::Interactive         qw( is_interactive );
 use List::Util              qw( first );
 use Moo;
 use MooX::Options;
+use Pod::Eventual::Simple;
 use Pod::Man;
 use Pod::Usage;
 use Scalar::Util            qw( blessed );
@@ -37,7 +38,6 @@ use Try::Tiny;
 
 extends q(Class::Usul);
 with    q(Class::Usul::TraitFor::LoadingClasses);
-with    q(Class::Usul::TraitFor::UntaintedGetopts);
 
 # Override attributes in base class
 has '+config_class'   => default => sub { 'Class::Usul::Config::Programs' };
@@ -92,6 +92,8 @@ option 'quiet'        => is => 'ro',   isa => Bool, default => FALSE,
 option 'version'      => is => 'ro',   isa => Bool, default => FALSE,
    documentation      => 'Displays the version number of the program class',
    short              => 'V';
+
+with q(Class::Usul::TraitFor::UntaintedGetopts);
 
 has 'meta_class'  => is => 'lazy', isa => LoadableClass,
    default        => 'Class::Usul::Response::Meta',
@@ -290,7 +292,32 @@ sub interpolate_cmd {
 }
 
 sub list_methods : method {
-   emit __list_methods_of( shift ); return OK;
+   my $self = shift; my $abstract = {}; my $max = 0;
+
+   my $classes = $self->_get_classes_and_roles;
+
+   for my $method (__list_methods_of( $self )) {
+      my $mlen = length $method; $mlen > $max and $max = $mlen;
+
+      for my $class (@{ $classes }) {
+         is_member( $method, Class::Inspector->methods( $class, 'public' ))
+            or next;
+
+         my $help = __extract_help( $class, $method );
+
+         $help and (not exists $abstract->{ $method }
+                    or length $help > length $abstract->{ $method })
+               and $abstract->{ $method } = $help;
+      }
+   }
+
+   for my $key (sort keys %{ $abstract }) {
+      my ($method, @rest) = split SPC, $abstract->{ $key };
+
+      emit NUL.(pad $method, $max).SPC.(join SPC, @rest);
+   }
+
+   return OK;
 }
 
 sub loc {
@@ -420,7 +447,6 @@ sub _apply_stdio_encoding {
    binmode $_, ":encoding(${enc})" for (*STDIN, *STDOUT, *STDERR);
 
    autoflush STDOUT TRUE; autoflush STDERR TRUE;
-
    return;
 }
 
@@ -463,6 +489,21 @@ sub _exit_usage {
 
 sub _exit_version {
    $_[ 0 ]->output( 'Version '.$_[ 0 ]->VERSION ); exit OK;
+}
+
+sub _get_classes_and_roles {
+   my $self = shift; my %uniq = (); require mro;
+
+   my @classes = @{ mro::get_linear_isa( blessed $self ) };
+
+   while (my $class = shift @classes) {
+      $uniq{ $class } and next; $uniq{ $class }++;
+
+      exists $Role::Tiny::APPLIED_TO{ $class }
+         and push @classes, keys %{ $Role::Tiny::APPLIED_TO{ $class } };
+   }
+
+   return [ sort keys %uniq ];
 }
 
 sub _get_debug_option {
@@ -523,26 +564,17 @@ sub _output_usage {
 }
 
 sub _usage_for {
-   my ($self, $method) = @_; $method = untaint_identifier $method; require mro;
+   my ($self, $method) = @_; $method = untaint_identifier $method;
 
-   my @classes = @{ mro::get_linear_isa( blessed $self ) }; my %seen = ();
+   for my $class (@{ $self->_get_classes_and_roles }) {
+      is_member( $method, Class::Inspector->methods( $class, 'public' ) )
+         or next;
 
-   while (my $class = shift @classes) {
-      $seen{ $class } and next; $seen{ $class }++;
+      my $selector = Pod::Select->new(); my $tfile = $self->file->tempfile;
 
-      my $methods = Class::Inspector->methods( $class, 'public' );
-
-      if (is_member $method, $methods) {
-         my $selector = Pod::Select->new(); $selector->select( "/${method}.*" );
-         my $tempfile = $self->file->tempfile;
-
-         $selector->parse_from_file( find_source $class, $tempfile->pathname );
-         $tempfile->stat->{size} > 0
-            and return $self->_man_page_from( $tempfile );
-      }
-
-      exists $Role::Tiny::APPLIED_TO{ $class }
-         and push @classes, keys %{ $Role::Tiny::APPLIED_TO{ $class } };
+      $selector->select( "/${method}.*" );
+      $selector->parse_from_file( find_source $class, $tfile->pathname );
+      $tfile->stat->{size} > 0 and return $self->_man_page_from( $tfile );
    }
 
    return FAILED;
@@ -609,6 +641,17 @@ sub __find_apphome {
 
    # 6. Default to /tmp
    return untaint_path( File::Spec->tmpdir );
+}
+
+sub __extract_help {
+   my ($class, $method) = @_;
+
+   my $pod = Pod::Eventual::Simple->read_file( find_source $class );
+   my $out = [ grep { $_->{content} =~ m{ (?: ^|[< ]) $method (?: [ >]|$ ) }msx}
+               grep { $_->{type} eq 'command' } @{ $pod } ]->[ 0 ]->{content};
+
+   $out and chomp $out;
+   return $out;
 }
 
 sub __get_cfgfiles {
@@ -765,7 +808,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes version v0.22.$Rev: 6 $ of L<Class::Usul::Programs>
+This document describes version v0.22.$Rev: 7 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 
@@ -888,11 +931,11 @@ the I<method> method attribute
 
 Returns the command line debug flag to match the current debug state
 
-=head2 dump_self
+=head2 dump_self - Dumps the invocant
 
    $self->dump_self;
 
-Dumps out the self referential object using L<Data::Dumper>
+Dumps out the self referential object using L<Data::Printer>
 
 =head2 error
 
@@ -969,6 +1012,13 @@ Returns a response object with read-only accessors defined
 
 Returns the selected option number from the list of possible options passed
 in the C<$question> argument
+
+=head2 help - Display help text about a method
+
+   $exit_code = $self->help;
+
+Searches the programs classes and roles to find the method implementation.
+Displays help text from the POD that describes the method
 
 =head2 info
 
