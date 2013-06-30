@@ -1,11 +1,11 @@
-# @(#)$Ident: Functions.pm 2013-06-26 00:54 pjf ;
+# @(#)$Ident: Functions.pm 2013-06-30 17:54 pjf ;
 
 package Class::Usul::Functions;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 9 $ =~ /\d+/gmx );
 use parent 'Exporter::TypeTiny';
 
 use Class::Null;
@@ -139,13 +139,13 @@ sub elapsed () {
 }
 
 sub emit (;@) {
-   my @rest = @_; openhandle *STDOUT or return;
+   my @args = @_; openhandle *STDOUT or return;
 
-   $rest[ 0 ] ||= q(); chomp( @rest );
+   $args[ 0 ] //= q(); chomp( @args );
 
    local ($OFS, $ORS) = is_win32() ? ("\r\n", "\r\n") : ("\n", "\n");
 
-   return print {*STDOUT} @rest
+   return print {*STDOUT} @args
       or throw( error => 'IO error [_1]', args =>[ $ERRNO ] );
 }
 
@@ -233,11 +233,11 @@ sub is_hashref (;$) {
 }
 
 sub is_member (;@) {
-   my ($candidate, @rest) = @_; $candidate or return;
+   my ($candidate, @args) = @_; $candidate or return;
 
-   is_arrayref $rest[ 0 ] and @rest = @{ $rest[ 0 ] };
+   is_arrayref $args[ 0 ] and @args = @{ $args[ 0 ] };
 
-   return (first { $_ eq $candidate } @rest) ? 1 : 0;
+   return (first { $_ eq $candidate } @args) ? 1 : 0;
 }
 
 sub is_win32 () {
@@ -519,7 +519,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.22.$Rev: 3 $
+This documents version v0.22.$Rev: 9 $
 
 =head1 Synopsis
 

@@ -1,10 +1,10 @@
-# @(#)$Ident: Programs.pm 2013-06-30 16:12 pjf ;
+# @(#)$Ident: Programs.pm 2013-06-30 18:30 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 8 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 9 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Constants;
@@ -303,18 +303,18 @@ sub list_methods : method {
          is_member( $method, Class::Inspector->methods( $class, 'public' ))
             or next;
 
-         my $help = __extract_help( $class, $method );
+         my $help = __extract_help( $class, $method ) or next;
 
-         $help and (not exists $abstract->{ $method }
-                    or length $help > length $abstract->{ $method })
-               and $abstract->{ $method } = $help;
+         (not exists $abstract->{ $method }
+           or length $help > length $abstract->{ $method })
+            and $abstract->{ $method } = $help;
       }
    }
 
    for my $key (sort keys %{ $abstract }) {
       my ($method, @rest) = split SPC, $abstract->{ $key };
 
-      emit NUL.(pad $method, $max).SPC.(join SPC, @rest);
+      emit( (pad $method, $max).SPC.(join SPC, @rest) );
    }
 
    return OK;
@@ -519,7 +519,7 @@ sub _get_run_method {
 
    unless ($method) {
       if ($method = $self->extra_argv->[ 0 ] and $self->can_call( $method )) {
-         shift @{ $self->extra_argv };
+         $method = $self->next_argv;
       }
       else { $method = NUL }
    }
@@ -545,7 +545,9 @@ sub _man_page_from {
 }
 
 sub _output_usage {
-   my ($self, $verbose) = @_; my $method = shift @{ $self->extra_argv };
+   my ($self, $verbose) = @_; my $method = $self->next_argv;
+
+   defined $method and $method = untaint_identifier $method;
 
    $method and $self->can_call( $method )
       and return $self->_usage_for( $method );
@@ -564,7 +566,7 @@ sub _output_usage {
 }
 
 sub _usage_for {
-   my ($self, $method) = @_; $method = untaint_identifier $method;
+   my ($self, $method) = @_;
 
    for my $class (@{ $self->_get_classes_and_roles }) {
       is_member( $method, Class::Inspector->methods( $class, 'public' ) )
@@ -808,7 +810,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes version v0.22.$Rev: 8 $ of L<Class::Usul::Programs>
+This document describes version v0.22.$Rev: 9 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 

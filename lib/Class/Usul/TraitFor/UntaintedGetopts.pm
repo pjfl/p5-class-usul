@@ -1,9 +1,9 @@
-# @(#)$Ident: UntaintedGetopts.pm 2013-06-30 16:12 pjf ;
+# @(#)$Ident: UntaintedGetopts.pm 2013-06-30 18:27 pjf ;
 
 package Class::Usul::TraitFor::UntaintedGetopts;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 8 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 9 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( untaint_cmdline );
@@ -97,10 +97,10 @@ around 'parse_options' => sub {
 
    push @{ $EXTRA_ARGV }, $_ for (@ARGV);
 
-   my @missing_required; my %cmdline_params = %args;
-
    $options_config{prefer_commandline} == -1
       or $options_config{prefer_commandline} = TRUE;
+
+   my @missing_required; my %cmdline_params = %args;
 
    for my $name (keys %options_data) {
       my %data = %{ $options_data{ $name } };
@@ -129,6 +129,10 @@ sub extra_argv {
    return $EXTRA_ARGV;
 }
 
+sub next_argv {
+   return shift @{ $EXTRA_ARGV };
+}
+
 # Private functions
 sub __sort_options {
    my ($opts, $a, $b) = @_; my $max = 999;
@@ -150,7 +154,7 @@ Class::Usul::TraitFor::UntaintedGetopts - Untaints @ARGV before Getopts processe
 
 =head1 Version
 
-This documents version v0.22.$Rev: 8 $
+This documents version v0.22.$Rev: 9 $
 
 =head1 Synopsis
 
@@ -167,6 +171,10 @@ Untaints @ARGV before Getopts processes it
 =head2 extra_argv
 
 Returns an array ref containing the remaining command line arguments
+
+=head2 next_argv
+
+Returns the next value from L</extra_argv> shifting the value off the list
 
 =head2 parse_options
 
