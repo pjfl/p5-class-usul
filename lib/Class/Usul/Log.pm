@@ -1,9 +1,9 @@
-# @(#)$Ident: Log.pm 2013-06-30 15:40 pjf ;
+# @(#)$Ident: Log.pm 2013-07-01 15:39 pjf ;
 
 package Class::Usul::Log;
 
 use namespace::clean -except => [ qw( class_stash meta ) ];
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 7 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -82,22 +82,30 @@ sub fh {
    return $_[ 0 ]->_log->output( 'file-out' )->{fh};
 }
 
+sub get_log_attributes {
+   my $self = shift; my $attr = { %{ $self->_log_attributes } };
+
+   if ($self->_log_class eq 'Log::Handler') {
+      my $fattr   = $attr->{file} ||= {};
+      my $logfile = $fattr->{filename} || $self->_logfile;
+
+      ($logfile and -d dirname( NUL.$logfile )) or return;
+
+      $fattr->{alias   }   = 'file-out';
+      $fattr->{filename}   = NUL.$logfile;
+      $fattr->{maxlevel}   = $self->_debug_flag
+                           ? 'debug' : $fattr->{maxlevel} || 'info';
+      $fattr->{mode    } ||= q(append);
+   }
+
+   return $attr;
+}
+
 # Private methods
 sub _build__log {
-   my $self    = shift;
-   my $attr    = { %{ $self->_log_attributes } };
-   my $fattr   = $attr->{file} ||= {};
-   my $logfile = $fattr->{filename} || $self->_logfile;
+   my $self = shift; my $attr = $self->get_log_attributes;
 
-   ($logfile and -d dirname( NUL.$logfile )) or return Class::Null->new;
-
-   $fattr->{alias   }   = 'file-out';
-   $fattr->{filename}   = NUL.$logfile;
-   $fattr->{maxlevel}   = $self->_debug_flag
-                        ? 'debug' : $fattr->{maxlevel} || 'info';
-   $fattr->{mode    } ||= q(append);
-
-   return $self->_log_class->new( %{ $attr } );
+   return $attr ? $self->_log_class->new( %{ $attr } ) : Class::Null->new;
 }
 
 1;
@@ -112,7 +120,7 @@ Class::Usul::Log - Create methods for each logging level that encode their outpu
 
 =head1 Version
 
-This documents version v0.22.$Rev: 7 $
+This documents version v0.22.$Rev: 10 $
 
 =head1 Synopsis
 
@@ -185,6 +193,12 @@ level
 =head2 fh
 
 Return the loggers file handle
+
+=head2 get_log_attributes
+
+Returns the hash ref passed to the constructor of the log class. Returns
+undef to indicate no logging, an instance of L<Class::Null> is used
+instead
 
 =head1 Diagnostics
 

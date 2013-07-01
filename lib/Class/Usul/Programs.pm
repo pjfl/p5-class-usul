@@ -1,10 +1,10 @@
-# @(#)$Ident: Programs.pm 2013-06-30 18:30 pjf ;
+# @(#)$Ident: Programs.pm 2013-06-30 19:22 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 9 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Constants;
@@ -303,11 +303,11 @@ sub list_methods : method {
          is_member( $method, Class::Inspector->methods( $class, 'public' ))
             or next;
 
-         my $help = __extract_help( $class, $method ) or next;
+         my $pod = __get_pod_header_for_method( $class, $method ) or next;
 
          (not exists $abstract->{ $method }
-           or length $help > length $abstract->{ $method })
-            and $abstract->{ $method } = $help;
+           or length $pod > length $abstract->{ $method })
+            and $abstract->{ $method } = $pod;
       }
    }
 
@@ -518,7 +518,7 @@ sub _get_run_method {
    my $self = shift; my $method = $self->method;
 
    unless ($method) {
-      if ($method = $self->extra_argv->[ 0 ] and $self->can_call( $method )) {
+      if ($method = $self->extra_argv( 0 ) and $self->can_call( $method )) {
          $method = $self->next_argv;
       }
       else { $method = NUL }
@@ -645,17 +645,6 @@ sub __find_apphome {
    return untaint_path( File::Spec->tmpdir );
 }
 
-sub __extract_help {
-   my ($class, $method) = @_;
-
-   my $pod = Pod::Eventual::Simple->read_file( find_source $class );
-   my $out = [ grep { $_->{content} =~ m{ (?: ^|[< ]) $method (?: [ >]|$ ) }msx}
-               grep { $_->{type} eq 'command' } @{ $pod } ]->[ 0 ]->{content};
-
-   $out and chomp $out;
-   return $out;
-}
-
 sub __get_cfgfiles {
    my ($appclass, $home) = @_; my $files = []; my $file;
 
@@ -677,6 +666,17 @@ sub __get_control_chars {
    my $handle = shift; my %cntl = GetControlChars $handle;
 
    return ((join q(|), values %cntl), %cntl);
+}
+
+sub __get_pod_header_for_method {
+   my ($class, $method) = @_;
+
+   my $pod = Pod::Eventual::Simple->read_file( find_source $class );
+   my $out = [ grep { $_->{content} =~ m{ (?: ^|[< ]) $method (?: [ >]|$ ) }msx}
+               grep { $_->{type} eq 'command' } @{ $pod } ]->[ 0 ]->{content};
+
+   $out and chomp $out;
+   return $out;
 }
 
 sub __list_methods_of {
@@ -810,7 +810,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes version v0.22.$Rev: 9 $ of L<Class::Usul::Programs>
+This document describes version v0.22.$Rev: 10 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 

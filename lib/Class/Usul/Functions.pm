@@ -1,11 +1,11 @@
-# @(#)$Ident: Functions.pm 2013-06-30 17:54 pjf ;
+# @(#)$Ident: Functions.pm 2013-07-01 14:48 pjf ;
 
 package Class::Usul::Functions;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 9 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 10 $ =~ /\d+/gmx );
 use parent 'Exporter::TypeTiny';
 
 use Class::Null;
@@ -363,7 +363,8 @@ sub untaint_string ($;$) {
    unless (defined $untainted and $untainted eq $string) {
       my $err = "String [_1] contains possible taint";
 
-      throw( error => $err, args => [ $string ], level => 3 );
+      throw( error => $err,      args  => [ $string ],
+             class => 'tainted', level => 3 );
    }
 
    return $untainted;
@@ -519,7 +520,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.22.$Rev: 9 $
+This documents version v0.22.$Rev: 10 $
 
 =head1 Synopsis
 

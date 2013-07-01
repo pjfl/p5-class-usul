@@ -1,9 +1,9 @@
-# @(#)$Ident: UntaintedGetopts.pm 2013-06-30 18:27 pjf ;
+# @(#)$Ident: UntaintedGetopts.pm 2013-06-30 19:33 pjf ;
 
 package Class::Usul::TraitFor::UntaintedGetopts;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 9 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( untaint_cmdline );
@@ -126,14 +126,19 @@ around 'parse_options' => sub {
 
 # Public methods
 sub extra_argv {
-   return $EXTRA_ARGV;
+   return defined $_[ 1 ] ? __extra_argv( $_[ 0 ] )->[ $_[ 1 ] ]
+                          : __extra_argv( $_[ 0 ] );
 }
 
 sub next_argv {
-   return shift @{ $EXTRA_ARGV };
+   return shift @{ __extra_argv( $_[ 0 ] ) };
 }
 
 # Private functions
+sub __extra_argv {
+   return $_[ 0 ]->{_extra_argv} //= [ @{ $EXTRA_ARGV } ];
+}
+
 sub __sort_options {
    my ($opts, $a, $b) = @_; my $max = 999;
 
@@ -154,7 +159,7 @@ Class::Usul::TraitFor::UntaintedGetopts - Untaints @ARGV before Getopts processe
 
 =head1 Version
 
-This documents version v0.22.$Rev: 9 $
+This documents version v0.22.$Rev: 10 $
 
 =head1 Synopsis
 
