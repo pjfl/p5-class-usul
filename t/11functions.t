@@ -1,8 +1,8 @@
-# @(#)$Ident: 11functions.t 2013-06-26 01:12 pjf ;
+# @(#)$Ident: 11functions.t 2013-07-13 21:31 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 12 $ =~ /\d+/gmx );
 use File::Spec::Functions;
 use FindBin qw( $Bin );
 use lib catdir( $Bin, updir, q(lib) );
@@ -135,7 +135,9 @@ eval { throw( error => q(eNoMessage) ) }; my $e = $EVAL_ERROR;
 
 like $e->as_string, qr{ eNoMessage }msx, 'try/throw/catch';
 
-is trim( q(  test string  ) ), q(test string), 'trim';
+is trim( q(  test string  ) ), q(test string), 'trim - spaces';
+
+is trim( q(/test string/), q(/) ), q(test string), 'trim - other chars';
 
 is { zip( qw(a b c), qw(1 2 3) ) }->{b}, 2, 'zip';
 

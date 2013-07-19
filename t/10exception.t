@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 12 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, q(lib) );
@@ -21,7 +21,7 @@ use_ok 'Class::Usul::Exception';
 my $e = Class::Usul::Exception->caught( 'PracticeKill' ); my $line = __LINE__;
 
 cmp_ok $e->time, '>', 1, 'Has time attribute';
-is $e->ignore->[ 0 ], 'Class::Usul::IPC', 'Ignores class';
+is $e->ignore->[ 1 ], 'Class::Usul::IPC', 'Ignores class';
 like $e, qr{ \A main \[ $line / \d+ \]: \s+ PracticeKill }mx, 'Serializes';
 
 done_testing;

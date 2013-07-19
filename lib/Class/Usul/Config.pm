@@ -1,9 +1,9 @@
-# @(#)$Ident: Config.pm 2013-06-15 23:12 pjf ;
+# @(#)$Ident: Config.pm 2013-07-17 13:56 pjf ;
 
 package Class::Usul::Config;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 12 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::File;
@@ -105,11 +105,7 @@ around 'BUILDARGS' => sub {
           and $attr->{ $attr_name } = $class->_inflate_symbol( $attr, $1 );
    }
 
-   for my $attr_name (keys %{ $attr }) {
-      defined $attr->{ $attr_name }
-          and $attr->{ $attr_name } =~ m{ \A __(.+?)\((.+?)\)__ \z }mx
-          and $attr->{ $attr_name } = $class->_inflate_path( $attr, $1, $2 );
-   }
+   $class->inflate_paths( $attr );
 
    return $attr;
 };
@@ -125,6 +121,18 @@ sub canonicalise {
    -d $path and return $path;
 
    return canonpath( untaint_path catfile( @base, @rest ) );
+}
+
+sub inflate_paths {
+   my ($class, $attr) = @_;
+
+   for my $attr_name (keys %{ $attr }) {
+      defined $attr->{ $attr_name }
+          and $attr->{ $attr_name } =~ m{ \A __(.+?)\((.+?)\)__ \z }mx
+          and $attr->{ $attr_name } = $class->_inflate_path( $attr, $1, $2 );
+   }
+
+   return;
 }
 
 # Private methods
@@ -314,7 +322,7 @@ Class::Usul::Config - Inflate config values
 
 =head1 Version
 
-Describes Class::Usul::Config version v0.22.$Rev: 1 $
+Describes Class::Usul::Config version v0.22.$Rev: 12 $
 
 =head1 Synopsis
 
@@ -460,6 +468,11 @@ and L</inflate_path>
 Appends C<$relpath> to C<$base> using L<File::Spec::Functions>. The C<$base>
 argument can be an array ref or a scalar. The C<$relpath> argument must be
 separated by slashes. The return path is untainted and canonicalised
+
+=head2 inflate_paths
+
+Calls L</_inflate_path> for each of the matching values in the hash that
+was passed as argument
 
 =head2 _inflate_path
 

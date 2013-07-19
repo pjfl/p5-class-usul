@@ -1,28 +1,26 @@
-# @(#)$Ident: Programs.pm 2013-06-30 19:22 pjf ;
+# @(#)$Ident: Programs.pm 2013-07-19 14:28 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 12 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw( abs_path app_prefix arg_list assert_directory
-                                class2appdir classdir elapsed emit env_prefix
-                                exception find_source is_arrayref is_hashref
-                                is_member logname pad throw untaint_identifier
-                                untaint_path );
+use Class::Usul::Functions  qw( abs_path arg_list elapsed emit
+                                exception find_apphome find_source
+                                get_cfgfiles is_arrayref is_hashref is_member
+                                logname pad throw untaint_identifier );
 use Class::Usul::File;
 use Class::Usul::IPC;
-use Class::Usul::Types      qw( ArrayRef Bool EncodingType FileType HashRef
+use Class::Usul::Types      qw( ArrayRef Bool EncodingType FileType HashRef Int
                                 IPCType LoadableClass NonZeroPositiveInt
                                 PositiveInt SimpleStr );
 use Config;
 use English                 qw( -no_match_vars );
 use File::Basename          qw( dirname );
 use File::DataClass::Types  qw( Directory );
-use File::HomeDir           qw( );
 use File::Spec::Functions   qw( catdir catfile );
 use IO::Interactive         qw( is_interactive );
 use List::Util              qw( first );
@@ -39,6 +37,8 @@ use Try::Tiny;
 extends q(Class::Usul);
 with    q(Class::Usul::TraitFor::LoadingClasses);
 
+my $EXTNS = [ keys %{ Class::Usul::File->extensions } ];
+
 # Override attributes in base class
 has '+config_class'   => default => sub { 'Class::Usul::Config::Programs' };
 
@@ -47,7 +47,7 @@ option 'debug'        => is => 'rw',   isa => Bool, default => FALSE,
    documentation      => 'Turn debugging on. Prompts if interactive',
    short              => 'D', trigger => TRUE;
 
-option 'encoding'     => is => 'lazy', isa => EncodingType,
+option 'encoding'     => is => 'lazy', isa => EncodingType, format => 's',
    documentation      => 'Decode/encode input/output using this encoding',
    default            => sub { $_[ 0 ]->config->encoding };
 
@@ -89,6 +89,10 @@ option 'quiet'        => is => 'ro',   isa => Bool, default => FALSE,
    documentation      => 'Quiet the display of information messages',
    reader             => 'quiet_flag', short => 'q';
 
+option 'verbose'      => is => 'ro',   isa => Int,  default => 0,
+   documentation      => 'Increase the verbosity of the output',
+   repeatable         => TRUE, short => 'v';
+
 option 'version'      => is => 'ro',   isa => Bool, default => FALSE,
    documentation      => 'Displays the version number of the program class',
    short              => 'V';
@@ -129,8 +133,8 @@ around 'BUILDARGS' => sub {
    my $cfg = $attr->{config} ||= {};
 
    $cfg->{appclass} ||= delete $attr->{appclass} || blessed $self || $self;
-   $cfg->{home    } ||= __find_apphome( $cfg->{appclass}, $attr->{home} );
-   $cfg->{cfgfiles} ||= __get_cfgfiles( $cfg->{appclass},  $cfg->{home} );
+   $cfg->{home    } ||= find_apphome $cfg->{appclass}, $attr->{home}, $EXTNS;
+   $cfg->{cfgfiles} ||= get_cfgfiles $cfg->{appclass},  $cfg->{home}, $EXTNS;
 
    return $attr;
 };
@@ -194,7 +198,7 @@ sub error {
    $self->log->error( $_ ) for (split m{ \n }mx, NUL.$text);
 
    __print_fh( \*STDERR, $self->add_leader( $text, $args )."\n" );
-   $self->debug and __output_stacktrace( $err );
+   $self->debug and __output_stacktrace( $err, $self->verbose );
    return;
 }
 
@@ -208,7 +212,7 @@ sub fatal {
    $self->log->alert( $_ ) for (split m{ \n }mx, $text.$posn);
 
    __print_fh( \*STDERR, $self->add_leader( $text, $args ).$posn."\n" );
-   __output_stacktrace( $err );
+   __output_stacktrace( $err, $self->verbose );
    exit FAILED;
 }
 
@@ -473,7 +477,6 @@ sub _catch_run_exception {
 
    $e->out and $self->output( $e->out );
    $self->error( $e->error, { args => $e->args } );
-   $self->debug and __output_stacktrace( $e );
 
    return $e->rv || (defined $e->rv ? FAILED : UNDEFINED_RV);
 }
@@ -583,85 +586,6 @@ sub _usage_for {
 }
 
 # Private functions
-sub __find_apphome {
-   my ($appclass, $home) = @_; my ($file, $path);
-
-   # 0. Pass the directory in
-   $path = assert_directory $home and return $path;
-
-   my $app_prefix = app_prefix   $appclass;
-   my $appdir     = class2appdir $appclass;
-   my $classdir   = classdir     $appclass;
-   my $env_prefix = env_prefix   $appclass;
-   my $my_home    = File::HomeDir->my_home;
-
-   # 1a. Environment variable - for application directory
-   $path = $ENV{ "${env_prefix}_HOME" };
-   $path = assert_directory $path and return $path;
-
-   # 1b. Environment variable - for config file
-   $file = $ENV{ "${env_prefix}_CONFIG" };
-   $path = $file ? dirname( $file ) : NUL;
-   $path = assert_directory $path and return $path;
-
-   # 2a. Users home directory - contains application directory
-   $path = catdir( $my_home, $appdir, qw(default lib), $classdir );
-   $path = assert_directory $path and return $path;
-
-   # 2b. Users home directory - dot directory containing application
-   $path = catdir( $my_home, ".${appdir}", qw(default lib), $classdir );
-   $path = assert_directory $path and return $path;
-
-   # 2c. Users home directory - dot file containing shell env variable
-   $file = catfile( $my_home, ".${app_prefix}" );
-   $path = __read_variable( $file, q(APPLDIR) );
-   $path and $path = catdir( $path, q(lib), $classdir );
-   $path = assert_directory $path and return $path;
-
-   # 2d. Users home directory - dot directory is appldir
-   $path = catdir( $my_home, ".${app_prefix}" );
-   $path = assert_directory $path and return $path;
-
-   # 3. Well known path containing shell env file
-   $file = catfile( @{ DEFAULT_DIR() }, $appdir );
-   $path = __read_variable( $file, q(APPLDIR) );
-   $path and $path = catdir( $path, q(lib), $classdir );
-   $path = assert_directory $path and return $path;
-
-   # 4. Default install prefix
-   $path = catdir( @{ PREFIX() }, $appdir, qw(default lib), $classdir );
-   $path = assert_directory $path and return $path;
-
-   # 5. Config file found in @INC
-   for $path (map { catdir( abs_path( $_ ), $classdir ) } @INC) {
-      for my $extn (keys %{ Class::Usul::File->extensions }) {
-         $file = untaint_path catfile( $path, $app_prefix.$extn );
-
-         -f $file and return dirname( $file );
-      }
-   }
-
-   # 6. Default to /tmp
-   return untaint_path( File::Spec->tmpdir );
-}
-
-sub __get_cfgfiles {
-   my ($appclass, $home) = @_; my $files = []; my $file;
-
-   my $app_prefix = app_prefix $appclass;
-   my $env_prefix = env_prefix $appclass;
-   my $suffix     = $ENV{ "${env_prefix}_CONFIG_LOCAL_SUFFIX" } || '_local';
-
-   for my $extn (keys %{ Class::Usul::File->extensions }) {
-      $file = untaint_path catfile( $home, "${app_prefix}${extn}" );
-      -f $file and push @{ $files }, $file;
-      $file = untaint_path catfile( $home, "${app_prefix}${suffix}${extn}" );
-      -f $file and push @{ $files }, $file;
-   }
-
-   return $files;
-}
-
 sub __get_control_chars {
    my $handle = shift; my %cntl = GetControlChars $handle;
 
@@ -698,10 +622,12 @@ sub __map_prompt_args {
 }
 
 sub __output_stacktrace {
-   my $e = shift;
+   my ($e, $verbose) = @_; ($e and blessed $e) or return; $verbose //= 0;
 
-   $e and blessed $e and $e->can( q(stacktrace) )
-      and __print_fh( \*STDERR, NUL.$e->stacktrace );
+   $verbose > 0 and $e->can( 'trace' )
+      and return __print_fh( \*STDERR, NUL.$e->trace );
+
+   $e->can( 'stacktrace' ) and __print_fh( \*STDERR, NUL.$e->stacktrace );
 
    return;
 }
@@ -784,16 +710,6 @@ sub __raw_mode {
    my $handle = shift; ReadMode q(raw), $handle; return;
 }
 
-sub __read_variable {
-   my ($file, $variable) = @_;
-
-   return -f $file ? first { length }
-                     map   { (split q(=), $_)[ 1 ] }
-                     grep  { m{ \A $variable [=] }mx }
-                     Class::Usul::File->io( $file )->chomp->getlines
-                   : undef;
-}
-
 sub __restore_mode {
    my $handle = shift; ReadMode q(restore), $handle; return;
 }
@@ -810,7 +726,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes version v0.22.$Rev: 10 $ of L<Class::Usul::Programs>
+This document describes version v0.22.$Rev: 12 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 
@@ -889,6 +805,10 @@ C<Class::Usul::Config::Programs>
 =item C<params>
 
 List of value that are passed to the method called by L</run>
+
+=item C<v verbose>
+
+Repeatable boolean that increases the verbosity of the output
 
 =back
 
@@ -1176,8 +1096,6 @@ Turning debug on produces some more output
 =item L<Class::Usul::TraitFor::UntaintedGetopts>
 
 =item L<Encode>
-
-=item L<File::HomeDir>
 
 =item L<IO::Interactive>
 

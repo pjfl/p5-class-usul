@@ -1,26 +1,27 @@
-# @(#)$Ident: Functions.pm 2013-07-02 23:50 pjf ;
+# @(#)$Ident: Functions.pm 2013-07-19 11:01 pjf ;
 
 package Class::Usul::Functions;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 11 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 12 $ =~ /\d+/gmx );
 use parent 'Exporter::TypeTiny';
 
 use Class::Null;
 use Class::Usul::Constants;
-use Cwd            qw( );
-use Data::Printer alias => q(Dumper), colored => 1, indent => 3,
+use Cwd                     qw( );
+use Data::Printer   alias => q(Dumper), colored => 1, indent => 3,
     filters => { 'File::DataClass::IO' => sub { $_[ 0 ]->pathname }, };
-use Digest         qw( );
-use Digest::MD5    qw( md5 );
-use English        qw( -no_match_vars );
-use File::Basename   ( );
-use File::Spec;
-use List::Util     qw( first );
+use Digest                  qw( );
+use Digest::MD5             qw( md5 );
+use English                 qw( -no_match_vars );
+use File::Basename          qw( basename dirname );
+use File::HomeDir           qw( );
+use File::Spec::Functions   qw( catdir catfile tmpdir );
+use List::Util              qw( first );
 use Path::Class::Dir;
-use Scalar::Util   qw( blessed openhandle );
+use Scalar::Util            qw( blessed openhandle );
 use Sys::Hostname;
 use User::pwent;
 
@@ -30,14 +31,14 @@ our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
                        bson64id_time build class2appdir classdir
                        classfile create_token data_dumper distname
                        downgrade elapsed emit env_prefix escape_TT
-                       exception find_source fold fqdn fullname get_user
-                       hex2str home2appldir is_arrayref is_coderef
-                       is_hashref is_win32 loginid logname
-                       merge_attributes my_prefix pad prefix2class
-                       product split_on__ split_on_dash squeeze
-                       strip_leader sub_name sum thread_id throw trim
-                       unescape_TT untaint_cmdline untaint_identifier
-                       untaint_path untaint_string zip );
+                       exception find_apphome find_source fold fqdn
+                       fullname get_cfgfiles get_user hex2str home2appldir
+                       is_arrayref is_coderef is_hashref is_win32
+                       loginid logname merge_attributes my_prefix pad
+                       prefix2class product split_on__ split_on_dash
+                       squeeze strip_leader sub_name sum thread_id
+                       throw trim unescape_TT untaint_cmdline
+                       untaint_identifier untaint_path untaint_string zip );
 our %EXPORT_REFS =   ( assert => sub { ASSERT } );
 our %EXPORT_TAGS =   ( all => [ @EXPORT, @EXPORT_OK ], );
 
@@ -86,7 +87,7 @@ sub bson64id (;$) {
 }
 
 sub bson64id_time ($) {
-   return unpack 'N', substr _base64_decode_ns( $_[ 0 ] ), 0, 4;
+   return unpack 'N', substr _base64_decode_ns( $_[ 0 ] ), 2, 4;
 }
 
 sub build (&;$) {
@@ -98,11 +99,11 @@ sub class2appdir ($) {
 }
 
 sub classdir ($) {
-   return File::Spec->catdir( split m{ :: }mx, $_[ 0 ] );
+   return catdir( split m{ :: }mx, $_[ 0 ] );
 }
 
 sub classfile ($) {
-   return File::Spec->catfile( split m{ :: }mx, $_[ 0 ].q(.pm) );
+   return catfile( split m{ :: }mx, $_[ 0 ].q(.pm) );
 }
 
 sub create_token (;$) {
@@ -167,12 +168,50 @@ sub exception (;@) {
    return EXCEPTION_CLASS->caught( @_ );
 }
 
+sub find_apphome ($;$$) {
+   my ($appclass, $home, $extns) = @_; my $path;
+
+   # 0. Pass the directory in
+   $path = assert_directory $home and return $path;
+
+   my $app_pref = app_prefix   $appclass;
+   my $appdir   = class2appdir $appclass;
+   my $classdir = classdir     $appclass;
+   my $env_pref = env_prefix   $appclass;
+   my $my_home  = File::HomeDir->my_home;
+
+   # 1a. Environment variable - for application directory
+   $path = $ENV{ "${env_pref}_HOME" };
+   $path = assert_directory $path and return $path;
+   # 1b. Environment variable - for config file
+   $path = _get_env_var_for_conf( $env_pref ) and return $path;
+   # 2a. Users home directory - contains application directory
+   $path = catdir( $my_home, $appdir, qw( default lib ), $classdir );
+   $path = assert_directory $path and return $path;
+   # 2b. Users home directory - dot directory containing application
+   $path = catdir( $my_home, ".${appdir}", qw( default lib ), $classdir );
+   $path = assert_directory $path and return $path;
+   # 2c. Users home directory - dot file containing shell env variable
+   $path = _get_dot_file_var( $my_home, $app_pref, $classdir ) and return $path;
+   # 2d. Users home directory - dot directory is appldir
+   $path = catdir( $my_home, ".${app_pref}" );
+   $path = assert_directory $path and return $path;
+   # 3. Well known path containing shell env file
+   $path = _get_known_file_var( $appdir, $classdir ) and return $path;
+   # 4. Default install prefix
+   $path = catdir( @{ PREFIX() }, $appdir, qw( default lib ), $classdir );
+   $path = assert_directory $path and return $path;
+   # 5. Config file found in @INC
+   $path = _find_conf_in_inc( $app_pref, $extns, $classdir ) and return $path;
+   # 6. Default to /tmp
+   return untaint_path( tmpdir );
+}
+
 sub find_source ($) {
    my $class = shift; my $file = classfile( $class ); my $path;
 
    for (@INC) {
-      $path = abs_path( File::Spec->catfile( $_, $file ) )
-         and -f $path and return $path;
+      $path = abs_path( catfile( $_, $file ) ) and -f $path and return $path;
    }
 
    return;
@@ -198,6 +237,28 @@ sub fullname () {
    my $y = (split m{ \s* , \s * }msx, (get_user()->gecos || q()))[ 0 ];
 
    return untaint_cmdline( $y || q());
+}
+
+sub get_cfgfiles ($;$$) {
+   my ($appclass, $dirs, $extns) = @_; my $files = [];
+
+   my $app_pref = app_prefix $appclass; my $env_pref = env_prefix $appclass;
+
+   my $suffix   = $ENV{ "${env_pref}_CONFIG_LOCAL_SUFFIX" } || '_local';
+
+   is_arrayref( $dirs ) or $dirs = [ defined $dirs ? $dirs : () ];
+
+   for my $dir (@{ $dirs }) {
+      for my $extn (@{ $extns || [] }) {
+         my $file;
+         $file = _catpath( $dir, "${app_pref}${extn}" );
+         -f $file and push @{ $files }, $file;
+         $file = _catpath( $dir, "${app_pref}${suffix}${extn}" );
+         -f $file and push @{ $files }, $file;
+      }
+   }
+
+   return $files;
 }
 
 sub get_user () {
@@ -266,7 +327,7 @@ sub merge_attributes ($$$;$) {
 }
 
 sub my_prefix (;$) {
-   return split_on__( File::Basename::basename( $_[ 0 ] || q(), EXTNS ) );
+   return split_on__( basename( $_[ 0 ] || q(), EXTNS ) );
 }
 
 sub pad ($$;$$) {
@@ -325,10 +386,10 @@ sub throw (;@) {
    EXCEPTION_CLASS->throw( @_ );
 }
 
-sub trim (;$) {
-   (my $y = $_[ 0 ] || q()) =~ s{ \A \s+ }{}gmx;
+sub trim (;$$) {
+   my $c = $_[ 1 ] || " \t"; (my $y = $_[ 0 ] || q()) =~ s{ \A [$c]+ }{}mx;
 
-   chomp $y; $y =~ s{ \s+ \z }{}gmx; return $y;
+   chomp $y; $y =~ s{ [$c]+ \z }{}mx; return $y;
 }
 
 sub unescape_TT (;$$) {
@@ -393,7 +454,7 @@ sub _base64_decode_ns ($) {
        while ($i < 4) {
           my $uc = $index->[ ord $x[ $j++ ] ];
 
-          $uc ne q(XX) and $c[ $i++ ] = 0 + $uc; $j == $len or next;
+          $uc ne 'XX' and $c[ $i++ ] = 0 + $uc; $j == $len or next;
 
           if ($i < 4) {
              $i < 2 and last ROUND; $i == 2 and $c[ 2 ] = $pad; $c[ 3 ] = $pad;
@@ -449,9 +510,9 @@ sub _bsonid (;$) {
    my $now     = time;
    my $time    = _bsonid_time( $now, $version );
    my $host    = substr md5( hostname ), 0, 3;
-   my $proc    = pack 'n', $$ % 0xFFFF;
+   my $pid     = pack 'n', $$ % 0xFFFF;
 
-   return $time.$host.$proc._bsonid_inc( $now, $version );
+   return $time.$host.$pid._bsonid_inc( $now, $version );
 }
 
 sub _bsonid_inc ($;$) {
@@ -465,7 +526,7 @@ sub _bsonid_inc ($;$) {
                           .(pack 'n', $id_inc % 0xFFFF);
 
    $version < 3 and return (pack 'n', thread_id() % 0xFFFF )
-                          .(pack 'N', $id_inc % 0xFFFFFFFF );
+                          .(pack 'n', $id_inc % 0xFFFF);
 
    return (pack 'n', thread_id() % 0xFFFF )
          .(substr pack( 'N', $id_inc % 0xFFFFFF ), 1, 3);
@@ -474,9 +535,16 @@ sub _bsonid_inc ($;$) {
 sub _bsonid_time ($;$) {
    my ($now, $version) = @_;
 
-   (not $version or $version < 3) and return pack 'N', $now;
+   (not $version or $version < 2) and return pack 'N', $now;
+
+   $version < 3 and return (substr pack( 'N', $now >> 32 ), 2, 2)
+                          .(pack 'N', $now % 0xFFFFFFFF);
 
    return (pack 'N', $now >> 32).(pack 'N', $now % 0xFFFFFFFF);
+}
+
+sub _catpath {
+   return untaint_path( catfile( @_ ) );
 }
 
 sub _exporter_fail {
@@ -486,6 +554,45 @@ sub _exporter_fail {
        and return ( $name => $EXPORT_REFS{ $name }->() );
 
     throw( "Could not find sub '${name}' to export in package '${class}'" );
+}
+
+sub _find_conf_in_inc {
+   my ($file, $extns, $classdir) = @_;
+
+   for my $dir (map { catdir( abs_path( $_ ), $classdir ) } @INC) {
+      for my $extn (@{ $extns || [] }) {
+         my $path = _catpath( $dir, $file.$extn );
+
+         -f $path and return dirname( $path );
+      }
+   }
+
+   return;
+}
+
+sub _get_dot_file_var {
+   my ($dir, $file, $classdir) = @_;
+
+   my $path; $path = _read_variable( catfile( $dir, ".${file}" ), 'APPLDIR' )
+         and $path = catdir( $path, 'lib', $classdir );
+
+   return $path = assert_directory $path ? $path : undef;
+}
+
+sub _get_env_var_for_conf {
+   my $file = $ENV{ ($_[ 0 ] || return).'_CONFIG' };
+   my $path = $file ? dirname( $file ) : NUL;
+
+   return $path = assert_directory $path ? $path : undef;
+}
+
+sub _get_known_file_var {
+   my ($appname, $classdir) = @_; my $path; $appname || return;
+
+   $path = _read_variable( catfile( @{ DEFAULT_DIR() }, $appname ), 'APPLDIR' );
+   $path and $path = catdir( $path, 'lib', $classdir );
+
+   return $path = assert_directory $path ? $path : undef;
 }
 
 sub _index64 () {
@@ -508,6 +615,20 @@ sub _index64 () {
                XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX) ];
 }
 
+sub _read_variable {
+   my ($file, $variable) = @_; -f $file or return; $variable or return;
+
+   open my $fh, '<', $file or throw( "File ${file} cannot open: ${OS_ERROR}" );
+
+   my $content = do { local $RS; <$fh> }; close $fh;
+
+   return first  { length }
+          map    { trim( (split q(=), $_)[ 1 ] ) }
+          grep   { m{ \A $variable [=] }mx }
+          map    { chomp }
+          split m{ [\n] }mx, $content;
+}
+
 1;
 
 __END__
@@ -520,7 +641,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.22.$Rev: 11 $
+This documents version v0.22.$Rev: 12 $
 
 =head1 Synopsis
 
@@ -696,6 +817,12 @@ sequences too, so unescaping isn't absolutely necessary
 Expose the C<catch> method in the exception
 class L<CatalystX::Usul::Exception>. Returns a new error object
 
+=head2 find_apphome
+
+   $directory_path = find_apphome $appclass, $homedir, $extns
+
+Returns the path to the applications home directory
+
 =head2 find_source
 
    $path = find_source $module_name;
@@ -721,6 +848,12 @@ Call C<gethostbyname> on the supplied hostname whist defaults to this host
 Returns the untainted first sub field from the gecos attribute of the
 object returned by a call to L</get_user>. Returns the null string if
 the gecos attribute value is false
+
+=head2 get_cfgfiles
+
+   $paths = get_cfgfiles $appclass, $dirs, $extns
+
+Returns an array ref of configurations file paths for the application
 
 =head2 get_user
 
@@ -881,7 +1014,9 @@ of the thrown exception
 
    $trimmed_string = trim $string_with_leading_and_trailing_whitespace;
 
-Remove leading and trailing whitespace including trailing newlines
+Remove leading and trailing whitespace including trailing newlines. Takes
+an additional string used as the character class to remove. Defaults to
+space and tab
 
 =head2 unescape_TT
 
@@ -939,6 +1074,8 @@ None
 =item L<Data::Printer>
 
 =item L<Digest>
+
+=item L<File::HomeDir>
 
 =item L<List::Util>
 

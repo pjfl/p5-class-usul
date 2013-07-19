@@ -1,11 +1,11 @@
-# @(#)Ident: Util.pm 2013-06-29 00:07 pjf ;
+# @(#)Ident: Util.pm 2013-07-12 22:05 pjf ;
 
 package Class::Usul::Crypt::Util;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 6 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 12 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Crypt      qw( decrypt default_cipher encrypt );
@@ -16,7 +16,8 @@ use File::Spec::Functions   qw( catfile );
 use Scalar::Util            qw( blessed );
 use Try::Tiny;
 
-our @EXPORT_OK = qw( decrypt_from_config encrypt_for_config is_encrypted );
+our @EXPORT_OK = qw( decrypt_from_config encrypt_for_config
+                     get_cipher is_encrypted );
 
 # Public functions
 sub decrypt_from_config {
@@ -34,6 +35,10 @@ sub encrypt_for_config {
    my $args     = __get_crypt_args( $config, $cipher );
 
    return $password ? "{${cipher}}".(encrypt $args, $password) : $password;
+}
+
+sub get_cipher {
+   my ($cipher) = __extract_crypt_params( $_[ 0 ] ); return $cipher;
 }
 
 sub is_encrypted {
@@ -107,7 +112,7 @@ Class::Usul::Crypt::Util - Decrypts/Encrypts password from/to configuration file
 
 =head1 Version
 
-This documents version v0.22.$Rev: 6 $ of L<Class::Usul::Crypt::Util>
+This documents version v0.22.$Rev: 12 $ of L<Class::Usul::Crypt::Util>
 
 =head1 Description
 
@@ -131,6 +136,12 @@ Strips the C<{Twofish2}> prefix and then decrypts the password
 
 Returns the encrypted value of the plain value prefixed with C<{Twofish2}>
 for storage in a configuration file
+
+=head2 get_cipher
+
+   $cipher = get_cipher( $encrypted_value );
+
+Returns the name of the cipher used to encrypt the value
 
 =head2 is_encrypted
 

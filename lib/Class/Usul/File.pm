@@ -1,9 +1,9 @@
-# @(#)$Ident: File.pm 2013-06-25 19:44 pjf ;
+# @(#)$Ident: File.pm 2013-07-19 11:08 pjf ;
 
 package Class::Usul::File;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 12 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions   qw( arg_list create_token is_arrayref throw );
@@ -69,7 +69,7 @@ sub delete_tmp_files {
 }
 
 sub extensions {
-   return $_[ 0 ]->dataclass_schema->extensions;
+   return File::DataClass::Schema->extensions;
 }
 
 sub io {
@@ -131,7 +131,7 @@ Class::Usul::File - File and directory IO base class
 
 =head1 Version
 
-This documents version v0.22.$Rev: 2 $
+This documents version v0.22.$Rev: 12 $
 
 =head1 Synopsis
 
