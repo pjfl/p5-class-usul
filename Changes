@@ -1,6 +1,7 @@
 Revision history for Class::Usul
 
-0.22.4    2013-06-27 18:41:54
+0.22.13   2013-07-28 19:36:08
+          - Fixed bug in ::Functions
           - Moved find_apphome and get_cfgfiles to ::Functions
           - Bson64id now use 48bit time
           - Mooified

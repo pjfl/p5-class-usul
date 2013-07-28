@@ -1,8 +1,8 @@
-# @(#)$Ident: 11functions.t 2013-07-13 21:31 pjf ;
+# @(#)$Ident: 11functions.t 2013-07-28 17:11 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 12 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 13 $ =~ /\d+/gmx );
 use File::Spec::Functions;
 use FindBin qw( $Bin );
 use lib catdir( $Bin, updir, q(lib) );
@@ -71,6 +71,8 @@ ok $token eq q(ee26b0dd4af7e749aa1a8ee3c10ae9923f618980772e473f8819a5d4940e0db27
    || $token eq q(098f6bcd4621d373cade4e832627b4f6), 'create_token';
 
 is distname( q(Test::Application) ), q(Test-Application), 'distname';
+
+#close STDOUT; emit 'shit';
 
 is env_prefix( q(Test::Application) ), q(TEST_APPLICATION), 'env_prefix';
 

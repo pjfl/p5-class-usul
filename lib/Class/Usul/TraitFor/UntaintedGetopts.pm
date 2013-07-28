@@ -1,9 +1,9 @@
-# @(#)$Ident: UntaintedGetopts.pm 2013-06-30 19:33 pjf ;
+# @(#)$Ident: UntaintedGetopts.pm 2013-07-21 16:10 pjf ;
 
 package Class::Usul::TraitFor::UntaintedGetopts;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 13 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( untaint_cmdline );
@@ -15,11 +15,11 @@ use JSON;
 use Moo::Role;
 use Regexp::Common;
 
-my ($EXTRA_ARGV, $USAGE) = ([], NUL);
+my ($Extra_Argv, $Usage) = ([], NUL);
 
 # Construction
 around 'options_usage' => sub {
-   return $USAGE;
+   return $Usage;
 };
 
 around 'parse_options' => sub {
@@ -65,48 +65,25 @@ around 'parse_options' => sub {
 
    @ARGV = map { untaint_cmdline $_ } @ARGV;
 
-   if (%has_to_split) {
-      my @new_argv;
-
-      for my $i (0 .. $#ARGV) { # Parse all argv
-         my $arg = $ARGV[ $i ];
-         my ($arg_name, $arg_values) = split m{ [=] }mx, $arg, 2;
-
-         $arg_name =~ s{ \A --? }{}mx;
-         defined $arg_values or $arg_values = $ARGV[ ++$i ];
-
-         if (my $rec = $has_to_split{ $arg_name }) {
-            for my $record ($rec->records( $arg_values )) {
-               # Remove the quoted if exist to chain
-               $record =~ s{ \A [\'\"] | [\'\"] \z }{}gmx;
-               push @new_argv, "--${arg_name}", $record;
-            }
-         }
-         else { push @new_argv, $arg }
-      }
-
-      @ARGV = @new_argv;
-   }
+   %has_to_split and @ARGV = __split_args( \%has_to_split );
 
    my (@flavour, $opt);
 
    defined $options_config{flavour}
       and push @flavour, { getopt_conf => $options_config{flavour} };
 
-   ($opt, $USAGE) = describe_options( ("Usage: %c %o"), @options, @flavour );
+   ($opt, $Usage) = describe_options( ("Usage: %c %o"), @options, @flavour );
 
-   push @{ $EXTRA_ARGV }, $_ for (@ARGV);
+   push @{ $Extra_Argv }, $_ for (@ARGV);
 
-   $options_config{prefer_commandline} == -1
-      or $options_config{prefer_commandline} = TRUE;
-
-   my @missing_required; my %cmdline_params = %args;
+   my %cmdline_params = %args; my @missing_required;
+   # Make that config option tri-state and ignore the default of false
+   my $prefer_cmdline = __tri2bool( $options_config{prefer_commandline} );
 
    for my $name (keys %options_data) {
       my %data = %{ $options_data{ $name } };
 
-      if (not defined $cmdline_params{ $name }
-          or $options_config{prefer_commandline} ) {
+      if ($prefer_cmdline or not defined $cmdline_params{ $name }) {
          my $val; defined ($val = $opt->$name()) and
             $cmdline_params{ $name } = $data{json} ? decode_json( $val ) : $val;
       }
@@ -115,9 +92,9 @@ around 'parse_options' => sub {
          and push @missing_required, $name;
    }
 
-   if (@missing_required and $options_config{missing_fatal}) {
+   if ($options_config{missing_fatal} and @missing_required) {
       print join( "\n", (map { $_.' is missing' } @missing_required), NUL );
-      print $USAGE, "\n";
+      print $Usage, "\n";
       exit FAILED;
    }
 
@@ -136,7 +113,28 @@ sub next_argv {
 
 # Private functions
 sub __extra_argv {
-   return $_[ 0 ]->{_extra_argv} //= [ @{ $EXTRA_ARGV } ];
+   return $_[ 0 ]->{_extra_argv} //= [ @{ $Extra_Argv } ];
+}
+
+sub __split_args {
+   my $args = shift; my @new_argv;
+
+   for my $i (0 .. $#ARGV) { # Parse all argv
+      my $arg = $ARGV[ $i ]; my ($name, $value) = split m{ [=] }mx, $arg, 2;
+
+      $name =~ s{ \A --? }{}mx; $value //= $ARGV[ ++$i ];
+
+      if (my $splitter = $args->{ $name }) {
+         for my $subval ($splitter->records( $value )) {
+            # Remove the quoted if exist to chain
+            $subval =~ s{ \A [\'\"] | [\'\"] \z }{}gmx;
+            push @new_argv, "--${name}", $subval;
+         }
+      }
+      else { push @new_argv, $arg }
+   }
+
+   return @new_argv;
 }
 
 sub __sort_options {
@@ -147,6 +145,9 @@ sub __sort_options {
    return ($oa == $max) && ($ob == $max) ? $a cmp $b : $oa <=> $ob;
 }
 
+sub __tri2bool {
+   $_[ 0 ] == -1 and return FALSE; return TRUE;
+}
 1;
 
 __END__
@@ -159,7 +160,7 @@ Class::Usul::TraitFor::UntaintedGetopts - Untaints @ARGV before Getopts processe
 
 =head1 Version
 
-This documents version v0.22.$Rev: 10 $
+This documents version v0.22.$Rev: 13 $
 
 =head1 Synopsis
 

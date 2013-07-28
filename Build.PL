@@ -1,13 +1,13 @@
-# @(#)$Ident: Build.PL 2013-06-29 21:51 pjf ;
+# @(#)$Ident: Build.PL 2013-07-28 18:21 pjf ;
 
 use strict;
 use warnings;
 use inc::Bob; # Module::Build subclass
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 7 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 13 $ =~ /\d+/gmx );
 
 Bob->new( {
-   module    => q(Class::Usul),
-   home_page => q(http://www.roxsoft.co.uk),
+   module    => 'Class::Usul',
+   home_page => 'http://www.roxsoft.co.uk',
    requires  => {
       'perl'                      => 5.010001,
       'namespace::clean'          => 0.23,
@@ -22,7 +22,7 @@ Bob->new( {
       'Date::Format'              => 2.24,
       'DateTime::Format::Epoch'   => 0.13,
       'Digest::SHA1'              => 2.11,
-      'File::DataClass'           => q(0.21.0),
+      'File::DataClass'           => q(0.22.0),
       'File::Gettext'             => q(0.18.0),
       'File::HomeDir'             => 0.93,
       'Getopt::Long::Descriptive' => 0.093,

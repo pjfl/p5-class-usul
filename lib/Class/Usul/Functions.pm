@@ -1,11 +1,11 @@
-# @(#)$Ident: Functions.pm 2013-07-19 11:01 pjf ;
+# @(#)$Ident: Functions.pm 2013-07-28 17:11 pjf ;
 
 package Class::Usul::Functions;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 12 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 13 $ =~ /\d+/gmx );
 use parent 'Exporter::TypeTiny';
 
 use Class::Null;
@@ -146,8 +146,8 @@ sub emit (;@) {
 
    local ($OFS, $ORS) = is_win32() ? ("\r\n", "\r\n") : ("\n", "\n");
 
-   return print {*STDOUT} @args
-      or throw( error => 'IO error [_1]', args =>[ $ERRNO ] );
+   return (print {*STDOUT} @args
+           or throw( error => 'IO error [_1]', args =>[ $ERRNO ] ));
 }
 
 sub env_prefix ($) {
@@ -172,7 +172,7 @@ sub find_apphome ($;$$) {
    my ($appclass, $home, $extns) = @_; my $path;
 
    # 0. Pass the directory in
-   $path = assert_directory $home and return $path;
+   not $appclass and $path = assert_directory $home and return $path;
 
    my $app_pref = app_prefix   $appclass;
    my $appdir   = class2appdir $appclass;
@@ -203,7 +203,9 @@ sub find_apphome ($;$$) {
    $path = assert_directory $path and return $path;
    # 5. Config file found in @INC
    $path = _find_conf_in_inc( $app_pref, $extns, $classdir ) and return $path;
-   # 6. Default to /tmp
+   # 6. Pass the default in
+   $path = assert_directory $home and return $path;
+   # 7. Default to /tmp
    return untaint_path( tmpdir );
 }
 
@@ -641,7 +643,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.22.$Rev: 12 $
+This documents version v0.22.$Rev: 13 $
 
 =head1 Synopsis
 
