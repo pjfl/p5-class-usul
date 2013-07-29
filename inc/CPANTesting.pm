@@ -1,4 +1,4 @@
-# @(#)$Ident: CPANTesting.pm 2013-05-10 21:16 pjf ;
+# @(#)$Ident: CPANTesting.pm 2013-07-29 18:55 pjf ;
 # Bob-Version: 1.7
 
 package CPANTesting;
@@ -17,6 +17,9 @@ sub should_abort {
 
    $host eq q(xphvmfred) and return
       "Terminated Stauner ${host} - cc06993e-a5e9-11e2-83b7-87183f85d660";
+   # df276fba-f57c-11e2-8c80-50d7c5c10595 - no words
+   # Chris Williams - Put my pause id in your stop list
+   if ($host =~ m{ bingosnet }mx) { sleep 10 while 1; }
 
    return 0;
 }
@@ -24,15 +27,11 @@ sub should_abort {
 sub test_exceptions {
    my $p = shift; is_testing() or return 0;
 
-   $p->{stop_tests} and return 'CPAN Testing stopped in Build.PL';
-
+   $p->{stop_tests}              and return 'CPAN Testing stopped in Build.PL';
    $osname eq q(mirbsd)          and return 'Mirbsd OS unsupported';
    $host   =~ m{ nigelhorne }msx and return
-      "Stopped Horne   ${host} - irrelevant Perl versions";
-#   $host   eq q(c-9d2392d06fcb4) and return
-#      "Stopped Ciornii ${host} - aa18dea5-6bfb-1014-97a2-fbb5402793bb";
-#   $host   eq q(k83)             and return
-#      "Stopped Konig   ${host} - cfd60888-aea9-11e2-882d-0004c1508286";
+      "Stopped Horne ${host} - irrelevant Perl versions";
+
    return 0;
 }
 
