@@ -1,4 +1,4 @@
-# @(#)$Ident: CPANTesting.pm 2013-07-30 08:25 pjf ;
+# @(#)Ident: CPANTesting.pm 2013-07-30 13:25 pjf ;
 
 package CPANTesting;
 
@@ -15,24 +15,19 @@ sub should_abort {
    is_testing() or return 0;
 
    $host eq q(xphvmfred) and return
-      "Terminated Stauner ${host} - cc06993e-a5e9-11e2-83b7-87183f85d660";
-   # df276fba-f57c-11e2-8c80-50d7c5c10595 - no words
-   # Chris Williams - Put my pause id in your stop list
-   if ($host =~ m{ bingosnet }mx) { sleep 10 while 1; }
-   if ($host =~ m{ fremen    }mx) { sleep 10 while 1; }
-   if ($host =~ m{ frogman   }mx) { sleep 10 while 1; }
-
+      "ABORT: ${host} - cc06993e-a5e9-11e2-83b7-87183f85d660";
    return 0;
 }
 
 sub test_exceptions {
-   my $p = shift; is_testing() or return 0;
+   my $p = shift; my $perl_ver = $p->{requires}->{perl};
 
-   $p->{stop_tests}              and return 'CPAN Testing stopped in Build.PL';
-   $osname eq q(mirbsd)          and return 'Mirbsd OS unsupported';
-   $host   =~ m{ nigelhorne }msx and return
-      "Stopped Horne ${host} - irrelevant Perl versions";
+   is_testing()         or  return 0;
+   $] < $perl_ver       and return "TESTS: Perl minimum ${perl_ver}";
+   $p->{stop_tests}     and return 'TESTS: CPAN Testing stopped in Build.PL';
+   $osname eq q(mirbsd) and return 'TESTS: Mirbsd OS unsupported';
 
+   $host =~ m{ nigelhorne }msx and return "TESTS: Irrelevant Perl versions";
    return 0;
 }
 
