@@ -1,6 +1,9 @@
 Revision history for Class::Usul
 
-0.22.17   2013-08-02 14:50:23
+0.22.18   2013-08-02 21:17:30
+          - Made Moo::Role last use
+            <tobyink> Functions imported into a Moo role *after* the
+            `use Moo::Role` become part of the role's API.
           - Expose the base64 encode/decode functions
           - New method for CPANTesting min Perl ver
           - Added fremen and frogman to tier gruber
