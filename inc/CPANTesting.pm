@@ -27,7 +27,6 @@ sub test_exceptions {
    $p->{stop_tests}     and return 'TESTS: CPAN Testing stopped in Build.PL';
    $osname eq q(mirbsd) and return 'TESTS: Mirbsd OS unsupported';
 
-   $host =~ m{ nigelhorne }msx and return "TESTS: Irrelevant Perl versions";
    return 0;
 }
 

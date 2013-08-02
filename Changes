@@ -1,6 +1,7 @@
 Revision history for Class::Usul
 
-0.22.16   2013-07-30 14:27:50
+0.22.17   2013-08-02 14:50:23
+          - Expose the base64 encode/decode functions
           - New method for CPANTesting min Perl ver
           - Added fremen and frogman to tier gruber
           - Aborting Bingoes failed see df276fba-f57c-11e2-8c80-50d7c5c10595

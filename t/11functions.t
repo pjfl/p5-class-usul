@@ -1,8 +1,8 @@
-# @(#)$Ident: 11functions.t 2013-07-28 17:11 pjf ;
+# @(#)$Ident: 11functions.t 2013-08-02 13:49 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 13 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 17 $ =~ /\d+/gmx );
 use File::Spec::Functions;
 use FindBin qw( $Bin );
 use lib catdir( $Bin, updir, q(lib) );
@@ -40,6 +40,10 @@ is assert, 1, 'assert - can set coderef';
 
 like assert_directory( q(t) ), qr{ t \z }mx, 'assert_directory - true';
 ok ! assert_directory( q(dummy) ),           'assert_directory - false';
+
+my $encoded = base64_encode_ns( 'This is a test' );
+
+is base64_decode_ns( $encoded ), 'This is a test', 'base64 encode/decode';
 
 my $before = time; my $id = bsonid_time( bsonid ); my $after = time;
 my $bool   = $before <= $id && $id <= $after ? 1 : 0;

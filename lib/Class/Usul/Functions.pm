@@ -1,11 +1,11 @@
-# @(#)$Ident: Functions.pm 2013-07-28 17:11 pjf ;
+# @(#)$Ident: Functions.pm 2013-08-02 13:48 pjf ;
 
 package Class::Usul::Functions;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 13 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 17 $ =~ /\d+/gmx );
 use parent 'Exporter::TypeTiny';
 
 use Class::Null;
@@ -27,18 +27,20 @@ use User::pwent;
 
 our @EXPORT      = qw( is_member );
 our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
-                       assert_directory bsonid bsonid_time bson64id
+                       assert_directory base64_decode_ns
+                       base64_encode_ns bsonid bsonid_time bson64id
                        bson64id_time build class2appdir classdir
                        classfile create_token data_dumper distname
                        downgrade elapsed emit env_prefix escape_TT
                        exception find_apphome find_source fold fqdn
-                       fullname get_cfgfiles get_user hex2str home2appldir
-                       is_arrayref is_coderef is_hashref is_win32
-                       loginid logname merge_attributes my_prefix pad
-                       prefix2class product split_on__ split_on_dash
-                       squeeze strip_leader sub_name sum thread_id
-                       throw trim unescape_TT untaint_cmdline
-                       untaint_identifier untaint_path untaint_string zip );
+                       fullname get_cfgfiles get_user hex2str
+                       home2appldir is_arrayref is_coderef is_hashref
+                       is_win32 loginid logname merge_attributes
+                       my_prefix pad prefix2class product split_on__
+                       split_on_dash squeeze strip_leader sub_name sum
+                       thread_id throw trim unescape_TT
+                       untaint_cmdline untaint_identifier untaint_path
+                       untaint_string zip );
 our %EXPORT_REFS =   ( assert => sub { ASSERT } );
 our %EXPORT_TAGS =   ( all => [ @EXPORT, @EXPORT_OK ], );
 
@@ -74,6 +76,71 @@ sub assert_directory ($) {
    return -d $y ? $y : undef;
 }
 
+sub base64_decode_ns ($) {
+   my $x = shift; defined $x or return; my @x = split q(), $x;
+
+   my $index = _index64(); my $j = 0; my $k = 0;
+
+   my $len = length $x; my $pad = 64; my @y = ();
+
+ ROUND: {
+    while ($j < $len) {
+       my @c = (); my $i = 0;
+
+       while ($i < 4) {
+          my $uc = $index->[ ord $x[ $j++ ] ];
+
+          $uc ne 'XX' and $c[ $i++ ] = 0 + $uc; $j == $len or next;
+
+          if ($i < 4) {
+             $i < 2 and last ROUND; $i == 2 and $c[ 2 ] = $pad; $c[ 3 ] = $pad;
+          }
+
+          last;
+       }
+
+      ($c[ 0 ]   == $pad || $c[ 1 ] == $pad) and last;
+       $y[ $k++ ] = ( $c[ 0 ] << 2) | (($c[ 1 ] & 0x30) >> 4);
+       $c[ 2 ]   == $pad and last;
+       $y[ $k++ ] = (($c[ 1 ] & 0x0F) << 4) | (($c[ 2 ] & 0x3C) >> 2);
+       $c[ 3 ]   == $pad and last;
+       $y[ $k++ ] = (($c[ 2 ] & 0x03) << 6) | $c[ 3 ];
+    }
+ }
+
+   return join q(), map { chr $_ } @y;
+}
+
+sub base64_encode_ns (;$) {
+   my $x = shift; defined $x or return; my @x = split q(), $x;
+
+   my $basis = _base64_char_set(); my $len = length $x; my @y = ();
+
+   for (my $i = 0, my $j = 0; $len > 0; $len -= 3, $i += 3) {
+      my $c1 = ord $x[ $i ]; my $c2 = $len > 1 ? ord $x[ $i + 1 ] : 0;
+
+      $y[ $j++ ] = $basis->[ $c1 >> 2 ];
+      $y[ $j++ ] = $basis->[ (($c1 & 0x3) << 4) | (($c2 & 0xF0) >> 4) ];
+
+      if ($len > 2) {
+         my $c3 = ord $x[ $i + 2 ];
+
+         $y[ $j++ ] = $basis->[ (($c2 & 0xF) << 2) | (($c3 & 0xC0) >> 6) ];
+         $y[ $j++ ] = $basis->[ $c3 & 0x3F ];
+      }
+      elsif ($len == 2) {
+         $y[ $j++ ] = $basis->[ ($c2 & 0xF) << 2 ];
+         $y[ $j++ ] = $basis->[ 64 ];
+      }
+      else { # len == 1
+         $y[ $j++ ] = $basis->[ 64 ];
+         $y[ $j++ ] = $basis->[ 64 ];
+      }
+   }
+
+   return join q(), @y;
+}
+
 sub bsonid (;$) {
    return unpack 'H*', _bsonid( $_[ 0 ] );
 }
@@ -83,11 +150,11 @@ sub bsonid_time ($) {
 }
 
 sub bson64id (;$) {
-   return _base64_encode_ns( _bsonid( 2 ) );
+   return base64_encode_ns( _bsonid( 2 ) );
 }
 
 sub bson64id_time ($) {
-   return unpack 'N', substr _base64_decode_ns( $_[ 0 ] ), 2, 4;
+   return unpack 'N', substr base64_decode_ns( $_[ 0 ] ), 2, 4;
 }
 
 sub build (&;$) {
@@ -442,71 +509,6 @@ sub _base64_char_set () {
    return [ 0 .. 9, q(A) .. q(Z), q(_), q(a) .. q(z), q(~), q(+) ];
 }
 
-sub _base64_decode_ns ($) {
-   my $x = shift; defined $x or return; my @x = split q(), $x;
-
-   my $index = _index64(); my $j = 0; my $k = 0;
-
-   my $len = length $x; my $pad = 64; my @y = ();
-
- ROUND: {
-    while ($j < $len) {
-       my @c = (); my $i = 0;
-
-       while ($i < 4) {
-          my $uc = $index->[ ord $x[ $j++ ] ];
-
-          $uc ne 'XX' and $c[ $i++ ] = 0 + $uc; $j == $len or next;
-
-          if ($i < 4) {
-             $i < 2 and last ROUND; $i == 2 and $c[ 2 ] = $pad; $c[ 3 ] = $pad;
-          }
-
-          last;
-       }
-
-      ($c[ 0 ]   == $pad || $c[ 1 ] == $pad) and last;
-       $y[ $k++ ] = ( $c[ 0 ] << 2) | (($c[ 1 ] & 0x30) >> 4);
-       $c[ 2 ]   == $pad and last;
-       $y[ $k++ ] = (($c[ 1 ] & 0x0F) << 4) | (($c[ 2 ] & 0x3C) >> 2);
-       $c[ 3 ]   == $pad and last;
-       $y[ $k++ ] = (($c[ 2 ] & 0x03) << 6) | $c[ 3 ];
-    }
- }
-
-   return join q(), map { chr $_ } @y;
-}
-
-sub _base64_encode_ns (;$) {
-   my $x = shift; defined $x or return; my @x = split q(), $x;
-
-   my $basis = _base64_char_set; my $len = length $x; my @y = ();
-
-   for (my $i = 0, my $j = 0; $len > 0; $len -= 3, $i += 3) {
-      my $c1 = ord $x[ $i ]; my $c2 = $len > 1 ? ord $x[ $i + 1 ] : 0;
-
-      $y[ $j++ ] = $basis->[ $c1 >> 2 ];
-      $y[ $j++ ] = $basis->[ (($c1 & 0x3) << 4) | (($c2 & 0xF0) >> 4) ];
-
-      if ($len > 2) {
-         my $c3 = ord $x[ $i + 2 ];
-
-         $y[ $j++ ] = $basis->[ (($c2 & 0xF) << 2) | (($c3 & 0xC0) >> 6) ];
-         $y[ $j++ ] = $basis->[ $c3 & 0x3F ];
-      }
-      elsif ($len == 2) {
-         $y[ $j++ ] = $basis->[ ($c2 & 0xF) << 2 ];
-         $y[ $j++ ] = $basis->[ 64 ];
-      }
-      else { # len == 1
-         $y[ $j++ ] = $basis->[ 64 ];
-         $y[ $j++ ] = $basis->[ 64 ];
-      }
-   }
-
-   return join q(), @y;
-}
-
 sub _bsonid (;$) {
    my $version = shift;
    my $now     = time;
@@ -643,7 +645,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.22.$Rev: 13 $
+This documents version v0.22.$Rev: 17 $
 
 =head1 Synopsis
 
@@ -694,6 +696,19 @@ are passed to it
 
 Untaints directory path. Makes it an absolute path and returns it if it
 exists. Returns undef otherwise
+
+=head2 base64_decode_ns
+
+   $decoded_value = base64_decode_ns $encoded_value;
+
+Decode a scalar value encode using L<base64_encode_ns>
+
+=head2 base64_encode_ns
+
+   $encoded_value = base64_encode_ns $encoded_value;
+
+Base 64 encode a scalar value using an output character set that preserves
+the input values sort order (natural sort)
 
 =head2 bsonid
 
