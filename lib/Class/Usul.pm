@@ -1,10 +1,10 @@
-# @(#)$Ident: Usul.pm 2013-08-02 20:17 pjf ;
+# @(#)$Ident: Usul.pm 2013-08-04 16:51 pjf ;
 
 package Class::Usul;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 18 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.23.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( data_dumper merge_attributes throw );
@@ -109,13 +109,13 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.22.$Rev: 18 $
+Describes Class::Usul version v0.23.$Rev: 1 $
 
 =head1 Synopsis
 
-   use Class::Usul::Moose;
+   use Moo;
 
-   extends qw(Class::Usul);
+   extends q(Class::Usul);
 
    $self = Class::Usul->new( $attr );
 
@@ -135,8 +135,6 @@ L<Class::Usul::File> makes the functionality of L<File::DataClass> available
 
 The L<Module::Build> subclass L<Class::Usul::Build> adds methods for the
 management and deployment of applications
-
-L<Class::Usul::Moose> is a custom L<Moose> exporter
 
 =head1 Configuration and Environment
 
@@ -231,9 +229,9 @@ debug level
 
 =item L<Class::Usul::Log>
 
-=item L<Class::Usul::Moose>
-
 =item L<IPC::SRLock>
+
+=item L<Moo>
 
 =back
 

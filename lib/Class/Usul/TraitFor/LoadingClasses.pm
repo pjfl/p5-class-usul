@@ -1,9 +1,9 @@
-# @(#)$Ident: LoadingClasses.pm 2013-08-02 20:16 pjf ;
+# @(#)$Ident: LoadingClasses.pm 2013-08-04 16:41 pjf ;
 
 package Class::Usul::TraitFor::LoadingClasses;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 18 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.23.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Load             qw( is_class_loaded load_class );
 use Class::Usul::Constants;
@@ -95,17 +95,17 @@ Class::Usul::TraitFor::LoadingClasses - Load classes at runtime
 
 =head1 Version
 
-This documents version v0.22.$Rev: 18 $
+This documents version v0.23.$Rev: 1 $
 
 =head1 Synopsis
 
-   use Class::Usul::Moose;
+   use Moo;
 
    with qw(Class::Usul::TraitFor::LoadingClasses);
 
 =head1 Description
 
-A L<Moose::Role> which load classes at runtime
+A L<Moo::Role> which load classes at runtime
 
 =head1 Subroutines/Methods
 
@@ -156,7 +156,7 @@ None
 
 =item L<Module::Pluggable::Object>
 
-=item L<Moose::Role>
+=item L<Moo::Role>
 
 =item L<Try::Tiny>
 

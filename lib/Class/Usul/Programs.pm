@@ -1,10 +1,10 @@
-# @(#)$Ident: Programs.pm 2013-07-19 14:28 pjf ;
+# @(#)$Ident: Programs.pm 2013-08-04 16:46 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 12 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.23.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Constants;
@@ -359,7 +359,7 @@ sub quiet {
 sub run {
    my $self  = shift; my $method = $self->_get_run_method; my $rv;
 
-   my $text  = 'Started by '.logname.' Version '.$self->VERSION.SPC;
+   my $text  = 'Started by '.logname.' Version '.($self->VERSION || '?').SPC;
       $text .= 'Pid '.(abs $PID);
 
    $self->output( $text ); umask $self->mode;
@@ -726,14 +726,14 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes version v0.22.$Rev: 12 $ of L<Class::Usul::Programs>
+This document describes version v0.23.$Rev: 1 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 
    # In YourClass.pm
-   use Class::Usul::Moose;
+   use Moo;
 
-   extends qw(Class::Usul::Programs);
+   extends q(Class::Usul::Programs);
 
    # In yourProg.pl
    use YourClass;
@@ -981,12 +981,6 @@ Calls L<Class::Usul::localize|Class::Usul/localize> with
 the passed args. Adds the program leader and prints the result to
 I<STDOUT>
 
-=head2 print_usage_text
-
-Empty method used to override L<MooseX::Getop::Basic>'s latest API
-incantation. Used to be C<_getopt_full_usage> which we still have to
-maintain because *we* do not break backward compatibility
-
 =head2 __prompt
 
    $line = __prompt( 'key' => 'value', ... );
@@ -1099,7 +1093,9 @@ Turning debug on produces some more output
 
 =item L<IO::Interactive>
 
-=item L<MooseX::Getopt::Dashes>
+=item L<Moo>
+
+=item L<MooX::Options>
 
 =item L<Term::ReadKey>
 

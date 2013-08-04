@@ -1,9 +1,9 @@
-# @(#)$Ident: Config.pm 2013-07-17 13:56 pjf ;
+# @(#)$Ident: Config.pm 2013-08-04 16:50 pjf ;
 
 package Class::Usul::Config;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 12 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.23.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::File;
@@ -322,7 +322,7 @@ Class::Usul::Config - Inflate config values
 
 =head1 Version
 
-Describes Class::Usul::Config version v0.22.$Rev: 12 $
+Describes Class::Usul::Config version v0.23.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -497,7 +497,7 @@ None
 
 =item L<Class::Usul::File>
 
-=item L<Class::Usul::Moose>
+=item L<Moo>
 
 =back
 

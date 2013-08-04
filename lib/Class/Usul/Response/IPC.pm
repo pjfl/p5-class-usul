@@ -1,9 +1,9 @@
-# @(#)$Ident: IPC.pm 2013-06-25 23:02 pjf ;
+# @(#)$Ident: IPC.pm 2013-08-04 16:20 pjf ;
 
 package Class::Usul::Response::IPC;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.23.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Types qw( Int Object Str Undef );
 use Moo;
@@ -29,7 +29,7 @@ Class::Usul::Response::IPC - Response class for running external programs
 
 =head1 Version
 
-This documents version v0.22.$Rev: 2 $
+This documents version v0.23.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -94,7 +94,7 @@ None
 
 =over 3
 
-=item L<Moose>
+=item L<Moo>
 
 =back
 

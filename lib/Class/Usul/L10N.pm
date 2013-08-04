@@ -1,10 +1,10 @@
-# @(#)$Ident: L10N.pm 2013-06-26 02:11 pjf ;
+# @(#)$Ident: L10N.pm 2013-08-04 16:43 pjf ;
 
 package Class::Usul::L10N;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.23.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -189,7 +189,7 @@ Class::Usul::L10N - Localize text strings
 
 =head1 Version
 
-This documents version v0.22.$Rev: 3 $
+This documents version v0.23.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -292,13 +292,13 @@ Asserts that the I<locale> attribute is set
 
 =item L<Class::Usul::Functions>
 
-=item L<Class::Usul::Moose>
-
 =item L<File::DataClass::Types>
 
 =item L<File::Gettext>
 
 =item L<File::Gettext::Constants>
+
+=item L<Moo>
 
 =item L<Try::Tiny>
 

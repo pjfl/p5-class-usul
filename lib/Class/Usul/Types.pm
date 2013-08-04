@@ -1,11 +1,11 @@
-# @(#)$Ident: Types.pm 2013-06-21 22:10 pjf ;
+# @(#)$Ident: Types.pm 2013-08-04 16:43 pjf ;
 
 package Class::Usul::Types;
 
 use strict;
 use warnings;
 use namespace::clean -except => 'meta';
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.23.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Load             qw( load_first_existing_class );
 use Class::Usul::Constants;
@@ -125,11 +125,11 @@ __END__
 
 =head1 Name
 
-Class::Usul::Types - Defines Moose type constraints
+Class::Usul::Types - Defines type constraints
 
 =head1 Version
 
-This document describes Class::Usul::Types version v0.22.$Rev: 1 $
+This document describes Class::Usul::Types version v0.23.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -177,9 +177,7 @@ None
 
 =item L<Class::Usul::Functions>
 
-=item L<MooseX::Types>
-
-=item L<MooseX::Types::Moose>
+=item L<Type::Tiny>
 
 =back
 

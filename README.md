@@ -4,13 +4,13 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 # Version
 
-Describes Class::Usul version v0.22.$Rev: 17 $
+Describes Class::Usul version v0.23.$Rev: 1 $
 
 # Synopsis
 
-    use Class::Usul::Moose;
+    use Moo;
 
-    extends qw(Class::Usul);
+    extends q(Class::Usul);
 
     $self = Class::Usul->new( $attr );
 
@@ -30,8 +30,6 @@ Interprocess communication is handled by [Class::Usul::IPC](https://metacpan.org
 
 The [Module::Build](https://metacpan.org/module/Module::Build) subclass [Class::Usul::Build](https://metacpan.org/module/Class::Usul::Build) adds methods for the
 management and deployment of applications
-
-[Class::Usul::Moose](https://metacpan.org/module/Class::Usul::Moose) is a custom [Moose](https://metacpan.org/module/Moose) exporter
 
 # Configuration and Environment
 
@@ -112,8 +110,8 @@ debug level
 - [Class::Usul::Functions](https://metacpan.org/module/Class::Usul::Functions)
 - [Class::Usul::L10N](https://metacpan.org/module/Class::Usul::L10N)
 - [Class::Usul::Log](https://metacpan.org/module/Class::Usul::Log)
-- [Class::Usul::Moose](https://metacpan.org/module/Class::Usul::Moose)
 - [IPC::SRLock](https://metacpan.org/module/IPC::SRLock)
+- [Moo](https://metacpan.org/module/Moo)
 
 # Incompatibilities
 

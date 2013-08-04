@@ -1,8 +1,8 @@
-# @(#)$Ident: Meta.pm 2013-06-25 22:57 pjf ;
+# @(#)$Ident: Meta.pm 2013-08-04 16:55 pjf ;
 
 package Class::Usul::Response::Meta;
 
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.23.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::File;
 use Class::Usul::Functions  qw( is_arrayref throw );
@@ -55,7 +55,7 @@ Class::Usul::Response::Meta - Class for CPAN Meta file
 
 =head1 Version
 
-This document describes Class::Usul::Response::Meta version v0.16.$Rev: 2 $
+This document describes Class::Usul::Response::Meta version v0.23.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -100,7 +100,7 @@ None
 
 =over 3
 
-=item L<Moose>
+=item L<Moo>
 
 =item L<YAML::Syck>
 

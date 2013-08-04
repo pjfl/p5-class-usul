@@ -1,9 +1,9 @@
-# @(#)Ident: Lock.pm 2013-06-30 16:08 pjf ;
+# @(#)Ident: Lock.pm 2013-08-04 16:50 pjf ;
 
 package Class::Usul::Lock;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.22.%d', q$Rev: 8 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.23.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( emit );
@@ -66,7 +66,7 @@ Class::Usul::Lock - Command line access to the L<IPC::SRLock> methods
 
 =head1 Version
 
-This documents version v0.22.$Rev: 8 $ of L<Class::Usul::Lock>
+This documents version v0.23.$Rev: 1 $ of L<Class::Usul::Lock>
 
 =head1 Synopsis
 
@@ -129,11 +129,11 @@ None
 
 =over 3
 
-=item L<Class::Usul::Moose>
-
 =item L<Class::Usul::Programs>
 
 =item L<Class::Usul::Time>
+
+=item L<Moo>
 
 =back
 
