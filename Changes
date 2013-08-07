@@ -1,6 +1,7 @@
 Revision history for Class::Usul
 
-0.23.1    2013-08-04 18:11:51
+0.23.2    2013-08-07 14:24:10
+          - Reset min perl testing to original behaviour
           - POD Updates, removed last references to Moose
 
 0.22.18   2013-08-02 21:17:30

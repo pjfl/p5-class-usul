@@ -1,9 +1,9 @@
-# @(#)$Ident: Build.PL 2013-08-04 17:11 pjf ;
+# @(#)$Ident: Build.PL 2013-08-07 13:18 pjf ;
 
 use strict;
 use warnings;
 use inc::Bob; # Module::Build subclass
-use version; our $VERSION = qv( sprintf '0.23.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.23.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 Bob->new( {
    module    => 'Class::Usul',
