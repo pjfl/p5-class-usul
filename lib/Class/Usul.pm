@@ -1,10 +1,10 @@
-# @(#)$Ident: Usul.pm 2013-08-07 13:23 pjf ;
+# @(#)$Ident: Usul.pm 2013-08-08 10:36 pjf ;
 
 package Class::Usul;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.23.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.23.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( data_dumper merge_attributes throw );
@@ -109,7 +109,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.23.$Rev: 2 $
+Describes Class::Usul version v0.23.$Rev: 3 $
 
 =head1 Synopsis
 
