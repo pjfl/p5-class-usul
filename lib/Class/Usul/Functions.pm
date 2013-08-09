@@ -1,11 +1,11 @@
-# @(#)$Ident: Functions.pm 2013-08-02 13:48 pjf ;
+# @(#)$Ident: Functions.pm 2013-08-08 21:43 pjf ;
 
 package Class::Usul::Functions;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.23.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.23.%d', q$Rev: 4 $ =~ /\d+/gmx );
 use parent 'Exporter::TypeTiny';
 
 use Class::Null;
@@ -260,7 +260,7 @@ sub find_apphome ($;$$) {
    $path = assert_directory $path and return $path;
    # 2c. Users home directory - dot file containing shell env variable
    $path = _get_dot_file_var( $my_home, $app_pref, $classdir ) and return $path;
-   # 2d. Users home directory - dot directory is appldir
+   # 2d. Users home directory - dot directory is apphome
    $path = catdir( $my_home, ".${app_pref}" );
    $path = assert_directory $path and return $path;
    # 3. Well known path containing shell env file
@@ -645,7 +645,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.23.$Rev: 1 $
+This documents version v0.23.$Rev: 4 $
 
 =head1 Synopsis
 
