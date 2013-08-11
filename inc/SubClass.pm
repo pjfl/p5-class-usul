@@ -1,8 +1,8 @@
-# @(#)Ident: SubClass.pm 2013-05-17 02:54 pjf ;
+# @(#)Ident: SubClass.pm 2013-08-10 14:05 pjf ;
 
 use Pod::Select;
 
-sub ACTION_distmeta {
+sub ACTION_distmeta { # Create optional readme files
    my $self = shift;
 
    $self->notes->{create_readme_md} and $self->_create_readme_md();
@@ -62,4 +62,12 @@ sub _my_resolve_link {
    $url and return sprintf '[%s](%s)', ($text || $inferred), $url;
 
    return sprintf '%s<%s>', $cmd, $arg;
+}
+
+sub _normalize_prereqs { # Dynamic config
+   my $self = shift; my $prereqs = $self->SUPER::_normalize_prereqs;
+
+   my $osname = lc $^O;
+
+   return $prereqs;
 }

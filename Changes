@@ -1,6 +1,7 @@
 Revision history for Class::Usul
 
-0.23.3    2013-08-08 11:55:31
+0.23.5    2013-08-11 01:17:04
+          - Toolchain update. Attempt to filter out residual noise
           - Misconfigured smoker b0c2e9aa-ffb4-11e2-8a37-e2882d12fa71
             should have been N/A or Unknown. Toolchain updated
           - Reset min perl testing to original behaviour

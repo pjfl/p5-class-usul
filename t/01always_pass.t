@@ -1,4 +1,4 @@
-# @(#)Ident: 01always_pass.t 2013-08-06 18:57 pjf ;
+# @(#)Ident: 01always_pass.t 2013-08-10 10:06 pjf ;
 
 use strict;
 use warnings;
@@ -69,3 +69,4 @@ $EXTENDED_TESTING
 $AUTHOR_TESTING
 $TEST_CRITIC
 $TEST_SPELLING
+$PERL5_CPANPLUS_IS_VERSION
