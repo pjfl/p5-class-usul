@@ -1,8 +1,8 @@
-# @(#)$Ident: 11functions.t 2013-08-02 13:49 pjf ;
+# @(#)$Ident: 11functions.t 2013-08-13 23:15 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.24.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.24.%d', q$Rev: 2 $ =~ /\d+/gmx );
 use File::Spec::Functions;
 use FindBin qw( $Bin );
 use lib catdir( $Bin, updir, q(lib) );
@@ -10,11 +10,11 @@ use lib catdir( $Bin, updir, q(lib) );
 use Module::Build;
 use Test::More;
 
-BEGIN {
-   my $current = eval { Module::Build->current };
+my $notes = {};
 
-   $current and $current->notes->{stop_tests}
-            and plan skip_all => $current->notes->{stop_tests};
+BEGIN {
+   my $builder = eval { Module::Build->current };
+      $builder and $notes = $builder->notes;
 }
 
 use Class::Usul::Constants ();
@@ -23,7 +23,7 @@ BEGIN {
    Class::Usul::Constants->Assert( sub { 1 } );
 }
 
-use Class::Usul::Functions qw(:all);
+use Class::Usul::Functions qw( :all );
 use English qw( -no_match_vars );
 
 is abs_path( catfile( q(t), updir, q(t) ) ), File::Spec->rel2abs( q(t) ),

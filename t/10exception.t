@@ -1,8 +1,8 @@
-# @(#)Ident: 10exception.t 2013-05-08 21:08 pjf ;
+# @(#)Ident: 10exception.t 2013-08-13 23:16 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.24.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.24.%d', q$Rev: 2 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, q(lib) );
@@ -10,10 +10,11 @@ use lib                 catdir( $Bin, updir, q(lib) );
 use Module::Build;
 use Test::More;
 
+my $notes = {};
+
 BEGIN {
-   my $current = eval { Module::Build->current };
-   $current and $current->notes->{stop_tests}
-            and plan skip_all => $current->notes->{stop_tests};
+   my $builder = eval { Module::Build->current };
+      $builder and $notes = $builder->notes;
 }
 
 use_ok 'Class::Usul::Exception';
