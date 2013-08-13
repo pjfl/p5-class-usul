@@ -5,7 +5,7 @@ package Class::Usul::Crypt::Util;
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.23.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.24.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Crypt      qw( decrypt default_cipher encrypt );
@@ -112,7 +112,7 @@ Class::Usul::Crypt::Util - Decrypts/Encrypts password from/to configuration file
 
 =head1 Version
 
-This documents version v0.23.$Rev: 1 $ of L<Class::Usul::Crypt::Util>
+This documents version v0.24.$Rev: 1 $ of L<Class::Usul::Crypt::Util>
 
 =head1 Description
 
