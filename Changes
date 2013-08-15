@@ -1,6 +1,7 @@
 Revision history for Class::Usul
 
-0.24.4    2013-08-14 18:22:37
+0.24.5    2013-08-15 14:43:52
+          - Updated toolchain
           - Bumped dependency File::DataClass
           - Converted to Dist::Zilla
 

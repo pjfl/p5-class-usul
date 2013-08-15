@@ -58,15 +58,12 @@
 # Avoid other crap
 TAGS
 Thumbs.db
-
-# Avoid archives of this distribution
-\bClass-Usul-v?[\d\.\_]+
-\bClass-Usul-?[\d\.\_]+
-
-# More stuff
 \bt/ipc_srlock
 \bt/file-dataclass
 \bbuild.xml
 \blib/Class/Usul/class_usul.json
 \blib/Class/Usul/Build$
 \blib/Class/Usul/Build.pm$
+
+# Avoid archives of this distribution
+\bClass-Usul-v?[\d\.\_]+
