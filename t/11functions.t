@@ -1,22 +1,24 @@
-# @(#)$Ident: 11functions.t 2013-08-13 23:15 pjf ;
+# @(#)$Ident: 11functions.t 2013-08-18 10:58 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.24.%d', q$Rev: 2 $ =~ /\d+/gmx );
-use File::Spec::Functions;
-use FindBin qw( $Bin );
-use lib catdir( $Bin, updir, q(lib) );
+use version; our $VERSION = qv( sprintf '0.25.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use File::Spec::Functions   qw( catdir catfile updir );
+use FindBin                 qw( $Bin );
+use lib                 catdir( $Bin, updir, 'lib' );
 
 use Module::Build;
 use Test::More;
 
-my $notes = {};
+my $notes = {}; my $perl_ver;
 
 BEGIN {
    my $builder = eval { Module::Build->current };
       $builder and $notes = $builder->notes;
+      $perl_ver = $notes->{min_perl_version} || 5.008;
 }
 
+use Test::Requires "${perl_ver}";
 use Class::Usul::Constants ();
 
 BEGIN {
@@ -26,20 +28,20 @@ BEGIN {
 use Class::Usul::Functions qw( :all );
 use English qw( -no_match_vars );
 
-is abs_path( catfile( q(t), updir, q(t) ) ), File::Spec->rel2abs( q(t) ),
+is abs_path( catfile( 't', updir, 't' ) ), File::Spec->rel2abs( 't' ),
    'abs_path';
 
-is app_prefix( q(Test::Application) ), q(test_application), 'app_prefix';
+is app_prefix( 'Test::Application' ), 'test_application', 'app_prefix';
 is app_prefix( undef ), q(), 'app_prefix - undef arg';
 
 my $list = arg_list( 'key1' => 'value1', 'key2' => 'value2' );
 
-is $list->{key2}, q(value2), 'arg_list';
+is $list->{key2}, 'value2', 'arg_list';
 
 is assert, 1, 'assert - can set coderef';
 
-like assert_directory( q(t) ), qr{ t \z }mx, 'assert_directory - true';
-ok ! assert_directory( q(dummy) ),           'assert_directory - false';
+like assert_directory( 't' ), qr{ t \z }mx, 'assert_directory - true';
+ok ! assert_directory( 'dummy' ),           'assert_directory - false';
 
 my $encoded = base64_encode_ns( 'This is a test' );
 
@@ -59,14 +61,15 @@ sub build_test { my $v = shift; return $v + 1 } my $f = sub { 1 };
 
 is build( \&build_test, $f )->(), 2, 'build';
 
-is class2appdir( q(Test::Application) ), q(test-application), 'class2appdir';
+is class2appdir( 'Test::Application' ), 'test-application', 'class2appdir';
 
-is classdir( q(Test::Application) ), catdir( qw(Test Application) ), 'classdir';
+is classdir( 'Test::Application' ), catdir( qw( Test Application ) ),
+   'classdir';
 
-is classfile( q(Test::Application) ), catfile( qw(Test Application.pm) ),
+is classfile( 'Test::Application' ), catfile( qw( Test Application.pm ) ),
    'classfile';
 
-my $token = create_token( q(test) );
+my $token = create_token( 'test' );
 
 ok $token eq q(ee26b0dd4af7e749aa1a8ee3c10ae9923f618980772e473f8819a5d4940e0db27ac185f8a0e1d5f84f88bc887fd67b143732c304cc5fa9ad8e6f57f50028a8ff)
    || $token

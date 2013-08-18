@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+0.25.1    2013-08-18 12:15:00
+          - Updated toolchain
+
 0.24.5    2013-08-15 14:43:52
           - Updated toolchain
           - Bumped dependency File::DataClass

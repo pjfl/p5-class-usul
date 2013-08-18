@@ -5,7 +5,7 @@ package Class::Usul::Types;
 use strict;
 use warnings;
 use namespace::clean -except => 'meta';
-use version; our $VERSION = qv( sprintf '0.24.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.25.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Load             qw( load_first_existing_class );
 use Class::Usul::Constants;
@@ -129,7 +129,7 @@ Class::Usul::Types - Defines type constraints
 
 =head1 Version
 
-This document describes Class::Usul::Types version v0.24.$Rev: 1 $
+This document describes Class::Usul::Types version v0.25.$Rev: 1 $
 
 =head1 Synopsis
 

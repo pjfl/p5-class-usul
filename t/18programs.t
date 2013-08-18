@@ -1,24 +1,26 @@
-# @(#)$Ident: 18programs.t 2013-08-13 23:14 pjf ;
+# @(#)$Ident: 18programs.t 2013-08-18 11:02 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.24.%d', q$Rev: 2 $ =~ /\d+/gmx );
-use File::Spec::Functions;
-use FindBin qw( $Bin );
-use lib catdir( $Bin, updir, q(lib) );
+use version; our $VERSION = qv( sprintf '0.25.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use File::Spec::Functions   qw( catdir catfile updir );
+use FindBin                 qw( $Bin );
+use lib                 catdir( $Bin, updir, 'lib' );
 
 use Module::Build;
 use Test::More;
 
-my $notes = {};
+my $notes = {}; my $perl_ver;
 
 BEGIN {
    my $builder = eval { Module::Build->current };
       $builder and $notes = $builder->notes;
+      $perl_ver = $notes->{min_perl_version} || 5.008;
 }
 
-use English qw(-no_match_vars);
-use File::Basename qw(basename);
+use Test::Requires "${perl_ver}";
+use English qw( -no_match_vars );
+use File::Basename qw( basename );
 use Test::Deep;
 
 use_ok 'Class::Usul::Programs';
