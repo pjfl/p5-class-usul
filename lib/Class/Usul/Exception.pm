@@ -1,17 +1,19 @@
-# @(#)Ident: Exception.pm 2013-06-24 13:54 pjf ;
+# @(#)Ident: Exception.pm 2013-09-03 11:15 pjf ;
 
 package Class::Usul::Exception;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.25.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.26.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
-use Unexpected::Types qw( Int NonZeroPositiveInt Str );
+use Unexpected::Types qw( Int Str );
 
 extends q(Unexpected);
 with    q(Unexpected::TraitFor::ErrorLeader);
+with    q(Unexpected::TraitFor::ExceptionClasses);
 
-__PACKAGE__->ignore_class( 'Class::Usul::IPC' );
+__PACKAGE__->has_exception( __PACKAGE__ );
+__PACKAGE__->ignore_class ( 'Class::Usul::IPC' );
 
 has '+class' => default => __PACKAGE__;
 
@@ -19,7 +21,7 @@ has 'out'    => is => 'ro', isa => Str, default => q();
 
 has 'rv'     => is => 'ro', isa => Int, default => 1;
 
-has 'time'   => is => 'ro', isa => NonZeroPositiveInt, default => CORE::time(),
+has 'time'   => is => 'ro', isa => Int, default => CORE::time(),
    init_arg  => undef;
 
 1;
@@ -36,7 +38,7 @@ Class::Usul::Exception - Exception handling
 
 =head1 Version
 
-This documents version v0.25.$Rev: 1 $ of L<Class::Usul::Exception>
+This documents version v0.26.$Rev: 1 $ of L<Class::Usul::Exception>
 
 =head1 Synopsis
 

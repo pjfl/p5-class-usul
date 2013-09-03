@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+0.26.1    2013-09-03 13:10:50
+          - Bumped version dependencies
+
 0.25.1    2013-08-18 12:15:00
           - Updated toolchain
 

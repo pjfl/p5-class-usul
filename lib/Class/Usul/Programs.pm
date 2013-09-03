@@ -1,10 +1,10 @@
-# @(#)$Ident: Programs.pm 2013-08-04 16:46 pjf ;
+# @(#)$Ident: Programs.pm 2013-09-02 15:52 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.25.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.26.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Constants;
@@ -21,7 +21,6 @@ use Config;
 use English                 qw( -no_match_vars );
 use File::Basename          qw( dirname );
 use File::DataClass::Types  qw( Directory );
-use File::Spec::Functions   qw( catdir catfile );
 use IO::Interactive         qw( is_interactive );
 use List::Util              qw( first );
 use Moo;
@@ -68,9 +67,9 @@ option 'home'         => is => 'lazy', isa => Directory, format => 's',
    default            => sub { $_[ 0 ]->config->home },
    coerce             => Directory->coercion;
 
-option 'language'     => is => 'ro',   isa => SimpleStr, format => 's',
+option 'locale'       => is => 'ro',   isa => SimpleStr, format => 's',
    documentation      => 'Loads the specified language message catalog',
-   default            => NUL, short => 'L';
+   default            => sub { $_[ 0 ]->config->locale }, short => 'L';
 
 option 'method'       => is => 'rw',   isa => SimpleStr, format => 's',
    documentation      => 'Name of the method to call',
@@ -331,7 +330,7 @@ sub loc {
             : { params => (is_arrayref $car) ? $car : [ @args ] };
 
    $args->{domain_names} ||= [ DEFAULT_L10N_DOMAIN, $self->config->name ];
-   $args->{locale      } ||= $self->language;
+   $args->{locale      } ||= $self->locale;
 
    return $self->localize( $key, $args );
 }
@@ -726,7 +725,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes version v0.25.$Rev: 1 $ of L<Class::Usul::Programs>
+This document describes version v0.26.$Rev: 1 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 
@@ -747,7 +746,7 @@ constructor can initialise a multi-lingual message catalog if required
 
 =head1 Configuration and Environment
 
-Supports this list of command line options
+Supports this list of command line options:
 
 =over 3
 
@@ -769,10 +768,11 @@ Print short help text extracted from this POD
 
 =item C<? help_usage>
 
-=item C<L language>
+=item C<L locale>
 
-Print error messages in the selected language. If no language is
-supplied print the error code and attributes
+Print text and error messages in the selected language. If no language
+catalog is supplied prints text and errors in terse English. Defaults
+to C<en_GB>
 
 =item C<n nodebug>
 
@@ -970,7 +970,7 @@ be called via the L<run method|/run>
 
 Localizes the message. Calls L<Class::Usul::L10N/localize>. Adds the
 constant C<DEFAULT_L10N_DOMAINS> to the list of domain files that are
-searched. Adds C<< $self->language >> and C< $self->config->name >>
+searched. Adds C<< $self->locale >> and C< $self->config->name >>
 (search domain) to the arguments passed to C<localize>
 
 =head2 output

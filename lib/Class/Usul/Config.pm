@@ -1,9 +1,9 @@
-# @(#)$Ident: Config.pm 2013-08-04 16:50 pjf ;
+# @(#)$Ident: Config.pm 2013-08-27 17:10 pjf ;
 
 package Class::Usul::Config;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.25.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.26.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::File;
@@ -80,6 +80,8 @@ has 'vardir'    => is => 'lazy', isa => Path, coerce => Path->coercion;
 
 
 has 'extension' => is => 'lazy', isa => NonEmptySimpleStr;
+
+has 'locale'    => is => 'ro',   isa => NonEmptySimpleStr, default => 'en_GB';
 
 has 'name'      => is => 'lazy', isa => NonEmptySimpleStr;
 
@@ -322,7 +324,7 @@ Class::Usul::Config - Inflate config values
 
 =head1 Version
 
-Describes Class::Usul::Config version v0.25.$Rev: 1 $
+Describes Class::Usul::Config version v0.26.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -372,6 +374,10 @@ Directory containing the config file. Required
 =item C<l10n_attributes>
 
 Hash ref of attributes used to construct a L<Class::Usul::L10N> object
+
+=item C<locale>
+
+The locale for language translation of text. Defaults to C<en_GB>
 
 =item C<localedir>
 
