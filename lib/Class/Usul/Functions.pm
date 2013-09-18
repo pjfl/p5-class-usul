@@ -1,11 +1,11 @@
-# @(#)$Ident: Functions.pm 2013-08-08 21:43 pjf ;
+# @(#)$Ident: Functions.pm 2013-09-16 15:25 pjf ;
 
 package Class::Usul::Functions;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.26.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use parent 'Exporter::TypeTiny';
 
 use Class::Null;
@@ -24,6 +24,8 @@ use Path::Class::Dir;
 use Scalar::Util            qw( blessed openhandle );
 use Sys::Hostname;
 use User::pwent;
+
+EXCEPTION_CLASS->has_exception( 'Tainted' );
 
 our @EXPORT      = qw( is_member );
 our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
@@ -45,6 +47,16 @@ our %EXPORT_REFS =   ( assert => sub { ASSERT } );
 our %EXPORT_TAGS =   ( all => [ @EXPORT, @EXPORT_OK ], );
 
 my $BSON_Id_Inc : shared = 0;
+
+# Construction
+sub _exporter_fail {
+    my ($class, $name, $value, $globals) = @_;
+
+    exists $EXPORT_REFS{ $name }
+       and return ( $name => $EXPORT_REFS{ $name }->() );
+
+    throw( "Could not find sub '${name}' to export in package '${class}'" );
+}
 
 # Public functions
 sub abs_path ($) {
@@ -268,8 +280,10 @@ sub find_apphome ($;$$) {
    # 4. Default install prefix
    $path = catdir( @{ PREFIX() }, $appdir, qw( default lib ), $classdir );
    $path = assert_directory $path and return $path;
-   # 5. Config file found in @INC
+   # 5a. Config file found in @INC - underscore as separator
    $path = _find_conf_in_inc( $app_pref, $extns, $classdir ) and return $path;
+   # 5b. Config file found in @INC - dash as separator
+   $path = _find_conf_in_inc( $appdir, $extns, $classdir ) and return $path;
    # 6. Pass the default in
    $path = assert_directory $home and return $path;
    # 7. Default to /tmp
@@ -309,29 +323,31 @@ sub fullname () {
 }
 
 sub get_cfgfiles ($;$$) {
-   my ($appclass, $dirs, $extns) = @_; my $files = [];
-
-   my $app_pref = app_prefix $appclass; my $env_pref = env_prefix $appclass;
-
-   my $suffix   = $ENV{ "${env_pref}_CONFIG_LOCAL_SUFFIX" } || '_local';
+   my ($appclass, $dirs, $extns) = @_;
 
    is_arrayref( $dirs ) or $dirs = [ defined $dirs ? $dirs : () ];
 
+   my $app_pref = app_prefix   $appclass;
+   my $appdir   = class2appdir $appclass;
+   my $env_pref = env_prefix   $appclass;
+   my $suffix   = $ENV{ "${env_pref}_CONFIG_LOCAL_SUFFIX" } || '_local';
+   my @paths    = ();
+
    for my $dir (@{ $dirs }) {
       for my $extn (@{ $extns || [] }) {
-         my $file;
-         $file = _catpath( $dir, "${app_pref}${extn}" );
-         -f $file and push @{ $files }, $file;
-         $file = _catpath( $dir, "${app_pref}${suffix}${extn}" );
-         -f $file and push @{ $files }, $file;
+         for my $path (map { _catpath( $dir, $_ ) } "${app_pref}${extn}",
+                       "${appdir}${extn}", "${app_pref}${suffix}${extn}",
+                       "${appdir}${suffix}${extn}") {
+            -f $path and push @paths, $path;
+         }
       }
    }
 
-   return $files;
+   return \@paths;
 }
 
-sub get_user () {
-   return is_win32() ? Class::Null->new : getpwuid( $UID );
+sub get_user (;$) {
+   return is_win32() ? Class::Null->new : getpwuid( shift // $UID );
 }
 
 sub hex2str (;$) {
@@ -551,15 +567,6 @@ sub _catpath {
    return untaint_path( catfile( @_ ) );
 }
 
-sub _exporter_fail {
-    my ($class, $name, $value, $globals) = @_;
-
-    exists $EXPORT_REFS{ $name }
-       and return ( $name => $EXPORT_REFS{ $name }->() );
-
-    throw( "Could not find sub '${name}' to export in package '${class}'" );
-}
-
 sub _find_conf_in_inc {
    my ($file, $extns, $classdir) = @_;
 
@@ -645,7 +652,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.26.$Rev: 1 $
+This documents version v0.27.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -874,10 +881,11 @@ Returns an array ref of configurations file paths for the application
 
 =head2 get_user
 
-   $user_object = get_user;
+   $user_object = get_user $optional_uid;
 
 Returns the user object from a call to C<getpwuid> with get L<User::pwent>
-package loaded. On MSWin32 systems returns an instance of L<Class::Null>
+package loaded. On MSWin32 systems returns an instance of L<Class::Null>.
+Defaults to the current uid but will lookup the supplied uid if provided
 
 =head2 hex2str
 

@@ -1,11 +1,11 @@
-# @(#)$Ident: Constants.pm 2013-06-25 23:13 pjf ;
+# @(#)$Ident: Constants.pm 2013-09-16 15:40 pjf ;
 
 package Class::Usul::Constants;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.26.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use parent 'Exporter::TypeTiny';
 
 use Class::Usul::Exception;
@@ -58,7 +58,7 @@ sub ENCODINGS           () { ( qw(ascii iso-8859-1 UTF-8 guess) ) }
 sub EXCEPTION_CLASS     () { __PACKAGE__->Exception_Class }
 sub LOG_LEVELS          () { ( qw(alert debug error fatal info warn) ) }
 sub UNDEFINED_RV        () { -1 }
-sub UNTAINT_CMDLINE     () { qr{ \A ([^\$%;|&><\*]+) \z }mx }
+sub UNTAINT_CMDLINE     () { qr{ \A ([^\$;|&><]+)    \z }mx }
 sub UNTAINT_IDENTIFIER  () { qr{ \A ([a-zA-Z0-9_]+)  \z }mx }
 sub UNTAINT_PATH        () { qr{ \A ([^\$%;|&><\*]+) \z }mx }
 sub USUL_CONFIG_KEY     () { __PACKAGE__->Config_Key }
@@ -112,7 +112,7 @@ Class::Usul::Constants - Definitions of constant values
 
 =head1 Version
 
-This documents version v0.26.$Rev: 1 $
+This documents version v0.27.$Rev: 1 $
 
 =head1 Synopsis
 

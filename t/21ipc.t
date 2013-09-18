@@ -1,8 +1,8 @@
-# @(#)$Ident: 21ipc.t 2013-08-18 11:05 pjf ;
+# @(#)$Ident: 21ipc.t 2013-09-17 11:06 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.26.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir catfile tmpdir updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -43,7 +43,7 @@ my $prog   = Class::Usul::Programs->new( appclass => q(Class::Usul),
                                                        tempdir => q(t), },
                                          log      => Logger->new,
                                          method   => q(dump_self),
-                                         nodebug  => 1,
+                                         noask    => 1,
                                          quiet    => 1, );
 
 sub popen_test {

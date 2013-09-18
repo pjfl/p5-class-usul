@@ -1,10 +1,10 @@
-# @(#)$Ident: Programs.pm 2013-09-02 15:52 pjf ;
+# @(#)$Ident: Programs.pm 2013-09-17 11:08 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.26.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Constants;
@@ -75,7 +75,7 @@ option 'method'       => is => 'rw',   isa => SimpleStr, format => 's',
    documentation      => 'Name of the method to call',
    default            => NUL, order => 1, short => 'c';
 
-option 'nodebug'      => is => 'ro',   isa => Bool, default => FALSE,
+option 'noask'        => is => 'ro',   isa => Bool, default => FALSE,
    documentation      => 'Do not prompt for debugging',
    short              => 'n';
 
@@ -129,11 +129,11 @@ has '_quiet_flag' => is => 'rw',   isa => Bool,
 around 'BUILDARGS' => sub {
    my ($orig, $self, @args) = @_; my $attr = $orig->( $self, @args );
 
-   my $cfg = $attr->{config} ||= {};
+   my $cfg = $attr->{config} //= {}; $attr->{noask} //= delete $attr->{nodebug};
 
-   $cfg->{appclass} ||= delete $attr->{appclass} || blessed $self || $self;
-   $cfg->{home    } ||= find_apphome $cfg->{appclass}, $attr->{home}, $EXTNS;
-   $cfg->{cfgfiles} ||= get_cfgfiles $cfg->{appclass},  $cfg->{home}, $EXTNS;
+   $cfg->{appclass} //= delete $attr->{appclass} || blessed $self || $self;
+   $cfg->{home    } //= find_apphome $cfg->{appclass}, $attr->{home}, $EXTNS;
+   $cfg->{cfgfiles} //= get_cfgfiles $cfg->{appclass},  $cfg->{home}, $EXTNS;
 
    return $attr;
 };
@@ -194,7 +194,7 @@ sub error {
 
    my $text = $self->loc( $err || '[no message]', $args->{args} || [] );
 
-   $self->log->error( $_ ) for (split m{ \n }mx, NUL.$text);
+   $self->log->error( $_ ) for (split m{ \n }mx, "${text}");
 
    __print_fh( \*STDERR, $self->add_leader( $text, $args )."\n" );
    $self->debug and __output_stacktrace( $err, $self->verbose );
@@ -511,7 +511,7 @@ sub _get_classes_and_roles {
 sub _get_debug_option {
    my $self = shift;
 
-   ($self->nodebug or $self->_dont_ask) and return $self->debug;
+   ($self->noask or $self->_dont_ask) and return $self->debug;
 
    return $self->yorn( 'Do you want debugging turned on', FALSE, TRUE );
 }
@@ -725,7 +725,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes version v0.26.$Rev: 1 $ of L<Class::Usul::Programs>
+This document describes version v0.27.$Rev: 1 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 
@@ -774,7 +774,7 @@ Print text and error messages in the selected language. If no language
 catalog is supplied prints text and errors in terse English. Defaults
 to C<en_GB>
 
-=item C<n nodebug>
+=item C<n noask>
 
 Do not prompt to turn debugging on
 

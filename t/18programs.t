@@ -1,8 +1,8 @@
-# @(#)$Ident: 18programs.t 2013-08-18 11:02 pjf ;
+# @(#)$Ident: 18programs.t 2013-09-17 11:05 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.26.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir catfile updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -31,7 +31,7 @@ my $prog    = Class::Usul::Programs->new( appclass => q(Class::Usul),
                                           config   => { logsdir => q(t),
                                                         tempdir => q(t), },
                                           method   => q(dump_self),
-                                          nodebug  => 1,
+                                          noask    => 1,
                                           quiet    => 1, );
 
 cmp_deeply $prog, methods( encoding => q(UTF-8) ), 'Constructs default object';
