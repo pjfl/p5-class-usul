@@ -1,9 +1,9 @@
-# @(#)$Ident: UntaintedGetopts.pm 2013-08-04 16:22 pjf ;
+# @(#)$Ident: UntaintedGetopts.pm 2013-09-28 11:52 pjf ;
 
 package Class::Usul::TraitFor::UntaintedGetopts;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( untaint_cmdline );
@@ -146,8 +146,9 @@ sub __sort_options {
 }
 
 sub __tri2bool {
-   $_[ 0 ] == -1 and return FALSE; return TRUE;
+   return $_[ 0 ] == -1 ? FALSE : TRUE;
 }
+
 1;
 
 __END__
@@ -160,7 +161,7 @@ Class::Usul::TraitFor::UntaintedGetopts - Untaints @ARGV before Getopts processe
 
 =head1 Version
 
-This documents version v0.27.$Rev: 1 $
+This documents version v0.27.$Rev: 2 $
 
 =head1 Synopsis
 

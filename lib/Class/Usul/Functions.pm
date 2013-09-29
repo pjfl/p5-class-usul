@@ -1,12 +1,12 @@
-# @(#)$Ident: Functions.pm 2013-09-16 15:25 pjf ;
+# @(#)$Ident: Functions.pm 2013-09-29 15:02 pjf ;
 
 package Class::Usul::Functions;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 1 $ =~ /\d+/gmx );
-use parent 'Exporter::TypeTiny';
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use parent                  qw( Exporter::Tiny );
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -18,7 +18,7 @@ use Digest::MD5             qw( md5 );
 use English                 qw( -no_match_vars );
 use File::Basename          qw( basename dirname );
 use File::HomeDir           qw( );
-use File::Spec::Functions   qw( catdir catfile tmpdir );
+use File::Spec::Functions   qw( catdir catfile curdir tmpdir );
 use List::Util              qw( first );
 use Path::Class::Dir;
 use Scalar::Util            qw( blessed openhandle );
@@ -248,10 +248,10 @@ sub exception (;@) {
 }
 
 sub find_apphome ($;$$) {
-   my ($appclass, $home, $extns) = @_; my $path;
+   my ($appclass, $default, $extns) = @_; my $path;
 
-   # 0. Pass the directory in
-   not $appclass and $path = assert_directory $home and return $path;
+   # 0. Undef appclass and pass the directory in (short circuit the search)
+   not $appclass and $path = assert_directory $default and return $path;
 
    my $app_pref = app_prefix   $appclass;
    my $appdir   = class2appdir $appclass;
@@ -259,34 +259,34 @@ sub find_apphome ($;$$) {
    my $env_pref = env_prefix   $appclass;
    my $my_home  = File::HomeDir->my_home;
 
-   # 1a. Environment variable - for application directory
+   # 1a.   Environment variable - for application directory
    $path = $ENV{ "${env_pref}_HOME" };
    $path = assert_directory $path and return $path;
-   # 1b. Environment variable - for config file
+   # 1b.   Environment variable - for config file
    $path = _get_env_var_for_conf( $env_pref ) and return $path;
-   # 2a. Users home directory - contains application directory
+   # 2a.   Users home directory - contains application directory
    $path = catdir( $my_home, $appdir, qw( default lib ), $classdir );
    $path = assert_directory $path and return $path;
-   # 2b. Users home directory - dot directory containing application
+   # 2b.   Users home directory - dot directory containing application
    $path = catdir( $my_home, ".${appdir}", qw( default lib ), $classdir );
    $path = assert_directory $path and return $path;
-   # 2c. Users home directory - dot file containing shell env variable
+   # 2c.   Users home directory - dot file containing shell env variable
    $path = _get_dot_file_var( $my_home, $app_pref, $classdir ) and return $path;
-   # 2d. Users home directory - dot directory is apphome
+   # 2d.   Users home directory - dot directory is apphome
    $path = catdir( $my_home, ".${app_pref}" );
    $path = assert_directory $path and return $path;
-   # 3. Well known path containing shell env file
+   # 3.    Well known path containing shell env file
    $path = _get_known_file_var( $appdir, $classdir ) and return $path;
-   # 4. Default install prefix
+   # 4.    Default install prefix
    $path = catdir( @{ PREFIX() }, $appdir, qw( default lib ), $classdir );
    $path = assert_directory $path and return $path;
-   # 5a. Config file found in @INC - underscore as separator
-   $path = _find_conf_in_inc( $app_pref, $extns, $classdir ) and return $path;
-   # 5b. Config file found in @INC - dash as separator
-   $path = _find_conf_in_inc( $appdir, $extns, $classdir ) and return $path;
-   # 6. Pass the default in
-   $path = assert_directory $home and return $path;
-   # 7. Default to /tmp
+   # 5a.   Config file found in @INC - underscore as separator
+   $path = _find_conf_in_inc( $classdir, $app_pref, $extns ) and return $path;
+   # 5b.   Config file found in @INC - dash as separator
+   $path = _find_conf_in_inc( $classdir, $appdir, $extns ) and return $path;
+   # 6.    Pass the default in
+   $path = assert_directory $default and return $path;
+   # 7.    Default to /tmp
    return untaint_path( tmpdir );
 }
 
@@ -325,7 +325,8 @@ sub fullname () {
 sub get_cfgfiles ($;$$) {
    my ($appclass, $dirs, $extns) = @_;
 
-   is_arrayref( $dirs ) or $dirs = [ defined $dirs ? $dirs : () ];
+   $appclass // throw( 'Application class undefined' );
+   is_arrayref( $dirs ) or $dirs = [ defined $dirs ? $dirs : curdir ];
 
    my $app_pref = app_prefix   $appclass;
    my $appdir   = class2appdir $appclass;
@@ -334,7 +335,7 @@ sub get_cfgfiles ($;$$) {
    my @paths    = ();
 
    for my $dir (@{ $dirs }) {
-      for my $extn (@{ $extns || [] }) {
+      for my $extn (@{ $extns || [ q() ] }) {
          for my $path (map { _catpath( $dir, $_ ) } "${app_pref}${extn}",
                        "${appdir}${extn}", "${app_pref}${suffix}${extn}",
                        "${appdir}${suffix}${extn}") {
@@ -568,7 +569,7 @@ sub _catpath {
 }
 
 sub _find_conf_in_inc {
-   my ($file, $extns, $classdir) = @_;
+   my ($classdir, $file, $extns) = @_;
 
    for my $dir (map { catdir( abs_path( $_ ), $classdir ) } @INC) {
       for my $extn (@{ $extns || [] }) {
@@ -652,7 +653,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.27.$Rev: 1 $
+This documents version v0.27.$Rev: 2 $
 
 =head1 Synopsis
 

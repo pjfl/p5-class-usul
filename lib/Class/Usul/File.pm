@@ -1,9 +1,9 @@
-# @(#)$Ident: File.pm 2013-07-19 11:08 pjf ;
+# @(#)$Ident: File.pm 2013-09-25 12:20 pjf ;
 
 package Class::Usul::File;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions   qw( arg_list create_token is_arrayref throw );
@@ -50,16 +50,19 @@ sub data_load {
    defined $args->{arrays}
       and $attr->{storage_attributes}->{force_array} = $args->{arrays};
 
-   return $self->dataclass_schema( $attr )->load( @{ $args->{paths} || [] } );
+  (is_arrayref $args->{paths} and defined $args->{paths}->[ 0 ])
+      or throw 'No data file paths specified';
+
+   return $self->dataclass_schema( $attr )->load( @{ $args->{paths} } );
 }
 
 sub dataclass_schema {
    my ($self, @rest) = @_; my $attr = arg_list @rest;
 
    if (blessed $self) { $attr->{builder} = $self->_usul }
-   else { $attr->{cache_class} = q(none) }
+   else { $attr->{cache_class} = 'none' }
 
-   $attr->{storage_class} ||= q(Any);
+   $attr->{storage_class} ||= 'Any';
 
    return File::DataClass::Schema->new( $attr );
 }
@@ -131,7 +134,7 @@ Class::Usul::File - File and directory IO base class
 
 =head1 Version
 
-This documents version v0.27.$Rev: 1 $
+This documents version v0.27.$Rev: 2 $
 
 =head1 Synopsis
 

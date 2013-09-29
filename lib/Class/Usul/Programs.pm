@@ -1,18 +1,18 @@
-# @(#)$Ident: Programs.pm 2013-09-17 11:08 pjf ;
+# @(#)$Ident: Programs.pm 2013-09-25 14:45 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Constants;
+use Class::Usul::File;
 use Class::Usul::Functions  qw( abs_path arg_list elapsed emit
                                 exception find_apphome find_source
                                 get_cfgfiles is_arrayref is_hashref is_member
                                 logname pad throw untaint_identifier );
-use Class::Usul::File;
 use Class::Usul::IPC;
 use Class::Usul::Types      qw( ArrayRef Bool EncodingType FileType HashRef Int
                                 IPCType LoadableClass NonZeroPositiveInt
@@ -610,7 +610,7 @@ sub __list_methods_of {
                     ( blessed $_[ 0 ] || $_[ 0 ], 'full', 'public' ) };
 }
 
-sub __map_prompt_args {
+sub __map_prompt_args { # IO::Prompt equiv. sub has an obscure bug so this
    my $args = shift; my %map = ( qw(-1 onechar -d default -e echo -p prompt) );
 
    for (grep { exists $map{ $_ } } keys %{ $args }) {
@@ -638,7 +638,7 @@ sub __print_fh {
    return;
 }
 
-sub __prompt {
+sub __prompt { # Robbed from IO::Prompt
    my $args    = __map_prompt_args( arg_list @_ );
    my $default = $args->{default};
    my $echo    = $args->{echo   };
@@ -725,7 +725,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes version v0.27.$Rev: 1 $ of L<Class::Usul::Programs>
+This document describes version v0.27.$Rev: 2 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 

@@ -1,8 +1,8 @@
-# @(#)$Ident: 11functions.t 2013-08-18 10:58 pjf ;
+# @(#)$Ident: 11functions.t 2013-09-29 15:07 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 2 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir catfile updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -21,9 +21,7 @@ BEGIN {
 use Test::Requires "${perl_ver}";
 use Class::Usul::Constants ();
 
-BEGIN {
-   Class::Usul::Constants->Assert( sub { 1 } );
-}
+BEGIN { Class::Usul::Constants->Assert( sub { 1 } ) }
 
 use Class::Usul::Functions qw( :all );
 use English qw( -no_match_vars );

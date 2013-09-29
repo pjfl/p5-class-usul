@@ -1,10 +1,10 @@
-# @(#)$Ident: Usul.pm 2013-08-15 13:43 pjf ;
+# @(#)$Ident: Usul.pm 2013-09-26 23:56 pjf ;
 
 package Class::Usul;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( data_dumper merge_attributes throw );
@@ -37,7 +37,7 @@ has 'encoding'       => is => 'lazy', isa => EncodingType,
 
 has '_l10n'          => is => 'lazy', isa => L10NType,
    default           => sub { Class::Usul::L10N->new( builder => $_[ 0 ] ) },
-   handles           => [ qw(localize) ], init_arg => 'l10n', reader => 'l10n';
+   handles           => [ 'localize' ], init_arg => 'l10n', reader => 'l10n';
 
 has '_lock'          => is => 'lazy', isa => LockType,
    init_arg          => 'lock', reader => 'lock';
@@ -63,9 +63,9 @@ sub _build__lock { # There is only one lock object. Instantiate on first use
 
    my $config = $self->config; my $attr = { %{ $config->lock_attributes } };
 
-   merge_attributes $attr, $self,   {}, [ qw(debug log) ];
+   merge_attributes $attr, $self,   {}, [ qw( debug log ) ];
    merge_attributes $attr, $config, { exception_class => EXCEPTION_CLASS },
-      [ qw(exception_class tempdir) ];
+      [ qw( exception_class tempdir ) ];
 
    return $cache = IPC::SRLock->new( $attr );
 }
@@ -83,7 +83,7 @@ sub __build_attr_from_class { # Coerce a hash ref from a string
    my $class = shift;
 
    defined $class or throw 'Application class not defined';
-   $class->can( q(config) )
+   $class->can( 'config' )
       or throw error => 'Class [_1] is missing the config method',
                args  => [ $class ];
 
@@ -93,7 +93,7 @@ sub __build_attr_from_class { # Coerce a hash ref from a string
    my $name   = delete $config->{name}; $config->{appclass} ||= $name;
 
    $attr->{config} ||= $config;
-   $attr->{debug } ||= $class->can( q(debug) ) ? $class->debug : FALSE;
+   $attr->{debug } ||= $class->can( 'debug' ) ? $class->debug : FALSE;
    return $attr;
 }
 
@@ -109,7 +109,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.27.$Rev: 1 $
+Describes Class::Usul version v0.27.$Rev: 2 $
 
 =head1 Synopsis
 
