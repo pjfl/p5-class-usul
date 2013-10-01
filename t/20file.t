@@ -1,8 +1,8 @@
-# @(#)$Ident: 20file.t 2013-08-18 11:04 pjf ;
+# @(#)$Ident: 20file.t 2013-09-30 17:16 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 3 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir catfile updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -56,13 +56,13 @@ SKIP: {
    ok( (grep { m{ name }msx } $cuf->io( $tf )->getlines)[ 0 ]
        =~ m{ library }msx, 'IO can getlines' );
 
-   my $path = $cuf->absolute( [ qw(test test) ], q(test) );
+   my $path = $cuf->absolute( [ qw( a b ) ], q(c) );
 
-   like $path, qr{ test . test . test \z }mx, 'Absolute path 1';
+   like $path, qr{ a . b . c \z }mx, 'Absolute path 1';
 
-   $path = $cuf->absolute( q(test), q(test) );
+   $path = $cuf->absolute( q(a), [ qw( b c ) ] );
 
-   like $path, qr{ test . test \z }mx, 'Absolute path 2';
+   like $path, qr{ a . b . c \z }mx, 'Absolute path 2';
 
    my $fdcs = $cuf->dataclass_schema->load( $tf );
 

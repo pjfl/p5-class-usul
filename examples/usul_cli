@@ -3,17 +3,16 @@
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 1 $ =~ /\d+/gmx );
-use File::Spec::Functions qw(catdir updir);
-use FindBin qw( $Bin );
-use lib catdir( $Bin, updir, q(lib) );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use File::Spec::Functions   qw( catdir updir );
+use FindBin                 qw( $Bin );
+use lib                 catdir( $Bin, updir, 'lib' );
 
 # Replace this with the name of your subclass
 use Class::Usul::Programs;
 
 # Appclass is the class name of the application to which this program belongs.
 # It is used to determine the location of the default configuration file
-
 exit Class::Usul::Programs->new_with_options( appclass => 'Class::Usul' )->run;
 
 __END__
@@ -44,7 +43,7 @@ Displays a list of available methods
 
 =head1 VERSION
 
-0.1.$Rev: 1 $
+0.1.$Rev: 3 $
 
 =head1 DESCRIPTION
 

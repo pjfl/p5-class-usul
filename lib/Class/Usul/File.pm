@@ -1,9 +1,9 @@
-# @(#)$Ident: File.pm 2013-09-25 12:20 pjf ;
+# @(#)$Ident: File.pm 2013-09-30 17:26 pjf ;
 
 package Class::Usul::File;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions   qw( arg_list create_token is_arrayref throw );
@@ -12,7 +12,7 @@ use English                  qw( -no_match_vars );
 use File::DataClass::Constants ( );
 use File::DataClass::IO        ( );
 use File::DataClass::Schema;
-use File::Spec::Functions    qw( catdir catfile );
+use File::Spec::Functions    qw( catdir catfile rootdir );
 use Moo;
 use Scalar::Util             qw( blessed );
 
@@ -25,7 +25,9 @@ has '_usul' => is => 'ro', isa => BaseType,
 
 # Public methods
 sub absolute {
-   my ($self, $base, $path) = @_; $base ||= NUL; $path or return NUL;
+   my ($self, $base, $path) = @_;
+
+   $base //= rootdir; $path or return $self->io( $base );
 
    is_arrayref $base and $base = catdir( @{ $base } );
 
@@ -35,7 +37,7 @@ sub absolute {
 sub data_dump {
    my ($self, @rest) = @_; my $args = arg_list @rest; my $attr = {};
 
-   defined $args->{storage_class}
+   exists $args->{storage_class} and defined $args->{storage_class}
       and $attr->{storage_class} = delete $args->{storage_class};
 
    return $self->dataclass_schema( $attr )->dump( $args );
@@ -45,10 +47,10 @@ sub data_load {
    my ($self, @rest) = @_; my $args = arg_list @rest; my $attr = {};
 
    defined $args->{storage_class}
-      and $attr->{storage_class} = delete $args->{storage_class};
+       and $attr->{storage_class} = delete $args->{storage_class};
 
    defined $args->{arrays}
-      and $attr->{storage_attributes}->{force_array} = $args->{arrays};
+       and $attr->{storage_attributes}->{force_array} = $args->{arrays};
 
   (is_arrayref $args->{paths} and defined $args->{paths}->[ 0 ])
       or throw 'No data file paths specified';
@@ -94,7 +96,7 @@ sub symlink {
    $to   = $self->io( $to ); -l $to->pathname and $to->unlink;
    $to->exists and
       throw error => 'Path [_1] already exists', args => [ $to->pathname ];
-   CORE::symlink $from->pathname, $to->pathname or throw $ERRNO;
+   CORE::symlink $from->pathname, $to->pathname or throw $OS_ERROR;
    return "Symlinked ${from} to ${to}";
 }
 
@@ -134,7 +136,7 @@ Class::Usul::File - File and directory IO base class
 
 =head1 Version
 
-This documents version v0.27.$Rev: 2 $
+This documents version v0.27.$Rev: 3 $
 
 =head1 Synopsis
 
@@ -152,7 +154,10 @@ Provides file and directory methods to the application base class
 
    $absolute_path = $self->absolute( $base, $path );
 
-Prepends F<$base> to F<$path> unless F<$path> is an absolute path
+Prepends F<$base> to F<$path> unless F<$path> is an absolute path. The
+C<$path> argument is passed to the L<File::DataClass::IO> constructor and
+the C<$base> argument can be a string, object ref which stringifies, or an
+array ref
 
 =head2 data_dump
 

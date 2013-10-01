@@ -1,10 +1,10 @@
-# @(#)$Ident: Crypt.pm 2013-07-01 15:14 pjf ;
+# @(#)$Ident: Crypt.pm 2013-09-30 15:47 pjf ;
 
 package Class::Usul::Crypt;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( create_token is_coderef is_hashref );
@@ -20,7 +20,7 @@ my $SEED = do { local $RS = undef; <DATA> };
 
 # Public functions
 sub cipher_list () {
-   return ( qw(Blowfish Rijndael Twofish2) );
+   return ( qw( Blowfish Rijndael Twofish2 ) );
 }
 
 sub decrypt (;$$) {
@@ -82,7 +82,7 @@ Class::Usul::Crypt - Encryption/decryption functions
 
 =head1 Version
 
-This documents version v0.27.$Rev: 1 $
+This documents version v0.27.$Rev: 3 $
 
 =head1 Synopsis
 

@@ -1,12 +1,13 @@
-# @(#)$Ident: Programs.pm 2013-08-04 16:47 pjf ;
+# @(#)$Ident: Programs.pm 2013-09-29 20:22 pjf ;
 
 package Class::Usul::Config::Programs;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
-use Class::Usul::Types      qw( ArrayRef NonEmptySimpleStr PositiveInt );
+use Class::Usul::Types      qw( ArrayRef NonEmptySimpleStr NonZeroPositiveInt
+                                PositiveInt );
 use File::Basename          qw( basename );
 use File::DataClass::Types  qw( Path );
 use File::HomeDir;
@@ -27,15 +28,17 @@ has 'my_home'      => is => 'lazy', isa => Path, coerce => Path->coercion,
 
 has 'owner'        => is => 'lazy', isa => NonEmptySimpleStr;
 
+has 'pwidth'       => is => 'ro',   isa => NonZeroPositiveInt, default => 60;
+
 has 'script'       => is => 'lazy', isa => NonEmptySimpleStr;
 
 # Private methods
 sub _build_owner {
-   return $_[ 0 ]->_inflate_symbol( $_[ 1 ], q(prefix) ) || q(root);
+   return $_[ 0 ]->_inflate_symbol( $_[ 1 ], 'prefix' ) || 'root';
 }
 
 sub _build_script {
-   return basename( $_[ 0 ]->_inflate_path( $_[ 1 ], qw(pathname) ) );
+   return basename( $_[ 0 ]->_inflate_path( $_[ 1 ], qw( pathname ) ) );
 }
 
 1;
@@ -50,7 +53,7 @@ Class::Usul::Config::Programs - Additional configuration attributes for CLI prog
 
 =head1 Version
 
-This documents version v0.27.$Rev: 1 $
+This documents version v0.27.$Rev: 3 $
 
 =head1 Synopsis
 
@@ -89,6 +92,10 @@ Integer defaults to the constant C<MODE>. The default file creation mask
 =item C<owner>
 
 String. Name of the application file owner
+
+=item C<pwidth>
+
+Integer. Number of characters used to justify command line prompts
 
 =item C<script>
 

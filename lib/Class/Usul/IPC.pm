@@ -1,15 +1,16 @@
-# @(#)$Ident: IPC.pm 2013-06-27 14:46 pjf ;
+# @(#)$Ident: IPC.pm 2013-09-29 20:13 pjf ;
 
 package Class::Usul::IPC;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Constants;
 use Class::Usul::File;
-use Class::Usul::Functions    qw( arg_list is_arrayref is_coderef is_win32
-                                  merge_attributes strip_leader throw );
+use Class::Usul::Functions    qw( arg_list emit_to is_arrayref is_coderef
+                                  is_win32 merge_attributes strip_leader
+                                  throw );
 use Class::Usul::Time         qw( time2str );
 use Class::Usul::Types        qw( BaseType FileType LoadableClass );
 use English                   qw( -no_match_vars );
@@ -81,14 +82,14 @@ sub popen { # Robbed from IPC::Cmd
 
       $opts->{err} ne q(null)   and $stderr .= $buf;
       $opts->{err} eq q(out)    and $out .= $buf;
-      $opts->{err} eq q(stderr) and __print_fh( \*STDERR, $buf );
+      $opts->{err} eq q(stderr) and emit_to( \*STDERR, $buf );
       return;
    };
    my $outhand = sub {
       my $buf = shift; defined $buf or return; $out .= $buf;
 
       $opts->{out} ne q(null)   and $stdout .= $buf;
-      $opts->{out} eq q(stdout) and __print_fh( \*STDOUT, $buf );
+      $opts->{out} eq q(stdout) and emit_to( \*STDOUT, $buf );
       return;
    };
    my $pipe = sub {
@@ -122,7 +123,7 @@ sub popen { # Robbed from IPC::Cmd
 
       ($pid, $in_h, $out_h, $err_h) = $open3->( $cmd );
 
-      $opts->{in} ne q(stdin) and __print_fh( $in_h, $opts->{in} );
+      $opts->{in} ne q(stdin) and emit_to( $in_h, $opts->{in} );
 
       close $in_h;
    }
@@ -617,14 +618,6 @@ sub __partition_command {
    return \@command;
 }
 
-sub __print_fh {
-   my ($handle, $text) = @_; local $OS_ERROR;
-
-   print {$handle} $text
-      or throw error => 'IO error: [_1]', args =>[ $OS_ERROR ];
-   return;
-}
-
 sub __proc_belongs_to_user {
    my ($puid, $user) = @_;
 
@@ -658,7 +651,7 @@ Class::Usul::IPC - List/Create/Delete processes
 
 =head1 Version
 
-This documents version v0.27.$Rev: 1 $
+This documents version v0.27.$Rev: 3 $
 
 =head1 Synopsis
 

@@ -1,27 +1,27 @@
-# @(#)$Ident: Programs.pm 2013-09-25 14:45 pjf ;
+# @(#)$Ident: Programs.pm 2013-10-01 11:53 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Constants;
 use Class::Usul::File;
-use Class::Usul::Functions  qw( abs_path arg_list elapsed emit
-                                exception find_apphome find_source
-                                get_cfgfiles is_arrayref is_hashref is_member
+use Class::Usul::Functions  qw( abs_path elapsed emit emit_to exception
+                                find_apphome find_source get_cfgfiles
+                                is_arrayref is_hashref is_member
                                 logname pad throw untaint_identifier );
 use Class::Usul::IPC;
+use Class::Usul::Prompt;
 use Class::Usul::Types      qw( ArrayRef Bool EncodingType FileType HashRef Int
-                                IPCType LoadableClass NonZeroPositiveInt
-                                PositiveInt SimpleStr );
+                                IPCType LoadableClass PositiveInt PromptType
+                                SimpleStr );
 use Config;
 use English                 qw( -no_match_vars );
 use File::Basename          qw( dirname );
 use File::DataClass::Types  qw( Directory );
-use IO::Interactive         qw( is_interactive );
 use List::Util              qw( first );
 use Moo;
 use MooX::Options;
@@ -29,7 +29,6 @@ use Pod::Eventual::Simple;
 use Pod::Man;
 use Pod::Usage;
 use Scalar::Util            qw( blessed );
-use Term::ReadKey;
 use Text::Autoformat;
 use Try::Tiny;
 
@@ -107,16 +106,19 @@ has 'mode'        => is => 'rw',   isa => PositiveInt,
 
 has 'params'      => is => 'ro',   isa => HashRef, default => sub { {} };
 
-has 'pwidth'      => is => 'rw',   isa => NonZeroPositiveInt, default => 60;
-
 # Private attributes
 has '_file'       => is => 'lazy', isa => FileType,
-   default        => sub { Class::Usul::File->new( builder => $_[ 0 ] ) },
+   builder        => sub { Class::Usul::File->new( builder => $_[ 0 ] ) },
    handles        => [ qw( io ) ], init_arg => undef, reader => 'file';
 
 has '_ipc'        => is => 'lazy', isa => IPCType,
-   default        => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) },
+   builder        => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) },
    handles        => [ qw( run_cmd ) ], init_arg => undef, reader => 'ipc';
+
+has '_kbdin'      => is => 'lazy', isa => PromptType,
+   builder        => sub { Class::Usul::Prompt->new( builder => $_[ 0 ] ) },
+   handles        => [ qw( anykey get_line get_option yorn ) ],
+   reader         => 'kbdin';
 
 has '_os'         => is => 'lazy', isa => HashRef, init_arg => undef,
    reader         => 'os';
@@ -167,12 +169,6 @@ sub add_leader {
                      split  m{ \n }mx, $text;
 }
 
-sub anykey {
-   my $prompt = $_[ 1 ] || $_[ 0 ]->loc( 'Press any key to continue...' );
-
-   return __prompt( -p => $prompt, -e => NUL, -1 => TRUE );
-}
-
 sub can_call {
    return ($_[ 0 ]->can( $_[ 1 ] )
            && (is_member $_[ 1 ], __list_methods_of( $_[ 0 ] ))) ? TRUE : FALSE;
@@ -196,7 +192,7 @@ sub error {
 
    $self->log->error( $_ ) for (split m{ \n }mx, "${text}");
 
-   __print_fh( \*STDERR, $self->add_leader( $text, $args )."\n" );
+   emit_to( \*STDERR, $self->add_leader( $text, $args )."\n" );
    $self->debug and __output_stacktrace( $err, $self->verbose );
    return;
 }
@@ -210,36 +206,9 @@ sub fatal {
 
    $self->log->alert( $_ ) for (split m{ \n }mx, $text.$posn);
 
-   __print_fh( \*STDERR, $self->add_leader( $text, $args ).$posn."\n" );
+   emit_to( \*STDERR, $self->add_leader( $text, $args ).$posn."\n" );
    __output_stacktrace( $err, $self->verbose );
    exit FAILED;
-}
-
-sub get_line { # General text input routine.
-   my ($self, $question, $default, $quit, $width, $multiline, $noecho) = @_;
-
-   $question ||= 'Enter your answer'; $default = $default // NUL;
-
-   my $advice       = $quit ? '('.QUIT.' to quit)' : NUL;
-   my $right_prompt = $advice.($multiline ? NUL : " [${default}]");
-   my $left_prompt  = $question;
-
-   if (defined $width) {
-      my $total  = $width || $self->pwidth;
-      my $left_x = $total - (length $right_prompt);
-
-      $left_prompt = sprintf '%-*s', $left_x, $question;
-   }
-
-   my $prompt  = $left_prompt.SPC.$right_prompt;
-      $prompt .= ($multiline ? "\n".q([).$default.q(]) : NUL).BRK;
-   my $result  = $noecho
-               ? __prompt( -d => $default, -p => $prompt, -e => q(*) )
-               : __prompt( -d => $default, -p => $prompt );
-
-   $quit and defined $result and lc $result eq QUIT and exit FAILED;
-
-   return NUL.$result;
 }
 
 sub get_meta {
@@ -250,24 +219,6 @@ sub get_meta {
    $dir and unshift @dirs, $self->io( $dir );
 
    return $self->meta_class->new( directories => \@dirs );
-}
-
-sub get_option {
-   my ($self, $question, $default, $quit, $width, $options) = @_;
-
-   $question ||= 'Select one option from the following list:';
-
-   $self->output( $question, { cl => TRUE } ); my $count = 1;
-
-   my $text = join "\n", map { $count++.q( - ).$_ } @{ $options };
-
-   $self->output( $text, { cl => TRUE, nl => TRUE } );
-
-   my $opt = $self->get_line( 'Select option', $default, $quit, $width );
-
-   $opt !~ m{ \A \d+ \z }mx and $opt = $default // 0;
-
-   return $opt - 1;
 }
 
 sub help : method {
@@ -411,38 +362,6 @@ sub warning {
    return;
 }
 
-sub yorn { # General yes or no input routine
-   my ($self, $question, $default, $quit, $width, $newline) = @_;
-
-   my $no = NO; my $yes = YES; my $result;
-
-   $default = $default ? $yes : $no; $quit = $quit ? QUIT : NUL;
-
-   my $advice       = $quit ? "(${yes}/${no}, ${quit}) " : "(${yes}/${no}) ";
-   my $right_prompt = "${advice}[${default}]";
-   my $left_prompt  = $question;
-
-   if (defined $width) {
-      my $max_width = $width || $self->pwidth;
-      my $right_x   = length $right_prompt;
-      my $left_x    = $max_width - $right_x;
-
-      $left_prompt  = sprintf '%-*s', $left_x, $question;
-   }
-
-   my $prompt = $left_prompt.SPC.$right_prompt.BRK;
-
-   $newline and $prompt .= "\n";
-
-   while ($result = __prompt( -d => $default, -p => $prompt )) {
-      $quit and $result =~ m{ \A (?: $quit | [\e] ) }imx and exit FAILED;
-      $result =~ m{ \A $yes }imx and return TRUE;
-      $result =~ m{ \A $no  }imx and return FALSE;
-   }
-
-   return;
-}
-
 # Private methods
 sub _apply_stdio_encoding {
    my $self = shift; my $enc = $self->encoding;
@@ -455,7 +374,7 @@ sub _apply_stdio_encoding {
 
 sub _build__os {
    my $self = shift;
-   my $file = q(os_).$Config{osname}.$self->config->extension;
+   my $file = 'os_'.$Config{osname}.$self->config->extension;
    my $path = $self->config->ctrldir->catfile( $file );
 
    $path->exists or return {};
@@ -482,7 +401,7 @@ sub _catch_run_exception {
 
 sub _dont_ask {
    return $_[ 0 ]->debug || $_[ 0 ]->help_usage || $_[ 0 ]->help_options
-       || $_[ 0 ]->help_manual || ! is_interactive();
+       || $_[ 0 ]->help_manual || ! $_[ 0 ]->kbdin->is_interactive();
 }
 
 sub _exit_usage {
@@ -585,12 +504,6 @@ sub _usage_for {
 }
 
 # Private functions
-sub __get_control_chars {
-   my $handle = shift; my %cntl = GetControlChars $handle;
-
-   return ((join q(|), values %cntl), %cntl);
-}
-
 sub __get_pod_header_for_method {
    my ($class, $method) = @_;
 
@@ -610,107 +523,15 @@ sub __list_methods_of {
                     ( blessed $_[ 0 ] || $_[ 0 ], 'full', 'public' ) };
 }
 
-sub __map_prompt_args { # IO::Prompt equiv. sub has an obscure bug so this
-   my $args = shift; my %map = ( qw(-1 onechar -d default -e echo -p prompt) );
-
-   for (grep { exists $map{ $_ } } keys %{ $args }) {
-       $args->{ $map{ $_ } } = delete $args->{ $_ };
-   }
-
-   return $args;
-}
-
 sub __output_stacktrace {
    my ($e, $verbose) = @_; ($e and blessed $e) or return; $verbose //= 0;
 
    $verbose > 0 and $e->can( 'trace' )
-      and return __print_fh( \*STDERR, NUL.$e->trace );
+      and return emit_to( \*STDERR, NUL.$e->trace );
 
-   $e->can( 'stacktrace' ) and __print_fh( \*STDERR, NUL.$e->stacktrace );
-
-   return;
-}
-
-sub __print_fh {
-   my ($handle, $text) = @_;
-
-   print {$handle} $text or throw error => 'IO error: [_1]', args =>[ $ERRNO ];
-   return;
-}
-
-sub __prompt { # Robbed from IO::Prompt
-   my $args    = __map_prompt_args( arg_list @_ );
-   my $default = $args->{default};
-   my $echo    = $args->{echo   };
-   my $onechar = $args->{onechar};
-   my $OUT     = \*STDOUT;
-   my $IN      = \*STDIN;
-   my $input   = NUL;
-
-   my ($len, $newlines, $next, $text);
-
-   unless (is_interactive()) {
-      $ENV{PERL_MM_USE_DEFAULT} and return $default;
-      $onechar and return getc $IN;
-      return scalar <$IN>;
-   }
-
-   my ($cntl, %cntl) = __get_control_chars( $IN );
-   local $SIG{INT}   = sub { __restore_mode( $IN ); exit FAILED };
-
-   __print_fh( $OUT, $args->{prompt} ); __raw_mode( $IN );
-
-   while (TRUE) {
-      if (defined ($next = getc $IN)) {
-         if ($next eq $cntl{INTERRUPT}) {
-            __restore_mode( $IN ); exit FAILED;
-         }
-         elsif ($next eq $cntl{ERASE}) {
-            if ($len = length $input) {
-               $input = substr $input, 0, $len - 1; __print_fh( $OUT, "\b \b" );
-            }
-
-            next;
-         }
-         elsif ($next eq $cntl{EOF}) {
-            __restore_mode( $IN );
-            close $IN or throw error => 'IO error: [_1]', args =>[ $ERRNO ];
-            return $input;
-         }
-         elsif ($next !~ m{ $cntl }mx) {
-            $input .= $next;
-
-            if ($next eq "\n") {
-               if ($input eq "\n" and defined $default) {
-                  $text = defined $echo ? $echo x length $default : $default;
-                  __print_fh( $OUT, "[${text}]\n" ); __restore_mode( $IN );
-
-                  return $onechar ? substr $default, 0, 1 : $default;
-               }
-
-               $newlines .= "\n";
-            }
-            else { __print_fh( $OUT, $echo // $next ) }
-         }
-         else { $input .= $next }
-      }
-
-      if ($onechar or not defined $next or $input =~ m{ \Q$RS\E \z }mx) {
-         chomp $input; __restore_mode( $IN );
-         defined $newlines and __print_fh( $OUT, $newlines );
-         return $onechar ? substr $input, 0, 1 : $input;
-      }
-   }
+   $e->can( 'stacktrace' ) and emit_to( \*STDERR, NUL.$e->stacktrace );
 
    return;
-}
-
-sub __raw_mode {
-   my $handle = shift; ReadMode q(raw), $handle; return;
-}
-
-sub __restore_mode {
-   my $handle = shift; ReadMode q(restore), $handle; return;
 }
 
 1;
@@ -725,7 +546,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes version v0.27.$Rev: 2 $ of L<Class::Usul::Programs>
+This document describes version v0.27.$Rev: 3 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 
@@ -832,14 +653,6 @@ Prepend C<< $self->config->name >> to each line of C<$text>. If
 C<< $args->{no_lead} >> exists then do nothing. Return C<$text> with
 leader prepended
 
-=head2 anykey
-
-   $key = $self->anykey( $prompt );
-
-Prompt string defaults to 'Press any key to continue...'. Calls and
-returns L<prompt|/prompt>. Requires the user to press any key on the
-keyboard (that generates a character response)
-
 =head2 can_call
 
    $bool = $self->can_call( $method );
@@ -907,18 +720,6 @@ Search through sub directories of @INC looking for the file
 F<yourApplication.json>. Uses the location of this file to return the
 path to the installation directory
 
-=head2 get_line
-
-   $line = $self->get_line( $question, $default, $quit, $width, $newline );
-
-Prompts the user to enter a single line response to C<$question> which
-is printed to I<STDOUT> with a program leader. If C<$quit> is true
-then the options to quit is included in the prompt. If the C<$width>
-argument is defined then the string is formatted to the specified
-width which is C<$width> or C<< $self->pwdith >> or 40. If C<$newline>
-is true a newline character is appended to the prompt so that the user
-get a full line of input
-
 =head2 get_meta
 
    $res_obj = $self->get_meta( $dir );
@@ -927,13 +728,6 @@ Extracts; I<name>, I<version>, I<author> and I<abstract> from the
 F<META.json> or F<META.yml> file.  Looks in the optional C<$dir> directory
 for the file in addition to C<< $self->appldir >> and C<< $self->ctrldir >>.
 Returns a response object with read-only accessors defined
-
-=head2 get_option
-
-   $option = $self->get_option( $question, $default, $quit, $width, $options );
-
-Returns the selected option number from the list of possible options passed
-in the C<$question> argument
 
 =head2 help - Display help text about a method
 
@@ -981,33 +775,6 @@ Calls L<Class::Usul::localize|Class::Usul/localize> with
 the passed args. Adds the program leader and prints the result to
 I<STDOUT>
 
-=head2 __prompt
-
-   $line = __prompt( 'key' => 'value', ... );
-
-This was taken from L<IO::Prompt> which has an obscure bug in it. Much
-simplified the following keys are supported
-
-=over 3
-
-=item -1
-
-Return the first character typed
-
-=item -d
-
-Default response
-
-=item -e
-
-The character to echo in place of the one typed
-
-=item -p
-
-Prompt string
-
-=back
-
 =head2 quiet
 
    $bool = $self->quiet( $bool );
@@ -1039,36 +806,6 @@ Calls L<Class::Usul::localize|Class::Usul/localize> with
 the passed args. Logs the result at the warning level, then adds the
 program leader and prints the result to I<STDOUT>
 
-=head2 yorn
-
-   $self->yorn( $question, $default, $quit, $width );
-
-Prompt the user to respond to a yes or no question. The C<$question>
-is printed to I<STDOUT> with a program leader. The C<$default>
-argument is C<0|1>. If C<$quit> is true then the option to quit is
-included in the prompt. If the C<$width> argument is defined then the
-string is formatted to the specified width which is C<$width> or
-C<< $self->pwdith >> or 40
-
-=head2 __get_control_chars
-
-   ($cntrl, %cntrl) = __get_control_chars( $handle );
-
-Returns a string of pipe separated control characters and a hash of
-symbolic names and values
-
-=head2 __raw_mode
-
-   __raw_mode( $handle );
-
-Puts the terminal in raw input mode
-
-=head2 __restore_mode
-
-   __restore_mode( $handle );
-
-Restores line input mode to the terminal
-
 =head1 Diagnostics
 
 Turning debug on produces some more output
@@ -1078,8 +815,6 @@ Turning debug on produces some more output
 =over 3
 
 =item L<Class::Inspector>
-
-=item L<Class::Usul>
 
 =item L<Class::Usul::IPC>
 
@@ -1091,13 +826,9 @@ Turning debug on produces some more output
 
 =item L<Encode>
 
-=item L<IO::Interactive>
-
 =item L<Moo>
 
 =item L<MooX::Options>
-
-=item L<Term::ReadKey>
 
 =item L<Text::Autoformat>
 

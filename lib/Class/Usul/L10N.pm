@@ -1,10 +1,10 @@
-# @(#)$Ident: L10N.pm 2013-08-04 16:43 pjf ;
+# @(#)$Ident: L10N.pm 2013-09-30 00:26 pjf ;
 
 package Class::Usul::L10N;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -22,7 +22,7 @@ use Try::Tiny;
 has 'debug'           => is => 'rw',   isa => Bool, default => FALSE;
 
 has 'domain_names'    => is => 'ro',   isa => ArrayRef[Str],
-   default            => sub { [ q(messages) ] };
+   default            => sub { [ 'messages' ] };
 
 has 'l10n_attributes' => is => 'ro',   isa => HashRef, default => sub { {} };
 
@@ -49,9 +49,9 @@ around 'BUILDARGS' => sub {
    my $builder = delete $attr->{builder} or return $attr;
    my $config  = $builder->can( q(config) ) ? $builder->config : {};
 
-   merge_attributes $attr, $builder, {}, [ qw(debug lock log) ];
+   merge_attributes $attr, $builder, {}, [ qw( debug lock log ) ];
    merge_attributes $attr, $config,  {},
-      [ qw(l10n_attributes localedir tempdir) ];
+      [ qw( l10n_attributes localedir tempdir ) ];
 
    return $attr;
 };
@@ -59,8 +59,9 @@ around 'BUILDARGS' => sub {
 # Public methods
 sub get_po_header {
    my ($self, $args) = @_;
-   my $domain        = $self->_load_domains( $args || {} ) or return {};
-   my $header        = $domain->{po_header} or return {};
+
+   my $domain = $self->_load_domains( $args || {} ) or return {};
+   my $header = $domain->{po_header} or return {};
 
    return $header->{msgstr} || {};
 }
@@ -72,7 +73,7 @@ sub invalidate_cache {
 sub localize {
    my ($self, $key, $args) = @_;
 
-   $key or return; $key = q().$key; chomp $key; $args ||= {};
+   $key or return; $key = "${key}"; chomp $key; $args //= {};
 
    # Lookup the message using the supplied key from the po file
    my $text = $self->_gettext( $key, $args );
@@ -90,7 +91,7 @@ sub localize {
    0 > index $text, LBRACE and return $text;
 
    # Expand named parameters of the form {param_name}
-   my %args = %{ $args }; my $re = join q(|), map { quotemeta $_ } keys %args;
+   my %args = %{ $args }; my $re = join '|', map { quotemeta $_ } keys %args;
 
    $text =~ s{ \{($re)\} }{ defined $args{ $1 } ? $args{ $1 } : "{$1}" }egmx;
    return $text;
@@ -98,7 +99,7 @@ sub localize {
 
 # Private methods
 sub _build_source_name {
-   return $_[ 0 ]->l10n_attributes->{source_name} || q(po);
+   return $_[ 0 ]->l10n_attributes->{source_name} || 'po';
 }
 
 sub _build_use_country {
@@ -110,7 +111,7 @@ sub _extract_lang_from {
 
    defined $cache->{ $locale } and return $cache->{ $locale };
 
-   my $sep  = $self->use_country ? q(.) : q(_);
+   my $sep  = $self->use_country ? '.' : '_';
    my $lang = (split m{ \Q$sep\E }msx, $locale.$sep )[ 0 ];
 
    return $cache->{ $locale } = $lang;
@@ -156,7 +157,7 @@ sub _gettext {
       my $lang   = $self->_extract_lang_from( $locale );
       my $names  = $args->{domain_names} || $self->domain_names;
       my @names  = grep { defined and length } @{ $names };
-      my $key    = $lang.SEP.(join q(+), @names );
+      my $key    = $lang.SEP.(join '+', @names );
 
       defined $cache->{ $key } and return $cache->{ $key };
 
@@ -189,7 +190,7 @@ Class::Usul::L10N - Localize text strings
 
 =head1 Version
 
-This documents version v0.27.$Rev: 1 $
+This documents version v0.27.$Rev: 3 $
 
 =head1 Synopsis
 

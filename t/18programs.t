@@ -1,8 +1,8 @@
-# @(#)$Ident: 18programs.t 2013-09-17 11:05 pjf ;
+# @(#)$Ident: 18programs.t 2013-09-30 12:43 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 3 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir catfile updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -25,18 +25,18 @@ use Test::Deep;
 
 use_ok 'Class::Usul::Programs';
 
-my $name    = basename( $0, qw(.t) );
-my $logfile = catfile( q(t), $name.q(.log) );
-my $prog    = Class::Usul::Programs->new( appclass => q(Class::Usul),
-                                          config   => { logsdir => q(t),
-                                                        tempdir => q(t), },
-                                          method   => q(dump_self),
+my $name    = basename( $0, qw( .t ) );
+my $logfile = catfile( 't', "${name}.log" );
+my $prog    = Class::Usul::Programs->new( appclass => 'Class::Usul',
+                                          config   => { logsdir => 't',
+                                                        tempdir => 't', },
+                                          method   => 'dump_self',
                                           noask    => 1,
                                           quiet    => 1, );
 
-cmp_deeply $prog, methods( encoding => q(UTF-8) ), 'Constructs default object';
+cmp_deeply $prog, methods( encoding => 'UTF-8' ), 'Constructs default object';
 
-is $prog->config->script, $name.q(.t), 'Config->script';
+is $prog->config->script, "${name}.t", 'Config->script';
 
 is $prog->config->name, $name, 'Config->name';
 
@@ -48,13 +48,18 @@ is $prog->can_call( 'dump_self' ), 1, 'Can call true';
 
 is $prog->can_call( 'add_leader' ), 0, 'Can call false';
 
-my $meta = $prog->get_meta;
+my $meta; eval { $meta = $prog->get_meta }; my $e = $EVAL_ERROR || q();
 
-is $meta->name, q(Class-Usul), 'Meta file class';
+if ($e and $e =~ m{ No \s META }mx) { # Work around Dzil
+   like $e, qr{ No \s META }mx, 'No meta file';
+}
+else {
+   is $meta->name, 'Class-Usul', 'Meta file class';
 
-like $meta->license->[ 0 ], qr{ perl }mx, 'Meta license';
+   like $meta->license->[ 0 ], qr{ perl }mx, 'Meta license';
+}
 
-eval { $prog->file->io( 'Dummy' )->all }; my $e = $EVAL_ERROR || q();
+eval { $prog->file->io( 'Dummy' )->all }; $e = $EVAL_ERROR || q();
 
 like $e, qr{ Dummy \s+ cannot \s+ open }mx, 'Non existant file';
 
@@ -76,6 +81,7 @@ is $prog->debug, 1, 'Debug true';
 
 done_testing;
 
+#$prog->anykey;
 #$prog->run;
 
 # Local Variables:

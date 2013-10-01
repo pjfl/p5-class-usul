@@ -1,11 +1,11 @@
-# @(#)$Ident: Functions.pm 2013-09-29 15:02 pjf ;
+# @(#)$Ident: Functions.pm 2013-09-29 21:00 pjf ;
 
 package Class::Usul::Functions;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 3 $ =~ /\d+/gmx );
 use parent                  qw( Exporter::Tiny );
 
 use Class::Null;
@@ -33,7 +33,7 @@ our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
                        base64_encode_ns bsonid bsonid_time bson64id
                        bson64id_time build class2appdir classdir
                        classfile create_token data_dumper distname
-                       downgrade elapsed emit env_prefix escape_TT
+                       downgrade elapsed emit emit_to env_prefix escape_TT
                        exception find_apphome find_source fold fqdn
                        fullname get_cfgfiles get_user hex2str
                        home2appldir is_arrayref is_coderef is_hashref
@@ -219,14 +219,20 @@ sub elapsed () {
 }
 
 sub emit (;@) {
-   my @args = @_; openhandle *STDOUT or return;
+   my @args = @_; $args[ 0 ] //= q(); chomp( @args );
 
-   $args[ 0 ] //= q(); chomp( @args );
+   openhandle *STDOUT or return;
 
    local ($OFS, $ORS) = is_win32() ? ("\r\n", "\r\n") : ("\n", "\n");
 
-   return (print {*STDOUT} @args
-           or throw( error => 'IO error [_1]', args =>[ $ERRNO ] ));
+   return emit_to( *STDOUT, @args );
+}
+
+sub emit_to ($;@) {
+   my ($handle, @args) = @_; local $OS_ERROR;
+
+   return (print {$handle} @args
+           or throw( error => 'IO error: [_1]', args =>[ $OS_ERROR ] ));
 }
 
 sub env_prefix ($) {
@@ -653,7 +659,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.27.$Rev: 2 $
+This documents version v0.27.$Rev: 3 $
 
 =head1 Synopsis
 
@@ -818,6 +824,12 @@ Returns the number of seconds elapsed since the process started
 
 Prints to I<STDOUT> the lines of text passed to it. Lines are C<chomp>ed
 and then have newlines appended. Throws on IO errors
+
+=head2 emit_to
+
+   emit_to $filehandle, @lines_of_text;
+
+Prints to the specified file handle
 
 =head2 env_prefix
 

@@ -1,9 +1,9 @@
-# @(#)$Ident: Log.pm 2013-08-04 16:45 pjf ;
+# @(#)$Ident: Log.pm 2013-09-30 00:32 pjf ;
 
 package Class::Usul::Log;
 
 use namespace::clean -except => [ qw( class_stash meta ) ];
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -39,11 +39,11 @@ around 'BUILDARGS' => sub {
    my ($orig, $class, @args) = @_; my $attr = $orig->( $class, @args );
 
    my $builder = delete $attr->{builder} or return $attr;
-   my $config  = $builder->can( q(config) ) ? $builder->config : {};
+   my $config  = $builder->can( 'config' ) ? $builder->config : {};
 
-   merge_attributes $attr, $builder, {}, [ qw(debug encoding) ];
+   merge_attributes $attr, $builder, {}, [ qw( debug encoding ) ];
    merge_attributes $attr, $config,  {},
-      [ qw(encoding log_attributes log_class logfile) ];
+      [ qw( encoding log_attributes log_class logfile ) ];
 
    return $attr;
 };
@@ -56,7 +56,7 @@ sub BUILD {
          my ($self, $text) = @_; $text or return; chomp $text;
 
          $self->_encoding and $text = encode( $self->_encoding, $text );
-         $self->_log->$method( $text."\n" );
+         $self->_log->$method( "${text}\n" );
          return;
       } );
 
@@ -67,7 +67,7 @@ sub BUILD {
 
          my $user = $opts->{user} ? $opts->{user}->username : q(unknown);
 
-         $msg ||= NUL; $msg = NUL.$msg; chomp $msg;
+         $msg ||= NUL; $msg = "${msg}"; chomp $msg;
          $text  = (ucfirst $opts->{leader} || NUL)."[${user}] ";
          $text .= (ucfirst $msg || 'no message');
          $self->$method( $text );
@@ -89,13 +89,13 @@ sub get_log_attributes {
       my $fattr   = $attr->{file} ||= {};
       my $logfile = $fattr->{filename} || $self->_logfile;
 
-      ($logfile and -d dirname( NUL.$logfile )) or return;
+      ($logfile and -d dirname( "${logfile}" )) or return;
 
       $fattr->{alias   }   = 'file-out';
-      $fattr->{filename}   = NUL.$logfile;
+      $fattr->{filename}   = "${logfile}";
       $fattr->{maxlevel}   = $self->_debug_flag
                            ? 'debug' : $fattr->{maxlevel} || 'info';
-      $fattr->{mode    } ||= q(append);
+      $fattr->{mode    } ||= 'append';
    }
 
    return $attr;
@@ -120,7 +120,7 @@ Class::Usul::Log - Create methods for each logging level that encode their outpu
 
 =head1 Version
 
-This documents version v0.27.$Rev: 1 $
+This documents version v0.27.$Rev: 3 $
 
 =head1 Synopsis
 

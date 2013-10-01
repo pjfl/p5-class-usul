@@ -1,11 +1,11 @@
-# @(#)Ident: Util.pm 2013-07-12 22:05 pjf ;
+# @(#)Ident: Util.pm 2013-09-30 12:14 pjf ;
 
 package Class::Usul::Crypt::Util;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Crypt      qw( decrypt default_cipher encrypt );
@@ -46,7 +46,7 @@ sub is_encrypted {
 }
 
 # Private functions
-sub __extract_crypt_params {
+sub __extract_crypt_params { # Returns cipher and encrypted text
    # A single scalar arg not matching the pattern is just a cipher
    # It really is better this way round. Leave it alone
    return $_[ 0 ] && $_[ 0 ] =~ m{ \A [{] (.+) [}] (.*) \z }mx
@@ -58,7 +58,7 @@ sub __get_crypt_args { # Sets cipher, salt, and seed keys in args hash
 
    # Works if config is an object or a hash
    merge_attributes $params, $config, {},
-      [ qw(ctrldir prefix read_secure salt seed seed_file suid tempdir) ];
+      [ qw( ctrldir prefix read_secure salt seed seed_file tempdir ) ];
 
    my $args = { cipher => $cipher,
                 salt   => $params->{salt} || $params->{prefix} || NUL };
@@ -112,7 +112,7 @@ Class::Usul::Crypt::Util - Decrypts/Encrypts password from/to configuration file
 
 =head1 Version
 
-This documents version v0.27.$Rev: 1 $ of L<Class::Usul::Crypt::Util>
+This documents version v0.27.$Rev: 3 $ of L<Class::Usul::Crypt::Util>
 
 =head1 Description
 

@@ -1,11 +1,11 @@
-# @(#)$Ident: Types.pm 2013-08-04 16:43 pjf ;
+# @(#)$Ident: Types.pm 2013-09-29 16:31 pjf ;
 
 package Class::Usul::Types;
 
 use strict;
 use warnings;
 use namespace::clean -except => 'meta';
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Class::Load             qw( load_first_existing_class );
 use Class::Usul::Constants;
@@ -14,16 +14,18 @@ use Scalar::Util            qw( blessed );
 use Type::Library              -base, -declare =>
                             qw( BaseType ConfigType EncodingType
                                 FileType IPCType L10NType LockType
-                                LogType NullLoadingClass RequestType );
+                                LogType NullLoadingClass PromptType
+                                RequestType );
 use Type::Utils             qw( as class_type coerce extends
                                 from message subtype via where );
 use Unexpected::Functions   qw( inflate_message );
 
 BEGIN { extends q(Unexpected::Types) };
 
-class_type BaseType, { class => 'Class::Usul'       };
-class_type FileType, { class => 'Class::Usul::File' };
-class_type IPCType,  { class => 'Class::Usul::IPC'  };
+class_type BaseType,   { class => 'Class::Usul'         };
+class_type FileType,   { class => 'Class::Usul::File'   };
+class_type IPCType,    { class => 'Class::Usul::IPC'    };
+class_type PromptType, { class => 'Class::Usul::Prompt' };
 
 subtype ConfigType, as Object,
    where   { __has_min_config_attributes( $_ ) },
@@ -129,7 +131,7 @@ Class::Usul::Types - Defines type constraints
 
 =head1 Version
 
-This document describes Class::Usul::Types version v0.27.$Rev: 1 $
+This document describes Class::Usul::Types version v0.27.$Rev: 3 $
 
 =head1 Synopsis
 
