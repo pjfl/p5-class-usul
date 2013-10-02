@@ -1,10 +1,10 @@
-# @(#)$Ident: L10N.pm 2013-09-30 00:26 pjf ;
+# @(#)$Ident: L10N.pm 2013-10-01 15:58 pjf ;
 
 package Class::Usul::L10N;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -47,7 +47,7 @@ around 'BUILDARGS' => sub {
    my ($orig, $class, @args) = @_; my $attr = $orig->( $class, @args );
 
    my $builder = delete $attr->{builder} or return $attr;
-   my $config  = $builder->can( q(config) ) ? $builder->config : {};
+   my $config  = $builder->can( 'config' ) ? $builder->config : {};
 
    merge_attributes $attr, $builder, {}, [ qw( debug lock log ) ];
    merge_attributes $attr, $config,  {},
@@ -127,11 +127,11 @@ sub _gettext {
    # Select either singular or plural translation
    my ($nplurals, $plural) = (1, 0);
 
-   if ($count > 1) {
+   if ($count > 1) { # Some languages have more than one plural form
       ($nplurals, $plural) = $domain->{plural_func}->( $count );
-      defined     $nplurals or $nplurals = 0;
-      defined      $plural  or  $plural  = 0;
-      $nplurals <= $plural and  $plural  = $nplurals;
+      defined   $nplurals  or $nplurals = 0;
+      defined    $plural   or  $plural  = 0;
+      $plural > $nplurals and  $plural  = $nplurals;
    }
 
    my $id   = defined $args->{context}
@@ -190,7 +190,7 @@ Class::Usul::L10N - Localize text strings
 
 =head1 Version
 
-This documents version v0.27.$Rev: 3 $
+This documents version v0.27.$Rev: 4 $
 
 =head1 Synopsis
 

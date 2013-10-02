@@ -1,9 +1,9 @@
-# @(#)Ident: Prompt.pm 2013-09-30 13:12 pjf ;
+# @(#)Ident: Prompt.pm 2013-10-01 12:47 pjf ;
 
 package Class::Usul::Prompt;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( arg_list emit_to throw );
@@ -48,7 +48,7 @@ sub get_line { # General text input routine.
 
    $quit and defined $result and lc $result eq QUIT and exit FAILED;
 
-   return NUL.$result;
+   return "${result}";
 }
 
 sub get_option { # Select from an numbered list of options
@@ -217,7 +217,7 @@ Class::Usul::Prompt - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.27.$Rev: 3 $ of L<Class::Usul::Prompt>
+This documents version v0.27.$Rev: 4 $ of L<Class::Usul::Prompt>
 
 =head1 Description
 

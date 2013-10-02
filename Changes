@@ -1,10 +1,11 @@
 Revision history for Class::Usul
 
+          - Removed _ from CU attributes
           - Split ::Prompt from ::Programs
           - Added ::Functions::emit_to removed __print_fh
           - Replaced Exporter::TypeTiny with Exporter::Tiny
 
-0.27.2    2013-09-29 16:14:45
+0.27.4    2013-10-02 13:47:48
           - Programs::nodebug deprecated for noask
           - Functions::get_user accepts a uid
           - Added 'Tainted' as an exception class
