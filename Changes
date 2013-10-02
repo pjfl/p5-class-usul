@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Updated git hooks
           - Removed _ from CU attributes
           - Split ::Prompt from ::Programs
           - Added ::Functions::emit_to removed __print_fh

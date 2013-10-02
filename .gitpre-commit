@@ -96,18 +96,16 @@ if (-f $change_file) {
 
    $meta or warn 'No meta object for module '.($module // '<undef>');
 
-   if ($module_ver > $change_ver) {
+   my $pmv = Perl::Version->new( $module_ver ); $pmv->components( 2 );
+   my $pcv = Perl::Version->new( $change_ver ); $pcv->components( 2 );
+
+   if ($pmv > $pcv) {
       my $stamp  = time2str( '%Y-%m-%d %H:%M:%S', time );
       my $header = sprintf "%-9.9s %s", $module_ver, $stamp;
-      my $pmv    = Perl::Version->new( $module_ver  ); $pmv->components( 2 );
-      my $pcv    = Perl::Version->new( $change_ver ); $pcv->components( 2 );
 
-      if ($pmv > $pcv) { $changes =~ s{ ^ $ }{\n$header}mx }
-      else { $changes =~ s{ ^ v? [0-9._]+ \s* [^\n]* $ }{$header}mx }
+      $changes =~ s{ ^ $ }{\n$header}mx; __write_data_to $change_file, $changes;
 
-      __write_data_to $change_file, $changes;
-
-      my $cmd = "git add ${change_file}"; qx{ $cmd };
+      my $gitcmd = "git add ${change_file}"; qx{ $gitcmd };
    }
 }
 
