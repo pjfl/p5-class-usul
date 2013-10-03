@@ -4,7 +4,7 @@ package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.29.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.30.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Constants;
@@ -542,7 +542,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes version v0.29.$Rev: 1 $ of L<Class::Usul::Programs>
+This document describes version v0.30.$Rev: 1 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 

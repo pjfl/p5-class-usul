@@ -3,7 +3,7 @@
 package Class::Usul::TraitFor::LoadingClasses;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.29.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.30.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Load             qw( is_class_loaded load_class );
 use Class::Usul::Constants;
@@ -95,7 +95,7 @@ Class::Usul::TraitFor::LoadingClasses - Load classes at runtime
 
 =head1 Version
 
-This documents version v0.29.$Rev: 1 $
+This documents version v0.30.$Rev: 1 $
 
 =head1 Synopsis
 

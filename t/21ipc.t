@@ -1,8 +1,8 @@
-# @(#)$Ident: 21ipc.t 2013-10-03 16:16 pjf ;
+# @(#)$Ident: 21ipc.t 2013-10-03 16:26 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.29.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.30.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir catfile tmpdir updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -81,15 +81,15 @@ SKIP: {
       'popen captures stdin and stdout';
 }
 
-my @pids = $prog->ipc->child_list( $PID );
-
-is $pids[ 0 ], $PID, 'child list';
-
-is $prog->ipc->process_exists( pid => $PID ), 1, 'process exists';
-
 SKIP: {
    eval { require Proc::ProcessTable };
-   $EVAL_ERROR and skip 'Proc::ProcessTable not installed', 1;
+   $EVAL_ERROR and skip 'Proc::ProcessTable not installed', 3;
+
+   is $prog->ipc->process_exists( pid => $PID ), 1, 'process exists';
+
+   my @pids = $prog->ipc->child_list( $PID );
+
+   is $pids[ 0 ], $PID, 'child list';
 
    my $table = $prog->ipc->process_table;
 
