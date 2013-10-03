@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 4 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir catfile updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -105,10 +105,10 @@ SKIP: {
    my $io = $cuf->io( q(t) ); my $entry;
 
    while (defined ($entry = $io->next)) {
-      $entry->filename eq q(20file.t) and last;
+      $entry->filename eq q(16file.t) and last;
    }
 
-   ok defined $entry && $entry->filename eq q(20file.t), 'Directory listing';
+   ok defined $entry && $entry->filename eq q(16file.t), 'Directory listing';
 }
 
 done_testing;
