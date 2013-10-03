@@ -2,7 +2,7 @@
 
 package Class::Usul::Response::Meta;
 
-use version; our $VERSION = qv( sprintf '0.28.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.29.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::File;
 use Class::Usul::Functions  qw( is_arrayref throw );
@@ -55,7 +55,7 @@ Class::Usul::Response::Meta - Class for CPAN Meta file
 
 =head1 Version
 
-This document describes Class::Usul::Response::Meta version v0.28.$Rev: 1 $
+This document describes Class::Usul::Response::Meta version v0.29.$Rev: 1 $
 
 =head1 Synopsis
 

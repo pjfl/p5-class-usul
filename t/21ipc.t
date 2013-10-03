@@ -1,8 +1,8 @@
-# @(#)$Ident: 21ipc.t 2013-10-03 12:33 pjf ;
+# @(#)$Ident: 21ipc.t 2013-10-03 16:16 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.28.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.29.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir catfile tmpdir updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -75,9 +75,9 @@ like popen_test( q(out), $cmd ), qr{ pit \s+ of \s+ fire }msx,
 $cmd = "${perl} -e \"print <>\"";
 
 SKIP: {
-   $osname eq q(mswin32) and skip 'popen capture stdin - not on MSWin32', 1;
+   $osname eq 'mswin32' and skip 'popen capture stdin - not on MSWin32', 1;
 
-   is popen_test( q(out), $cmd, { in => [ 'some text' ] } ), 'some text',
+   is popen_test( 'out', $cmd, { in => [ 'some text' ] } ), 'some text',
       'popen captures stdin and stdout';
 }
 
@@ -87,9 +87,14 @@ is $pids[ 0 ], $PID, 'child list';
 
 is $prog->ipc->process_exists( pid => $PID ), 1, 'process exists';
 
-my $table = $prog->ipc->process_table;
+SKIP: {
+   eval { require Proc::ProcessTable };
+   $EVAL_ERROR and skip 'Proc::ProcessTable not installed', 1;
 
-ok $table->count > 0, 'process table';
+   my $table = $prog->ipc->process_table;
+
+   ok $table->count > 0, 'process table';
+}
 
 sub run_cmd_test {
    my $want = shift; my $r = eval { $prog->run_cmd( @_ ) };
