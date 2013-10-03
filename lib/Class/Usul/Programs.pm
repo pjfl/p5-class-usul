@@ -1,10 +1,10 @@
-# @(#)$Ident: Programs.pm 2013-10-02 14:53 pjf ;
+# @(#)$Ident: Programs.pm 2013-10-03 01:47 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 5 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.28.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Constants;
@@ -14,7 +14,6 @@ use Class::Usul::Functions  qw( abs_path elapsed emit emit_to exception
                                 is_arrayref is_hashref is_member
                                 logname pad throw untaint_identifier );
 use Class::Usul::IPC;
-use Class::Usul::Prompt;
 use Class::Usul::Types      qw( ArrayRef Bool EncodingType FileType HashRef Int
                                 IPCType LoadableClass PositiveInt PromptType
                                 SimpleStr );
@@ -34,6 +33,7 @@ use Try::Tiny;
 
 extends q(Class::Usul);
 with    q(Class::Usul::TraitFor::LoadingClasses);
+with    q(Class::Usul::TraitFor::Prompting);
 
 my $EXTNS = [ keys %{ Class::Usul::File->extensions } ];
 
@@ -114,11 +114,6 @@ has '_file'       => is => 'lazy', isa => FileType,
 has '_ipc'        => is => 'lazy', isa => IPCType,
    builder        => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) },
    handles        => [ qw( run_cmd ) ], init_arg => undef, reader => 'ipc';
-
-has '_kbdin'      => is => 'lazy', isa => PromptType,
-   builder        => sub { Class::Usul::Prompt->new( builder => $_[ 0 ] ) },
-   handles        => [ qw( anykey get_line get_option yorn ) ],
-   reader         => 'kbdin';
 
 has '_os'         => is => 'lazy', isa => HashRef, init_arg => undef,
    reader         => 'os';
@@ -365,7 +360,9 @@ sub warning {
 sub _apply_stdio_encoding {
    my $self = shift; my $enc = $self->encoding;
 
-   binmode $_, ":encoding(${enc})" for (*STDIN, *STDOUT, *STDERR);
+   for (*STDIN, *STDOUT, *STDERR) {
+      $_->opened or next; binmode $_, ":encoding(${enc})";
+   }
 
    autoflush STDOUT TRUE; autoflush STDERR TRUE;
    return;
@@ -400,7 +397,7 @@ sub _catch_run_exception {
 
 sub _dont_ask {
    return $_[ 0 ]->debug || $_[ 0 ]->help_usage || $_[ 0 ]->help_options
-       || $_[ 0 ]->help_manual || ! $_[ 0 ]->kbdin->is_interactive();
+       || $_[ 0 ]->help_manual || ! $_[ 0 ]->is_interactive();
 }
 
 sub _exit_usage {
@@ -545,7 +542,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes version v0.27.$Rev: 5 $ of L<Class::Usul::Programs>
+This document describes version v0.28.$Rev: 1 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 

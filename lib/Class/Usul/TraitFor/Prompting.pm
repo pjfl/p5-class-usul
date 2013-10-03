@@ -1,26 +1,25 @@
-# @(#)Ident: Prompt.pm 2013-10-01 12:47 pjf ;
+# @(#)Ident: Prompting.pm 2013-10-03 01:51 pjf ;
 
-package Class::Usul::Prompt;
+package Class::Usul::TraitFor::Prompting;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.28.%d', q$Rev: 0 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( arg_list emit_to throw );
 use Class::Usul::Types      qw( BaseType );
 use English                 qw( -no_match_vars );
 use IO::Interactive;
-use Moo;
 use Term::ReadKey;
+use Moo::Role;
 
-has '_prog' => is => 'ro', isa => BaseType,
-   handles  => [ qw( config loc output ) ], init_arg => 'builder',
-   required => TRUE, weak_ref => TRUE;
+requires qw( config loc output );
 
+# Public methods
 sub anykey {
    my $prompt = $_[ 0 ]->loc( $_[ 1 ] || 'Press any key to continue' ).'...';
 
-   return __prompt( -p => $prompt, -e => NUL, -1 => TRUE );
+   return __prompt( -p => $prompt, -d => TRUE, -e => NUL, -1 => TRUE );
 }
 
 sub get_line { # General text input routine.
@@ -208,22 +207,25 @@ __END__
 
 =head1 Name
 
-Class::Usul::Prompt - One-line description of the modules purpose
+Class::Usul::TraitFor::Prompting - Methods for requesting command line input
 
 =head1 Synopsis
 
-   use Class::Usul::Prompt;
-   # Brief but working code examples
+   use Moo;
+
+   with q(Class::Usul::TraitForPrompting);
 
 =head1 Version
 
-This documents version v0.27.$Rev: 4 $ of L<Class::Usul::Prompt>
+This documents version v0.28.$Rev: 0 $ of L<Class::Usul::TraitFor::Prompting>
 
 =head1 Description
 
+Methods that prompt for command line input from the user
+
 =head1 Configuration and Environment
 
-Defines no attributes;
+Defines no attributes
 
 =head1 Subroutines/Methods
 

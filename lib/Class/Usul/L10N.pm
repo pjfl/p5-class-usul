@@ -4,7 +4,7 @@ package Class::Usul::L10N;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.28.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -190,7 +190,7 @@ Class::Usul::L10N - Localize text strings
 
 =head1 Version
 
-This documents version v0.27.$Rev: 4 $
+This documents version v0.28.$Rev: 1 $
 
 =head1 Synopsis
 

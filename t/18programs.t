@@ -1,8 +1,8 @@
-# @(#)$Ident: 18programs.t 2013-09-30 12:43 pjf ;
+# @(#)$Ident: 18programs.t 2013-10-03 13:33 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.28.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir catfile updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -19,7 +19,8 @@ BEGIN {
 }
 
 use Test::Requires "${perl_ver}";
-use English qw( -no_match_vars );
+use Capture::Tiny  qw( capture );
+use English        qw( -no_match_vars );
 use File::Basename qw( basename );
 use Test::Deep;
 
@@ -75,13 +76,20 @@ unlink $logfile;
 
 is $prog->debug, 0, 'Debug false';
 
+is $prog->debug_flag, '-n', 'Debug flag - false';
+
 $prog->debug( 1 );
 
 is $prog->debug, 1, 'Debug true';
 
+is $prog->debug_flag, '-D', 'Debug flag - true';
+
+my ($out, $err) = capture { $prog->run };
+
+like $err, qr{ Class::Usul::Programs }mx, 'Runs dump self';
+
 done_testing;
 
-#$prog->anykey;
 #$prog->run;
 
 # Local Variables:

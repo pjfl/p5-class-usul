@@ -1,11 +1,11 @@
-# @(#)$Ident: Functions.pm 2013-09-29 21:00 pjf ;
+# @(#)$Ident: Functions.pm 2013-10-03 12:27 pjf ;
 
 package Class::Usul::Functions;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.28.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use parent                  qw( Exporter::Tiny );
 
 use Class::Null;
@@ -397,8 +397,8 @@ sub is_win32 () {
    return lc $OSNAME eq EVIL ? 1 : 0;
 }
 
-sub loginid () {
-   return untaint_cmdline( get_user()->name || 'unknown' );
+sub loginid (;$) {
+   return untaint_cmdline( get_user( $_[ 0 ] )->name || 'unknown' );
 }
 
 sub logname () {
@@ -659,7 +659,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.27.$Rev: 3 $
+This documents version v0.28.$Rev: 1 $
 
 =head1 Synopsis
 

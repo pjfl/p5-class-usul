@@ -4,7 +4,7 @@ package Class::Usul::Time;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 5 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.28.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Date::Format    ( );
 use Exporter 5.57 qw( import );
@@ -259,7 +259,7 @@ Class::Usul::Time - Class methods for date and time manipulation
 
 =head1 Version
 
-This documents version v0.27.$Rev: 5 $
+This documents version v0.28.$Rev: 1 $
 
 =head1 Synopsis
 

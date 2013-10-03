@@ -1,16 +1,16 @@
-# @(#)$Ident: IPC.pm 2013-09-29 20:13 pjf ;
+# @(#)$Ident: IPC.pm 2013-10-03 13:17 pjf ;
 
 package Class::Usul::IPC;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.28.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Constants;
 use Class::Usul::File;
-use Class::Usul::Functions    qw( arg_list emit_to is_arrayref is_coderef
-                                  is_win32 merge_attributes strip_leader
-                                  throw );
+use Class::Usul::Functions    qw( arg_list emit_to get_user is_arrayref
+                                  is_coderef is_win32 loginid merge_attributes
+                                  strip_leader throw );
 use Class::Usul::Time         qw( time2str );
 use Class::Usul::Types        qw( BaseType FileType LoadableClass );
 use English                   qw( -no_match_vars );
@@ -67,7 +67,7 @@ sub child_list {
 }
 
 sub popen { # Robbed from IPC::Cmd
-   my ($self, $cmd, @opts) = @_; $cmd or throw 'Command not specified';
+   my ($self, $cmd, @opts) = @_; $cmd or throw 'Run command not specified';
 
    is_arrayref $cmd and $cmd = join SPC, @{ $cmd };
 
@@ -80,16 +80,16 @@ sub popen { # Robbed from IPC::Cmd
    my $errhand = sub {
       my $buf = shift; defined $buf or return;
 
-      $opts->{err} ne q(null)   and $stderr .= $buf;
-      $opts->{err} eq q(out)    and $out .= $buf;
-      $opts->{err} eq q(stderr) and emit_to( \*STDERR, $buf );
+      $opts->{err} ne 'null'   and $stderr .= $buf;
+      $opts->{err} eq 'out'    and $out .= $buf;
+      $opts->{err} eq 'stderr' and emit_to( \*STDERR, $buf );
       return;
    };
    my $outhand = sub {
       my $buf = shift; defined $buf or return; $out .= $buf;
 
-      $opts->{out} ne q(null)   and $stdout .= $buf;
-      $opts->{out} eq q(stdout) and emit_to( \*STDOUT, $buf );
+      $opts->{out} ne 'null'   and $stdout .= $buf;
+      $opts->{out} eq 'stdout' and emit_to( \*STDOUT, $buf );
       return;
    };
    my $pipe = sub {
@@ -112,7 +112,7 @@ sub popen { # Robbed from IPC::Cmd
       return ($pid, *TO_CHLD_W, *FR_CHLD_R, *FR_CHLD_ERR_R);
    };
 
-   local ($CHILD_ENUM, $CHILD_PID) = (0, 0);
+   local ($CHILD_ENUM, $CHILD_PID) = ( 0, 0 );
 
    my ($err_h, %hands, $in_h, $out_h, $pid, @ready);
 
@@ -122,9 +122,7 @@ sub popen { # Robbed from IPC::Cmd
       local $SIG{PIPE} = \&__cleaner;
 
       ($pid, $in_h, $out_h, $err_h) = $open3->( $cmd );
-
-      $opts->{in} ne q(stdin) and emit_to( $in_h, $opts->{in} );
-
+      $opts->{in} ne 'stdin' and emit_to( $in_h, $opts->{in} );
       close $in_h;
    }
    catch { throw $_ };
@@ -164,15 +162,15 @@ sub process_exists {
 
    (not $pid or $pid !~ m{ \d+ }mx) and return FALSE;
 
-   return CORE::kill 0, $pid ? TRUE : FALSE;
+   return (CORE::kill 0, $pid) ? TRUE : FALSE;
 }
 
 sub process_table {
    my ($self, @args) = @_; my $args = arg_list @args;
 
    my $pat   = $args->{pattern};
-   my $ptype = $args->{type   };
-   my $user  = $args->{user   };
+   my $ptype = $args->{type   } // 1;
+   my $user  = $args->{user   } // get_user->name;
    my $ppt   = __new_proc_process_table();
    my $has   = { map { $_ => TRUE } $ppt->fields };
    my @rows  = ();
@@ -205,7 +203,7 @@ sub run_cmd {
    my ($self, $cmd, @opts) = @_; $cmd or throw 'Run command not specified';
 
    if (is_arrayref $cmd) {
-      if (not is_win32 and can_load( modules => { 'IPC::Run' => q(0.84) } )) {
+      if (not is_win32 and can_load( modules => { 'IPC::Run' => '0.84' } )) {
          return $self->_run_cmd_using_ipc_run( $cmd, @opts );
       }
 
@@ -219,11 +217,11 @@ sub run_cmd {
 sub signal_process {
    my ($self, $flag, $sig, $pids) = @_; my $opts = [];
 
-   $sig  and push @{ $opts }, q(-o), "sig=$sig";
-   $flag and push @{ $opts }, q(-o), q(flag=one);
+   $sig  and push @{ $opts }, '-o', "sig=${sig}";
+   $flag and push @{ $opts }, '-o', 'flag=one';
 
-   my $cmd = [ $self->config->suid, qw(-nc signal_process),
-               @{ $opts }, q(--), @{ $pids || [] } ];
+   my $cmd = [ $self->config->suid, qw( -nc signal_process ),
+               @{ $opts }, '--', @{ $pids || [] } ];
 
    return $self->run_cmd( $cmd );
 }
@@ -232,7 +230,7 @@ sub signal_process_as_root {
    my ($self, @args) = @_; my ($file, $io);
 
    my $args = arg_list @args;
-   my $sig  = $args->{sig } || q(TERM);
+   my $sig  = $args->{sig } || 'TERM';
    my $pids = $args->{pids} || [];
 
    $args->{pid} and push @{ $pids }, $args->{pid};
@@ -240,7 +238,7 @@ sub signal_process_as_root {
    if ($file = $args->{file}
        and $io = $self->io( $file ) and $io->is_file) {
       push @{ $pids }, $io->chomp->lock->getlines;
-      $sig eq q(TERM) and unlink $file;
+      $sig eq 'TERM' and unlink $file;
    }
 
    (defined $pids->[0] and $pids->[0] =~ m{ \d+ }mx) or throw 'Process id bad';
@@ -259,7 +257,7 @@ sub signal_process_as_root {
 
       sleep 3; @pids = reverse $self->child_list( $mpid );
 
-      CORE::kill q(KILL), $_ for (@pids);
+      CORE::kill 'KILL', $_ for (@pids);
    }
 
    return OK;
@@ -273,7 +271,7 @@ sub _default_run_options {
 
    $opts->{debug      } ||= $self->debug;
    $opts->{expected_rv} ||= 0;
-   $opts->{in         } ||= q(stdin);
+   $opts->{in         } ||= 'stdin';
    $opts->{tempdir    } ||= $self->tempdir;
    $opts->{pid_ref    } ||= $self->tempfile( $opts->{tempdir} );
    return $opts;
@@ -282,7 +280,7 @@ sub _default_run_options {
 sub _list_pids_by_file_system {
    my ($self, $fsystem) = @_; $fsystem or return ();
 
-   my $opts = { err => q(null), expected_rv => 1 };
+   my $opts = { err => 'null', expected_rv => 1 };
    # TODO: Make fuser OS dependent
    my $data = $self->run_cmd( "fuser ${fsystem}", $opts )->out || NUL;
 
@@ -296,15 +294,15 @@ sub _new_process_table {
 
    return $self->table_class->new
       ( count    => $count,
-        fields   => [ qw(uid pid ppid start time size state tty cmd) ],
+        fields   => [ qw( uid pid ppid start time size state tty cmd ) ],
         labels   => { uid   => 'User',   pid   => 'PID',
                       ppid  => 'PPID',   start => 'Start Time',
                       tty   => 'TTY',    time  => 'Time',
                       size  => 'Size',   state => 'State',
                       cmd   => 'Command' },
-        typelist => { pid   => q(numeric), ppid => q(numeric),
-                      start => q(date),    size => q(numeric),
-                      time  => q(numeric) },
+        typelist => { pid   => 'numeric', ppid => 'numeric',
+                      start => 'date',    size => 'numeric',
+                      time  => 'numeric' },
         values   => $rows,
         wrap     => { cmd => 1 }, );
 }
@@ -342,7 +340,7 @@ sub _run_cmd_ipc_run_args {
 sub _run_cmd_system_args {
    my $self = shift; my $opts = $self->_default_run_options( @_ );
 
-   if ($opts->{in} ne q(stdin)) {
+   if ($opts->{in} ne 'stdin') {
       $opts->{in_ref} ||= $self->tempfile( $opts->{tempdir} );
       $opts->{in_ref}->print( $opts->{in} );
       $opts->{in} = $opts->{in_ref}->pathname;
@@ -351,7 +349,7 @@ sub _run_cmd_system_args {
    # Different semi-random file names in the temp directory
    $opts->{err_ref} ||= $self->tempfile( $opts->{tempdir} );
    $opts->{out_ref} ||= $self->tempfile( $opts->{tempdir} );
-   $opts->{err    } ||= q(out) if ($opts->{async});
+   $opts->{err    } ||= 'out' if ($opts->{async});
    $opts->{err    } ||= $opts->{err_ref}->pathname;
    $opts->{out    } ||= $opts->{out_ref}->pathname;
    return $opts;
@@ -359,6 +357,8 @@ sub _run_cmd_system_args {
 
 sub _run_cmd_using_ipc_run {
    my ($self, $cmd, @opts) = @_; my ($buf_err, $buf_out, $error, $h, $rv);
+
+   $cmd->[ 0 ] or throw 'Run command not specified';
 
    my $opts     = $self->_run_cmd_ipc_run_args( @opts );
    my $cmd_ref  = __partition_command( $cmd );
@@ -370,18 +370,18 @@ sub _run_cmd_using_ipc_run {
    my $in       = $opts->{in };
    my @cmd_args = ();
 
-   if    ($in  eq q(null))   { push @cmd_args, q(0<).$null      }
-   elsif (blessed $in)       { push @cmd_args, "0<${in}"        }
-   elsif ($in  ne q(stdin))  { push @cmd_args, q(0<), \$in      }
+   if    ($in  eq 'null')   { push @cmd_args, "0<${null}"     }
+   elsif (blessed $in)      { push @cmd_args, "0<${in}"       }
+   elsif ($in  ne 'stdin')  { push @cmd_args, '0<', \$in      }
 
-   if    ($out eq q(null))   { push @cmd_args, q(1>).$null      }
-   elsif (blessed $out)      { push @cmd_args, "1>${out}"       }
-   elsif ($out ne q(stdout)) { push @cmd_args, q(1>), \$buf_out }
+   if    ($out eq 'null')   { push @cmd_args, "1>${null}"     }
+   elsif (blessed $out)     { push @cmd_args, "1>${out}"      }
+   elsif ($out ne 'stdout') { push @cmd_args, '1>', \$buf_out }
 
-   if    ($err eq q(out))    { push @cmd_args, q(2>&1)          }
-   elsif ($err eq q(null))   { push @cmd_args, q(2>).$null      }
-   elsif (blessed $err)      { push @cmd_args, "2>${err}"       }
-   elsif ($err ne q(stderr)) { push @cmd_args, q(2>), \$buf_err }
+   if    ($err eq 'out')    { push @cmd_args, '2>&1'          }
+   elsif ($err eq 'null')   { push @cmd_args, "2>${null}"     }
+   elsif (blessed $err)     { push @cmd_args, "2>${err}"      }
+   elsif ($err ne 'stderr') { push @cmd_args, '2>', \$buf_err }
 
    $opts->{debug} and $self->log->debug( "Running ${cmd_str}" );
 
@@ -404,14 +404,14 @@ sub _run_cmd_using_ipc_run {
 
    my ($stderr, $stdout);
 
-   if ($out ne q(null) and $out ne q(stdout)) {
+   if ($out ne 'null' and $out ne 'stdout') {
        not blessed $out and $out = __run_cmd_filter_out( $stdout = $buf_out );
    }
    else { $out = $stdout = NUL }
 
-   if    ($err eq q(out)) { $stderr = $stdout; $error = $out; chomp $error }
-   elsif (blessed $err)   { $stderr = $error = $err->all; chomp $error }
-   elsif ($err ne q(null) and $err ne q(stderr)) {
+   if    ($err eq 'out') { $stderr = $stdout; $error = $out; chomp $error }
+   elsif (blessed $err)  { $stderr = $error = $err->all; chomp $error }
+   elsif ($err ne 'null' and $err ne 'stderr') {
       $stderr = $error = $buf_err; chomp $error;
    }
    else { $stderr = $error = NUL }
@@ -437,17 +437,17 @@ sub _run_cmd_using_system {
    my $out  = $opts->{out};
    my $in   = $opts->{in };
 
-   $cmd .= $in  eq q(stdin)  ? NUL : $in  eq q(null) ? ' 0<'.$null : ' 0<'.$in;
-   $cmd .= $out eq q(stdout) ? NUL : $out eq q(null) ? ' 1>'.$null : ' 1>'.$out;
-   $cmd .= $err eq q(stderr) ? NUL : $err eq q(null) ? ' 2>'.$null
-                                   : $err ne q(out)  ? ' 2>'.$err  : ' 2>&1';
+   $cmd .= $in  eq 'stdin'  ? NUL : $in  eq 'null' ? " 0<${null}" : " 0<${in}";
+   $cmd .= $out eq 'stdout' ? NUL : $out eq 'null' ? " 1>${null}" : " 1>${out}";
+   $cmd .= $err eq 'stderr' ? NUL : $err eq 'null' ? " 2>${null}"
+                                  : $err ne 'out'  ? " 2>${err}"  : ' 2>&1';
 
    $cmd .= ' & echo $! 1>'.$opts->{pid_ref}->pathname if ($opts->{async});
 
    $opts->{debug} and $self->log->debug( "Running ${cmd}" );
 
    {  local ($CHILD_ERROR, $EVAL_ERROR, $OS_ERROR);
-      local ($CHILD_ENUM, $CHILD_PID) = (0, 0);
+      local ($CHILD_ENUM, $CHILD_PID) = ( 0, 0 );
 
       eval { local $SIG{CHLD} = \&__handler; $rv = system $cmd };
 
@@ -486,13 +486,13 @@ sub _run_cmd_using_system {
                                          sig  => $sig );
    }
 
-   if ($out ne q(stdout) and $out ne q(null) and -f $out) {
+   if ($out ne 'stdout' and $out ne 'null' and -f $out) {
       $out = __run_cmd_filter_out( $stdout = $self->io( $out )->slurp );
    }
    else { $out = $stdout = NUL }
 
-   if ($err eq q(out)) { $stderr = $stdout; $error = $out; chomp $error }
-   elsif ($err ne q(stderr) and $err ne q(null) and -f $err) {
+   if ($err eq 'out') { $stderr = $stdout; $error = $out; chomp $error }
+   elsif ($err ne 'stderr' and $err ne 'null' and -f $err) {
       $stderr = $error = $self->io( $err )->slurp; chomp $error;
    }
    else { $stderr = $error = NUL }
@@ -587,13 +587,13 @@ sub __ipc_run_harness {
       my $h = IPC::Run::harness( $cmd_ref, @cmd_args, init => sub {
          $opts->{pid_ref}->print( $PID )->close }, '&' );
 
-      $h->start; return (0, $h);
+      $h->start; return ( 0, $h );
    }
 
    my $h  = IPC::Run::harness( $cmd_ref, @cmd_args ); $h->run;
    my $rv = $h->full_result || 0; $rv =~ m{ unknown }msx and throw $rv;
 
-   return ($rv, $h);
+   return ( $rv, $h );
 }
 
 sub __new_proc_process_table {
@@ -621,7 +621,7 @@ sub __partition_command {
 sub __proc_belongs_to_user {
    my ($puid, $user) = @_;
 
-   return !$user || $user eq q(All) || $user eq getpwuid $puid ? TRUE : FALSE;
+   return (!$user || $user eq 'All' || $user eq loginid $puid) ? TRUE : FALSE;
 }
 
 sub __pscomp {
@@ -651,15 +651,15 @@ Class::Usul::IPC - List/Create/Delete processes
 
 =head1 Version
 
-This documents version v0.27.$Rev: 3 $
+This documents version v0.28.$Rev: 1 $
 
 =head1 Synopsis
 
-   use q(Class::Usul::IPC);
+   use Class::Usul::IPC;
 
    my $ipc = Class::Usul::IPC->new;
 
-   $result_object = $ipc->run_cmd( [ qw(ls -l) ] );
+   $result_object = $ipc->run_cmd( [ qw( ls -l ) ] );
 
 =head1 Description
 

@@ -3,7 +3,7 @@
 package Class::Usul::File;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.28.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions   qw( arg_list create_token is_arrayref throw );
@@ -136,7 +136,7 @@ Class::Usul::File - File and directory IO base class
 
 =head1 Version
 
-This documents version v0.27.$Rev: 3 $
+This documents version v0.28.$Rev: 1 $
 
 =head1 Synopsis
 
