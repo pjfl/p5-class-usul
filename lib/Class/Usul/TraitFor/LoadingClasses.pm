@@ -1,9 +1,9 @@
-# @(#)$Ident: LoadingClasses.pm 2013-08-04 16:41 pjf ;
+# @(#)$Ident: LoadingClasses.pm 2013-10-02 23:05 pjf ;
 
 package Class::Usul::TraitFor::LoadingClasses;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
 use Class::Load             qw( is_class_loaded load_class );
 use Class::Usul::Constants;
@@ -20,10 +20,10 @@ sub build_subcomponents { # Voodo by mst. Finds and loads component subclasses
 
   (my $dir = find_source $base_class) =~ s{ [.]pm \z }{}msx;
 
-   for my $path (glob catfile( $dir, q(*.pm) )) {
-      my $subcomponent = basename( $path, q(.pm) );
-      my $component    = join q(::), $my_class,   $subcomponent;
-      my $base         = join q(::), $base_class, $subcomponent;
+   for my $path (glob catfile( $dir, '*.pm' )) {
+      my $subcomponent = basename( $path, '.pm' );
+      my $component    = join '::', $my_class,   $subcomponent;
+      my $base         = join '::', $base_class, $subcomponent;
 
       $self->load_component( $component, $base );
    }
@@ -53,7 +53,7 @@ sub load_component {
    ## no critic
    for my $parent (reverse @parents) {
       $self->ensure_class_loaded( $parent );
-      {  no strict q(refs);
+      {  no strict 'refs';
 
          $child eq $parent or $child->isa( $parent )
             or unshift @{ "${child}::ISA" }, $parent;
@@ -70,7 +70,7 @@ sub setup_plugins {
    my ($self, $config) = @_; $config ||= {};
 
    my $class   = $config->{child_class} || blessed $self || $self;
-   my $exclude = delete $config->{exclude_pattern} || q(\A \z);
+   my $exclude = delete $config->{exclude_pattern} || '\A \z';
    my @paths   = @{ delete $config->{search_paths} || [] };
    my $finder  = Module::Pluggable::Object->new
       ( search_path => [ map { m{ \A :: }mx ? "Class::Usul${_}" : $_ } @paths ],
@@ -95,7 +95,7 @@ Class::Usul::TraitFor::LoadingClasses - Load classes at runtime
 
 =head1 Version
 
-This documents version v0.27.$Rev: 1 $
+This documents version v0.27.$Rev: 5 $
 
 =head1 Synopsis
 

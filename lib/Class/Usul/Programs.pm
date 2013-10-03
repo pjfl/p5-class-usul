@@ -1,10 +1,10 @@
-# @(#)$Ident: Programs.pm 2013-10-01 11:53 pjf ;
+# @(#)$Ident: Programs.pm 2013-10-02 14:53 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Constants;
@@ -175,7 +175,7 @@ sub can_call {
 }
 
 sub debug_flag {
-   return $_[ 0 ]->debug ? q(-D) : q(-n);
+   return $_[ 0 ]->debug ? '-D' : '-n';
 }
 
 sub dump_self : method {
@@ -239,8 +239,7 @@ sub info {
 sub interpolate_cmd {
    my ($self, $cmd, @args) = @_;
 
-   my $ref = $self->can( q(_interpolate_).$cmd.q(_cmd) )
-      or return [ $cmd, @args ];
+   my $ref = $self->can( "_interpolate_${cmd}_cmd" ) or return [ $cmd, @args ];
 
    return $self->$ref( $cmd, @args );
 }
@@ -456,7 +455,7 @@ sub _man_page_from {
    my $parser   = Pod::Man->new( center  => $cfg->doc_title || NUL,
                                  name    => $cfg->script,
                                  release => 'Version '.$self->VERSION,
-                                 section => q(3m) );
+                                 section => '3m' );
    my $tempfile = $self->file->tempfile;
    my $cmd      = $cfg->man_page_cmd || [];
 
@@ -546,7 +545,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes version v0.27.$Rev: 3 $ of L<Class::Usul::Programs>
+This document describes version v0.27.$Rev: 5 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 

@@ -1,10 +1,10 @@
-# @(#)$Ident: Time.pm 2013-06-17 23:45 pjf ;
+# @(#)$Ident: Time.pm 2013-10-02 15:33 pjf ;
 
 package Class::Usul::Time;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.27.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
 use Date::Format    ( );
 use Exporter 5.57 qw( import );
@@ -32,8 +32,8 @@ sub str2date_time ($;$) {
    my $dt            = DateTime->new( year => 1970, month => 1, day => 1, );
    my $formatter     = DateTime::Format::Epoch->new
       ( epoch             => $dt,
-        unit              => q(seconds),
-        type              => q(int),
+        unit              => 'seconds',
+        type              => 'int',
         skip_leap_seconds => 1,
         start_at          => 0,
         local_epoch       => undef, );
@@ -55,18 +55,18 @@ sub str2time ($;$) {
         may       => 4, june     => 5, july    => 6, august   => 7,
         september => 8, sept     => 8, october => 9, november =>10,
         december  => 11, );
-   my @suf = (qw(th st nd rd th th th th th th)) x 3;
-      @suf[11, 12, 13] = qw(th th th);
+   my @suf = (qw( th st nd rd th th th th th th )) x 3;
+      @suf[11, 12, 13] = qw( th th th );
 
-   $day{ substr $_, 0, 3 }   = $day{ $_ }   for (keys %day);
+     $day{ substr $_, 0, 3 } =   $day{ $_ } for (keys %day);
    $month{ substr $_, 0, 3 } = $month{ $_ } for (keys %month);
 
-   my $daypat = join q(|), reverse sort keys %day;
-   my $monpat = join q(|), reverse sort keys %month;
-   my $sufpat = join q(|), reverse sort @suf;
-   my $dstpat = q(bst|dst);
+   my $daypat = join '|', reverse sort keys %day;
+   my $monpat = join '|', reverse sort keys %month;
+   my $sufpat = join '|', reverse sort @suf;
+   my $dstpat = 'bst|dst';
 
-   my %ampm = ( a => 0, p => 12 ); my ($AM, $PM) = (0, 12);
+   my %ampm = ( a => 0, p => 12 ); my ($AM, $PM) = ( 0, 12 );
 
    my $merid = 24; my @lt = localtime time;
 
@@ -220,7 +220,7 @@ sub str2time ($;$) {
       return if (! defined $result ||
                  ($result == -1
                   && (join q(), $ss, $mm, $hh, $day, $month, $year)
-                  ne q(595923311169)));
+                  ne '595923311169'));
 
       $result -= $zone;
    }
@@ -233,7 +233,7 @@ sub str2time ($;$) {
       return if (! defined $result ||
                  ($result == -1
                   && (join q(), $ss, $mm, $hh, $day, $month, $year)
-                  ne join q(), (localtime -1)[0 .. 5]));
+                  ne  join q(), (localtime -1)[0 .. 5]));
    }
 
    return $result + $frac;
@@ -259,7 +259,7 @@ Class::Usul::Time - Class methods for date and time manipulation
 
 =head1 Version
 
-This documents version v0.27.$Rev: 1 $
+This documents version v0.27.$Rev: 5 $
 
 =head1 Synopsis
 
