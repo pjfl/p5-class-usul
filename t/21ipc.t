@@ -1,8 +1,8 @@
-# @(#)$Ident: 21ipc.t 2013-10-03 16:26 pjf ;
+# @(#)$Ident: 21ipc.t 2013-10-04 22:48 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.30.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir catfile tmpdir updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -38,28 +38,29 @@ use Class::Usul::Constants qw(EXCEPTION_CLASS);
 
 my $osname = lc $OSNAME;
 my $perl   = $EXECUTABLE_NAME;
-my $prog   = Class::Usul::Programs->new( appclass => q(Class::Usul),
-                                         config   => { logsdir => q(t),
-                                                       tempdir => q(t), },
+my $prog   = Class::Usul::Programs->new( appclass => 'Class::Usul',
+                                         config   => { cache_ttys => 0,
+                                                       logsdir    => 't',
+                                                       tempdir    => 't', },
                                          log      => Logger->new,
-                                         method   => q(dump_self),
+                                         method   => 'dump_self',
                                          noask    => 1,
                                          quiet    => 1, );
 
 sub popen_test {
    my $want = shift; my $r = eval { $prog->ipc->popen( @_ ) };
 
-   $EVAL_ERROR     and return $EVAL_ERROR;
-   $want eq q(out) and return $r->out;
-   $want eq q(rv)  and return $r->rv;
+   $EVAL_ERROR    and return $EVAL_ERROR;
+   $want eq 'out' and return $r->out;
+   $want eq 'rv'  and return $r->rv;
    return $r;
 }
 
 my $cmd = "${perl} -v"; my $r;
 
-like popen_test( q(out), $cmd ), qr{ larry \s+ wall }imsx, 'popen';
+like popen_test( 'out', $cmd ), qr{ larry \s+ wall }imsx, 'popen';
 
-$cmd = "${perl} -e \"exit 2\""; $r = popen_test( q(out), $cmd );
+$cmd = "${perl} -e \"exit 2\""; $r = popen_test( 'out', $cmd );
 
 is ref $r, EXCEPTION_CLASS, 'popen exception is right class';
 

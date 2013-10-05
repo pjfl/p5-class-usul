@@ -1,10 +1,10 @@
-# @(#)$Ident: Usul.pm 2013-10-01 16:01 pjf ;
+# @(#)$Ident: Usul.pm 2013-10-04 15:15 pjf ;
 
 package Class::Usul;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.30.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( data_dumper merge_attributes throw );
@@ -87,9 +87,8 @@ sub __build_attr_from_class { # Coerce a hash ref from a string
       or throw error => 'Class [_1] is missing the config method',
                args  => [ $class ];
 
-   my $key    = USUL_CONFIG_KEY;
    my $config = { %{ $class->config || {} } };
-   my $attr   = { %{ delete $config->{ $key } || {} } };
+   my $attr   = { %{ delete $config->{ USUL_CONFIG_KEY() } || {} } };
    my $name   = delete $config->{name}; $config->{appclass} ||= $name;
 
    $attr->{config} ||= $config;
@@ -109,7 +108,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.30.$Rev: 1 $
+Describes Class::Usul version v0.31.$Rev: 1 $
 
 =head1 Synopsis
 

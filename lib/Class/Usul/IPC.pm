@@ -1,9 +1,9 @@
-# @(#)$Ident: IPC.pm 2013-10-03 13:17 pjf ;
+# @(#)$Ident: IPC.pm 2013-10-05 00:11 pjf ;
 
 package Class::Usul::IPC;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.30.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -12,7 +12,7 @@ use Class::Usul::Functions    qw( arg_list emit_to get_user is_arrayref
                                   is_coderef is_win32 loginid merge_attributes
                                   strip_leader throw );
 use Class::Usul::Time         qw( time2str );
-use Class::Usul::Types        qw( BaseType FileType LoadableClass );
+use Class::Usul::Types        qw( BaseType Bool FileType LoadableClass );
 use English                   qw( -no_match_vars );
 use File::Basename            qw( basename );
 use File::Spec;
@@ -51,7 +51,7 @@ sub child_list {
    my ($self, $pid, $procs) = @_; my ($child, $ppt); my @pids = ();
 
    unless (defined $procs) {
-      $ppt   = __new_proc_process_table();
+      $ppt   = $self->_new_proc_process_table;
       $procs = { map { $_->pid => $_->ppid } @{ $ppt->table } };
    }
 
@@ -171,7 +171,7 @@ sub process_table {
    my $pat   = $args->{pattern};
    my $ptype = $args->{type   } // 1;
    my $user  = $args->{user   } // get_user->name;
-   my $ppt   = __new_proc_process_table();
+   my $ppt   = $self->_new_proc_process_table;
    my $has   = { map { $_ => TRUE } $ppt->fields };
    my @rows  = ();
    my $count = 0;
@@ -596,10 +596,10 @@ sub __ipc_run_harness {
    return ( $rv, $h );
 }
 
-sub __new_proc_process_table {
-   require Proc::ProcessTable;
+sub _new_proc_process_table {
+   my $self = shift; require Proc::ProcessTable;
 
-   return Proc::ProcessTable->new( cache_ttys => TRUE );
+   return Proc::ProcessTable->new( cache_ttys => $self->config->cache_ttys );
 }
 
 sub __partition_command {
@@ -651,7 +651,7 @@ Class::Usul::IPC - List/Create/Delete processes
 
 =head1 Version
 
-This documents version v0.30.$Rev: 1 $
+This documents version v0.31.$Rev: 1 $
 
 =head1 Synopsis
 

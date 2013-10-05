@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+0.31.1    2013-10-05 03:18:00
+          - Set cache_ttys to false for CPAN testing
+
 0.30.1    2013-10-03 17:29:45
           - Added Capture::Tiny to test dependencies
 

@@ -3,7 +3,7 @@
 package Class::Usul::Response::IPC;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.30.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Types qw( Int Object Str Undef );
 use Moo;
@@ -29,7 +29,7 @@ Class::Usul::Response::IPC - Response class for running external programs
 
 =head1 Version
 
-This documents version v0.30.$Rev: 1 $
+This documents version v0.31.$Rev: 1 $
 
 =head1 Synopsis
 

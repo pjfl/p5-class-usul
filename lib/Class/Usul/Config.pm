@@ -3,7 +3,7 @@
 package Class::Usul::Config;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.30.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::File;
@@ -324,7 +324,7 @@ Class::Usul::Config - Inflate config values
 
 =head1 Version
 
-Describes Class::Usul::Config version v0.30.$Rev: 1 $
+Describes Class::Usul::Config version v0.31.$Rev: 1 $
 
 =head1 Synopsis
 

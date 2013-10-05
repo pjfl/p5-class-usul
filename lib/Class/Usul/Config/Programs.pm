@@ -1,19 +1,21 @@
-# @(#)$Ident: Programs.pm 2013-09-29 20:22 pjf ;
+# @(#)$Ident: Programs.pm 2013-10-05 02:11 pjf ;
 
 package Class::Usul::Config::Programs;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.30.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
-use Class::Usul::Types      qw( ArrayRef NonEmptySimpleStr NonZeroPositiveInt
-                                PositiveInt );
+use Class::Usul::Types      qw( ArrayRef Bool NonEmptySimpleStr
+                                NonZeroPositiveInt PositiveInt );
 use File::Basename          qw( basename );
 use File::DataClass::Types  qw( Path );
 use File::HomeDir;
 use Moo;
 
 extends q(Class::Usul::Config);
+
+has 'cache_ttys'   => is => 'ro',   isa => Bool, default => TRUE;
 
 has 'doc_title'    => is => 'ro',   isa => NonEmptySimpleStr,
    default         => 'User Contributed Documentation';
@@ -53,7 +55,7 @@ Class::Usul::Config::Programs - Additional configuration attributes for CLI prog
 
 =head1 Version
 
-This documents version v0.30.$Rev: 1 $
+This documents version v0.31.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -74,6 +76,10 @@ Additional configuration attributes for CLI programs
 Defines the following list of attributes
 
 =over 3
+
+=item C<cache_ttys>
+
+Boolean defaults to true. Passed to the L<Proc::ProcessTable> constructor
 
 =item C<doc_title>
 

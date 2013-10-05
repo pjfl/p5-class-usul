@@ -3,7 +3,7 @@
 package Class::Usul::Exception;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.30.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
 use Unexpected::Types qw( Int Str );
@@ -38,7 +38,7 @@ Class::Usul::Exception - Exception handling
 
 =head1 Version
 
-This documents version v0.30.$Rev: 1 $ of L<Class::Usul::Exception>
+This documents version v0.31.$Rev: 1 $ of L<Class::Usul::Exception>
 
 =head1 Synopsis
 
