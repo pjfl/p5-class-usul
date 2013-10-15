@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - Removed prefix and salt attr from ::Usul
+
 0.31.1    2013-10-05 03:18:00
           - Set cache_ttys to false for CPAN testing
 

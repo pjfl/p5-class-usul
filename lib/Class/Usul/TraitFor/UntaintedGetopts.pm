@@ -1,9 +1,9 @@
-# @(#)$Ident: UntaintedGetopts.pm 2013-10-02 18:31 pjf ;
+# @(#)$Ident: UntaintedGetopts.pm 2013-10-05 15:14 pjf ;
 
 package Class::Usul::TraitFor::UntaintedGetopts;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( untaint_cmdline );
@@ -93,7 +93,7 @@ around 'parse_options' => sub {
    }
 
    if ($options_config{missing_fatal} and @missing_required) {
-      print join( "\n", (map { $_.' is missing' } @missing_required), NUL );
+      print join( "\n", (map { "${_} is missing" } @missing_required), NUL );
       print $Usage, "\n";
       exit FAILED;
    }
@@ -161,7 +161,7 @@ Class::Usul::TraitFor::UntaintedGetopts - Untaints @ARGV before Getopts processe
 
 =head1 Version
 
-This documents version v0.31.$Rev: 1 $
+This documents version v0.31.$Rev: 2 $
 
 =head1 Synopsis
 

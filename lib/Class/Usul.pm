@@ -1,10 +1,10 @@
-# @(#)$Ident: Usul.pm 2013-10-04 15:15 pjf ;
+# @(#)$Ident: Usul.pm 2013-10-10 02:01 pjf ;
 
 package Class::Usul;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( data_dumper merge_attributes throw );
@@ -17,15 +17,16 @@ use Moo;
 use Scalar::Util            qw( blessed );
 
 # Public attributes
+has 'config'       => is => 'lazy', isa => ConfigType, builder => sub {
+   $_[ 0 ]->config_class->new( $_[ 0 ]->_config_attr );
+}, init_arg        => undef;
+
 has '_config_attr' => is => 'ro',   isa => HashRef, default => sub { {} },
    init_arg        => 'config';
 
 has 'config_class' => is => 'ro',   isa => LoadableClass,
    coerce          => LoadableClass->coercion,
    default         => 'Class::Usul::Config';
-
-has 'config'       => is => 'lazy', isa => ConfigType,
-   handles         => [ qw( prefix salt ) ], init_arg => undef;
 
 has 'debug',       => is => 'rw',   isa => Bool, default => FALSE,
    trigger         => TRUE;
@@ -54,10 +55,6 @@ sub dumper { # Damm handy for development
 }
 
 # Private methods
-sub _build_config {
-   return $_[ 0 ]->config_class->new( $_[ 0 ]->_config_attr );
-}
-
 sub _build_lock { # There is only one lock object. Instantiate on first use
    my $self = shift; state $cache; $cache and return $cache;
 
@@ -91,8 +88,8 @@ sub __build_attr_from_class { # Coerce a hash ref from a string
    my $attr   = { %{ delete $config->{ USUL_CONFIG_KEY() } || {} } };
    my $name   = delete $config->{name}; $config->{appclass} ||= $name;
 
-   $attr->{config} ||= $config;
-   $attr->{debug } ||= $class->can( 'debug' ) ? $class->debug : FALSE;
+   $attr->{config} //= $config;
+   $attr->{debug } //= $class->can( 'debug' ) ? $class->debug : FALSE;
    return $attr;
 }
 
@@ -108,7 +105,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.31.$Rev: 1 $
+Describes Class::Usul version v0.31.$Rev: 2 $
 
 =head1 Synopsis
 

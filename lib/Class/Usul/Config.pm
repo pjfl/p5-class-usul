@@ -1,9 +1,9 @@
-# @(#)$Ident: Config.pm 2013-08-27 17:10 pjf ;
+# @(#)$Ident: Config.pm 2013-10-10 15:04 pjf ;
 
 package Class::Usul::Config;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::File;
@@ -141,8 +141,8 @@ sub inflate_paths {
 sub _build_appldir {
    my ($self, $appclass, $home) = __unpack( @_ ); my $dir = home2appldir $home;
 
-   ($dir and -d catdir( $dir, q(bin) ))
-      or $dir = catdir( NUL, q(var), (class2appdir $appclass) );
+   ($dir and -d catdir( $dir, 'bin' ))
+      or $dir = catdir(  NUL, 'var', (class2appdir $appclass) );
 
    -d $dir or $dir = $home;
 
@@ -150,28 +150,28 @@ sub _build_appldir {
 }
 
 sub _build_binsdir {
-   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw(appldir bin) );
+   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( appldir bin ) );
 
    return -d $dir ? $dir : untaint_path $Config{installsitescript};
 }
 
 sub _build_ctlfile {
-   my $name      = $_[ 0 ]->_inflate_symbol( $_[ 1 ], q(name)      );
-   my $extension = $_[ 0 ]->_inflate_symbol( $_[ 1 ], q(extension) );
+   my $name      = $_[ 0 ]->_inflate_symbol( $_[ 1 ], 'name'      );
+   my $extension = $_[ 0 ]->_inflate_symbol( $_[ 1 ], 'extension' );
 
-   return $_[ 0 ]->_inflate_path( $_[ 1 ], q(ctrldir), $name.$extension );
+   return $_[ 0 ]->_inflate_path( $_[ 1 ], 'ctrldir', $name.$extension );
 }
 
 sub _build_ctrldir {
-   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir etc) );
+   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir etc ) );
 
-   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], qw(appldir etc) );
+   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], qw( appldir etc ) );
 }
 
 sub _build_dbasedir {
-   my $dir =  $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir db) );
+   my $dir =  $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir db ) );
 
-   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], q(vardir) );
+   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], 'vardir' );
 }
 
 sub _build_extension {
@@ -179,36 +179,36 @@ sub _build_extension {
 }
 
 sub _build_localedir {
-   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir locale) );
+   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir locale ) );
 
    -d $dir and return $dir;
 
    for (map { catdir( @{ $_ } ) } @{ LOCALE_DIRS() } ) { -d $_ and return $_ }
 
-   return $_[ 0 ]->_inflate_path( $_[ 1 ], qw(tempdir) );
+   return $_[ 0 ]->_inflate_path( $_[ 1 ], 'tempdir' );
 }
 
 sub _build_logfile {
-   my $name = $_[ 0 ]->_inflate_symbol( $_[ 1 ], q(name) );
+   my $name = $_[ 0 ]->_inflate_symbol( $_[ 1 ], 'name' );
 
-   return $_[ 0 ]->_inflate_path( $_[ 1 ], q(logsdir), "${name}.log" );
+   return $_[ 0 ]->_inflate_path( $_[ 1 ], 'logsdir', "${name}.log" );
 }
 
 sub _build_logsdir {
-   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir logs) );
+   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir logs ) );
 
-   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], qw(tempdir) );
+   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], 'tempdir' );
 }
 
 sub _build_name {
-   my $name = basename( $_[ 0 ]->_inflate_path( $_[ 1 ], q(pathname) ), EXTNS );
+   my $name = basename( $_[ 0 ]->_inflate_path( $_[ 1 ], 'pathname' ), EXTNS );
 
    return (split_on__ $name, 1) || (split_on_dash $name, 1) || $name;
 }
 
 sub _build_pathname {
-   return rel2abs( (q(-) eq substr $PROGRAM_NAME, 0, 1) ? $EXECUTABLE_NAME
-                                                        : $PROGRAM_NAME );
+   return rel2abs( ('-' eq substr $PROGRAM_NAME, 0, 1) ? $EXECUTABLE_NAME
+                                                       : $PROGRAM_NAME );
 }
 
 sub _build_path_to {
@@ -216,64 +216,64 @@ sub _build_path_to {
 }
 
 sub _build_phase {
-   my $verdir  = basename( $_[ 0 ]->_inflate_path( $_[ 1 ], q(appldir) ) );
+   my $verdir  = basename( $_[ 0 ]->_inflate_path( $_[ 1 ], 'appldir' ) );
    my ($phase) = $verdir =~ m{ \A v \d+ \. \d+ p (\d+) \z }msx;
 
    return defined $phase ? $phase : PHASE;
 }
 
 sub _build_prefix {
-   my $appclass = $_[ 0 ]->_inflate_symbol( $_[ 1 ], q(appclass) );
+   my $appclass = $_[ 0 ]->_inflate_symbol( $_[ 1 ], 'appclass' );
 
    return (split m{ :: }mx, lc $appclass)[ -1 ];
 }
 
 sub _build_root {
-   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir root) );
+   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir root ) );
 
-   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], q(vardir) );
+   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], 'vardir' );
 }
 
 sub _build_rundir {
-   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir run) );
+   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir run ) );
 
-   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], q(vardir) );
+   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], 'vardir' );
 }
 
 sub _build_salt {
-   return $_[ 0 ]->_inflate_symbol( $_[ 1 ], q(prefix) );
+   return $_[ 0 ]->_inflate_symbol( $_[ 1 ], 'prefix' );
 }
 
 sub _build_sessdir {
-   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir hist) );
+   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir hist ) );
 
-   return -d $dir ? $dir : $_[ 0 ]->inflate_path( $_[ 1 ], q(vardir) );
+   return -d $dir ? $dir : $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir' );
 }
 
 sub _build_shell {
-   my $file = catfile( NUL, qw(bin ksh) ); -f $file and return $file;
+   my $file = catfile( NUL, qw( bin ksh ) ); -f $file and return $file;
 
    $file = $ENV{SHELL}; -f $file and return $file;
 
-   return catfile( NUL, qw(bin sh) );
+   return catfile( NUL, qw( bin sh ) );
 }
 
 sub _build_suid {
-   my $prefix = $_[ 0 ]->_inflate_symbol( $_[ 1 ], q(prefix) );
+   my $prefix = $_[ 0 ]->_inflate_symbol( $_[ 1 ], 'prefix' );
 
-   return $_[ 0 ]->_inflate_path( $_[ 1 ], q(binsdir), "${prefix}_admin" );
+   return $_[ 0 ]->_inflate_path( $_[ 1 ], 'binsdir', "${prefix}_admin" );
 }
 
 sub _build_tempdir {
-   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw(vardir tmp) );
+   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir tmp ) );
 
    return -d $dir ? $dir : untaint_path tmpdir;
 }
 
 sub _build_vardir {
-   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw(appldir var) );
+   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( appldir var ) );
 
-   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], q(appldir) );
+   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], 'appldir' );
 }
 
 sub _inflate_path {
@@ -289,7 +289,7 @@ sub _inflate_path {
 sub _inflate_symbol {
    my ($self, $attr, $symbol) = @_; $attr ||= {};
 
-   my $attr_name = lc $symbol; my $method = q(_build_).$attr_name;
+   my $attr_name = lc $symbol; my $method = "_build_${attr_name}";
 
    return blessed $self                      ? $self->$attr_name()
         : __is_inflated( $attr, $attr_name ) ? $attr->{ $attr_name }
@@ -324,7 +324,7 @@ Class::Usul::Config - Inflate config values
 
 =head1 Version
 
-Describes Class::Usul::Config version v0.31.$Rev: 1 $
+Describes Class::Usul::Config version v0.31.$Rev: 2 $
 
 =head1 Synopsis
 
