@@ -1,9 +1,9 @@
-# @(#)$Ident: UntaintedGetopts.pm 2013-10-05 15:14 pjf ;
+# @(#)$Ident: UntaintedGetopts.pm 2013-10-21 14:45 pjf ;
 
 package Class::Usul::TraitFor::UntaintedGetopts;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( untaint_cmdline );
@@ -15,90 +15,17 @@ use JSON;
 use Regexp::Common;
 use Moo::Role;
 
-my ($Extra_Argv, $Usage) = ([], NUL);
+my $Extra_Argv = []; my $Usage = "Did we forget new_with_options?\n";
 
 # Construction
-around 'options_usage' => sub {
-   return $Usage;
+around 'new_with_options' => sub {
+   my ($orig, $class, @args) = @_;
+
+   return $class->new( $class->_parse_options( @args ) );
 };
 
-around 'parse_options' => sub {
-   my ($orig, $class, %args) = @_;
-
-   my %options_data   = $class->_options_data;
-   my %options_config = $class->_options_config;
-   my $option_name    = sub {
-      my ($name, %data) = @_;
-
-      my $dash_name    = $name; $dash_name =~ tr/_/-/; # Dash name support
-      my $cmdline_name = $dash_name;
-
-      defined $data{short} and $cmdline_name .= '|'.$data{short};
-
-      $data{repeatable } and not defined $data{format} and $cmdline_name .= '+';
-      $data{negativable} and $cmdline_name .= '!';
-      defined $data{format} and $cmdline_name .= '='.$data{format};
-      return $cmdline_name;
-   };
-
-   my (%has_to_split, @options, @skip_options);
-
-   defined $options_config{skip_options}
-      and @skip_options = @{ $options_config{skip_options} };
-
-   @skip_options and delete @options_data{ @skip_options };
-
-   for my $name (sort { __sort_options( \%options_data, $a, $b ) }
-                 keys %options_data ) {
-      my %data = %{ $options_data{ $name } }; my $doc = $data{doc};
-
-      not defined $doc and $doc = "No help for ${name}";
-      push @options, [ $option_name->( $name, %data ), $doc ];
-      defined $data{autosplit} and $has_to_split{ $name } = Data::Record->new( {
-         split => $data{autosplit}, unless => $RE{quoted} } );
-   }
-
-   $options_config{protect_argv} and local @ARGV = @ARGV;
-
-   my $enc; $enc = $options_config{encoding} // 'UTF-8'
-      and @ARGV = map { decode( $enc, $_ ) } @ARGV;
-
-   @ARGV = map { untaint_cmdline $_ } @ARGV;
-
-   %has_to_split and @ARGV = __split_args( \%has_to_split );
-
-   my (@flavour, $opt);
-
-   defined $options_config{flavour}
-      and push @flavour, { getopt_conf => $options_config{flavour} };
-
-   ($opt, $Usage) = describe_options( ("Usage: %c %o"), @options, @flavour );
-
-   push @{ $Extra_Argv }, $_ for (@ARGV);
-
-   my %cmdline_params = %args; my @missing_required;
-   # Make that config option tri-state and ignore the default of false
-   my $prefer_cmdline = __tri2bool( $options_config{prefer_commandline} );
-
-   for my $name (keys %options_data) {
-      my %data = %{ $options_data{ $name } };
-
-      if ($prefer_cmdline or not defined $cmdline_params{ $name }) {
-         my $val; defined ($val = $opt->$name()) and
-            $cmdline_params{ $name } = $data{json} ? decode_json( $val ) : $val;
-      }
-
-      $data{required} and not defined $cmdline_params{ $name }
-         and push @missing_required, $name;
-   }
-
-   if ($options_config{missing_fatal} and @missing_required) {
-      print join( "\n", (map { "${_} is missing" } @missing_required), NUL );
-      print $Usage, "\n";
-      exit FAILED;
-   }
-
-   return %cmdline_params;
+around 'options_usage' => sub {
+   return ucfirst $Usage;
 };
 
 # Public methods
@@ -111,24 +38,113 @@ sub next_argv {
    return shift @{ __extra_argv( $_[ 0 ] ) };
 }
 
+# Private methods
+sub _parse_options {
+   my ($class, %args) = @_; my $opt;
+
+   my %data   = $class->_options_data;
+   my %config = $class->_options_config;
+   my $enc    = $config{encoding} // 'UTF-8';
+
+   my @skip_options; defined $config{skip_options}
+      and @skip_options = @{ $config{skip_options} };
+
+   @skip_options and delete @data{ @skip_options };
+
+   my ($splitters, @options) = __build_options( \%data );
+
+   my @flavour; defined $config{flavour}
+      and push @flavour, { getopt_conf => $config{flavour} };
+
+   $config{protect_argv} and local @ARGV = @ARGV;
+   $enc and @ARGV = map { decode( $enc, $_ ) } @ARGV;
+   $config{no_untaint} or @ARGV = map { untaint_cmdline $_ } @ARGV;
+   keys %{ $splitters } and @ARGV = __split_args( $splitters );
+   ($opt, $Usage) = describe_options( ('Usage: %c %o'), @options, @flavour );
+   $Extra_Argv = [ @ARGV ];
+
+   my $prefer = __tri2bool( $config{prefer_commandline} ); # TODO: Yuck
+   my ($params, @missing) = __extract_params( \%args, \%data, $opt, $prefer );
+
+   if ($config{missing_fatal} and @missing) {
+      print join( "\n", (map { "${_} is missing" } @missing), NUL );
+      print $Usage, "\n";
+      exit FAILED;
+   }
+
+   return %{ $params };
+};
+
 # Private functions
+sub __build_options {
+   my $options_data = shift; my $splitters = {}; my @options = ();
+
+   for my $name (sort  { __sort_options( $options_data, $a, $b ) }
+                 keys %{ $options_data }) {
+      my $option = $options_data->{ $name }; my $doc = $option->{doc};
+
+      not defined $doc and $doc = "No help for ${name}";
+      push @options, [ __option_specification( $name, $option ), $doc ];
+      defined $option->{autosplit} or next;
+      $splitters->{ $name } = Data::Record->new( {
+         split => $option->{autosplit}, unless => $RE{quoted} } );
+      $option->{short}
+         and $splitters->{ $option->{short} } = $splitters->{ $name };
+   }
+
+   return ($splitters, @options);
+}
+
 sub __extra_argv {
    return $_[ 0 ]->{_extra_argv} //= [ @{ $Extra_Argv } ];
 }
 
+sub __extract_params {
+   my ($args, $options_data, $cmdline_opt, $prefer_cmdline) = @_;
+
+   my %params = %{ $args }; my @missing_required;
+
+   for my $name (keys %{ $options_data }) {
+      my $option = $options_data->{ $name };
+
+      if ($prefer_cmdline or not defined $params{ $name }) {
+         my $val; defined ($val = $cmdline_opt->$name()) and
+            $params{ $name } = $option->{json} ? decode_json( $val ) : $val;
+      }
+
+      $option->{required} and not defined $params{ $name }
+         and push @missing_required, $name;
+   }
+
+   return (\%params, @missing_required);
+}
+
+sub __option_specification {
+   my ($name, $opt) = @_;
+
+   my $dash_name   = $name; $dash_name =~ tr/_/-/; # Dash name support
+   my $option_spec = $dash_name;
+
+   defined $opt->{short} and $option_spec .= '|'.$opt->{short};
+   $opt->{repeatable } and not defined $opt->{format} and $option_spec .= '+';
+   $opt->{negativable} and $option_spec .= '!';
+   defined $opt->{format} and $option_spec .= '='.$opt->{format};
+   return $option_spec;
+}
+
 sub __split_args {
-   my $args = shift; my @new_argv;
+   my $splitters = shift; my @new_argv;
 
-   for my $i (0 .. $#ARGV) { # Parse all argv
-      my $arg = $ARGV[ $i ]; my ($name, $value) = split m{ [=] }mx, $arg, 2;
+   for (my $i = 0, my $nargvs = @ARGV; $i < $nargvs; $i++) { # Parse all argv
+      my $arg = $ARGV[ $i ];
+      my ($name, $value) = split m{ [=] }mx, $arg, 2; $name =~ s{ \A --? }{}mx;
 
-      $name =~ s{ \A --? }{}mx; $value //= $ARGV[ ++$i ];
+      if (my $splitter = $splitters->{ $name }) {
+         $value //= $ARGV[ ++$i ];
 
-      if (my $splitter = $args->{ $name }) {
-         for my $subval ($splitter->records( $value )) {
-            # Remove the quoted if exist to chain
-            $subval =~ s{ \A [\'\"] | [\'\"] \z }{}gmx;
-            push @new_argv, "--${name}", $subval;
+         for my $subval (map { s{ \A [\'\"] | [\'\"] \z }{}gmx; $_ }
+                         $splitter->records( $value )) {
+            push @new_argv, $name, $subval;
          }
       }
       else { push @new_argv, $arg }
@@ -146,6 +162,7 @@ sub __sort_options {
 }
 
 sub __tri2bool {
+   # Make that config option tri-state and ignore the default of false
    return $_[ 0 ] == -1 ? FALSE : TRUE;
 }
 
@@ -161,7 +178,7 @@ Class::Usul::TraitFor::UntaintedGetopts - Untaints @ARGV before Getopts processe
 
 =head1 Version
 
-This documents version v0.31.$Rev: 2 $
+This documents version v0.31.$Rev: 3 $
 
 =head1 Synopsis
 
@@ -171,7 +188,12 @@ This documents version v0.31.$Rev: 2 $
 
 =head1 Description
 
-Untaints @ARGV before Getopts processes it
+Untaints C<@ARGV> before Getopts processes it. Replaces L<MooX::Options::Role>
+with an implementation closer to L<MooseX::Getopt::Dashes>
+
+=head1 Configuration and Environment
+
+Modifies C<new_with_options> and C<options_usage>
 
 =head1 Subroutines/Methods
 
@@ -183,14 +205,10 @@ Returns an array ref containing the remaining command line arguments
 
 Returns the next value from L</extra_argv> shifting the value off the list
 
-=head2 parse_options
+=head2 _parse_options
 
-Modifies this method in L<MooX::Options::Base>. Untaints the values of the
-I<@ARGV> array before the are parsed by L<Getopt::Long>
-
-=head1 Configuration and Environment
-
-None
+Modifies this method in L<MooX::Options::Role>. Untaints the values of the
+C<@ARGV> array before the are parsed by L<Getopt::Long::Descriptive>
 
 =head1 Diagnostics
 

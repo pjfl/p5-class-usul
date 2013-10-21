@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+          - Bumped Unexpected dependency to v0.15
+          - Refactored TF::UntaintedGetopts
+          - Set quiet to true for ::Programs help
           - Removed prefix and salt attr from ::Usul
 
 0.31.1    2013-10-05 03:18:00

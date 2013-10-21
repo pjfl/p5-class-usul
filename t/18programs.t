@@ -1,8 +1,8 @@
-# @(#)$Ident: 18programs.t 2013-10-03 13:33 pjf ;
+# @(#)$Ident: 18programs.t 2013-10-21 14:46 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 3 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir catfile updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -62,7 +62,7 @@ else {
 
 eval { $prog->file->io( 'Dummy' )->all }; $e = $EVAL_ERROR || q();
 
-like $e, qr{ Dummy \s+ cannot \s+ open }mx, 'Non existant file';
+like $e, qr{ 'Dummy' \s+ cannot \s+ open }mx, 'Non existant file';
 
 is ref $e, 'Class::Usul::Exception', 'Our exception class';
 
@@ -87,6 +87,24 @@ is $prog->debug_flag, '-D', 'Debug flag - true';
 my ($out, $err) = capture { $prog->run };
 
 like $err, qr{ Class::Usul::Programs }mx, 'Runs dump self';
+
+like $prog->options_usage, qr{ Did \s we \s forget }mx, 'Default options usage';
+
+@ARGV = ( qw( One Two Three ) );
+
+$prog = Class::Usul::Programs->new_with_options
+   ( appclass => 'Class::Usul',
+     config   => { logsdir => 't',
+                   tempdir => 't', },
+     method   => 'dump_self',
+     noask    => 1,
+     quiet    => 1, );
+
+like $prog->options_usage, qr{ Usage: \s $name .t }mx, 'Default usage';
+
+is $prog->next_argv, 'One', 'Next argv';
+
+is $prog->extra_argv->[ 0 ], 'Two', 'Extra argv';
 
 done_testing;
 

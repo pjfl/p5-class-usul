@@ -1,9 +1,9 @@
-# @(#)$Ident: Config.pm 2013-10-10 15:04 pjf ;
+# @(#)$Ident: Config.pm 2013-10-17 11:02 pjf ;
 
 package Class::Usul::Config;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::File;
@@ -96,9 +96,9 @@ around 'BUILDARGS' => sub {
    my ($orig, $class, @args) = @_; my $attr = $orig->( $class, @args );
 
    my $paths; if ($paths = delete $attr->{cfgfiles} and $paths->[ 0 ]) {
-      my $loaded = Class::Usul::File->data_load( paths => $paths );
+      my $loaded = Class::Usul::File->data_load( paths => $paths ) || {};
 
-      $attr = { %{ $loaded || {} }, %{ $attr } };
+      $attr = { %{ $attr }, %{ $loaded } };
    }
 
    for my $attr_name (keys %{ $attr }) {
@@ -324,7 +324,7 @@ Class::Usul::Config - Inflate config values
 
 =head1 Version
 
-Describes Class::Usul::Config version v0.31.$Rev: 2 $
+Describes Class::Usul::Config version v0.31.$Rev: 3 $
 
 =head1 Synopsis
 

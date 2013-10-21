@@ -1,10 +1,10 @@
-# @(#)$Ident: Usul.pm 2013-10-10 02:01 pjf ;
+# @(#)$Ident: Usul.pm 2013-10-16 23:05 pjf ;
 
 package Class::Usul;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( data_dumper merge_attributes throw );
@@ -18,8 +18,8 @@ use Scalar::Util            qw( blessed );
 
 # Public attributes
 has 'config'       => is => 'lazy', isa => ConfigType, builder => sub {
-   $_[ 0 ]->config_class->new( $_[ 0 ]->_config_attr );
-}, init_arg        => undef;
+   $_[ 0 ]->config_class->new( $_[ 0 ]->_config_attr ) },
+   init_arg        => undef;
 
 has '_config_attr' => is => 'ro',   isa => HashRef, default => sub { {} },
    init_arg        => 'config';
@@ -105,7 +105,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.31.$Rev: 2 $
+Describes Class::Usul version v0.31.$Rev: 3 $
 
 =head1 Synopsis
 

@@ -1,10 +1,10 @@
-# @(#)$Ident: Programs.pm 2013-10-03 01:47 pjf ;
+# @(#)$Ident: Programs.pm 2013-10-18 16:01 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Constants;
@@ -80,7 +80,7 @@ option 'noask'        => is => 'ro',   isa => Bool, default => FALSE,
 
 option 'options'      => is => 'ro',   isa => HashRef, format => 's%',
    documentation      =>
-      'Zero, one or more key/value pairs available to the method call',
+      'Zero, one or more key=value pairs available to the method call',
    default            => sub { {} }, short => 'o';
 
 option 'quiet'        => is => 'ro',   isa => Bool, default => FALSE,
@@ -187,7 +187,7 @@ sub error {
 
    $self->log->error( $_ ) for (split m{ \n }mx, "${text}");
 
-   emit_to( \*STDERR, $self->add_leader( $text, $args )."\n" );
+   emit_to \*STDERR, $self->add_leader( $text, $args )."\n";
    $self->debug and __output_stacktrace( $err, $self->verbose );
    return;
 }
@@ -201,7 +201,7 @@ sub fatal {
 
    $self->log->alert( $_ ) for (split m{ \n }mx, $text.$posn);
 
-   emit_to( \*STDERR, $self->add_leader( $text, $args ).$posn."\n" );
+   emit_to \*STDERR, $self->add_leader( $text, $args ).$posn."\n";
    __output_stacktrace( $err, $self->verbose );
    exit FAILED;
 }
@@ -401,7 +401,7 @@ sub _dont_ask {
 }
 
 sub _exit_usage {
-   exit $_[ 0 ]->_output_usage( $_[ 1 ] );
+   $_[ 0 ]->quiet( TRUE ); exit $_[ 0 ]->_output_usage( $_[ 1 ] );
 }
 
 sub _exit_version {
@@ -441,7 +441,8 @@ sub _get_run_method {
       else { $method = NUL }
    }
 
-   $method ||= 'run_chain'; $method eq 'run_chain' and $self->quiet( TRUE );
+   $method ||= 'run_chain';
+  ($method eq 'help' or $method eq 'run_chain') and $self->quiet( TRUE );
 
    return $self->method( $method );
 }
@@ -476,9 +477,7 @@ sub _output_usage {
                    -verbose => $verbose } ); # Never returns
    }
 
-   my $usage = ucfirst $self->options_usage;
-
-   warn $usage ? $usage : "Did we forget new_with_options?\n";
+   emit_to \*STDERR, $self->options_usage;
    return FAILED;
 }
 
@@ -523,9 +522,9 @@ sub __output_stacktrace {
    my ($e, $verbose) = @_; ($e and blessed $e) or return; $verbose //= 0;
 
    $verbose > 0 and $e->can( 'trace' )
-      and return emit_to( \*STDERR, NUL.$e->trace );
+      and return emit_to \*STDERR, NUL.$e->trace;
 
-   $e->can( 'stacktrace' ) and emit_to( \*STDERR, NUL.$e->stacktrace );
+   $e->can( 'stacktrace' ) and emit_to \*STDERR, NUL.$e->stacktrace;
 
    return;
 }
@@ -542,7 +541,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes version v0.31.$Rev: 1 $ of L<Class::Usul::Programs>
+This document describes version v0.31.$Rev: 3 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 

@@ -1,11 +1,11 @@
-# @(#)$Ident: Types.pm 2013-09-29 16:31 pjf ;
+# @(#)$Ident: Types.pm 2013-10-19 17:03 pjf ;
 
 package Class::Usul::Types;
 
 use strict;
 use warnings;
 use namespace::clean -except => 'meta';
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Class::Load             qw( load_first_existing_class );
 use Class::Usul::Constants;
@@ -61,28 +61,28 @@ coerce NullLoadingClass,
 
 # Private functions
 sub __exception_message_for_configtype {
-   blessed $_[ 0 ] and return inflate_message
+   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
       ( 'Object [_1] is missing some config attributes', blessed $_[ 0 ] );
 
    return __exception_message_for_object_reference( $_[ 0 ] );
 }
 
 sub __exception_message_for_l10ntype {
-   blessed $_[ 0 ] and return inflate_message
+   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
       ( 'Object [_1] is missing the localize method', blessed $_[ 0 ] );
 
    return __exception_message_for_object_reference( $_[ 0 ] );
 }
 
 sub __exception_message_for_locktype {
-   blessed $_[ 0 ] and return inflate_message
+   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
       ( 'Object [_1] is missing set / reset methods', blessed $_[ 0 ] );
 
    return __exception_message_for_object_reference( $_[ 0 ] );
 }
 
 sub __exception_message_for_logtype {
-   blessed $_[ 0 ] and return inflate_message
+   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
       ( 'Object [_1] is missing a log level method', blessed $_[ 0 ] );
 
    return __exception_message_for_object_reference( $_[ 0 ] );
@@ -93,7 +93,7 @@ sub __exception_message_for_object_reference {
 }
 
 sub __exception_message_for_requesttype {
-   blessed $_[ 0 ] and return inflate_message
+   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
       ( 'Object [_1] is missing a params method', blessed $_[ 0 ] );
 
    return __exception_message_for_object_reference( $_[ 0 ] );
@@ -131,7 +131,7 @@ Class::Usul::Types - Defines type constraints
 
 =head1 Version
 
-This document describes Class::Usul::Types version v0.31.$Rev: 1 $
+This document describes Class::Usul::Types version v0.31.$Rev: 3 $
 
 =head1 Synopsis
 
