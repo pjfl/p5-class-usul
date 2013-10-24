@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - ::Prompting will add_leader with initial +
           - Bumped Unexpected dependency to v0.15
           - Refactored TF::UntaintedGetopts
           - Set quiet to true for ::Programs help

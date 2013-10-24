@@ -1,10 +1,10 @@
-# @(#)$Ident: Programs.pm 2013-10-18 16:01 pjf ;
+# @(#)$Ident: Programs.pm 2013-10-21 23:50 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Constants;
@@ -223,7 +223,9 @@ sub help : method {
 sub info {
    my ($self, $text, $args) = @_;
 
-   $text = $self->loc( $text || '[no message]', $args->{args} || [] );
+   my $opts = { params => $args->{args} || [], quote_bind_values => FALSE, };
+
+   $text = $self->loc( $text || '[no message]', $opts );
 
    $self->log->info( $_ ) for (split m{ [\n] }mx, $text);
 
@@ -274,8 +276,9 @@ sub loc {
    my $args = (is_hashref $car) ? { %{ $car } }
             : { params => (is_arrayref $car) ? $car : [ @args ] };
 
-   $args->{domain_names} ||= [ DEFAULT_L10N_DOMAIN, $self->config->name ];
-   $args->{locale      } ||= $self->locale;
+   $args->{domain_names     } //= [ DEFAULT_L10N_DOMAIN, $self->config->name ];
+   $args->{locale           } //= $self->locale;
+   $args->{quote_bind_values} //= TRUE;
 
    return $self->localize( $key, $args );
 }
@@ -541,7 +544,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes version v0.31.$Rev: 3 $ of L<Class::Usul::Programs>
+This document describes version v0.31.$Rev: 4 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 

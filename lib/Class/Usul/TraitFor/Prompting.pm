@@ -1,9 +1,9 @@
-# @(#)Ident: Prompting.pm 2013-10-03 01:51 pjf ;
+# @(#)Ident: Prompting.pm 2013-10-21 18:16 pjf ;
 
 package Class::Usul::TraitFor::Prompting;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( arg_list emit_to throw );
@@ -13,20 +13,22 @@ use IO::Interactive;
 use Term::ReadKey;
 use Moo::Role;
 
-requires qw( config loc output );
+requires qw( add_leader config loc output );
 
 # Public methods
 sub anykey {
-   my $prompt = $_[ 0 ]->loc( $_[ 1 ] || 'Press any key to continue' ).'...';
+   my ($self, $prompt) = @_;
 
-   return __prompt( -p => $prompt, -d => TRUE, -e => NUL, -1 => TRUE );
+   $prompt = $self->_prepare( $prompt || 'Press any key to continue' );
+
+   return __prompt( -p => $prompt.'...', -d => TRUE, -e => NUL, -1 => TRUE );
 }
 
 sub get_line { # General text input routine.
    my ($self, $question, $default, $quit, $width, $multiline, $noecho) = @_;
 
-   $question = $self->loc( $question || 'Enter your answer' );
-   $default  = $default // NUL;
+   $question  = $self->_prepare( $question || 'Enter your answer' );
+   $default //= NUL;
 
    my $advice       = $quit ? $self->loc( '('.QUIT.' to quit)' ) : NUL;
    my $right_prompt = $advice.($multiline ? NUL : " [${default}]");
@@ -51,17 +53,21 @@ sub get_line { # General text input routine.
 }
 
 sub get_option { # Select from an numbered list of options
-   my ($self, $question, $default, $quit, $width, $options) = @_;
+   my ($self, $prompt, $default, $quit, $width, $options) = @_;
 
-   $question ||= 'Select one option from the following list:';
+   $prompt ||= '+Select one option from the following list:';
 
-   $self->output( $question, { cl => TRUE } ); my $count = 1;
+   my $leader = NUL; '+' eq substr $prompt, 0, 1 and $leader = '+'
+      and $prompt = substr $prompt, 1;
+
+   $self->output( $prompt, { cl => TRUE } ); my $count = 1;
 
    my $text = join "\n", map { $count++." - ${_}" } @{ $options };
 
    $self->output( $text, { cl => TRUE, nl => TRUE } );
 
-   my $opt  = $self->get_line( 'Select option', $default, $quit, $width );
+   my $question = "${leader}Select option";
+   my $opt      = $self->get_line( $question, $default, $quit, $width );
 
    $opt !~ m{ \A \d+ \z }mx and $opt = $default // 0;
 
@@ -77,7 +83,7 @@ sub yorn { # General yes or no input routine
 
    my $no = NO; my $yes = YES; my $result;
 
-   $question = $self->loc( $question || 'Choose' );
+   $question = $self->_prepare( $question || 'Choose' );
    $default  = $default ? $yes : $no; $quit = $quit ? QUIT : NUL;
 
    my $advice       = $quit ? "(${yes}/${no}, ${quit}) " : "(${yes}/${no}) ";
@@ -103,6 +109,17 @@ sub yorn { # General yes or no input routine
    }
 
    return;
+}
+
+# Private methods
+sub _prepare {
+   my ($self, $question) = @_; my $add_leader;
+
+   '+' eq substr $question, 0, 1 and $add_leader = TRUE
+      and $question = substr $question, 1;
+   $question = $self->loc( $question );
+   $add_leader and $question = $self->add_leader( $question );
+   return $question;
 }
 
 # Private functions
@@ -217,7 +234,7 @@ Class::Usul::TraitFor::Prompting - Methods for requesting command line input
 
 =head1 Version
 
-This documents version v0.31.$Rev: 1 $ of L<Class::Usul::TraitFor::Prompting>
+This documents version v0.31.$Rev: 4 $ of L<Class::Usul::TraitFor::Prompting>
 
 =head1 Description
 

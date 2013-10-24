@@ -1,10 +1,10 @@
-# @(#)$Ident: L10N.pm 2013-10-01 15:58 pjf ;
+# @(#)$Ident: L10N.pm 2013-10-24 02:19 pjf ;
 
 package Class::Usul::L10N;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -82,8 +82,10 @@ sub localize {
       0 > index $text, LOCALIZE and return $text;
 
       # Expand positional parameters of the form [_<n>]
-      my @args = map { $_ // '[?]' } @{ $args->{params} },
-                 map {       '[?]' } 0 .. 9;
+      my @args = map { $args->{quote_bind_values} ? "'${_}'" : $_ }
+                 map { (length) ? $_  : '[]'  }
+                 map {            $_ // '[?]' } @{ $args->{params} },
+                 map {                  '[?]' } 0 .. 9;
 
       $text =~ s{ \[ _ (\d+) \] }{$args[ $1 - 1 ]}gmx; return $text;
    }
@@ -190,7 +192,7 @@ Class::Usul::L10N - Localize text strings
 
 =head1 Version
 
-This documents version v0.31.$Rev: 1 $
+This documents version v0.31.$Rev: 4 $
 
 =head1 Synopsis
 
@@ -270,14 +272,16 @@ Causes a reload of the domain files the next time a message is localized
 
 Localizes the message. The message catalog is loaded from a GNU
 Gettext portable object file. Returns the C<$key> if the message is
-not in the catalog (and C<< $args->{no_default} >> is not true). Language
-is selected by the C<< $args->{locale} >> attribute. Expands
-positional parameters of the form C<< [_<n>] >> if C<< $args->{params}
->> is an array ref of values to substitute. Otherwise expands named
-attributes of the form C<< {attr_name} >> using the C<$args> hash for
-substitution values. The attribute C<< $args->{count} >> is passed to
-the machine object files plural function which is used to select
-either the singular or plural form of the translation. If C<<
+not in the catalog (and C<< $args->{no_default} >> is not
+true). Language is selected by the C<< $args->{locale} >>
+attribute. Expands positional parameters of the form C<< [_<n>] >> if
+C<< $args->{params} >> is an array ref of values to
+substitute. Otherwise expands named attributes of the form C<<
+{attr_name} >> using the C<$args> hash for substitution values. If C<<
+$args->{quote_bind_values} >> is true the placehoder values are
+displayed wrapped in quotes, The attribute C<< $args->{count} >> is
+passed to the portable object files plural function which is used to
+select either the singular or plural form of the translation. If C<<
 $args->{context} >> is supplied it is prepended to the C<$key> before
 the lookup in the catalog takes place
 
