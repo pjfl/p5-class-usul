@@ -1,9 +1,9 @@
-# @(#)$Ident: Config.pm 2013-10-17 11:02 pjf ;
+# @(#)$Ident: Config.pm 2013-11-02 17:25 pjf ;
 
 package Class::Usul::Config;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.32.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::File;
@@ -101,10 +101,10 @@ around 'BUILDARGS' => sub {
       $attr = { %{ $attr }, %{ $loaded } };
    }
 
-   for my $attr_name (keys %{ $attr }) {
-      defined $attr->{ $attr_name }
-          and $attr->{ $attr_name } =~ m{ \A __([^\(]+?)__ \z }mx
-          and $attr->{ $attr_name } = $class->_inflate_symbol( $attr, $1 );
+   for my $name (keys %{ $attr }) {
+      defined $attr->{ $name }
+          and $attr->{ $name } =~ m{ \A __([^\(]+?)__ \z }mx
+          and $attr->{ $name } = $class->_inflate_symbol( $attr, $1 );
    }
 
    $class->inflate_paths( $attr );
@@ -128,10 +128,10 @@ sub canonicalise {
 sub inflate_paths {
    my ($class, $attr) = @_;
 
-   for my $attr_name (keys %{ $attr }) {
-      defined $attr->{ $attr_name }
-          and $attr->{ $attr_name } =~ m{ \A __(.+?)\((.+?)\)__ \z }mx
-          and $attr->{ $attr_name } = $class->_inflate_path( $attr, $1, $2 );
+   for my $name (keys %{ $attr }) {
+      defined $attr->{ $name }
+          and $attr->{ $name } =~ m{ \A __(.+?)\((.+?)\)__ \z }mx
+          and $attr->{ $name } = $class->_inflate_path( $attr, $1, $2 );
    }
 
    return;
@@ -324,7 +324,7 @@ Class::Usul::Config - Inflate config values
 
 =head1 Version
 
-Describes Class::Usul::Config version v0.31.$Rev: 3 $
+Describes Class::Usul::Config version v0.32.$Rev: 1 $
 
 =head1 Synopsis
 

@@ -1,13 +1,14 @@
-# @(#)$Ident: Functions.pm 2013-10-03 12:27 pjf ;
+# @(#)$Ident: Functions.pm 2013-11-22 10:52 pjf ;
 
 package Class::Usul::Functions;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.32.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use parent                  qw( Exporter::Tiny );
 
+use Class::Load             qw( is_class_loaded load_class );
 use Class::Null;
 use Class::Usul::Constants;
 use Cwd                     qw( );
@@ -23,9 +24,8 @@ use List::Util              qw( first );
 use Path::Class::Dir;
 use Scalar::Util            qw( blessed openhandle );
 use Sys::Hostname;
+use Unexpected::Functions   qw( Tainted );
 use User::pwent;
-
-EXCEPTION_CLASS->has_exception( 'Tainted' );
 
 our @EXPORT      = qw( is_member );
 our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
@@ -33,7 +33,8 @@ our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
                        base64_encode_ns bsonid bsonid_time bson64id
                        bson64id_time build class2appdir classdir
                        classfile create_token data_dumper distname
-                       downgrade elapsed emit emit_to env_prefix escape_TT
+                       downgrade elapsed emit emit_to
+                       ensure_class_loaded env_prefix escape_TT
                        exception find_apphome find_source fold fqdn
                        fullname get_cfgfiles get_user hex2str
                        home2appldir is_arrayref is_coderef is_hashref
@@ -235,6 +236,22 @@ sub emit_to ($;@) {
            or throw( error => 'IO error: [_1]', args =>[ $OS_ERROR ] ));
 }
 
+sub ensure_class_loaded ($;$) {
+   my ($class, $opts) = @_; $opts ||= {};
+
+   my $package_defined = sub { is_class_loaded( $class ) };
+
+   not $opts->{ignore_loaded} and $package_defined->() and return 1;
+
+   eval { load_class( $class ) }; EXCEPTION_CLASS->throw_on_error;
+
+   $package_defined->()
+      or throw( error => 'Class [_1] loaded but package undefined',
+                args  => [ $class ] );
+
+   return 1;
+}
+
 sub env_prefix ($) {
    return uc app_prefix( $_[ 0 ] );
 }
@@ -332,7 +349,7 @@ sub get_cfgfiles ($;$$) {
    my ($appclass, $dirs, $extns) = @_;
 
    $appclass // throw( 'Application class undefined' );
-   is_arrayref( $dirs ) or $dirs = [ defined $dirs ? $dirs : curdir ];
+   is_arrayref( $dirs ) or $dirs = [ $dirs // curdir ];
 
    my $app_pref = app_prefix   $appclass;
    my $appdir   = class2appdir $appclass;
@@ -516,8 +533,8 @@ sub untaint_string ($;$) {
    unless (defined $untainted and $untainted eq $string) {
       my $err = "String [_1] contains possible taint";
 
-      throw( error => $err,      args  => [ $string ],
-             class => 'Tainted', level => 3 );
+      throw( error => $err,    args  => [ $string ],
+             class => Tainted, level => 3 );
    }
 
    return $untainted;
@@ -659,7 +676,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.31.$Rev: 1 $
+This documents version v0.32.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -830,6 +847,12 @@ and then have newlines appended. Throws on IO errors
    emit_to $filehandle, @lines_of_text;
 
 Prints to the specified file handle
+
+=head2 ensure_class_loaded
+
+   ensure_class_loaded $some_class, $options_ref;
+
+Require the requested class, throw an error if it doesn't load
 
 =head2 env_prefix
 

@@ -1,10 +1,10 @@
-# @(#)$Ident: Programs.pm 2013-10-21 23:50 pjf ;
+# @(#)$Ident: Programs.pm 2013-11-21 23:55 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.32.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Inspector;
 use Class::Usul::Constants;
@@ -32,7 +32,6 @@ use Text::Autoformat;
 use Try::Tiny;
 
 extends q(Class::Usul);
-with    q(Class::Usul::TraitFor::LoadingClasses);
 with    q(Class::Usul::TraitFor::Prompting);
 
 my $EXTNS = [ keys %{ Class::Usul::File->extensions } ];
@@ -122,6 +121,9 @@ has '_quiet_flag' => is => 'rw',   isa => Bool,
    default        => sub { $_[ 0 ]->quiet_flag },
    init_arg       => 'quiet', lazy => TRUE, writer => '_set__quiet_flag';
 
+has '_run_method' => is => 'lazy', isa => SimpleStr, init_arg => undef,
+   reader         => 'run_method';
+
 # Construction
 around 'BUILDARGS' => sub {
    my ($orig, $self, @args) = @_; my $attr = $orig->( $self, @args );
@@ -147,12 +149,39 @@ sub BUILD {
    return;
 }
 
+sub _build__os {
+   my $self = shift;
+   my $file = 'os_'.$Config{osname}.$self->config->extension;
+   my $path = $self->config->ctrldir->catfile( $file );
+
+   $path->exists or return {};
+
+   my $cfg  = $self->file->data_load( paths => [ $path ] );
+
+   return $cfg->{os} || {};
+}
+
+sub _build__run_method {
+   my $self = shift; my $method = $self->method;
+
+   unless ($method) {
+      if ($method = $self->extra_argv( 0 ) and $self->can_call( $method )) {
+         $method = $self->next_argv;
+      }
+      else { $method = NUL }
+   }
+
+   $method ||= 'run_chain';
+  ($method eq 'help' or $method eq 'run_chain') and $self->quiet( TRUE );
+
+   return $self->method( $method );
+}
+
 # Public methods
 sub add_leader {
    my ($self, $text, $args) = @_; $text or return NUL; $args ||= {};
 
-   my $leader = exists $args->{no_lead}
-              ? NUL : (ucfirst $self->config->name).BRK;
+   my $leader = $args->{no_lead} ? NUL : (ucfirst $self->config->name).BRK;
 
    if ($args->{fill}) {
       my $width = $args->{width} || WIDTH;
@@ -284,9 +313,7 @@ sub loc {
 }
 
 sub output {
-   my ($self, $text, $args) = @_; $args ||= {};
-
-   $self->quiet and return; $args->{cl} and emit;
+   my ($self, $text, $args) = @_; $args ||= {}; $args->{cl} and emit;
 
    $text = $self->loc( $text || '[no message]', $args->{args} || [] );
 
@@ -304,12 +331,12 @@ sub quiet {
 }
 
 sub run {
-   my $self  = shift; my $method = $self->_get_run_method; my $rv;
+   my $self  = shift; my $method = $self->run_method; my $rv;
 
    my $text  = 'Started by '.logname.' Version '.($self->VERSION || '?').SPC;
       $text .= 'Pid '.(abs $PID);
 
-   $self->output( $text ); umask $self->mode;
+   $self->quiet or $self->output( $text ); umask $self->mode;
 
    if ($method eq 'run_chain' or $self->can_call( $method )) {
       my $params = exists $self->params->{ $method }
@@ -328,7 +355,7 @@ sub run {
    }
 
    if (defined $rv and $rv == OK) {
-      $self->output( 'Finished in '.elapsed.' seconds' );
+      $self->quiet or $self->output( 'Finished in '.elapsed.' seconds' );
    }
    elsif (defined $rv and $rv > OK) { $self->output( "Terminated code ${rv}" ) }
    else {
@@ -369,18 +396,6 @@ sub _apply_stdio_encoding {
 
    autoflush STDOUT TRUE; autoflush STDERR TRUE;
    return;
-}
-
-sub _build__os {
-   my $self = shift;
-   my $file = 'os_'.$Config{osname}.$self->config->extension;
-   my $path = $self->config->ctrldir->catfile( $file );
-
-   $path->exists or return {};
-
-   my $cfg  = $self->file->data_load( paths => [ $path ] );
-
-   return $cfg->{os} || {};
 }
 
 sub _catch_run_exception {
@@ -432,22 +447,6 @@ sub _get_debug_option {
    ($self->noask or $self->_dont_ask) and return $self->debug;
 
    return $self->yorn( 'Do you want debugging turned on', FALSE, TRUE );
-}
-
-sub _get_run_method {
-   my $self = shift; my $method = $self->method;
-
-   unless ($method) {
-      if ($method = $self->extra_argv( 0 ) and $self->can_call( $method )) {
-         $method = $self->next_argv;
-      }
-      else { $method = NUL }
-   }
-
-   $method ||= 'run_chain';
-  ($method eq 'help' or $method eq 'run_chain') and $self->quiet( TRUE );
-
-   return $self->method( $method );
 }
 
 sub _man_page_from {
@@ -544,7 +543,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes version v0.31.$Rev: 4 $ of L<Class::Usul::Programs>
+This document describes version v0.32.$Rev: 1 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 
@@ -817,8 +816,6 @@ Turning debug on produces some more output
 =item L<Class::Usul::IPC>
 
 =item L<Class::Usul::File>
-
-=item L<Class::Usul::TraitFor::LoadingClasses>
 
 =item L<Class::Usul::TraitFor::UntaintedGetopts>
 

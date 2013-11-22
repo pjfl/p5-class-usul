@@ -1,10 +1,10 @@
-# @(#)$Ident: L10N.pm 2013-10-24 02:19 pjf ;
+# @(#)$Ident: L10N.pm 2013-11-07 14:07 pjf ;
 
 package Class::Usul::L10N;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.32.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -35,12 +35,17 @@ has 'lock'            => is => 'ro',   isa => Lock,
 has 'log'             => is => 'ro',   isa => LogType,
    default            => sub { Class::Null->new };
 
-has 'source_name'     => is => 'lazy', isa => SimpleStr;
-
 has 'tempdir'         => is => 'ro',   isa => Directory,
    coerce             => Directory->coercion, default => File::Spec->tmpdir;
 
-has 'use_country'     => is => 'lazy', isa => Bool;
+# Private attributes
+has '_source_name'    => is => 'lazy', isa => SimpleStr, builder => sub {
+   $_[ 0 ]->l10n_attributes->{source_name} || 'po' },
+   init_arg           => undef, reader => 'source_name';
+
+has '_use_country'    => is => 'lazy', isa => Bool, builder => sub {
+   $_[ 0 ]->l10n_attributes->{use_country} || FALSE },
+   init_arg           => undef, reader => 'use_country';
 
 # Construction
 around 'BUILDARGS' => sub {
@@ -100,14 +105,6 @@ sub localize {
 }
 
 # Private methods
-sub _build_source_name {
-   return $_[ 0 ]->l10n_attributes->{source_name} || 'po';
-}
-
-sub _build_use_country {
-   return $_[ 0 ]->l10n_attributes->{use_country} || FALSE;
-}
-
 sub _extract_lang_from {
    my ($self, $locale) = @_; state $cache ||= {};
 
@@ -192,7 +189,7 @@ Class::Usul::L10N - Localize text strings
 
 =head1 Version
 
-This documents version v0.31.$Rev: 4 $
+This documents version v0.32.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -204,7 +201,7 @@ This documents version v0.31.$Rev: 4 $
 
    $local_text = $l10n->localize( 'message_to_localize', {
       domain_names => [ 'message_file', 'another_message_file' ],
-      locale       => q(de_DE),
+      locale       => 'de_DE',
       params       => { name => 'value', }, } );
 
 =head1 Description
@@ -217,9 +214,9 @@ A POSIX locale id has the form
 
    <language>_<country>.<charset>@<key>=<value>;...
 
-If the I<use_country> attribute is set to true in the constructor call
-then the language and country are used from I<locale>. By default
-I<use_country> is false and only the language from the I<locale>
+If the C<use_country> attribute is set to true in the constructor call
+then the language and country are used from C<locale>. By default
+C<use_country> is false and only the language from the C<locale>
 attribute is used
 
 Defines the following attributes;
@@ -228,19 +225,39 @@ Defines the following attributes;
 
 =item C<domain_names>
 
+Names of the mo/po files to search for
+
 =item C<l10n_attributes>
 
-=item C<localedir>
+Hash ref passed to the L<File::Gettext> constructor
 
-=item C<lock>
-
-=item C<log>
+=over 3
 
 =item C<source_name>
 
-=item C<tempdir>
+Either C<po> for Portable Object (the default) or C<mo> for the Machine Object
 
 =item C<use_country>
+
+See above
+
+=back
+
+=item C<localedir>
+
+Base directory to search for mo/po files
+
+=item C<lock>
+
+Optional L<IPC::SRLock> object passed to L<File::Gettext>
+
+=item C<log>
+
+Optional logging object
+
+=item C<tempdir>
+
+Directory to use for temporary files
 
 =back
 
@@ -256,7 +273,7 @@ Finish initializing the object
 
 =head2 get_po_header
 
-   $po_header_hash_ref = $l10n->get_po_header( { locale => q(de) } );
+   $po_header_hash_ref = $l10n->get_po_header( { locale => 'de' } );
 
 Returns a hash ref containing the keys and values of the PO header record
 
@@ -278,7 +295,7 @@ attribute. Expands positional parameters of the form C<< [_<n>] >> if
 C<< $args->{params} >> is an array ref of values to
 substitute. Otherwise expands named attributes of the form C<<
 {attr_name} >> using the C<$args> hash for substitution values. If C<<
-$args->{quote_bind_values} >> is true the placehoder values are
+$args->{quote_bind_values} >> is true the placeholder values are
 displayed wrapped in quotes, The attribute C<< $args->{count} >> is
 passed to the portable object files plural function which is used to
 select either the singular or plural form of the translation. If C<<

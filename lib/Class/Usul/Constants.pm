@@ -1,16 +1,16 @@
-# @(#)$Ident: Constants.pm 2013-09-27 11:52 pjf ;
+# @(#)$Ident: Constants.pm 2013-11-20 00:02 pjf ;
 
 package Class::Usul::Constants;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.32.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use parent                  qw( Exporter::Tiny );
 
 use Class::Usul::Exception;
 
-our @EXPORT = qw( ARRAY ASSERT BRK CODE CONFIG_EXTN DEFAULT_DIR
+our @EXPORT = qw( ARRAY ASSERT BRK CODE COMMA CONFIG_EXTN DEFAULT_DIR
                   DEFAULT_ENCODING DEFAULT_L10N_DOMAIN
                   DIGEST_ALGORITHMS ENCODINGS EVIL EXCEPTION_CLASS
                   EXTNS FAILED FALSE HASH LANG LBRACE LOCALIZE
@@ -24,51 +24,52 @@ my $Config_Extn     = '.json';
 my $Config_Key      = 'Plugin::Usul';
 my $Exception_Class = 'Class::Usul::Exception';
 
-sub ARRAY    () { q(ARRAY)           }
-sub BRK      () { q(: )              }
-sub CODE     () { q(CODE)            }
-sub EVIL     () { q(mswin32)         }
-sub EXTNS    () { ( qw(.pl .pm .t) ) }
-sub FAILED   () { 1                  }
-sub FALSE    () { 0                  }
-sub HASH     () { q(HASH)            }
-sub LANG     () { q(en)              }
-sub LBRACE   () { q({)               }
-sub LOCALIZE () { q([_)              }
-sub MODE     () { oct q(027)         }
-sub NO       () { q(n)               }
-sub NUL      () { q()                }
-sub OK       () { 0                  }
-sub PHASE    () { 2                  }
-sub PREFIX   () { [ q(), q(opt) ]    }
-sub QUIT     () { q(q)               }
-sub SEP      () { q(/)               }
-sub SPC      () { q( )               }
-sub TRUE     () { 1                  }
-sub WIDTH    () { 80                 }
-sub YES      () { q(y)               }
+sub ARRAY    () { q(ARRAY)   }
+sub BRK      () { q(: )      }
+sub CODE     () { q(CODE)    }
+sub COMMA    () { q(,)       }
+sub EVIL     () { q(mswin32) }
+sub FAILED   () { 1          }
+sub FALSE    () { 0          }
+sub HASH     () { q(HASH)    }
+sub LANG     () { q(en)      }
+sub LBRACE   () { q({)       }
+sub LOCALIZE () { q([_)      }
+sub MODE     () { oct q(027) }
+sub NO       () { q(n)       }
+sub NUL      () { q()        }
+sub OK       () { 0          }
+sub PHASE    () { 2          }
+sub QUIT     () { q(q)       }
+sub SEP      () { q(/)       }
+sub SPC      () { q( )       }
+sub TRUE     () { 1          }
+sub WIDTH    () { 80         }
+sub YES      () { q(y)       }
 
 sub ASSERT              () { __PACKAGE__->Assert }
 sub CONFIG_EXTN         () { __PACKAGE__->Config_Extn }
-sub DEFAULT_DIR         () { [ q(), qw(etc default) ] }
+sub DEFAULT_DIR         () { [ q(), qw( etc default ) ] }
 sub DEFAULT_ENCODING    () { q(UTF-8) }
 sub DEFAULT_L10N_DOMAIN () { q(default) }
-sub DIGEST_ALGORITHMS   () { ( qw(SHA-512 SHA-256 SHA-1 MD5) ) }
-sub ENCODINGS           () { ( qw(ascii iso-8859-1 UTF-8 guess) ) }
+sub DIGEST_ALGORITHMS   () { ( qw( SHA-512 SHA-256 SHA-1 MD5 ) ) }
+sub ENCODINGS           () { ( qw( ascii iso-8859-1 UTF-8 guess ) ) }
 sub EXCEPTION_CLASS     () { __PACKAGE__->Exception_Class }
-sub LOG_LEVELS          () { ( qw(alert debug error fatal info warn) ) }
+sub EXTNS               () { ( qw( .pl .pm .t ) ) }
+sub LOG_LEVELS          () { ( qw( alert debug error fatal info warn ) ) }
+sub PREFIX              () { [ q(), q(opt) ] }
 sub UNDEFINED_RV        () { -1 }
 sub UNTAINT_CMDLINE     () { qr{ \A ([^\$;|&><]+)    \z }mx }
 sub UNTAINT_IDENTIFIER  () { qr{ \A ([a-zA-Z0-9_]+)  \z }mx }
 sub UNTAINT_PATH        () { qr{ \A ([^\$%;|&><\*]+) \z }mx }
 sub USUL_CONFIG_KEY     () { __PACKAGE__->Config_Key }
-sub UUID_PATH           () { [ q(), qw(proc sys kernel random uuid) ] }
+sub UUID_PATH           () { [ q(), qw( proc sys kernel random uuid ) ] }
 
 sub Assert {
    my ($self, $subr) = @_; defined $subr or return $Assert;
 
    ref $subr eq 'CODE' or $self->Exception_Class->throw
-      ( 'Assert subroutine ${subr} is not a code reference' );
+      ( "Assert subroutine ${subr} is not a code reference" );
 
    return $Assert = $subr;
 }
@@ -77,7 +78,7 @@ sub Config_Extn {
    my ($self, $extn) = @_; defined $extn or return $Config_Extn;
 
    (length $extn < 255 and $extn !~ m{ \n }mx) or $self->Exception_Class->throw
-      ( 'Config extension ${extn} is not a simple string' );
+      ( "Config extension ${extn} is not a simple string" );
 
    return $Config_Extn = $extn;
 }
@@ -86,7 +87,7 @@ sub Config_Key {
    my ($self, $key) = @_; defined $key or return $Config_Key;
 
    (length $key < 255 and $key !~ m{ \n }mx) or $self->Exception_Class->throw
-      ( 'Config key ${key} is not a simple string' );
+      ( "Config key ${key} is not a simple string" );
 
    return $Config_Key = $key;
 }
@@ -94,7 +95,7 @@ sub Config_Key {
 sub Exception_Class {
    my ($self, $class) = @_; defined $class or return $Exception_Class;
 
-   $class->can( q(throw) ) or Class::Usul::Exception->throw
+   $class->can( 'throw' ) or Class::Usul::Exception->throw
       ( "Exception class ${class} is not loaded or has no throw method" );
 
    return $Exception_Class = $class;
@@ -112,7 +113,7 @@ Class::Usul::Constants - Definitions of constant values
 
 =head1 Version
 
-This documents version v0.31.$Rev: 1 $
+This documents version v0.32.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -160,6 +161,10 @@ Separate leader from message,  (: )
 =head2 CODE
 
 String C<CODE>
+
+=head2 COMMA
+
+The comma character
 
 =head2 CONFIG_EXTN
 

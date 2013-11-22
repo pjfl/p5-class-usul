@@ -1,9 +1,9 @@
-# @(#)Ident: Exception.pm 2013-10-03 12:51 pjf ;
+# @(#)Ident: Exception.pm 2013-11-20 15:58 pjf ;
 
 package Class::Usul::Exception;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.32.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
 use Unexpected::Types qw( Int Str );
@@ -12,10 +12,13 @@ extends q(Unexpected);
 with    q(Unexpected::TraitFor::ErrorLeader);
 with    q(Unexpected::TraitFor::ExceptionClasses);
 
-__PACKAGE__->has_exception( __PACKAGE__ );
-__PACKAGE__->ignore_class ( 'Class::Usul::IPC', 'Sub::Quote' );
+my $class = __PACKAGE__;
 
-has '+class' => default => __PACKAGE__;
+$class->has_exception( $class );
+$class->has_exception( 'Tainted' => [ $class ] );
+$class->ignore_class ( 'Class::Usul::IPC', 'Sub::Quote' );
+
+has '+class' => default => $class;
 
 has 'out'    => is => 'ro', isa => Str, default => q();
 
@@ -38,7 +41,7 @@ Class::Usul::Exception - Exception handling
 
 =head1 Version
 
-This documents version v0.31.$Rev: 1 $ of L<Class::Usul::Exception>
+This documents version v0.32.$Rev: 1 $ of L<Class::Usul::Exception>
 
 =head1 Synopsis
 

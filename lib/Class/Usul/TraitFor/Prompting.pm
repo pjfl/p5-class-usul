@@ -1,9 +1,9 @@
-# @(#)Ident: Prompting.pm 2013-10-21 18:16 pjf ;
+# @(#)Ident: Prompting.pm 2013-11-07 13:36 pjf ;
 
 package Class::Usul::TraitFor::Prompting;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.32.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( arg_list emit_to throw );
@@ -57,14 +57,14 @@ sub get_option { # Select from an numbered list of options
 
    $prompt ||= '+Select one option from the following list:';
 
-   my $leader = NUL; '+' eq substr $prompt, 0, 1 and $leader = '+'
-      and $prompt = substr $prompt, 1;
+   my $no_lead = ('+' eq substr $prompt, 0, 1) ? FALSE : TRUE;
+   my $leader  = $no_lead ? NUL : '+'; $prompt =~ s{ \A \+ }{}mx;
 
-   $self->output( $prompt, { cl => TRUE } ); my $count = 1;
+   $self->output( $prompt, { no_lead => $no_lead } ); my $count = 1;
 
    my $text = join "\n", map { $count++." - ${_}" } @{ $options };
 
-   $self->output( $text, { cl => TRUE, nl => TRUE } );
+   $self->output( $text, { cl => TRUE, nl => TRUE, no_lead => $no_lead } );
 
    my $question = "${leader}Select option";
    my $opt      = $self->get_line( $question, $default, $quit, $width );
@@ -234,7 +234,7 @@ Class::Usul::TraitFor::Prompting - Methods for requesting command line input
 
 =head1 Version
 
-This documents version v0.31.$Rev: 4 $ of L<Class::Usul::TraitFor::Prompting>
+This documents version v0.32.$Rev: 1 $ of L<Class::Usul::TraitFor::Prompting>
 
 =head1 Description
 

@@ -1,18 +1,16 @@
-# @(#)$Ident: LoadingClasses.pm 2013-10-02 23:05 pjf ;
+# @(#)$Ident: LoadingClasses.pm 2013-11-22 14:51 pjf ;
 
 package Class::Usul::TraitFor::LoadingClasses;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.32.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
-use Class::Load             qw( is_class_loaded load_class );
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw( find_source throw );
+use Class::Usul::Functions  qw( ensure_class_loaded find_source );
 use File::Basename          qw( basename );
 use File::Spec::Functions   qw( catfile );
 use Module::Pluggable::Object;
 use Scalar::Util            qw( blessed );
-use Try::Tiny;
 use Moo::Role;
 
 sub build_subcomponents { # Voodo by mst. Finds and loads component subclasses
@@ -31,28 +29,12 @@ sub build_subcomponents { # Voodo by mst. Finds and loads component subclasses
    return;
 }
 
-sub ensure_class_loaded {
-   my ($self, $class, $opts) = @_; $opts ||= {};
-
-   my $package_defined = sub { is_class_loaded( $class ) };
-
-   not $opts->{ignore_loaded} and $package_defined->() and return TRUE;
-
-   try { load_class( $class ) } catch { throw $_ };
-
-   $package_defined->()
-      or throw error => 'Class [_1] loaded but package undefined',
-               args  => [ $class ];
-
-   return TRUE;
-}
-
 sub load_component {
    my ($self, $child, @parents) = @_;
 
    ## no critic
    for my $parent (reverse @parents) {
-      $self->ensure_class_loaded( $parent );
+      ensure_class_loaded $parent;
       {  no strict 'refs';
 
          $child eq $parent or $child->isa( $parent )
@@ -70,10 +52,11 @@ sub setup_plugins {
    my ($self, $config) = @_; $config ||= {};
 
    my $class   = $config->{child_class} || blessed $self || $self;
+   my $prefix  = delete $config->{class_prefix   } || 'Class::Usul';
    my $exclude = delete $config->{exclude_pattern} || '\A \z';
    my @paths   = @{ delete $config->{search_paths} || [] };
    my $finder  = Module::Pluggable::Object->new
-      ( search_path => [ map { m{ \A :: }mx ? "Class::Usul${_}" : $_ } @paths ],
+      ( search_path => [ map { m{ \A :: }mx ? "${prefix}${_}" : $_ } @paths ],
         %{ $config } );
    my @plugins = grep { not m{ $exclude }mx }
                  sort { length $a <=> length $b } $finder->plugins;
@@ -95,7 +78,7 @@ Class::Usul::TraitFor::LoadingClasses - Load classes at runtime
 
 =head1 Version
 
-This documents version v0.31.$Rev: 1 $
+This documents version v0.32.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -115,12 +98,6 @@ A L<Moo::Role> which load classes at runtime
 
 Class method that allows us to define components that inherit from the base
 class at runtime
-
-=head2 ensure_class_loaded
-
-   $self->ensure_class_loaded( $some_class );
-
-Require the requested class, throw an error if it doesn't load
 
 =head2 load_component
 
@@ -148,7 +125,7 @@ None
 
 =over 3
 
-=item L<Class::MOP>
+=item L<Class::Load>
 
 =item L<Class::Usul::Constants>
 
@@ -157,8 +134,6 @@ None
 =item L<Module::Pluggable::Object>
 
 =item L<Moo::Role>
-
-=item L<Try::Tiny>
 
 =back
 

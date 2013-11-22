@@ -3,7 +3,7 @@
 package Class::Usul::Config::Programs;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.32.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Types      qw( ArrayRef Bool NonEmptySimpleStr
@@ -55,7 +55,7 @@ Class::Usul::Config::Programs - Additional configuration attributes for CLI prog
 
 =head1 Version
 
-This documents version v0.31.$Rev: 1 $
+This documents version v0.32.$Rev: 1 $
 
 =head1 Synopsis
 

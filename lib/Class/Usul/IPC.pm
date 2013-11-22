@@ -1,9 +1,9 @@
-# @(#)$Ident: IPC.pm 2013-10-05 00:11 pjf ;
+# @(#)$Ident: IPC.pm 2013-11-02 17:42 pjf ;
 
 package Class::Usul::IPC;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.32.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -463,7 +463,7 @@ sub _run_cmd_using_system {
 
       if ($rv == -1) {
          $error = 'Program [_1] failed to start: [_2]';
-         throw error => $error, args  => [ $prog, $os_error ], rv => -1;
+         throw error => $error, args => [ $prog, $os_error ], rv => -1;
       }
    }
 
@@ -651,7 +651,7 @@ Class::Usul::IPC - List/Create/Delete processes
 
 =head1 Version
 
-This documents version v0.31.$Rev: 1 $
+This documents version v0.32.$Rev: 1 $
 
 =head1 Synopsis
 

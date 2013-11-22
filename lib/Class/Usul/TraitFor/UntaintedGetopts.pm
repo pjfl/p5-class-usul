@@ -1,9 +1,9 @@
-# @(#)$Ident: UntaintedGetopts.pm 2013-10-21 14:45 pjf ;
+# @(#)$Ident: UntaintedGetopts.pm 2013-11-19 17:51 pjf ;
 
 package Class::Usul::TraitFor::UntaintedGetopts;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.32.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( untaint_cmdline );
@@ -36,6 +36,10 @@ sub extra_argv {
 
 sub next_argv {
    return shift @{ __extra_argv( $_[ 0 ] ) };
+}
+
+sub unshift_argv {
+   return unshift @{ __extra_argv( $_[ 0 ] ) }, $_[ 1 ];
 }
 
 # Private methods
@@ -73,7 +77,7 @@ sub _parse_options {
    }
 
    return %{ $params };
-};
+}
 
 # Private functions
 sub __build_options {
@@ -178,7 +182,7 @@ Class::Usul::TraitFor::UntaintedGetopts - Untaints @ARGV before Getopts processe
 
 =head1 Version
 
-This documents version v0.31.$Rev: 3 $
+This documents version v0.32.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -209,6 +213,10 @@ Returns the next value from L</extra_argv> shifting the value off the list
 
 Modifies this method in L<MooX::Options::Role>. Untaints the values of the
 C<@ARGV> array before the are parsed by L<Getopt::Long::Descriptive>
+
+=head2 unshift_argv
+
+Pushes the supplied argument back onto the C<extra_argv> list
 
 =head1 Diagnostics
 

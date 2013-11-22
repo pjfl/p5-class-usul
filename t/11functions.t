@@ -1,8 +1,8 @@
-# @(#)$Ident: 11functions.t 2013-09-29 15:07 pjf ;
+# @(#)$Ident: 11functions.t 2013-11-21 23:51 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.31.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.32.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir catfile updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -77,6 +77,13 @@ ok $token eq q(ee26b0dd4af7e749aa1a8ee3c10ae9923f618980772e473f8819a5d4940e0db27
 
 is distname( q(Test::Application) ), q(Test-Application), 'distname';
 
+eval {
+   ensure_class_loaded( 'Class::Usul::Response::Table' );
+   Class::Usul::Response::Table->new;
+};
+
+ok !exception, 'ensure_class_loaded';
+
 #close STDOUT; emit 'shit';
 
 is env_prefix( q(Test::Application) ), q(TEST_APPLICATION), 'env_prefix';
@@ -138,7 +145,7 @@ is sub_name(), q(main), 'sub_name';
 
 is sum( 1, 2, 3, 4 ), 10, 'sum';
 
-eval { throw( error => q(eNoMessage) ) }; my $e = $EVAL_ERROR;
+eval { throw( error => q(eNoMessage) ) }; my $e = exception;
 
 like $e->as_string, qr{ eNoMessage }msx, 'try/throw/catch';
 
@@ -146,7 +153,19 @@ is trim( q(  test string  ) ), q(test string), 'trim - spaces';
 
 is trim( q(/test string/), q(/) ), q(test string), 'trim - other chars';
 
-is { zip( qw(a b c), qw(1 2 3) ) }->{b}, 2, 'zip';
+eval { untaint_cmdline( '&&&' ) }; $e = exception;
+
+is $e->class, q(Tainted), 'untaint_cmdline';
+
+eval { untaint_identifier( 'no-chance' ) }; $e = exception;
+
+is $e->class, q(Tainted), 'untaint_identifier';
+
+eval { untaint_path( '$$$' ) }; $e = exception;
+
+is $e->class, q(Tainted), 'untaint_path';
+
+is { zip( qw( a b c ), qw( 1 2 3 ) ) }->{b}, 2, 'zip';
 
 done_testing;
 
