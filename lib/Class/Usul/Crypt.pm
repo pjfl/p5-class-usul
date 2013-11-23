@@ -4,7 +4,7 @@ package Class::Usul::Crypt;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.32.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( create_token is_coderef is_hashref );
@@ -82,7 +82,7 @@ Class::Usul::Crypt - Encryption/decryption functions
 
 =head1 Version
 
-This documents version v0.32.$Rev: 1 $
+This documents version v0.33.$Rev: 1 $
 
 =head1 Synopsis
 

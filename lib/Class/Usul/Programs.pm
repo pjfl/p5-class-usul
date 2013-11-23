@@ -1,11 +1,12 @@
-# @(#)$Ident: Programs.pm 2013-11-21 23:55 pjf ;
+# @(#)$Ident: Programs.pm 2013-11-22 18:51 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.32.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
+use Moo;
 use Class::Inspector;
 use Class::Usul::Constants;
 use Class::Usul::File;
@@ -14,6 +15,7 @@ use Class::Usul::Functions  qw( abs_path elapsed emit emit_to exception
                                 is_arrayref is_hashref is_member
                                 logname pad throw untaint_identifier );
 use Class::Usul::IPC;
+use Class::Usul::Options;
 use Class::Usul::Types      qw( ArrayRef Bool EncodingType FileType HashRef Int
                                 IPCType LoadableClass PositiveInt PromptType
                                 SimpleStr );
@@ -22,8 +24,6 @@ use English                 qw( -no_match_vars );
 use File::Basename          qw( dirname );
 use File::DataClass::Types  qw( Directory );
 use List::Util              qw( first );
-use Moo;
-use MooX::Options;
 use Pod::Eventual::Simple;
 use Pod::Man;
 use Pod::Usage;
@@ -93,8 +93,6 @@ option 'verbose'      => is => 'ro',   isa => Int,  default => 0,
 option 'version'      => is => 'ro',   isa => Bool, default => FALSE,
    documentation      => 'Displays the version number of the program class',
    short              => 'V';
-
-with q(Class::Usul::TraitFor::UntaintedGetopts);
 
 has 'meta_class'  => is => 'lazy', isa => LoadableClass,
    default        => 'Class::Usul::Response::Meta',
@@ -475,8 +473,11 @@ sub _output_usage {
    $verbose > 1 and return $self->_man_page_from( $self->config );
 
    if ($verbose > 0) {
-      pod2usage( { -input   => NUL.$self->config->pathname, -message => SPC,
-                   -verbose => $verbose } ); # Never returns
+      pod2usage( { -exitval => 'NOEXIT',
+                   -input   => NUL.$self->config->pathname,
+                   -message => SPC,
+                   -verbose => $verbose } );
+      return FAILED;
    }
 
    emit_to \*STDERR, $self->options_usage;
@@ -543,7 +544,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes version v0.32.$Rev: 1 $ of L<Class::Usul::Programs>
+This document describes version v0.33.$Rev: 1 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 
@@ -817,13 +818,11 @@ Turning debug on produces some more output
 
 =item L<Class::Usul::File>
 
-=item L<Class::Usul::TraitFor::UntaintedGetopts>
+=item L<Class::Usul::Options>
 
 =item L<Encode>
 
 =item L<Moo>
-
-=item L<MooX::Options>
 
 =item L<Text::Autoformat>
 

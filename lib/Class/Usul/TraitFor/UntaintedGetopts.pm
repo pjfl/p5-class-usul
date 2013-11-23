@@ -1,9 +1,9 @@
-# @(#)$Ident: UntaintedGetopts.pm 2013-11-19 17:51 pjf ;
+# @(#)$Ident: UntaintedGetopts.pm 2013-11-23 11:12 pjf ;
 
 package Class::Usul::TraitFor::UntaintedGetopts;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.32.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( untaint_cmdline );
@@ -13,20 +13,15 @@ use Getopt::Long 2.38;
 use Getopt::Long::Descriptive 0.091;
 use JSON;
 use Regexp::Common;
+use Scalar::Util            qw( blessed );
 use Moo::Role;
 
 my $Extra_Argv = []; my $Usage = "Did we forget new_with_options?\n";
 
 # Construction
-around 'new_with_options' => sub {
-   my ($orig, $class, @args) = @_;
-
-   return $class->new( $class->_parse_options( @args ) );
-};
-
-around 'options_usage' => sub {
-   return ucfirst $Usage;
-};
+sub new_with_options {
+   my $self = shift; return $self->new( $self->_parse_options( @_ ) );
+}
 
 # Public methods
 sub extra_argv {
@@ -38,14 +33,19 @@ sub next_argv {
    return shift @{ __extra_argv( $_[ 0 ] ) };
 }
 
+sub options_usage {
+   return ucfirst $Usage;
+}
+
 sub unshift_argv {
    return unshift @{ __extra_argv( $_[ 0 ] ) }, $_[ 1 ];
 }
 
 # Private methods
 sub _parse_options {
-   my ($class, %args) = @_; my $opt;
+   my ($self, %args) = @_; my $opt;
 
+   my $class  = blessed $self || $self;
    my %data   = $class->_options_data;
    my %config = $class->_options_config;
    my $enc    = $config{encoding} // 'UTF-8';
@@ -67,8 +67,7 @@ sub _parse_options {
    ($opt, $Usage) = describe_options( ('Usage: %c %o'), @options, @flavour );
    $Extra_Argv = [ @ARGV ];
 
-   my $prefer = __tri2bool( $config{prefer_commandline} ); # TODO: Yuck
-   my ($params, @missing) = __extract_params( \%args, \%data, $opt, $prefer );
+   my ($params, @missing) = __extract_params( \%args, \%config, \%data, $opt );
 
    if ($config{missing_fatal} and @missing) {
       print join( "\n", (map { "${_} is missing" } @missing), NUL );
@@ -104,23 +103,25 @@ sub __extra_argv {
 }
 
 sub __extract_params {
-   my ($args, $options_data, $cmdline_opt, $prefer_cmdline) = @_;
+   my ($args, $config, $options_data, $cmdline_opt) = @_;
 
-   my %params = %{ $args }; my @missing_required;
+   my $params = { %{ $args } }; my $prefer = $config->{prefer_commandline};
+
+   my @missing_required;
 
    for my $name (keys %{ $options_data }) {
       my $option = $options_data->{ $name };
 
-      if ($prefer_cmdline or not defined $params{ $name }) {
+      if ($prefer or not defined $params->{ $name }) {
          my $val; defined ($val = $cmdline_opt->$name()) and
-            $params{ $name } = $option->{json} ? decode_json( $val ) : $val;
+            $params->{ $name } = $option->{json} ? decode_json( $val ) : $val;
       }
 
-      $option->{required} and not defined $params{ $name }
+      $option->{required} and not defined $params->{ $name }
          and push @missing_required, $name;
    }
 
-   return (\%params, @missing_required);
+   return ($params, @missing_required);
 }
 
 sub __option_specification {
@@ -130,8 +131,8 @@ sub __option_specification {
    my $option_spec = $dash_name;
 
    defined $opt->{short} and $option_spec .= '|'.$opt->{short};
-   $opt->{repeatable } and not defined $opt->{format} and $option_spec .= '+';
-   $opt->{negativable} and $option_spec .= '!';
+   $opt->{repeatable} and not defined $opt->{format} and $option_spec .= '+';
+   $opt->{negateable} and $option_spec .= '!';
    defined $opt->{format} and $option_spec .= '='.$opt->{format};
    return $option_spec;
 }
@@ -141,6 +142,7 @@ sub __split_args {
 
    for (my $i = 0, my $nargvs = @ARGV; $i < $nargvs; $i++) { # Parse all argv
       my $arg = $ARGV[ $i ];
+
       my ($name, $value) = split m{ [=] }mx, $arg, 2; $name =~ s{ \A --? }{}mx;
 
       if (my $splitter = $splitters->{ $name }) {
@@ -148,7 +150,7 @@ sub __split_args {
 
          for my $subval (map { s{ \A [\'\"] | [\'\"] \z }{}gmx; $_ }
                          $splitter->records( $value )) {
-            push @new_argv, $name, $subval;
+            push @new_argv, "--${name}", $subval;
          }
       }
       else { push @new_argv, $arg }
@@ -165,11 +167,6 @@ sub __sort_options {
    return ($oa == $max) && ($ob == $max) ? $a cmp $b : $oa <=> $ob;
 }
 
-sub __tri2bool {
-   # Make that config option tri-state and ignore the default of false
-   return $_[ 0 ] == -1 ? FALSE : TRUE;
-}
-
 1;
 
 __END__
@@ -182,7 +179,7 @@ Class::Usul::TraitFor::UntaintedGetopts - Untaints @ARGV before Getopts processe
 
 =head1 Version
 
-This documents version v0.32.$Rev: 1 $
+This documents version v0.33.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -192,7 +189,7 @@ This documents version v0.32.$Rev: 1 $
 
 =head1 Description
 
-Untaints C<@ARGV> before Getopts processes it. Replaces L<MooX::Options::Role>
+Untaints C<@ARGV> before Getopts processes it. Replaces L<MooX::Options>
 with an implementation closer to L<MooseX::Getopt::Dashes>
 
 =head1 Configuration and Environment
@@ -205,14 +202,22 @@ Modifies C<new_with_options> and C<options_usage>
 
 Returns an array ref containing the remaining command line arguments
 
+=head2 new_with_options
+
+Parses the command line options and then calls the constructor
+
 =head2 next_argv
 
 Returns the next value from L</extra_argv> shifting the value off the list
 
+=head2 options_usage
+
+Returns the options usage string
+
 =head2 _parse_options
 
-Modifies this method in L<MooX::Options::Role>. Untaints the values of the
-C<@ARGV> array before the are parsed by L<Getopt::Long::Descriptive>
+Untaints the values of the C<@ARGV> array before the are parsed by
+L<Getopt::Long::Descriptive>
 
 =head2 unshift_argv
 
@@ -226,9 +231,19 @@ None
 
 =over 3
 
+=item L<Data::Record>
+
+=item L<Encode>
+
+=item L<Getopt::Long>
+
+=item L<Getopt::Long::Descriptive>
+
+=item L<JSON>
+
 =item L<Moo::Role>
 
-=item L<MooX::Options>
+=item L<Regexp::Common>
 
 =back
 

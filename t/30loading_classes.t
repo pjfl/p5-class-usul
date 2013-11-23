@@ -1,8 +1,8 @@
-# @(#)Ident: 30loading_classes.t 2013-11-22 14:56 pjf ;
+# @(#)Ident: 30loading_classes.t 2013-11-22 15:18 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.32.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir catfile updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -43,8 +43,6 @@ my $prog    = MyProg->new( appclass => 'Class::Usul',
 $prog->build_subcomponents( 'Class::Usul::Config' );
 
 is $prog->config->pwidth, 60, 'build_subcomponents';
-
-$prog->load_component( 'Class::Usul::Response::Table' );
 
 $prog->setup_plugins;
 

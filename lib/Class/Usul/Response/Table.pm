@@ -3,7 +3,7 @@
 package Class::Usul::Response::Table;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.32.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Types qw( ArrayRef HashRef Int Str );
 use Moo;
@@ -33,7 +33,7 @@ Class::Usul::Response::Table - Data structure for the table widget
 
 =head1 Version
 
-This documents version v0.32.$Rev: 1 $
+This documents version v0.33.$Rev: 1 $
 
 =head1 Synopsis
 

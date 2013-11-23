@@ -1,12 +1,12 @@
-# @(#)$Ident: LoadingClasses.pm 2013-11-22 14:51 pjf ;
+# @(#)$Ident: LoadingClasses.pm 2013-11-22 15:17 pjf ;
 
 package Class::Usul::TraitFor::LoadingClasses;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.32.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw( ensure_class_loaded find_source );
+use Class::Usul::Functions  qw( ensure_class_loaded find_source throw );
 use File::Basename          qw( basename );
 use File::Spec::Functions   qw( catfile );
 use Module::Pluggable::Object;
@@ -15,6 +15,8 @@ use Moo::Role;
 
 sub build_subcomponents { # Voodo by mst. Finds and loads component subclasses
    my ($self, $base_class) = @_; my $my_class = blessed $self || $self;
+
+   $base_class or throw 'No base class specified';
 
   (my $dir = find_source $base_class) =~ s{ [.]pm \z }{}msx;
 
@@ -31,6 +33,8 @@ sub build_subcomponents { # Voodo by mst. Finds and loads component subclasses
 
 sub load_component {
    my ($self, $child, @parents) = @_;
+
+   $child or throw 'No child class specified';
 
    ## no critic
    for my $parent (reverse @parents) {
@@ -78,7 +82,7 @@ Class::Usul::TraitFor::LoadingClasses - Load classes at runtime
 
 =head1 Version
 
-This documents version v0.32.$Rev: 1 $
+This documents version v0.33.$Rev: 1 $
 
 =head1 Synopsis
 

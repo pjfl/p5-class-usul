@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+0.33.1    2013-11-23 12:57:25
+          - Dropped MooX::Options dependency
+
 0.32.1    2013-11-22 14:59:52
           - Added more tests
           - Updated POD
