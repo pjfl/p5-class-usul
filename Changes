@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+          - Refactored ::Functions::ensure_class_loaded
+          - Exposed throw_on_error in ::Functions
+
 0.33.1    2013-11-23 12:57:25
           - Dropped MooX::Options dependency
 

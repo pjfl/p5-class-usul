@@ -1,11 +1,12 @@
-# @(#)$Ident: Usul.pm 2013-10-16 23:05 pjf ;
+# @(#)$Ident: Usul.pm 2013-11-24 11:01 pjf ;
 
 package Class::Usul;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
+use Moo;
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( data_dumper merge_attributes throw );
 use Class::Usul::L10N;
@@ -13,7 +14,6 @@ use Class::Usul::Log;
 use Class::Usul::Types      qw( Bool ConfigType EncodingType HashRef
                                 L10NType LoadableClass LockType LogType );
 use IPC::SRLock;
-use Moo;
 use Scalar::Util            qw( blessed );
 
 # Public attributes
@@ -105,7 +105,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.33.$Rev: 1 $
+Describes Class::Usul version v0.33.$Rev: 2 $
 
 =head1 Synopsis
 

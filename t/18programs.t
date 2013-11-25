@@ -1,8 +1,8 @@
-# @(#)$Ident: 18programs.t 2013-10-21 14:46 pjf ;
+# @(#)$Ident: 18programs.t 2013-11-23 23:46 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 2 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir catfile updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -90,25 +90,26 @@ like $err, qr{ Class::Usul::Programs }mx, 'Runs dump self';
 
 like $prog->options_usage, qr{ Did \s we \s forget }mx, 'Default options usage';
 
-@ARGV = ( qw( One Two Three ) );
+is ref $prog->os, 'HASH', 'Has OS hash';
 
-$prog = Class::Usul::Programs->new_with_options
-   ( appclass => 'Class::Usul',
-     config   => { logsdir => 't',
-                   tempdir => 't', },
-     method   => 'dump_self',
-     noask    => 1,
-     quiet    => 1, );
+$prog = Class::Usul::Programs->new( appclass => 'Class::Usul',
+                                    config   => { logsdir => 't',
+                                                  tempdir => 't', },
+                                    method   => 'list_methods',
+                                    noask    => 1,
+                                    quiet    => 1, );
 
-like $prog->options_usage, qr{ Usage: \s $name .t }mx, 'Default usage';
+($out, $err) = capture { $prog->run };
 
-is $prog->next_argv, 'One', 'Next argv';
+like $out, qr{ available \s command \s line }mx, 'Runs list methods';
 
-is $prog->extra_argv->[ 0 ], 'Two', 'Extra argv';
+($out, $err) = capture { $prog->error };
+
+like $err, qr{ no \s message }mx, 'Default error';
 
 done_testing;
 
-#$prog->run;
+unlink $logfile;
 
 # Local Variables:
 # mode: perl

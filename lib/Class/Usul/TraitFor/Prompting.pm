@@ -1,9 +1,9 @@
-# @(#)Ident: Prompting.pm 2013-11-07 13:36 pjf ;
+# @(#)Ident: Prompting.pm 2013-11-23 23:31 pjf ;
 
 package Class::Usul::TraitFor::Prompting;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( arg_list emit_to throw );
@@ -21,7 +21,7 @@ sub anykey {
 
    $prompt = $self->_prepare( $prompt || 'Press any key to continue' );
 
-   return __prompt( -p => $prompt.'...', -d => TRUE, -e => NUL, -1 => TRUE );
+   return __prompt( -p => "${prompt}...", -d => TRUE, -e => NUL, -1 => TRUE );
 }
 
 sub get_line { # General text input routine.
@@ -234,7 +234,7 @@ Class::Usul::TraitFor::Prompting - Methods for requesting command line input
 
 =head1 Version
 
-This documents version v0.33.$Rev: 1 $ of L<Class::Usul::TraitFor::Prompting>
+This documents version v0.33.$Rev: 2 $ of L<Class::Usul::TraitFor::Prompting>
 
 =head1 Description
 

@@ -1,18 +1,18 @@
-# @(#)$Ident: Functions.pm 2013-11-22 10:52 pjf ;
+# @(#)$Ident: Functions.pm 2013-11-24 15:17 pjf ;
 
 package Class::Usul::Functions;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 2 $ =~ /\d+/gmx );
 use parent                  qw( Exporter::Tiny );
 
 use Class::Load             qw( is_class_loaded load_class );
 use Class::Null;
 use Class::Usul::Constants;
 use Cwd                     qw( );
-use Data::Printer   alias => q(Dumper), colored => 1, indent => 3,
+use Data::Printer   alias => q(_data_dumper), colored => 1, indent => 3,
     filters => { 'File::DataClass::IO' => sub { $_[ 0 ]->pathname }, };
 use Digest                  qw( );
 use Digest::MD5             qw( md5 );
@@ -41,7 +41,7 @@ our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
                        is_win32 loginid logname merge_attributes
                        my_prefix pad prefix2class product split_on__
                        split_on_dash squeeze strip_leader sub_name sum
-                       thread_id throw trim unescape_TT
+                       thread_id throw throw_on_error trim unescape_TT
                        untaint_cmdline untaint_identifier untaint_path
                        untaint_string zip );
 our %EXPORT_REFS =   ( assert => sub { ASSERT } );
@@ -204,7 +204,7 @@ sub create_token (;$) {
 }
 
 sub data_dumper (;@) {
-   Dumper( @_ ); return 1;
+   _data_dumper( @_ ); return 1;
 }
 
 sub distname ($) {
@@ -239,13 +239,13 @@ sub emit_to ($;@) {
 sub ensure_class_loaded ($;$) {
    my ($class, $opts) = @_; $opts ||= {};
 
-   my $package_defined = sub { is_class_loaded( $class ) };
+   $class or throw( 'No class specified' );
 
-   not $opts->{ignore_loaded} and $package_defined->() and return 1;
+   not $opts->{ignore_loaded} and is_class_loaded( $class ) and return 1;
 
-   eval { load_class( $class ) }; EXCEPTION_CLASS->throw_on_error;
+   eval { load_class( $class ) }; throw_on_error();
 
-   $package_defined->()
+   is_class_loaded( $class )
       or throw( error => 'Class [_1] loaded but package undefined',
                 args  => [ $class ] );
 
@@ -283,8 +283,7 @@ sub find_apphome ($;$$) {
    my $my_home  = File::HomeDir->my_home;
 
    # 1a.   Environment variable - for application directory
-   $path = $ENV{ "${env_pref}_HOME" };
-   $path = assert_directory $path and return $path;
+   $path = assert_directory $ENV{ "${env_pref}_HOME" } and return $path;
    # 1b.   Environment variable - for config file
    $path = _get_env_var_for_conf( $env_pref ) and return $path;
    # 2a.   Users home directory - contains application directory
@@ -310,7 +309,7 @@ sub find_apphome ($;$$) {
    # 6.    Pass the default in
    $path = assert_directory $default and return $path;
    # 7.    Default to /tmp
-   return untaint_path( tmpdir );
+   return  untaint_path( tmpdir );
 }
 
 sub find_source ($) {
@@ -495,6 +494,10 @@ sub throw (;@) {
    EXCEPTION_CLASS->throw( @_ );
 }
 
+sub throw_on_error (;@) {
+   EXCEPTION_CLASS->throw_on_error( @_ );
+}
+
 sub trim (;$$) {
    my $c = $_[ 1 ] || " \t"; (my $y = $_[ 0 ] || q()) =~ s{ \A [$c]+ }{}mx;
 
@@ -530,12 +533,9 @@ sub untaint_string ($;$) {
 
    my ($untainted) = $string =~ $regex;
 
-   unless (defined $untainted and $untainted eq $string) {
-      my $err = "String [_1] contains possible taint";
-
-      throw( error => $err,    args  => [ $string ],
-             class => Tainted, level => 3 );
-   }
+   (defined $untainted and $untainted eq $string)
+      or throw( error => 'String [_1] contains possible taint',
+                args  => [ $string ], class => Tainted, level => 3 );
 
    return $untainted;
 }
@@ -659,7 +659,7 @@ sub _read_variable {
 
    return first  { length }
           map    { trim( (split q(=), $_)[ 1 ] ) }
-          grep   { m{ \A $variable [=] }mx }
+          grep   { m{ \A \s* $variable \s* [=] }mx }
           map    { chomp }
           split m{ [\n] }mx, $content;
 }
@@ -676,7 +676,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.33.$Rev: 1 $
+This documents version v0.33.$Rev: 2 $
 
 =head1 Synopsis
 
@@ -1070,6 +1070,14 @@ Returns the id of this thread. Returns zero if threads are not loaded
 Expose L<Class::Usul::Exception/throw>. L<Class::Usul::Constants> has a
 class attribute I<Exception_Class> which can be set change the class
 of the thrown exception
+
+=head2 throw_on_error
+
+   throw_on_error @args;
+
+Passes it's optional arguments to L</exception> and if an exception object is
+returned it throws it. Returns undefined otherwise. If no arguments are
+passed L</exception> will use the value of the global C<$EVAL_ERROR>
 
 =head2 trim
 

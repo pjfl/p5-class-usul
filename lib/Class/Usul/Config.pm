@@ -1,10 +1,11 @@
-# @(#)$Ident: Config.pm 2013-11-02 17:25 pjf ;
+# @(#)$Ident: Config.pm 2013-11-24 11:01 pjf ;
 
 package Class::Usul::Config;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
+use Moo;
 use Class::Usul::Constants;
 use Class::Usul::File;
 use Class::Usul::Functions  qw( app_prefix class2appdir home2appldir
@@ -19,7 +20,6 @@ use File::DataClass::Types  qw( Directory File Path );
 use File::Gettext::Constants;
 use File::Spec::Functions   qw( canonpath catdir catfile rel2abs rootdir
                                 tmpdir );
-use Moo;
 use Scalar::Util            qw( blessed );
 
 # Public attributes
@@ -324,7 +324,7 @@ Class::Usul::Config - Inflate config values
 
 =head1 Version
 
-Describes Class::Usul::Config version v0.33.$Rev: 1 $
+Describes Class::Usul::Config version v0.33.$Rev: 2 $
 
 =head1 Synopsis
 

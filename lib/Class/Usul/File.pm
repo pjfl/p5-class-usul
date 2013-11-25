@@ -1,10 +1,11 @@
-# @(#)$Ident: File.pm 2013-09-30 17:26 pjf ;
+# @(#)$Ident: File.pm 2013-11-24 11:02 pjf ;
 
 package Class::Usul::File;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
+use Moo;
 use Class::Usul::Constants;
 use Class::Usul::Functions   qw( arg_list create_token is_arrayref throw );
 use Class::Usul::Types       qw( BaseType );
@@ -13,7 +14,6 @@ use File::DataClass::Constants ( );
 use File::DataClass::IO        ( );
 use File::DataClass::Schema;
 use File::Spec::Functions    qw( catdir catfile rootdir );
-use Moo;
 use Scalar::Util             qw( blessed );
 
 File::DataClass::Constants->Exception_Class( EXCEPTION_CLASS );
@@ -136,7 +136,7 @@ Class::Usul::File - File and directory IO base class
 
 =head1 Version
 
-This documents version v0.33.$Rev: 1 $
+This documents version v0.33.$Rev: 2 $
 
 =head1 Synopsis
 

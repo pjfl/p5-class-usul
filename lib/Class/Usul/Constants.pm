@@ -1,11 +1,11 @@
-# @(#)$Ident: Constants.pm 2013-11-20 00:02 pjf ;
+# @(#)$Ident: Constants.pm 2013-11-24 15:22 pjf ;
 
 package Class::Usul::Constants;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 2 $ =~ /\d+/gmx );
 use parent                  qw( Exporter::Tiny );
 
 use Class::Usul::Exception;
@@ -95,7 +95,7 @@ sub Config_Key {
 sub Exception_Class {
    my ($self, $class) = @_; defined $class or return $Exception_Class;
 
-   $class->can( 'throw' ) or Class::Usul::Exception->throw
+   $class->can( 'throw' ) or $Exception_Class->throw
       ( "Exception class ${class} is not loaded or has no throw method" );
 
    return $Exception_Class = $class;
@@ -113,7 +113,7 @@ Class::Usul::Constants - Definitions of constant values
 
 =head1 Version
 
-This documents version v0.33.$Rev: 1 $
+This documents version v0.33.$Rev: 2 $
 
 =head1 Synopsis
 

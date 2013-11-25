@@ -1,10 +1,10 @@
-# @(#)$Ident: Programs.pm 2013-11-22 18:51 pjf ;
+# @(#)$Ident: Programs.pm 2013-11-23 23:52 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Inspector;
@@ -472,13 +472,10 @@ sub _output_usage {
 
    $verbose > 1 and return $self->_man_page_from( $self->config );
 
-   if ($verbose > 0) {
-      pod2usage( { -exitval => 'NOEXIT',
-                   -input   => NUL.$self->config->pathname,
-                   -message => SPC,
-                   -verbose => $verbose } );
-      return FAILED;
-   }
+   $verbose > 0 and pod2usage( { -exitval => OK,
+                                 -input   => NUL.$self->config->pathname,
+                                 -message => SPC,
+                                 -verbose => $verbose } ); # Never returns
 
    emit_to \*STDERR, $self->options_usage;
    return FAILED;
@@ -544,7 +541,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes version v0.33.$Rev: 1 $ of L<Class::Usul::Programs>
+This document describes version v0.33.$Rev: 2 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 
