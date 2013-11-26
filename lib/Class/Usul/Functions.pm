@@ -1,11 +1,11 @@
-# @(#)$Ident: Functions.pm 2013-11-24 15:17 pjf ;
+# @(#)$Ident: Functions.pm 2013-11-26 13:03 pjf ;
 
 package Class::Usul::Functions;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 3 $ =~ /\d+/gmx );
 use parent                  qw( Exporter::Tiny );
 
 use Class::Load             qw( is_class_loaded load_class );
@@ -33,7 +33,7 @@ our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
                        base64_encode_ns bsonid bsonid_time bson64id
                        bson64id_time build class2appdir classdir
                        classfile create_token data_dumper distname
-                       downgrade elapsed emit emit_to
+                       downgrade elapsed emit emit_err emit_to
                        ensure_class_loaded env_prefix escape_TT
                        exception find_apphome find_source fold fqdn
                        fullname get_cfgfiles get_user hex2str
@@ -222,11 +222,17 @@ sub elapsed () {
 sub emit (;@) {
    my @args = @_; $args[ 0 ] //= q(); chomp( @args );
 
-   openhandle *STDOUT or return;
+   local ($OFS, $ORS) = is_win32() ? ("\r\n", "\r\n") : ("\n", "\n");
+
+   return openhandle *STDOUT ? emit_to( *STDOUT, @args ) : undef;
+}
+
+sub emit_err (;@) {
+   my @args = @_; $args[ 0 ] //= q(); chomp( @args );
 
    local ($OFS, $ORS) = is_win32() ? ("\r\n", "\r\n") : ("\n", "\n");
 
-   return emit_to( *STDOUT, @args );
+   return openhandle *STDERR ? emit_to( *STDERR, @args ) : undef;
 }
 
 sub emit_to ($;@) {
@@ -676,7 +682,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.33.$Rev: 2 $
+This documents version v0.33.$Rev: 3 $
 
 =head1 Synopsis
 
@@ -841,6 +847,12 @@ Returns the number of seconds elapsed since the process started
 
 Prints to I<STDOUT> the lines of text passed to it. Lines are C<chomp>ed
 and then have newlines appended. Throws on IO errors
+
+=head2 emit_err
+
+   emit_err @lines_of_text;
+
+Like L</emit> but output to C<STDERR>
 
 =head2 emit_to
 

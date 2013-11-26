@@ -1,12 +1,12 @@
-# @(#)Ident: Prompting.pm 2013-11-23 23:31 pjf ;
+# @(#)Ident: Prompting.pm 2013-11-25 16:11 pjf ;
 
 package Class::Usul::TraitFor::Prompting;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw( arg_list emit_to throw );
+use Class::Usul::Functions  qw( arg_list emit_to pad throw );
 use Class::Usul::Types      qw( BaseType );
 use English                 qw( -no_match_vars );
 use IO::Interactive;
@@ -59,10 +59,12 @@ sub get_option { # Select from an numbered list of options
 
    my $no_lead = ('+' eq substr $prompt, 0, 1) ? FALSE : TRUE;
    my $leader  = $no_lead ? NUL : '+'; $prompt =~ s{ \A \+ }{}mx;
+   my $max     = @{ $options };
 
    $self->output( $prompt, { no_lead => $no_lead } ); my $count = 1;
 
-   my $text = join "\n", map { $count++." - ${_}" } @{ $options };
+   my $text = join "\n", map { __justify_count( $max, $count++ )." - ${_}" }
+                            @{ $options };
 
    $self->output( $text, { cl => TRUE, nl => TRUE, no_lead => $no_lead } );
 
@@ -129,6 +131,10 @@ sub __get_control_chars {
    return ((join '|', values %cntl), %cntl);
 }
 
+sub __justify_count {
+   return pad $_[ 1 ], int log $_[ 0 ] / log 10, SPC, 'left';
+}
+
 sub __map_prompt_args { # IO::Prompt equiv. sub has an obscure bug so this
    my $args = shift; my %map = ( qw(-1 onechar -d default -e echo -p prompt) );
 
@@ -159,7 +165,7 @@ sub __prompt { # Robbed from IO::Prompt
    my ($cntl, %cntl) = __get_control_chars( $IN );
    local $SIG{INT}   = sub { __restore_mode( $IN ); exit FAILED };
 
-   emit_to( $OUT, $args->{prompt} ); __raw_mode( $IN );
+   emit_to $OUT, $args->{prompt}; __raw_mode( $IN );
 
    while (TRUE) {
       if (defined ($next = getc $IN)) {
@@ -184,21 +190,21 @@ sub __prompt { # Robbed from IO::Prompt
             if ($next eq "\n") {
                if ($input eq "\n" and defined $default) {
                   $text = defined $echo ? $echo x length $default : $default;
-                  emit_to( $OUT, "[${text}]\n" ); __restore_mode( $IN );
+                  emit_to $OUT, "[${text}]\n"; __restore_mode( $IN );
 
                   return $onechar ? substr $default, 0, 1 : $default;
                }
 
                $newlines .= "\n";
             }
-            else { emit_to( $OUT, $echo // $next ) }
+            else { emit_to $OUT, $echo // $next }
          }
          else { $input .= $next }
       }
 
       if ($onechar or not defined $next or $input =~ m{ \Q$RS\E \z }mx) {
          chomp $input; __restore_mode( $IN );
-         defined $newlines and emit_to( $OUT, $newlines );
+         defined $newlines and emit_to $OUT, $newlines;
          return $onechar ? substr $input, 0, 1 : $input;
       }
    }
@@ -234,7 +240,7 @@ Class::Usul::TraitFor::Prompting - Methods for requesting command line input
 
 =head1 Version
 
-This documents version v0.33.$Rev: 2 $ of L<Class::Usul::TraitFor::Prompting>
+This documents version v0.33.$Rev: 3 $ of L<Class::Usul::TraitFor::Prompting>
 
 =head1 Description
 

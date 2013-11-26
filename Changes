@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - Added ::Functions emit_err
+          - ::Prompting::get_option right justifies the count
           - Refactored ::Functions::ensure_class_loaded
           - Exposed throw_on_error in ::Functions
 
