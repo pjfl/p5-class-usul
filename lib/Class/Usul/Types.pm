@@ -1,14 +1,14 @@
-# @(#)$Ident: Types.pm 2013-10-19 17:03 pjf ;
+# @(#)$Ident: Types.pm 2013-11-30 13:27 pjf ;
 
 package Class::Usul::Types;
 
 use strict;
 use warnings;
 use namespace::clean -except => 'meta';
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
-use Class::Load             qw( load_first_existing_class );
 use Class::Usul::Constants;
+use Class::Usul::Functions  qw( ensure_class_loaded exception );
 use Encode                  qw( find_encoding );
 use Scalar::Util            qw( blessed );
 use Type::Library              -base, -declare =>
@@ -18,7 +18,7 @@ use Type::Library              -base, -declare =>
                                 RequestType );
 use Type::Utils             qw( as class_type coerce extends
                                 from message subtype via where );
-use Unexpected::Functions   qw( inflate_message );
+use Unexpected::Functions   qw( inflate_message is_class_loaded );
 
 BEGIN { extends q(Unexpected::Types) };
 
@@ -35,6 +35,8 @@ subtype EncodingType, as Str,
    where   { find_encoding( $_ ) },
    message { inflate_message( 'String [_1] is not a valid encoding', $_ ) };
 
+coerce EncodingType, from Undef, via { DEFAULT_ENCODING };
+
 subtype L10NType, as Object,
    where   { $_->can( 'localize' ) },
    message { __exception_message_for_l10ntype( $_ ) };
@@ -47,17 +49,16 @@ subtype LogType, as Object,
    where   { $_->isa( 'Class::Null' ) or __has_log_level_methods( $_ ) },
    message { __exception_message_for_logtype( $_ ) };
 
-subtype NullLoadingClass, as ClassName;
-
-subtype RequestType, as Object,
-   where   { $_->can( 'params' ) },
-   message { __exception_message_for_requesttype( $_ ) };
-
-coerce EncodingType, from Undef, via { DEFAULT_ENCODING };
+subtype NullLoadingClass, as ClassName,
+   where   { is_class_loaded( $_ ) };
 
 coerce NullLoadingClass,
    from Str,   via { __load_if_exists( $_  ) },
    from Undef, via { __load_if_exists( NUL ) };
+
+subtype RequestType, as Object,
+   where   { $_->can( 'params' ) },
+   message { __exception_message_for_requesttype( $_ ) };
 
 # Private functions
 sub __exception_message_for_configtype {
@@ -116,7 +117,11 @@ sub __has_min_config_attributes {
 }
 
 sub __load_if_exists {
-   my $name = shift; load_first_existing_class( $name, q(Class::Null) );
+   if (my $class = shift) {
+      eval { ensure_class_loaded( $class ) }; exception or return $class;
+   }
+
+   ensure_class_loaded( 'Class::Null' ); return 'Class::Null';
 };
 
 1;
@@ -131,7 +136,7 @@ Class::Usul::Types - Defines type constraints
 
 =head1 Version
 
-This document describes Class::Usul::Types version v0.33.$Rev: 1 $
+This document describes Class::Usul::Types version v0.33.$Rev: 4 $
 
 =head1 Synopsis
 

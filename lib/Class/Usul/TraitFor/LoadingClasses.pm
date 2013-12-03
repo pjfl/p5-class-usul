@@ -1,9 +1,9 @@
-# @(#)$Ident: LoadingClasses.pm 2013-11-22 15:17 pjf ;
+# @(#)$Ident: LoadingClasses.pm 2013-11-27 12:36 pjf ;
 
 package Class::Usul::TraitFor::LoadingClasses;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( ensure_class_loaded find_source throw );
@@ -82,7 +82,7 @@ Class::Usul::TraitFor::LoadingClasses - Load classes at runtime
 
 =head1 Version
 
-This documents version v0.33.$Rev: 1 $
+This documents version v0.33.$Rev: 4 $
 
 =head1 Synopsis
 
@@ -128,8 +128,6 @@ None
 =head1 Dependencies
 
 =over 3
-
-=item L<Class::Load>
 
 =item L<Class::Usul::Constants>
 

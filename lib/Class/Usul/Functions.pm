@@ -1,14 +1,13 @@
-# @(#)$Ident: Functions.pm 2013-11-26 13:03 pjf ;
+# @(#)$Ident: Functions.pm 2013-12-01 00:38 pjf ;
 
 package Class::Usul::Functions;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 4 $ =~ /\d+/gmx );
 use parent                  qw( Exporter::Tiny );
 
-use Class::Load             qw( is_class_loaded load_class );
 use Class::Null;
 use Class::Usul::Constants;
 use Cwd                     qw( );
@@ -21,10 +20,11 @@ use File::Basename          qw( basename dirname );
 use File::HomeDir           qw( );
 use File::Spec::Functions   qw( catdir catfile curdir tmpdir );
 use List::Util              qw( first );
+use Module::Runtime         qw( is_module_name require_module );
 use Path::Class::Dir;
 use Scalar::Util            qw( blessed openhandle );
 use Sys::Hostname;
-use Unexpected::Functions   qw( Tainted );
+use Unexpected::Functions   qw( is_class_loaded Tainted );
 use User::pwent;
 
 our @EXPORT      = qw( is_member );
@@ -37,11 +37,12 @@ our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
                        ensure_class_loaded env_prefix escape_TT
                        exception find_apphome find_source fold fqdn
                        fullname get_cfgfiles get_user hex2str
-                       home2appldir is_arrayref is_coderef is_hashref
-                       is_win32 loginid logname merge_attributes
-                       my_prefix pad prefix2class product split_on__
-                       split_on_dash squeeze strip_leader sub_name sum
-                       thread_id throw throw_on_error trim unescape_TT
+                       home2appldir is_arrayref is_coderef
+                       is_hashref is_win32 loginid
+                       logname merge_attributes my_prefix pad
+                       prefix2class product split_on__ split_on_dash
+                       squeeze strip_leader sub_name sum thread_id
+                       throw throw_on_error trim unescape_TT
                        untaint_cmdline untaint_identifier untaint_path
                        untaint_string zip );
 our %EXPORT_REFS =   ( assert => sub { ASSERT } );
@@ -246,10 +247,11 @@ sub ensure_class_loaded ($;$) {
    my ($class, $opts) = @_; $opts ||= {};
 
    $class or throw( 'No class specified' );
-
+   is_module_name( $class )
+      or throw( error => 'String [_1] invalid classname', args => [ $class ] );
    not $opts->{ignore_loaded} and is_class_loaded( $class ) and return 1;
 
-   eval { load_class( $class ) }; throw_on_error();
+   eval { require_module( $class ) }; throw_on_error();
 
    is_class_loaded( $class )
       or throw( error => 'Class [_1] loaded but package undefined',
@@ -547,7 +549,7 @@ sub untaint_string ($;$) {
 }
 
 sub zip (@) {
-    my $p = @_ / 2; return @_[ map { $_, $_ + $p } 0 .. $p - 1 ];
+   my $p = @_ / 2; return @_[ map { $_, $_ + $p } 0 .. $p - 1 ];
 }
 
 # Private functions
@@ -682,7 +684,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.33.$Rev: 3 $
+This documents version v0.33.$Rev: 4 $
 
 =head1 Synopsis
 

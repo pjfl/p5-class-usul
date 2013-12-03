@@ -1,9 +1,9 @@
-# @(#)Ident: Prompting.pm 2013-11-25 16:11 pjf ;
+# @(#)Ident: Prompting.pm 2013-11-27 14:31 pjf ;
 
 package Class::Usul::TraitFor::Prompting;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( arg_list emit_to pad throw );
@@ -59,7 +59,7 @@ sub get_option { # Select from an numbered list of options
 
    my $no_lead = ('+' eq substr $prompt, 0, 1) ? FALSE : TRUE;
    my $leader  = $no_lead ? NUL : '+'; $prompt =~ s{ \A \+ }{}mx;
-   my $max     = @{ $options };
+   my $max     = @{ $options // [] };
 
    $self->output( $prompt, { no_lead => $no_lead } ); my $count = 1;
 
@@ -240,7 +240,7 @@ Class::Usul::TraitFor::Prompting - Methods for requesting command line input
 
 =head1 Version
 
-This documents version v0.33.$Rev: 3 $ of L<Class::Usul::TraitFor::Prompting>
+This documents version v0.33.$Rev: 4 $ of L<Class::Usul::TraitFor::Prompting>
 
 =head1 Description
 

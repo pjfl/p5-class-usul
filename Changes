@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+          - Using DZ::P::AbstractFromPOD and LicenseFromModule
+          - Added ::Types testing
+          - Dropped dependency on Class::Load
           - Added ::Functions emit_err
           - ::Prompting::get_option right justifies the count
           - Refactored ::Functions::ensure_class_loaded
