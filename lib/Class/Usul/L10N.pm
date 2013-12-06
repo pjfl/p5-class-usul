@@ -1,10 +1,10 @@
-# @(#)$Ident: L10N.pm 2013-11-07 14:07 pjf ;
+# @(#)$Ident: L10N.pm 2013-12-04 13:12 pjf ;
 
 package Class::Usul::L10N;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -54,7 +54,7 @@ around 'BUILDARGS' => sub {
    my $builder = delete $attr->{builder} or return $attr;
    my $config  = $builder->can( 'config' ) ? $builder->config : {};
 
-   merge_attributes $attr, $builder, {}, [ qw( debug lock log ) ];
+   merge_attributes $attr, $builder, {}, [ qw( debug log ) ];
    merge_attributes $attr, $config,  {},
       [ qw( l10n_attributes localedir tempdir ) ];
 
@@ -189,7 +189,7 @@ Class::Usul::L10N - Localize text strings
 
 =head1 Version
 
-This documents version v0.33.$Rev: 1 $
+This documents version v0.33.$Rev: 5 $
 
 =head1 Synopsis
 

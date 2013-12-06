@@ -1,10 +1,10 @@
-# @(#)$Ident: Usul.pm 2013-11-24 11:01 pjf ;
+# @(#)$Ident: Usul.pm 2013-12-04 13:32 pjf ;
 
 package Class::Usul;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants;
@@ -70,7 +70,7 @@ sub _build_lock { # There is only one lock object. Instantiate on first use
 sub _trigger_debug { # Propagate the debug state to child objects
    my ($self, $debug) = @_;
 
-   $self->l10n->debug( $debug ); $self->lock->debug( $debug );
+   $self->l10n->debug( $debug ); $debug and $self->lock->debug( $debug );
 
    return;
 }
@@ -105,7 +105,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.33.$Rev: 2 $
+Describes Class::Usul version v0.33.$Rev: 5 $
 
 =head1 Synopsis
 

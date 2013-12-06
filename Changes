@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Simplified Build.PL. Updated test boilerplate
           - Using DZ::P::AbstractFromPOD and LicenseFromModule
           - Added ::Types testing
           - Dropped dependency on Class::Load
