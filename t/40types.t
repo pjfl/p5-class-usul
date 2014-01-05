@@ -1,8 +1,8 @@
-# @(#)Ident: 40types.t 2013-12-06 16:28 pjf ;
+# @(#)Ident: 40types.t 2014-01-05 22:09 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.34.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.34.%d', q$Rev: 2 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -28,7 +28,7 @@ use Test::Requires "${perl_ver}";
 
    has 'test1' => is => 'ro', isa => NullLoadingClass, default => 'Class::Usul',
       coerce   => NullLoadingClass->coercion;
-   has 'test2' => is => 'ro', isa => NullLoadingClass, default => 'Foo::Bar',
+   has 'test2' => is => 'ro', isa => NullLoadingClass, default => 'FooX::BarT',
       coerce   => NullLoadingClass->coercion;
 
    $INC{ 'MyNLC.pm' } = __FILE__;
