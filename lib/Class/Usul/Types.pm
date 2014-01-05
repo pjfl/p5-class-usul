@@ -5,7 +5,7 @@ package Class::Usul::Types;
 use strict;
 use warnings;
 use namespace::clean -except => 'meta';
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.34.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( ensure_class_loaded exception );
@@ -136,7 +136,7 @@ Class::Usul::Types - Defines type constraints
 
 =head1 Version
 
-This document describes Class::Usul::Types version v0.33.$Rev: 4 $
+This document describes Class::Usul::Types version v0.34.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -208,7 +208,7 @@ Larry Wall - For the Perl programming language
 
 =head1 License and Copyright
 
-Copyright (c) 2013 Peter Flanigan. All rights reserved
+Copyright (c) 2014 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

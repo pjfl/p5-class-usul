@@ -1,8 +1,8 @@
-# @(#)$Ident: 16file.t 2013-12-06 16:29 pjf ;
+# @(#)$Ident: 16file.t 2014-01-05 22:02 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 5 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.34.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir catfile updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -40,46 +40,46 @@ SKIP: {
    my $osname = lc $OSNAME;
    my $cu     = Class::Usul->new
       ( config     => {
-         appclass  => q(Class::Usul),
-         home      => catdir( qw(lib Class Usul) ),
-         localedir => catdir( qw(t locale) ),
-         tempdir   => q(t), },
+         appclass  => 'Class::Usul',
+         home      => catdir( qw( lib Class Usul ) ),
+         localedir => catdir( qw( t locale ) ),
+         tempdir   => 't', },
         debug      => 0,
         log        => Logger->new, );
 
    my $cuf = Class::Usul::File->new( builder => $cu );
 
-   isa_ok $cuf, 'Class::Usul::File'; is $cuf->tempdir, q(t),
+   isa_ok $cuf, 'Class::Usul::File'; is $cuf->tempdir, 't',
       'Temporary directory is t';
 
-   my $tf = [ qw(t test.xml) ];
+   my $tf = [ qw( t test.json ) ];
 
-   ok( (grep { m{ name }msx } $cuf->io( $tf )->getlines)[ 0 ]
-       =~ m{ library }msx, 'IO can getlines' );
+   ok( (grep { m{ driver }msx } $cuf->io( $tf )->getlines)[ 0 ]
+       =~ m{ mysql }msx, 'IO can getlines' );
 
-   my $path = $cuf->absolute( [ qw( a b ) ], q(c) );
+   my $path = $cuf->absolute( [ qw( a b ) ], 'c' );
 
    like $path, qr{ a . b . c \z }mx, 'Absolute path 1';
 
-   $path = $cuf->absolute( q(a), [ qw( b c ) ] );
+   $path = $cuf->absolute( 'a', [ qw( b c ) ] );
 
    like $path, qr{ a . b . c \z }mx, 'Absolute path 2';
 
    my $fdcs = $cuf->dataclass_schema->load( $tf );
 
-   is $fdcs->{credentials}->{library}->{driver}, q(mysql),
+   is $fdcs->{credentials}->{library}->{driver}, 'mysql',
       'File::Dataclass::Schema can load';
 
-   unlink catfile( qw(t ipc_srlock.lck) );
-   unlink catfile( qw(t ipc_srlock.shm) );
+   unlink catfile( qw( t ipc_srlock.lck ) );
+   unlink catfile( qw( t ipc_srlock.shm ) );
 
-   is $cuf->status_for( $tf )->{size}, 237,
+   is $cuf->status_for( $tf )->{size}, 199,
       'Status for returns correct file size';
 
    if ($osname ne 'mswin32' and $osname ne 'cygwin') {
-      my $symlink = catfile( qw(t symlink) );
+      my $symlink = catfile( qw( t symlink ) );
 
-      $cuf->symlink( q(t), q(test.xml), [ qw(t symlink) ] );
+      $cuf->symlink( 't', 'test.json', [ 'symlink' ] );
 
       ok -e $symlink, 'Creates a symlink'; -e _ and unlink $symlink;
    }
@@ -88,7 +88,7 @@ SKIP: {
 
    ok( $tempfile, 'Returns tempfile' );
 
-   is ref $tempfile->io_handle, q(File::Temp),
+   is ref $tempfile->io_handle, 'File::Temp',
       'Tempfile io handle correct class';
 
    $cuf->io( $tempfile->pathname )->touch;
@@ -103,13 +103,13 @@ SKIP: {
 
    ok $cuf->tempname =~ m{ $PID .{4} }msx, 'Temporary filename correct pattern';
 
-   my $io = $cuf->io( q(t) ); my $entry;
+   my $io = $cuf->io( 't' ); my $entry;
 
    while (defined ($entry = $io->next)) {
-      $entry->filename eq q(16file.t) and last;
+      $entry->filename eq '16file.t' and last;
    }
 
-   ok defined $entry && $entry->filename eq q(16file.t), 'Directory listing';
+   ok defined $entry && $entry->filename eq '16file.t', 'Directory listing';
 }
 
 done_testing;

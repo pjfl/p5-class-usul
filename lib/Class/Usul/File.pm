@@ -1,9 +1,9 @@
-# @(#)$Ident: File.pm 2014-01-03 13:42 pjf ;
+# @(#)$Ident: File.pm 2014-01-05 02:28 pjf ;
 
 package Class::Usul::File;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 6 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.34.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants;
@@ -97,7 +97,9 @@ sub symlink {
    $to or throw class => Unspecified, args => [ 'Symlink path to' ];
    $to = $self->absolute( $base, $to ); $to->is_link and $to->unlink;
    $to->exists and throw class => AlreadyExists, args => [ $to->pathname ];
-   CORE::symlink $from->pathname, $to->pathname or throw $OS_ERROR;
+   CORE::symlink $from->pathname, $to->pathname
+      or throw error => 'Symlink from [_1] to [_2] failed: [_3]',
+               args  => [ $from->pathname, $to->pathname, $OS_ERROR ];
    return "Symlinked ${from} to ${to}";
 }
 
@@ -137,7 +139,7 @@ Class::Usul::File - File and directory IO base class
 
 =head1 Version
 
-This documents version v0.33.$Rev: 6 $
+This documents version v0.34.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -284,7 +286,7 @@ Peter Flanigan, C<< <Support at RoxSoft.co.uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2013 Peter Flanigan. All rights reserved
+Copyright (c) 2014 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

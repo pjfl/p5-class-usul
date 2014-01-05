@@ -3,7 +3,7 @@
 package Class::Usul::Config;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.34.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants;
@@ -324,7 +324,7 @@ Class::Usul::Config - Inflate config values
 
 =head1 Version
 
-Describes Class::Usul::Config version v0.33.$Rev: 2 $
+Describes Class::Usul::Config version v0.34.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -523,7 +523,7 @@ Peter Flanigan, C<< <Support at RoxSoft.co.uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2013 Peter Flanigan. All rights reserved
+Copyright (c) 2014 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

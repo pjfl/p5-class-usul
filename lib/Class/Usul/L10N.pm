@@ -4,7 +4,7 @@ package Class::Usul::L10N;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 6 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.34.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Null;
@@ -189,7 +189,7 @@ Class::Usul::L10N - Localize text strings
 
 =head1 Version
 
-This documents version v0.33.$Rev: 6 $
+This documents version v0.34.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -346,7 +346,7 @@ Larry Wall - For the Perl programming language
 
 =head1 License and Copyright
 
-Copyright (c) 2013 Peter Flanigan. All rights reserved
+Copyright (c) 2014 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

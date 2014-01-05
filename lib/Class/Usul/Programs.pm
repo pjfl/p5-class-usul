@@ -4,7 +4,7 @@ package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.34.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Inspector;
@@ -547,7 +547,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes version v0.33.$Rev: 3 $ of L<Class::Usul::Programs>
+This document describes version v0.34.$Rev: 1 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 
@@ -847,7 +847,7 @@ Peter Flanigan, C<< <Support at RoxSoft.co.uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2013 Peter Flanigan. All rights reserved
+Copyright (c) 2014 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

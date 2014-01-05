@@ -2,7 +2,7 @@
 
 package Class::Usul::Response::Meta;
 
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.34.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::File;
 use Class::Usul::Functions  qw( is_arrayref throw );
@@ -55,7 +55,7 @@ Class::Usul::Response::Meta - Class for CPAN Meta file
 
 =head1 Version
 
-This document describes Class::Usul::Response::Meta version v0.33.$Rev: 1 $
+This document describes Class::Usul::Response::Meta version v0.34.$Rev: 1 $
 
 =head1 Synopsis
 
@@ -122,7 +122,7 @@ Peter Flanigan, C<< <Support at RoxSoft.co.uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2013 Peter Flanigan. All rights reserved
+Copyright (c) 2014 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>
