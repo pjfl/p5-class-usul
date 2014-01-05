@@ -1,9 +1,9 @@
-# @(#)$Ident: File.pm 2013-11-24 11:02 pjf ;
+# @(#)$Ident: File.pm 2014-01-03 13:42 pjf ;
 
 package Class::Usul::File;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 6 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants;
@@ -15,6 +15,7 @@ use File::DataClass::IO        ( );
 use File::DataClass::Schema;
 use File::Spec::Functions    qw( catdir catfile rootdir );
 use Scalar::Util             qw( blessed );
+use Unexpected::Functions    qw( AlreadyExists NotFound Unspecified );
 
 File::DataClass::Constants->Exception_Class( EXCEPTION_CLASS );
 
@@ -53,7 +54,7 @@ sub data_load {
        and $attr->{storage_attributes}->{force_array} = $args->{arrays};
 
   (is_arrayref $args->{paths} and defined $args->{paths}->[ 0 ])
-      or throw 'No data file paths specified';
+      or throw class => Unspecified, args => [ 'Path name' ];
 
    return $self->dataclass_schema( $attr )->load( @{ $args->{paths} } );
 }
@@ -74,7 +75,9 @@ sub delete_tmp_files {
 }
 
 sub extensions {
-   return File::DataClass::Schema->extensions;
+   my $extensions = File::DataClass::Schema->extensions;
+
+   return wantarray ? keys %{ $extensions } : $extensions;
 }
 
 sub io {
@@ -88,14 +91,12 @@ sub status_for {
 sub symlink {
    my ($self, $base, $from, $to) = @_;
 
-   $from or throw 'Symlink path from undefined';
+   $from or throw class => Unspecified, args => [ 'Symlink path from' ];
    $from = $self->absolute( $base, $from );
-   $from->exists or
-      throw error => 'Path [_1] does not exist', args => [ $from->pathname ];
-   $to or throw 'Symlink path to undefined';
-   $to   = $self->io( $to ); -l $to->pathname and $to->unlink;
-   $to->exists and
-      throw error => 'Path [_1] already exists', args => [ $to->pathname ];
+   $from->exists or throw class => NotFound, args => [ $from->pathname ];
+   $to or throw class => Unspecified, args => [ 'Symlink path to' ];
+   $to = $self->absolute( $base, $to ); $to->is_link and $to->unlink;
+   $to->exists and throw class => AlreadyExists, args => [ $to->pathname ];
    CORE::symlink $from->pathname, $to->pathname or throw $OS_ERROR;
    return "Symlinked ${from} to ${to}";
 }
@@ -136,7 +137,7 @@ Class::Usul::File - File and directory IO base class
 
 =head1 Version
 
-This documents version v0.33.$Rev: 2 $
+This documents version v0.33.$Rev: 6 $
 
 =head1 Synopsis
 
@@ -192,10 +193,12 @@ which defaults to C<< $self->tempdir >>
 
 =head2 extensions
 
-   $hash_ref = $self->extensions;
+   $hash_ref  = $self->extensions;
+   $array_ref = [ $self->extensions ];
 
 Class method that returns the extensions supported by
-L<File::DataClass::Storage>
+L<File::DataClass::Storage>. Returns the hash reference in a scalar context
+and the list of keys in a list context
 
 =head2 io
 

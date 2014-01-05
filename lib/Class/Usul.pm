@@ -1,10 +1,10 @@
-# @(#)$Ident: Usul.pm 2013-12-04 13:32 pjf ;
+# @(#)$Ident: Usul.pm 2013-12-31 21:01 pjf ;
 
 package Class::Usul;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 5 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 6 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants;
@@ -15,6 +15,7 @@ use Class::Usul::Types      qw( Bool ConfigType EncodingType HashRef
                                 L10NType LoadableClass LockType LogType );
 use IPC::SRLock;
 use Scalar::Util            qw( blessed );
+use Unexpected::Functions   qw( Unspecified );
 
 # Public attributes
 has 'config'       => is => 'lazy', isa => ConfigType, builder => sub {
@@ -79,7 +80,8 @@ sub _trigger_debug { # Propagate the debug state to child objects
 sub __build_attr_from_class { # Coerce a hash ref from a string
    my $class = shift;
 
-   defined $class or throw 'Application class not defined';
+   defined $class
+      or throw class => Unspecified, args => [ 'Application class' ];
    $class->can( 'config' )
       or throw error => 'Class [_1] is missing the config method',
                args  => [ $class ];
@@ -105,7 +107,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.33.$Rev: 5 $
+Describes Class::Usul version v0.33.$Rev: 6 $
 
 =head1 Synopsis
 

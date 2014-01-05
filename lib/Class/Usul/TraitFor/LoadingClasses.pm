@@ -1,9 +1,9 @@
-# @(#)$Ident: LoadingClasses.pm 2013-11-27 12:36 pjf ;
+# @(#)$Ident: LoadingClasses.pm 2013-12-31 21:50 pjf ;
 
 package Class::Usul::TraitFor::LoadingClasses;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 6 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( ensure_class_loaded find_source throw );
@@ -11,12 +11,13 @@ use File::Basename          qw( basename );
 use File::Spec::Functions   qw( catfile );
 use Module::Pluggable::Object;
 use Scalar::Util            qw( blessed );
+use Unexpected::Functions   qw( Unspecified );
 use Moo::Role;
 
 sub build_subcomponents { # Voodo by mst. Finds and loads component subclasses
    my ($self, $base_class) = @_; my $my_class = blessed $self || $self;
 
-   $base_class or throw 'No base class specified';
+   $base_class or throw class => Unspecified, args => [ 'Base class' ];
 
   (my $dir = find_source $base_class) =~ s{ [.]pm \z }{}msx;
 
@@ -34,7 +35,7 @@ sub build_subcomponents { # Voodo by mst. Finds and loads component subclasses
 sub load_component {
    my ($self, $child, @parents) = @_;
 
-   $child or throw 'No child class specified';
+   $child or throw class => Unspecified, args => [ 'Child class' ];
 
    ## no critic
    for my $parent (reverse @parents) {
@@ -82,7 +83,7 @@ Class::Usul::TraitFor::LoadingClasses - Load classes at runtime
 
 =head1 Version
 
-This documents version v0.33.$Rev: 4 $
+This documents version v0.33.$Rev: 6 $
 
 =head1 Synopsis
 

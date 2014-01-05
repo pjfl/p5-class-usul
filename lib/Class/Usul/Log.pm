@@ -1,10 +1,11 @@
-# @(#)$Ident: Log.pm 2013-09-30 00:32 pjf ;
+# @(#)$Ident: Log.pm 2013-12-07 22:55 pjf ;
 
 package Class::Usul::Log;
 
 use namespace::clean -except => [ qw( class_stash meta ) ];
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 6 $ =~ /\d+/gmx );
 
+use Moo;
 use Class::Null;
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( merge_attributes );
@@ -13,24 +14,23 @@ use Class::Usul::Types      qw( Bool EncodingType HashRef
 use Encode;
 use File::Basename          qw( dirname );
 use File::DataClass::Types  qw( Path );
-use Moo;
 use MooX::ClassStash;
 use Scalar::Util            qw( blessed );
 
-has '_debug_flag'     => is => 'ro',   isa => Bool, init_arg => 'debug',
-   default            => FALSE;
+has '_debug_flag'     => is => 'ro',   isa => Bool, default => FALSE,
+   init_arg           => 'debug';
 
 has '_encoding'       => is => 'ro',   isa => EncodingType | Undef,
    init_arg           => 'encoding';
 
 has '_log'            => is => 'lazy', isa => LogType, init_arg => 'log';
 
-has '_log_attributes' => is => 'ro',   isa => HashRef,
-   init_arg           => 'log_attributes', default => sub { {} };
+has '_log_attributes' => is => 'ro',   isa => HashRef, default => sub { {} },
+   init_arg           => 'log_attributes';
 
 has '_log_class'      => is => 'lazy', isa => LoadableClass,
-   coerce             => LoadableClass->coercion,
-   default            => sub { 'Log::Handler' }, init_arg => 'log_class';
+   coerce             => LoadableClass->coercion, default => 'Log::Handler',
+   init_arg           => 'log_class';
 
 has '_logfile'        => is => 'ro',   isa => Path | Undef,
    coerce             => Path->coercion, init_arg => 'logfile';
@@ -85,19 +85,18 @@ sub fh {
 sub get_log_attributes {
    my $self = shift; my $attr = { %{ $self->_log_attributes } };
 
-   if ($self->_log_class eq 'Log::Handler') {
-      my $fattr   = $attr->{file} ||= {};
-      my $logfile = $fattr->{filename} || $self->_logfile;
+   $self->_log_class eq 'Log::Handler' or return $attr;
 
-      ($logfile and -d dirname( "${logfile}" )) or return;
+   my $fattr   = $attr->{file} ||= {};
+   my $logfile = $fattr->{filename} || $self->_logfile;
 
-      $fattr->{alias   }   = 'file-out';
-      $fattr->{filename}   = "${logfile}";
-      $fattr->{maxlevel}   = $self->_debug_flag
-                           ? 'debug' : $fattr->{maxlevel} || 'info';
-      $fattr->{mode    } ||= 'append';
-   }
+   ($logfile and -d dirname( "${logfile}" )) or return;
 
+   $fattr->{alias   }   = 'file-out';
+   $fattr->{filename}   = "${logfile}";
+   $fattr->{maxlevel}   = $self->_debug_flag
+                        ? 'debug' : $fattr->{maxlevel} || 'info';
+   $fattr->{mode    } ||= 'append';
    return $attr;
 }
 
@@ -120,7 +119,7 @@ Class::Usul::Log - Create methods for each logging level that encode their outpu
 
 =head1 Version
 
-This documents version v0.33.$Rev: 1 $
+This documents version v0.33.$Rev: 6 $
 
 =head1 Synopsis
 

@@ -1,11 +1,12 @@
-# @(#)$Ident: L10N.pm 2013-12-04 13:12 pjf ;
+# @(#)$Ident: L10N.pm 2013-12-07 22:56 pjf ;
 
 package Class::Usul::L10N;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 5 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 6 $ =~ /\d+/gmx );
 
+use Moo;
 use Class::Null;
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( assert is_arrayref merge_attributes );
@@ -15,7 +16,6 @@ use File::DataClass::Types  qw( Directory Lock Path );
 use File::Gettext::Constants;
 use File::Gettext;
 use File::Spec;
-use Moo;
 use Try::Tiny;
 
 # Public attributes
@@ -189,7 +189,7 @@ Class::Usul::L10N - Localize text strings
 
 =head1 Version
 
-This documents version v0.33.$Rev: 5 $
+This documents version v0.33.$Rev: 6 $
 
 =head1 Synopsis
 

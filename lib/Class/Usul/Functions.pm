@@ -1,11 +1,11 @@
-# @(#)$Ident: Functions.pm 2013-12-01 00:38 pjf ;
+# @(#)$Ident: Functions.pm 2013-12-31 18:44 pjf ;
 
 package Class::Usul::Functions;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 6 $ =~ /\d+/gmx );
 use parent                  qw( Exporter::Tiny );
 
 use Class::Null;
@@ -24,7 +24,7 @@ use Module::Runtime         qw( is_module_name require_module );
 use Path::Class::Dir;
 use Scalar::Util            qw( blessed openhandle );
 use Sys::Hostname;
-use Unexpected::Functions   qw( is_class_loaded Tainted );
+use Unexpected::Functions   qw( is_class_loaded Tainted Unspecified );
 use User::pwent;
 
 our @EXPORT      = qw( is_member );
@@ -57,7 +57,8 @@ sub _exporter_fail {
     exists $EXPORT_REFS{ $name }
        and return ( $name => $EXPORT_REFS{ $name }->() );
 
-    throw( "Could not find sub '${name}' to export in package '${class}'" );
+    throw( error => 'Subroutine [_1] not found in package [_2]',
+           args  => [ $name, $class ] );
 }
 
 # Public functions
@@ -196,7 +197,7 @@ sub create_token (;$) {
          $candidate = $_; $digest = eval { Digest->new( $candidate ) } and last;
       }
 
-      $digest or throw( 'No digest algorithm' ); $cache = $candidate;
+      $digest or throw( 'Digest algorithm not found' ); $cache = $candidate;
    }
 
    $digest->add( $seed || join q(), time, rand 10_000, $PID, {} );
@@ -246,7 +247,7 @@ sub emit_to ($;@) {
 sub ensure_class_loaded ($;$) {
    my ($class, $opts) = @_; $opts ||= {};
 
-   $class or throw( 'No class specified' );
+   $class or throw( class => Unspecified, args => [ 'Class name' ] );
    is_module_name( $class )
       or throw( error => 'String [_1] invalid classname', args => [ $class ] );
    not $opts->{ignore_loaded} and is_class_loaded( $class ) and return 1;
@@ -355,7 +356,7 @@ sub fullname () {
 sub get_cfgfiles ($;$$) {
    my ($appclass, $dirs, $extns) = @_;
 
-   $appclass // throw( 'Application class undefined' );
+   $appclass // throw( class => Unspecified, args => [ 'Application class' ] );
    is_arrayref( $dirs ) or $dirs = [ $dirs // curdir ];
 
    my $app_pref = app_prefix   $appclass;
@@ -542,8 +543,7 @@ sub untaint_string ($;$) {
    my ($untainted) = $string =~ $regex;
 
    (defined $untainted and $untainted eq $string)
-      or throw( error => 'String [_1] contains possible taint',
-                args  => [ $string ], class => Tainted, level => 3 );
+      or throw( class => Tainted, args => [ $string ], level => 3 );
 
    return $untainted;
 }
@@ -684,7 +684,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.33.$Rev: 4 $
+This documents version v0.33.$Rev: 6 $
 
 =head1 Synopsis
 

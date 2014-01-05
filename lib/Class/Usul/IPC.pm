@@ -1,10 +1,11 @@
-# @(#)$Ident: IPC.pm 2013-11-02 17:42 pjf ;
+# @(#)$Ident: IPC.pm 2013-12-31 21:46 pjf ;
 
 package Class::Usul::IPC;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.33.%d', q$Rev: 6 $ =~ /\d+/gmx );
 
+use Moo;
 use Class::Null;
 use Class::Usul::Constants;
 use Class::Usul::File;
@@ -20,11 +21,11 @@ use IO::Handle;
 use IO::Select;
 use IPC::Open3;
 use Module::Load::Conditional qw( can_load );
-use Moo;
 use POSIX                     qw( WIFEXITED WNOHANG );
 use Scalar::Util              qw( blessed );
 use Socket                    qw( AF_UNIX SOCK_STREAM PF_UNSPEC );
 use Try::Tiny;
+use Unexpected::Functions     qw( Unspecified );
 
 our ($CHILD_ENUM, $CHILD_PID);
 
@@ -67,7 +68,9 @@ sub child_list {
 }
 
 sub popen { # Robbed from IPC::Cmd
-   my ($self, $cmd, @opts) = @_; $cmd or throw 'Run command not specified';
+   my ($self, $cmd, @opts) = @_;
+
+   $cmd or throw class => Unspecified, args => [ 'Run command' ];
 
    is_arrayref $cmd and $cmd = join SPC, @{ $cmd };
 
@@ -200,7 +203,9 @@ sub process_table {
 }
 
 sub run_cmd {
-   my ($self, $cmd, @opts) = @_; $cmd or throw 'Run command not specified';
+   my ($self, $cmd, @opts) = @_;
+
+   $cmd or throw class => Unspecified, args => [ 'Run command' ];
 
    if (is_arrayref $cmd) {
       if (not is_win32 and can_load( modules => { 'IPC::Run' => '0.84' } )) {
@@ -316,7 +321,7 @@ sub _return_codes_or_throw {
       my $error = 'Program [_1] failed to start: [_2]';
       my $prog  = basename( (split SPC, $cmd)[ 0 ] );
 
-      throw error => $error, level => 3, args => [ $prog, $e_str ], rv => -1;
+      throw error => $error, args => [ $prog, $e_str ], level => 3, rv => -1;
    }
 
    my $rv = $e_num >> 8; my $core = $e_num & 128; my $sig = $e_num & 127;
@@ -358,7 +363,7 @@ sub _run_cmd_system_args {
 sub _run_cmd_using_ipc_run {
    my ($self, $cmd, @opts) = @_; my ($buf_err, $buf_out, $error, $h, $rv);
 
-   $cmd->[ 0 ] or throw 'Run command not specified';
+   $cmd->[ 0 ] or throw class => Unspecified, args => [ 'Run command' ];
 
    my $opts     = $self->_run_cmd_ipc_run_args( @opts );
    my $cmd_ref  = __partition_command( $cmd );
@@ -651,7 +656,7 @@ Class::Usul::IPC - List/Create/Delete processes
 
 =head1 Version
 
-This documents version v0.33.$Rev: 1 $
+This documents version v0.33.$Rev: 6 $
 
 =head1 Synopsis
 
