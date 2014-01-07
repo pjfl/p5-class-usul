@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+0.35.1    2014-01-07 08:39:29
+          - Added ::Schema and ::TraitFor::ConnectInfo
+
 0.34.1    2014-01-05 22:06:39
           - Stopped using XML data files in tests
           - Using predefined exception errors

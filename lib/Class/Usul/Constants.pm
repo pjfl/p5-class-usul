@@ -5,7 +5,7 @@ package Class::Usul::Constants;
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.34.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use parent                  qw( Exporter::Tiny );
 
 use Class::Usul::Exception;
@@ -113,7 +113,7 @@ Class::Usul::Constants - Definitions of constant values
 
 =head1 Version
 
-This documents version v0.34.$Rev: 1 $
+This documents version v0.35.$Rev: 1 $
 
 =head1 Synopsis
 

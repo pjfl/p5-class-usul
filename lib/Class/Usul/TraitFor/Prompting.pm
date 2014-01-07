@@ -3,7 +3,7 @@
 package Class::Usul::TraitFor::Prompting;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.34.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( arg_list emit_to pad throw );
@@ -240,7 +240,7 @@ Class::Usul::TraitFor::Prompting - Methods for requesting command line input
 
 =head1 Version
 
-This documents version v0.34.$Rev: 1 $ of L<Class::Usul::TraitFor::Prompting>
+This documents version v0.35.$Rev: 1 $ of L<Class::Usul::TraitFor::Prompting>
 
 =head1 Description
 

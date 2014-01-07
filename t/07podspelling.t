@@ -1,8 +1,8 @@
-# @(#)Ident: 07podspelling.t 2013-08-13 23:16 pjf ;
+# @(#)Ident: 07podspelling.t 2014-01-07 08:26 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.34.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use File::Spec::Functions qw(catdir catfile updir);
 use FindBin qw( $Bin );
 use lib catdir( $Bin, updir, q(lib) );
@@ -64,9 +64,14 @@ coderef
 config
 cpan
 datetime
+DBIC
+DDL
+dbattrs
 debian
 distmeta
 distname
+DSN
+dsn
 extns
 fh
 fqdn
@@ -83,6 +88,7 @@ isa
 json
 lbrace
 loc
+login
 loginid
 logname
 lookup
@@ -95,8 +101,12 @@ perlbrew
 plugins
 popen
 posix
+PostgreSQL
 prepends
+RDBMSs
+RDBMs
 runtime
+schemas
 sep
 sig
 spc

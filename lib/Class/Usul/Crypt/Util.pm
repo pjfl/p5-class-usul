@@ -1,11 +1,11 @@
-# @(#)Ident: Util.pm 2013-09-30 12:14 pjf ;
+# @(#)Ident: Util.pm 2014-01-07 08:20 pjf ;
 
 package Class::Usul::Crypt::Util;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.34.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Crypt      qw( decrypt default_cipher encrypt );
@@ -25,7 +25,7 @@ sub decrypt_from_config {
    my ($cipher, $password)  = __extract_crypt_params( $encrypted );
    my $args                 = __get_crypt_args( $config, $cipher );
 
-   return $password ? decrypt $args, $password : $password;
+   return $password ? decrypt $args, $password : $encrypted;
 }
 
 sub encrypt_for_config {
@@ -112,7 +112,7 @@ Class::Usul::Crypt::Util - Decrypts/Encrypts password from/to configuration file
 
 =head1 Version
 
-This documents version v0.34.$Rev: 1 $ of L<Class::Usul::Crypt::Util>
+This documents version v0.35.$Rev: 1 $ of L<Class::Usul::Crypt::Util>
 
 =head1 Description
 

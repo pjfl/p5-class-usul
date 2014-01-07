@@ -1,4 +1,4 @@
-# @(#)$Ident: 22crypt.t 2013-12-06 16:24 pjf ;
+# @(#)Ident: 30schema.t 2014-01-07 08:38 pjf ;
 
 use strict;
 use warnings;
@@ -21,13 +21,20 @@ BEGIN {
 
 use Test::Requires "${perl_ver}";
 
-use_ok 'Class::Usul::Crypt', qw( decrypt encrypt );
+use_ok 'Class::Usul::Schema';
 
-my $plain_text            = 'Hello World';
-my $args                  = { cipher => 'Twofish2', salt => 'salt' };
-my $base64_encrypted_text = encrypt( $args, $plain_text );
+my $prog = Class::Usul::Schema->new( {
+   config   => { ctrldir => 't' },
+   database => 'test',
+   noask    => 1,
+} );
 
-is decrypt( $args, $base64_encrypted_text ), $plain_text, 'Round trips';
+is $prog->dbattrs->{no_comments}, 1, 'Database attributes';
+is $prog->driver, 'mysql', 'Driver';
+is $prog->dsn, 'dbi:mysql:database=test;host=localhost;port=3306', 'DSN';
+is $prog->host, 'localhost', 'Host';
+is $prog->password, 'test', 'Password';
+is $prog->user, 'root', 'User';
 
 done_testing;
 
@@ -35,3 +42,4 @@ done_testing;
 # mode: perl
 # tab-width: 3
 # End:
+# vim: expandtab shiftwidth=3:

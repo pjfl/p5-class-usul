@@ -3,7 +3,7 @@
 package Class::Usul::File;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.34.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants;
@@ -139,7 +139,7 @@ Class::Usul::File - File and directory IO base class
 
 =head1 Version
 
-This documents version v0.34.$Rev: 1 $
+This documents version v0.35.$Rev: 1 $
 
 =head1 Synopsis
 

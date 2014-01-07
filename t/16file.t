@@ -1,8 +1,8 @@
-# @(#)$Ident: 16file.t 2014-01-05 22:02 pjf ;
+# @(#)$Ident: 16file.t 2014-01-07 08:27 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.34.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir catfile updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -67,13 +67,13 @@ SKIP: {
 
    my $fdcs = $cuf->dataclass_schema->load( $tf );
 
-   is $fdcs->{credentials}->{library}->{driver}, 'mysql',
+   is $fdcs->{credentials}->{test}->{driver}, 'mysql',
       'File::Dataclass::Schema can load';
 
    unlink catfile( qw( t ipc_srlock.lck ) );
    unlink catfile( qw( t ipc_srlock.shm ) );
 
-   is $cuf->status_for( $tf )->{size}, 199,
+   is $cuf->status_for( $tf )->{size}, 196,
       'Status for returns correct file size';
 
    if ($osname ne 'mswin32' and $osname ne 'cygwin') {

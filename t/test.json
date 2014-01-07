@@ -1,6 +1,6 @@
 {
    "credentials" : {
-      "library" : {
+      "test" : {
          "driver" : "mysql",
          "host" : "localhost",
          "password" : "test",

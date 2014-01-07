@@ -1,8 +1,8 @@
-# @(#)Ident: 30loading_classes.t 2013-12-06 16:24 pjf ;
+# @(#)Ident: 13traits.t 2014-01-07 08:22 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.34.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 0 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir catfile updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -23,7 +23,7 @@ use Test::Requires         "${perl_ver}";
 use Class::Usul::Functions qw( exception );
 use File::Basename         qw( basename );
 
-{  package MyProg;
+{  package MyLCProg;
 
    use Moo;
 
@@ -35,17 +35,37 @@ use File::Basename         qw( basename );
 
 my $name    = basename( $0, qw( .t ) );
 my $logfile = catfile( 't', "${name}.log" );
-my $prog    = MyProg->new( appclass => 'Class::Usul',
-                           config   => { logsdir => 't', tempdir => 't', },
-                           method   => 'dump_self',
-                           noask    => 1,
-                           quiet    => 1, );
+my $prog    = MyLCProg->new( appclass => 'Class::Usul',
+                             config   => { logsdir => 't', tempdir => 't', },
+                             method   => 'dump_self',
+                             noask    => 1,
+                             quiet    => 1, );
 
 $prog->build_subcomponents( 'Class::Usul::Config' );
 
 is $prog->config->pwidth, 60, 'build_subcomponents';
 
 $prog->setup_plugins;
+
+{  package MyCIProg;
+
+   use Moo;
+
+   with 'Class::Usul::TraitFor::ConnectInfo';
+
+   sub config {
+      return { ctrldir => 't', };
+   }
+
+   1;
+}
+
+$prog = MyCIProg->new;
+
+my $info = $prog->get_connect_info( $prog, { database => 'test' } );
+
+is $info->[ 1 ], 'root', 'Connect info - user';
+is $info->[ 2 ], 'test', 'Connect info - password';
 
 done_testing;
 

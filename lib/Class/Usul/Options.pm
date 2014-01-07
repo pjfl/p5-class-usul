@@ -4,7 +4,7 @@ package Class::Usul::Options;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.34.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( throw );
@@ -145,7 +145,7 @@ Class::Usul::Options - Command line processing
 
 =head1 Version
 
-This documents version v0.34.$Rev: 1 $ of L<Class::Usul::Options>
+This documents version v0.35.$Rev: 1 $ of L<Class::Usul::Options>
 
 =head1 Description
 
