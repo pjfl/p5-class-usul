@@ -1,15 +1,16 @@
-# @(#)$Ident: Meta.pm 2013-08-04 16:55 pjf ;
+# @(#)$Ident: MetaData.pm 2014-01-07 22:02 pjf ;
 
-package Class::Usul::Response::Meta;
+package # Hide from indexer
+   Class::Usul::Response::Meta;
 
-use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use namespace::clean -except => 'meta';
+use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
-use Class::Usul::File;
-use Class::Usul::Functions  qw( is_arrayref throw );
-use Class::Usul::Types      qw( ArrayRef HashRef Maybe Str );
-use Cwd                     qw( getcwd );
 use Moo;
-use YAML::Syck;
+use Class::Usul::File;
+use Class::Usul::Functions  qw( throw );
+use Class::Usul::Types      qw( ArrayRef HashRef Maybe Str );
+use File::Spec::Functions   qw( curdir );
 
 has 'abstract' => is => 'ro', isa => Maybe[Str];
 has 'author'   => is => 'ro', isa => Maybe[ArrayRef];
@@ -23,25 +24,35 @@ around 'BUILDARGS' => sub {
 
    my $file_class = 'Class::Usul::File';
 
-   for my $dir (@{ $attr->{directories} || [] }, $file_class->io( getcwd )) {
+   for my $dir (@{ $attr->{directories} || [] }, $file_class->io( curdir )) {
       my $file = $dir->catfile( 'META.json' );
 
       $file->exists and return $file_class->data_load( paths => [ $file ] );
-      $file = $dir->catfile( 'META.yml' );
-
-      if ($file->exists) {
-         my $meta_data = LoadFile( $file->pathname ) || {};
-
-         exists $meta_data->{license}
-            and not is_arrayref $meta_data->{license}
-            and $meta_data->{license} = [ $meta_data->{license} ];
-         return $meta_data;
-      }
    }
 
-   throw error => 'No META.json or META.yml file', level => 3;
+   throw error => 'File [_1] not found', args => [ 'META.json' ], level => 3;
    return;
 };
+
+package Class::Usul::TraitFor::MetaData;
+
+use namespace::sweep;
+use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev: 1 $ =~ /\d+/gmx );
+
+use Moo::Role;
+
+requires qw( config io );
+
+sub get_meta {
+   my ($self, $dir) = @_; my $conf = $self->config;
+
+   my @dirs = $dir ? ($self->io( $dir )) : ();
+
+   $conf->can( 'ctrldir' ) and push @dirs, $conf->ctrldir;
+   $conf->can( 'appldir' ) and push @dirs, $conf->appldir;
+
+   return Class::Usul::Response::Meta->new( directories => \@dirs );
+}
 
 1;
 
@@ -51,24 +62,29 @@ __END__
 
 =head1 Name
 
-Class::Usul::Response::Meta - Class for CPAN Meta file
+Class::Usul::TraitFor::MetaData - Class for CPAN Meta file
 
 =head1 Version
 
-This document describes Class::Usul::Response::Meta version v0.35.$Rev: 1 $
+This document describes L<Class::Usul::TraitFor::MetaData>
+version v0.16.$Rev: 1 $
 
 =head1 Synopsis
 
-   use Class::Usul::Response::Meta;
+   use Moo;
 
-   Class::Usul::Response::Meta->new( $path_to_meta_yaml_file );
+   with 'Class::Usul::TraitFor::MetaData';
+
+   $meta_data_object_ref = $self->get_meta( $directory );
 
 =head1 Description
 
-Uses L<YAML::Syck> to load the specified YAML file and returns on object
+Loads the specified JSON file and returns on object
 which define accessors for it's attributes
 
 =head1 Configuration and Environment
+
+Defines the following attributes
 
 =over 3
 
@@ -92,6 +108,15 @@ which define accessors for it's attributes
 
 Monkey with the constructors signature
 
+=head2 get_meta
+
+   $res_obj = $self->get_meta( $dir );
+
+Extracts; I<name>, I<version>, I<author> and I<abstract> from the
+F<META.json> file.  Looks in the optional C<$dir> directory
+for the file in addition to C<< $self->appldir >> and C<< $self->ctrldir >>.
+Returns a response object with read-only accessors defined
+
 =head1 Diagnostics
 
 None
@@ -101,8 +126,6 @@ None
 =over 3
 
 =item L<Moo>
-
-=item L<YAML::Syck>
 
 =back
 
@@ -118,7 +141,7 @@ Patches are welcome
 
 =head1 Author
 
-Peter Flanigan, C<< <Support at RoxSoft.co.uk> >>
+Peter Flanigan, C<< <pjfl@cpan.org> >>
 
 =head1 License and Copyright
 

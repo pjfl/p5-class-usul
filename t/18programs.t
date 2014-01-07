@@ -1,8 +1,8 @@
-# @(#)$Ident: 18programs.t 2013-12-06 16:24 pjf ;
+# @(#)$Ident: 18programs.t 2014-01-07 21:57 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 2 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir catfile updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -50,18 +50,7 @@ is $prog->can_call( 'dump_self' ), 1, 'Can call true';
 
 is $prog->can_call( 'add_leader' ), 0, 'Can call false';
 
-my $meta; eval { $meta = $prog->get_meta }; my $e = $EVAL_ERROR || q();
-
-if ($e and $e =~ m{ No \s META }mx) { # Work around Dzil
-   like $e, qr{ No \s META }mx, 'No meta file';
-}
-else {
-   is $meta->name, 'Class-Usul', 'Meta file class';
-
-   like $meta->license->[ 0 ], qr{ perl }mx, 'Meta license';
-}
-
-eval { $prog->file->io( 'Dummy' )->all }; $e = $EVAL_ERROR || q();
+eval { $prog->file->io( 'Dummy' )->all }; my $e = $EVAL_ERROR || q();
 
 like $e, qr{ 'Dummy' \s+ cannot \s+ open }mx, 'Non existant file';
 

@@ -1,10 +1,10 @@
-# @(#)$Ident: Programs.pm 2013-11-26 13:56 pjf ;
+# @(#)$Ident: Programs.pm 2014-01-07 21:17 pjf ;
 
 package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Inspector;
@@ -231,16 +231,6 @@ sub fatal {
    emit_to *STDERR, $self->add_leader( $text, $args ).$posn."\n";
    __output_stacktrace( $err, $self->verbose );
    exit FAILED;
-}
-
-sub get_meta {
-   my ($self, $dir) = @_; my $cfg = $self->config;
-
-   my @dirs = ($cfg->appldir, $cfg->ctrldir);
-
-   $dir and unshift @dirs, $self->io( $dir );
-
-   return $self->meta_class->new( directories => \@dirs );
 }
 
 sub help : method {
@@ -547,7 +537,7 @@ Class::Usul::Programs - Provide support for command line programs
 
 =head1 Version
 
-This document describes version v0.35.$Rev: 1 $ of L<Class::Usul::Programs>
+This document describes version v0.35.$Rev: 2 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 
@@ -720,15 +710,6 @@ variable <uppercase application name>_HOME
 Search through sub directories of @INC looking for the file
 F<yourApplication.json>. Uses the location of this file to return the
 path to the installation directory
-
-=head2 get_meta
-
-   $res_obj = $self->get_meta( $dir );
-
-Extracts; I<name>, I<version>, I<author> and I<abstract> from the
-F<META.json> or F<META.yml> file.  Looks in the optional C<$dir> directory
-for the file in addition to C<< $self->appldir >> and C<< $self->ctrldir >>.
-Returns a response object with read-only accessors defined
 
 =head2 help - Display help text about a method
 

@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+          - Moved ::Response::Meta to ::TraitFor::MetaData
+          - Dropped dependency on YAML::Syck
+
 0.35.1    2014-01-07 08:39:29
           - Added ::Schema and ::TraitFor::ConnectInfo
 
