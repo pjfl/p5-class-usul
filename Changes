@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Moved ::TraitFor::LoadingClasses to CX::Usul
           - Moved ::Response::Meta to ::TraitFor::MetaData
           - Dropped dependency on YAML::Syck
 
