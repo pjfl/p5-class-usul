@@ -1,11 +1,11 @@
-# @(#)$Ident: Functions.pm 2013-12-31 18:44 pjf ;
+# @(#)$Ident: Functions.pm 2014-01-09 15:09 pjf ;
 
 package Class::Usul::Functions;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 3 $ =~ /\d+/gmx );
 use parent                  qw( Exporter::Tiny );
 
 use Class::Null;
@@ -65,7 +65,7 @@ sub _exporter_fail {
 sub abs_path ($) {
    my $y = shift; (defined $y and length $y) or return $y;
 
-   (is_win32() or lc $OSNAME eq q(cygwin))
+   (is_win32() or lc $OSNAME eq 'cygwin')
       and not -e $y and return untaint_path( $y ); # Hate
 
    $y = Cwd::abs_path( untaint_path( $y ) );
@@ -80,9 +80,9 @@ sub app_prefix ($) {
 }
 
 sub arg_list (;@) {
-   return $_[ 0 ] && ref $_[ 0 ] eq q(HASH) ? { %{ $_[ 0 ] } }
-        : $_[ 0 ]                           ? { @_ }
-                                            : {};
+   return $_[ 0 ] && ref $_[ 0 ] eq 'HASH' ? { %{ $_[ 0 ] } }
+        : $_[ 0 ]                          ? { @_ }
+                                           : {};
 }
 
 sub assert_directory ($) {
@@ -185,7 +185,7 @@ sub classdir ($) {
 }
 
 sub classfile ($) {
-   return catfile( split m{ :: }mx, $_[ 0 ].q(.pm) );
+   return catfile( split m{ :: }mx, $_[ 0 ].'.pm' );
 }
 
 sub create_token (;$) {
@@ -247,7 +247,7 @@ sub emit_to ($;@) {
 sub ensure_class_loaded ($;$) {
    my ($class, $opts) = @_; $opts ||= {};
 
-   $class or throw( class => Unspecified, args => [ 'Class name' ] );
+   $class or throw( class => Unspecified, args => [ 'class name' ] );
    is_module_name( $class )
       or throw( error => 'String [_1] invalid classname', args => [ $class ] );
    not $opts->{ignore_loaded} and is_class_loaded( $class ) and return 1;
@@ -267,8 +267,8 @@ sub env_prefix ($) {
 
 sub escape_TT (;$$) {
    my $y  = defined $_[ 0 ] ? $_[ 0 ] : q();
-   my $fl = ($_[ 1 ] && $_[ 1 ]->[ 0 ]) || q(<);
-   my $fr = ($_[ 1 ] && $_[ 1 ]->[ 1 ]) || q(>);
+   my $fl = ($_[ 1 ] && $_[ 1 ]->[ 0 ]) || '<';
+   my $fr = ($_[ 1 ] && $_[ 1 ]->[ 1 ]) || '>';
 
    $y =~ s{ \[\% }{${fl}%}gmx; $y =~ s{ \%\] }{%${fr}}gmx;
 
@@ -356,7 +356,7 @@ sub fullname () {
 sub get_cfgfiles ($;$$) {
    my ($appclass, $dirs, $extns) = @_;
 
-   $appclass // throw( class => Unspecified, args => [ 'Application class' ] );
+   $appclass // throw( class => Unspecified, args => [ 'application class' ] );
    is_arrayref( $dirs ) or $dirs = [ $dirs // curdir ];
 
    my $app_pref = app_prefix   $appclass;
@@ -399,15 +399,15 @@ sub home2appldir ($) {
 }
 
 sub is_arrayref (;$) {
-   return $_[ 0 ] && ref $_[ 0 ] eq q(ARRAY) ? 1 : 0;
+   return $_[ 0 ] && ref $_[ 0 ] eq 'ARRAY' ? 1 : 0;
 }
 
 sub is_coderef (;$) {
-   return $_[ 0 ] && ref $_[ 0 ] eq q(CODE) ? 1 : 0;
+   return $_[ 0 ] && ref $_[ 0 ] eq 'CODE' ? 1 : 0;
 }
 
 sub is_hashref (;$) {
-   return $_[ 0 ] && ref $_[ 0 ] eq q(HASH) ? 1 : 0;
+   return $_[ 0 ] && ref $_[ 0 ] eq 'HASH' ? 1 : 0;
 }
 
 sub is_member (;@) {
@@ -462,7 +462,7 @@ sub pad ($$;$$) {
 }
 
 sub prefix2class (;$) {
-   return join q(::), map { ucfirst } split m{ - }mx, my_prefix( $_[ 0 ] );
+   return join '::', map { ucfirst } split m{ - }mx, my_prefix( $_[ 0 ] );
 }
 
 sub product (;@) {
@@ -488,7 +488,7 @@ sub strip_leader (;$) {
 sub sub_name (;$) {
    my $x = $_[ 0 ] || 0;
 
-   return (split m{ :: }mx, ((caller ++$x)[ 3 ]) || q(main))[ -1 ];
+   return (split m{ :: }mx, ((caller ++$x)[ 3 ]) || 'main')[ -1 ];
 }
 
 sub sum (;@) {
@@ -515,8 +515,8 @@ sub trim (;$$) {
 
 sub unescape_TT (;$$) {
    my $y  = defined $_[ 0 ] ? $_[ 0 ] : q();
-   my $fl = ($_[ 1 ] && $_[ 1 ]->[ 0 ]) || q(<);
-   my $fr = ($_[ 1 ] && $_[ 1 ]->[ 1 ]) || q(>);
+   my $fl = ($_[ 1 ] && $_[ 1 ]->[ 0 ]) || '<';
+   my $fr = ($_[ 1 ] && $_[ 1 ]->[ 1 ]) || '>';
 
    $y =~ s{ ${fl}\% }{[%}gmx; $y =~ s{ \%${fr} }{%]}gmx;
 
@@ -554,7 +554,7 @@ sub zip (@) {
 
 # Private functions
 sub _base64_char_set () {
-   return [ 0 .. 9, q(A) .. q(Z), q(_), q(a) .. q(z), q(~), q(+) ];
+   return [ 0 .. 9, 'A' .. 'Z', '_', 'a' .. 'z', '~', '+' ];
 }
 
 sub _bsonid (;$) {
@@ -666,7 +666,7 @@ sub _read_variable {
    my $content = do { local $RS; <$fh> }; close $fh;
 
    return first  { length }
-          map    { trim( (split q(=), $_)[ 1 ] ) }
+          map    { trim( (split '=', $_)[ 1 ] ) }
           grep   { m{ \A \s* $variable \s* [=] }mx }
           map    { chomp }
           split m{ [\n] }mx, $content;
@@ -684,7 +684,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.35.$Rev: 1 $
+This documents version v0.35.$Rev: 3 $
 
 =head1 Synopsis
 
@@ -969,7 +969,7 @@ Tests to see if the scalar variable is a hash ref
 
 =head2 is_member
 
-   $bool = is_member q(test_value), qw(a_value test_value b_value);
+   $bool = is_member 'test_value', qw( a_value test_value b_value );
 
 Tests to see if the first parameter is present in the list of
 remaining parameters
@@ -1079,7 +1079,7 @@ Returns the id of this thread. Returns zero if threads are not loaded
 
 =head2 throw
 
-   throw error => q(error_key), args => [ q(error_arg) ];
+   throw error => 'error_key', args => [ 'error_arg' ];
 
 Expose L<Class::Usul::Exception/throw>. L<Class::Usul::Constants> has a
 class attribute I<Exception_Class> which can be set change the class
@@ -1103,7 +1103,7 @@ space and tab
 
 =head2 unescape_TT
 
-   $text = unescape_TT q(<% some_stash_key %>);
+   $text = unescape_TT '<% some_stash_key %>';
 
 Do the reverse of C<escape_TT>
 

@@ -1,16 +1,18 @@
-# @(#)$Ident: MetaData.pm 2014-01-07 22:02 pjf ;
+# @(#)$Ident: MetaData.pm 2014-01-09 14:26 pjf ;
 
 package # Hide from indexer
    Class::Usul::Response::Meta;
 
 use namespace::clean -except => 'meta';
-use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Moo;
+use Class::Usul::Constants; # Need EXCEPTION_CLASS for NotFound import
 use Class::Usul::File;
 use Class::Usul::Functions  qw( throw );
 use Class::Usul::Types      qw( ArrayRef HashRef Maybe Str );
 use File::Spec::Functions   qw( curdir );
+use Unexpected::Functions   qw( NotFound );
 
 has 'abstract' => is => 'ro', isa => Maybe[Str];
 has 'author'   => is => 'ro', isa => Maybe[ArrayRef];
@@ -22,28 +24,28 @@ has 'version'  => is => 'ro', isa => Maybe[Str];
 around 'BUILDARGS' => sub {
    my ($orig, $self, @args) = @_; my $attr = $orig->( $self, @args );
 
-   my $file_class = 'Class::Usul::File';
+   my $file_class = 'Class::Usul::File'; my $file_name = 'META.json';
 
    for my $dir (@{ $attr->{directories} || [] }, $file_class->io( curdir )) {
-      my $file = $dir->catfile( 'META.json' );
+      my $file = $dir->catfile( $file_name );
 
       $file->exists and return $file_class->data_load( paths => [ $file ] );
    }
 
-   throw error => 'File [_1] not found', args => [ 'META.json' ], level => 3;
+   throw class => NotFound, args => [ $file_name ], level => 3;
    return;
 };
 
 package Class::Usul::TraitFor::MetaData;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Moo::Role;
 
 requires qw( config io );
 
-sub get_meta {
+sub get_package_meta {
    my ($self, $dir) = @_; my $conf = $self->config;
 
    my @dirs = $dir ? ($self->io( $dir )) : ();
@@ -67,7 +69,7 @@ Class::Usul::TraitFor::MetaData - Class for CPAN Meta file
 =head1 Version
 
 This document describes L<Class::Usul::TraitFor::MetaData>
-version v0.16.$Rev: 1 $
+version v0.16.$Rev: 3 $
 
 =head1 Synopsis
 
@@ -75,7 +77,7 @@ version v0.16.$Rev: 1 $
 
    with 'Class::Usul::TraitFor::MetaData';
 
-   $meta_data_object_ref = $self->get_meta( $directory );
+   $meta_data_object_ref = $self->get_package_meta( $directory );
 
 =head1 Description
 
@@ -108,13 +110,13 @@ Defines the following attributes
 
 Monkey with the constructors signature
 
-=head2 get_meta
+=head2 get_package_meta
 
-   $res_obj = $self->get_meta( $dir );
+   $response_obj = $self->get_package_meta( $dir );
 
 Extracts; I<name>, I<version>, I<author> and I<abstract> from the
 F<META.json> file.  Looks in the optional C<$dir> directory
-for the file in addition to C<< $self->appldir >> and C<< $self->ctrldir >>.
+for the file in addition to C<< $config->appldir >> and C<< $config->ctrldir >>.
 Returns a response object with read-only accessors defined
 
 =head1 Diagnostics

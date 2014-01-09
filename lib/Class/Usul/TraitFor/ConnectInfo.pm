@@ -1,10 +1,10 @@
-# @(#)Ident: ConnectInfo.pm 2014-01-07 08:13 pjf ;
+# @(#)Ident: ConnectInfo.pm 2014-01-09 04:17 pjf ;
 
 package Class::Usul::TraitFor::ConnectInfo;
 
 use 5.010001;
 use namespace::sweep;
-use version;  our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version;  our $VERSION = qv( sprintf '0.35.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Crypt::Util qw( decrypt_from_config );
@@ -121,7 +121,7 @@ sub __get_credentials_file {
 
    my $dir = $params->{ctrldir}; my $extn = $params->{extension} || CONFIG_EXTN;
 
-      $dir or throw class => Unspecified, args => [ 'Control directory' ];
+      $dir or throw class => Unspecified, args => [ 'ctrldir' ];
    -d $dir or throw error => 'Directory [_1] not found', args => [ $dir ];
        $db or throw error => 'Class [_1] no database name',
                     args  => [ $params->{class} ];
@@ -159,7 +159,7 @@ Class::Usul::TraitFor::ConnectInfo - Provides the DBIC connect info array ref
 
 =head1 Version
 
-Describes v0.35.$Rev: 1 $ of L<Class::Usul::TraitFor::ConnectInfo>
+Describes v0.35.$Rev: 3 $ of L<Class::Usul::TraitFor::ConnectInfo>
 
 =head1 Synopsis
 

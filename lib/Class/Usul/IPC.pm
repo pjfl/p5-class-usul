@@ -1,9 +1,9 @@
-# @(#)$Ident: IPC.pm 2013-12-31 21:46 pjf ;
+# @(#)$Ident: IPC.pm 2014-01-09 04:21 pjf ;
 
 package Class::Usul::IPC;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Null;
@@ -70,7 +70,7 @@ sub child_list {
 sub popen { # Robbed from IPC::Cmd
    my ($self, $cmd, @opts) = @_;
 
-   $cmd or throw class => Unspecified, args => [ 'Run command' ];
+   $cmd or throw class => Unspecified, args => [ 'command' ];
 
    is_arrayref $cmd and $cmd = join SPC, @{ $cmd };
 
@@ -205,7 +205,7 @@ sub process_table {
 sub run_cmd {
    my ($self, $cmd, @opts) = @_;
 
-   $cmd or throw class => Unspecified, args => [ 'Run command' ];
+   $cmd or throw class => Unspecified, args => [ 'command' ];
 
    if (is_arrayref $cmd) {
       if (not is_win32 and can_load( modules => { 'IPC::Run' => '0.84' } )) {
@@ -363,7 +363,7 @@ sub _run_cmd_system_args {
 sub _run_cmd_using_ipc_run {
    my ($self, $cmd, @opts) = @_; my ($buf_err, $buf_out, $error, $h, $rv);
 
-   $cmd->[ 0 ] or throw class => Unspecified, args => [ 'Run command' ];
+   $cmd->[ 0 ] or throw class => Unspecified, args => [ 'command' ];
 
    my $opts     = $self->_run_cmd_ipc_run_args( @opts );
    my $cmd_ref  = __partition_command( $cmd );
@@ -656,7 +656,7 @@ Class::Usul::IPC - List/Create/Delete processes
 
 =head1 Version
 
-This documents version v0.35.$Rev: 1 $
+This documents version v0.35.$Rev: 3 $
 
 =head1 Synopsis
 
