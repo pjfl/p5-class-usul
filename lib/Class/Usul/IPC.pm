@@ -1,15 +1,15 @@
-# @(#)$Ident: IPC.pm 2014-01-09 04:21 pjf ;
+# @(#)$Ident: IPC.pm 2014-01-13 12:54 pjf ;
 
 package Class::Usul::IPC;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Null;
 use Class::Usul::Constants;
 use Class::Usul::File;
-use Class::Usul::Functions    qw( arg_list emit_to get_user is_arrayref
+use Class::Usul::Functions    qw( arg_list emit_to get_user io is_arrayref
                                   is_coderef is_win32 loginid merge_attributes
                                   strip_leader throw );
 use Class::Usul::Time         qw( time2str );
@@ -41,7 +41,7 @@ has 'table_class'    => is => 'lazy', isa => LoadableClass,
 # Private attributes
 has '_file' => is => 'lazy', isa => FileType,
    default  => sub { Class::Usul::File->new( builder => $_[ 0 ]->_usul ) },
-   handles  => [ qw( io tempdir tempfile ) ], init_arg => undef;
+   handles  => [ qw( tempdir tempfile ) ], init_arg => undef;
 
 has '_usul' => is => 'ro',   isa => BaseType,
    handles  => [ qw( config debug lock log ) ], init_arg => 'builder',
@@ -160,7 +160,7 @@ sub process_exists {
 
    my $pid = $args->{pid}; my ($io, $file);
 
-   $file = $args->{file} and $io = $self->io( $file ) and $io->is_file
+   $file = $args->{file} and $io = io( $file ) and $io->is_file
       and $pid = $io->chomp->lock->getline;
 
    (not $pid or $pid !~ m{ \d+ }mx) and return FALSE;
@@ -240,8 +240,7 @@ sub signal_process_as_root {
 
    $args->{pid} and push @{ $pids }, $args->{pid};
 
-   if ($file = $args->{file}
-       and $io = $self->io( $file ) and $io->is_file) {
+   if ($file = $args->{file} and $io = io( $file ) and $io->is_file) {
       push @{ $pids }, $io->chomp->lock->getlines;
       $sig eq 'TERM' and unlink $file;
    }
@@ -292,6 +291,12 @@ sub _list_pids_by_file_system {
    $data =~ s{ [^0-9\s] }{}gmx; $data =~ s{ \s+ }{ }gmx;
 
    return sort { $a <=> $b } grep { defined && length } split SPC, $data;
+}
+
+sub _new_proc_process_table {
+   my $self = shift; require Proc::ProcessTable;
+
+   return Proc::ProcessTable->new( cache_ttys => $self->config->cache_ttys );
 }
 
 sub _new_process_table {
@@ -492,13 +497,13 @@ sub _run_cmd_using_system {
    }
 
    if ($out ne 'stdout' and $out ne 'null' and -f $out) {
-      $out = __run_cmd_filter_out( $stdout = $self->io( $out )->slurp );
+      $out = __run_cmd_filter_out( $stdout = io( $out )->slurp );
    }
    else { $out = $stdout = NUL }
 
    if ($err eq 'out') { $stderr = $stdout; $error = $out; chomp $error }
    elsif ($err ne 'stderr' and $err ne 'null' and -f $err) {
-      $stderr = $error = $self->io( $err )->slurp; chomp $error;
+      $stderr = $error = io( $err )->slurp; chomp $error;
    }
    else { $stderr = $error = NUL }
 
@@ -601,12 +606,6 @@ sub __ipc_run_harness {
    return ( $rv, $h );
 }
 
-sub _new_proc_process_table {
-   my $self = shift; require Proc::ProcessTable;
-
-   return Proc::ProcessTable->new( cache_ttys => $self->config->cache_ttys );
-}
-
 sub __partition_command {
    my $cmd = shift; my $aref = []; my @command = ();
 
@@ -656,7 +655,7 @@ Class::Usul::IPC - List/Create/Delete processes
 
 =head1 Version
 
-This documents version v0.35.$Rev: 3 $
+This documents version v0.35.$Rev: 4 $
 
 =head1 Synopsis
 

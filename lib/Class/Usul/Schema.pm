@@ -1,14 +1,14 @@
-# @(#)Ident: Schema.pm 2014-01-06 19:56 pjf ;
+# @(#)Ident: Schema.pm 2014-01-10 21:11 pjf ;
 
 package Class::Usul::Schema;
 
 use namespace::sweep;
-use version;  our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version;  our $VERSION = qv( sprintf '0.35.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants;
 use Class::Usul::Crypt::Util qw( encrypt_for_config );
-use Class::Usul::Functions   qw( distname ensure_class_loaded );
+use Class::Usul::Functions   qw( distname ensure_class_loaded io );
 use Class::Usul::Options;
 use Class::Usul::Types       qw( ArrayRef Bool HashRef NonEmptySimpleStr Str );
 
@@ -237,7 +237,7 @@ sub _create_ddl {
 
    if ($self->unlink) {
       for my $rdb (@{ $self->rdbms }) {
-         my $path = $self->io( $schema->ddl_filename( $rdb, $version, $dir ) );
+         my $path = io( $schema->ddl_filename( $rdb, $version, $dir ) );
 
          $path->is_file and $path->unlink;
       }
@@ -260,7 +260,7 @@ sub _deploy_and_populate {
    my $dist = distname $schema_class;
    my $extn = $self->config->extension;
    my $re   = qr{ \A $dist [-] \d+ [-] (.*) \Q$extn\E \z }mx;
-   my $io   = $self->io( $dir )->filter( sub { $_->filename =~ $re } );
+   my $io   = io( $dir )->filter( sub { $_->filename =~ $re } );
 
    for my $path ($io->all_files) {
       my ($class) = $path->filename =~ $re;
@@ -335,7 +335,7 @@ Class::Usul::Schema - Support for database schemas
 
 =head1 Version
 
-Describes v0.35.$Rev: 1 $ of L<Class::Usul::Schame>
+Describes v0.35.$Rev: 4 $ of L<Class::Usul::Schame>
 
 =head1 Synopsis
 

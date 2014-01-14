@@ -1,17 +1,24 @@
-# @(#)$Ident: Constants.pm 2013-11-24 15:22 pjf ;
+# @(#)$Ident: Constants.pm 2014-01-14 16:50 pjf ;
 
 package Class::Usul::Constants;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 4 $ =~ /\d+/gmx );
 use parent                  qw( Exporter::Tiny );
 
 use Class::Usul::Exception;
+use File::DataClass::Constants ( );
+use File::Spec::Functions    qw( tmpdir );
 
-our @EXPORT = qw( ARRAY ASSERT BRK CODE COMMA CONFIG_EXTN DEFAULT_DIR
-                  DEFAULT_ENCODING DEFAULT_L10N_DOMAIN
+my $Assert          = sub {};
+my $Config_Extn     = '.json';
+my $Config_Key      = 'Plugin::Usul';
+my $Exception_Class = 'Class::Usul::Exception';
+
+our @EXPORT = qw( ARRAY ASSERT BRK CODE COMMA CONFIG_EXTN DEFAULT_CONFHOME
+                  DEFAULT_ENVDIR DEFAULT_ENCODING DEFAULT_L10N_DOMAIN
                   DIGEST_ALGORITHMS ENCODINGS EVIL EXCEPTION_CLASS
                   EXTNS FAILED FALSE HASH LANG LBRACE LOCALIZE
                   LOG_LEVELS MODE NO NUL OK PHASE PREFIX QUIT SEP
@@ -19,10 +26,7 @@ our @EXPORT = qw( ARRAY ASSERT BRK CODE COMMA CONFIG_EXTN DEFAULT_DIR
                   UNTAINT_IDENTIFIER UNTAINT_PATH USUL_CONFIG_KEY
                   UUID_PATH WIDTH YES );
 
-my $Assert          = sub {};
-my $Config_Extn     = '.json';
-my $Config_Key      = 'Plugin::Usul';
-my $Exception_Class = 'Class::Usul::Exception';
+File::DataClass::Constants->Exception_Class( __PACKAGE__->Exception_Class );
 
 sub ARRAY    () { q(ARRAY)   }
 sub BRK      () { q(: )      }
@@ -49,8 +53,9 @@ sub YES      () { q(y)       }
 
 sub ASSERT              () { __PACKAGE__->Assert }
 sub CONFIG_EXTN         () { __PACKAGE__->Config_Extn }
-sub DEFAULT_DIR         () { [ q(), qw( etc default ) ] }
+sub DEFAULT_CONFHOME    () { tmpdir }
 sub DEFAULT_ENCODING    () { q(UTF-8) }
+sub DEFAULT_ENVDIR      () { [ q(), qw( etc default ) ] }
 sub DEFAULT_L10N_DOMAIN () { q(default) }
 sub DIGEST_ALGORITHMS   () { ( qw( SHA-512 SHA-256 SHA-1 MD5 ) ) }
 sub ENCODINGS           () { ( qw( ascii iso-8859-1 UTF-8 guess ) ) }
@@ -113,7 +118,7 @@ Class::Usul::Constants - Definitions of constant values
 
 =head1 Version
 
-This documents version v0.35.$Rev: 1 $
+This documents version v0.35.$Rev: 4 $
 
 =head1 Synopsis
 
@@ -171,14 +176,19 @@ The comma character
 The default configuration file extension, F<.json>. Change this by
 setting the C<Config_Extn> class attribute
 
-=head2 DEFAULT_DIR
+=head2 DEFAULT_CONFHOME
 
-An arrayref which if passed to L<catfile|File::Spec/catdir> is the directory
-which will contain the applications installation information
+Default directory for the config file. The function C<find_apphome>
+defaults to returning this value if it cannot find a more suitable one
 
 =head2 DEFAULT_ENCODING
 
 String C<UTF-8>
+
+=head2 DEFAULT_ENVDIR
+
+An arrayref which if passed to L<catfile|File::Spec/catdir> is the directory
+which will contain the applications installation information
 
 =head2 DEFAULT_L10N_DOMAIN
 

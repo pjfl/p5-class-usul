@@ -1,17 +1,16 @@
-# @(#)$Ident: MetaData.pm 2014-01-09 14:26 pjf ;
+# @(#)$Ident: MetaData.pm 2014-01-13 18:25 pjf ;
 
 package # Hide from indexer
    Class::Usul::Response::Meta;
 
 use namespace::clean -except => 'meta';
-use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants; # Need EXCEPTION_CLASS for NotFound import
 use Class::Usul::File;
-use Class::Usul::Functions  qw( throw );
+use Class::Usul::Functions  qw( io throw );
 use Class::Usul::Types      qw( ArrayRef HashRef Maybe Str );
-use File::Spec::Functions   qw( curdir );
 use Unexpected::Functions   qw( NotFound );
 
 has 'abstract' => is => 'ro', isa => Maybe[Str];
@@ -26,7 +25,7 @@ around 'BUILDARGS' => sub {
 
    my $file_class = 'Class::Usul::File'; my $file_name = 'META.json';
 
-   for my $dir (@{ $attr->{directories} || [] }, $file_class->io( curdir )) {
+   for my $dir (@{ $attr->{directories} || [] }, io()->cwd) {
       my $file = $dir->catfile( $file_name );
 
       $file->exists and return $file_class->data_load( paths => [ $file ] );
@@ -39,16 +38,17 @@ around 'BUILDARGS' => sub {
 package Class::Usul::TraitFor::MetaData;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
+use Class::Usul::Functions  qw( io );
 use Moo::Role;
 
-requires qw( config io );
+requires qw( config );
 
 sub get_package_meta {
    my ($self, $dir) = @_; my $conf = $self->config;
 
-   my @dirs = $dir ? ($self->io( $dir )) : ();
+   my @dirs = $dir ? (io( $dir )) : ();
 
    $conf->can( 'ctrldir' ) and push @dirs, $conf->ctrldir;
    $conf->can( 'appldir' ) and push @dirs, $conf->appldir;
@@ -69,7 +69,7 @@ Class::Usul::TraitFor::MetaData - Class for CPAN Meta file
 =head1 Version
 
 This document describes L<Class::Usul::TraitFor::MetaData>
-version v0.16.$Rev: 3 $
+version v0.16.$Rev: 4 $
 
 =head1 Synopsis
 

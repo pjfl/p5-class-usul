@@ -1,10 +1,10 @@
-# @(#)$Ident: L10N.pm 2013-12-07 22:56 pjf ;
+# @(#)$Ident: L10N.pm 2014-01-11 17:05 pjf ;
 
 package Class::Usul::L10N;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Null;
@@ -65,7 +65,7 @@ around 'BUILDARGS' => sub {
 sub get_po_header {
    my ($self, $args) = @_;
 
-   my $domain = $self->_load_domains( $args || {} ) or return {};
+   my $domain = $self->_load_domains( $args // {} ) or return {};
    my $header = $domain->{po_header} or return {};
 
    return $header->{msgstr} || {};
@@ -154,8 +154,8 @@ sub _gettext {
 
       my $locale = $args->{locale} or return;
       my $lang   = $self->_extract_lang_from( $locale );
-      my $names  = $args->{domain_names} || $self->domain_names;
-      my @names  = grep { defined and length } @{ $names };
+      my @names  = grep { defined and length }
+                       @{ $args->{domain_names} || $self->domain_names };
       my $key    = $lang.SEP.(join '+', @names );
 
       defined $cache->{ $key } and return $cache->{ $key };
@@ -189,7 +189,7 @@ Class::Usul::L10N - Localize text strings
 
 =head1 Version
 
-This documents version v0.35.$Rev: 1 $
+This documents version v0.35.$Rev: 4 $
 
 =head1 Synopsis
 

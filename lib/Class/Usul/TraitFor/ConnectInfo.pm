@@ -1,10 +1,10 @@
-# @(#)Ident: ConnectInfo.pm 2014-01-09 04:17 pjf ;
+# @(#)Ident: ConnectInfo.pm 2014-01-14 21:50 pjf ;
 
 package Class::Usul::TraitFor::ConnectInfo;
 
 use 5.010001;
 use namespace::sweep;
-use version;  our $VERSION = qv( sprintf '0.35.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version;  our $VERSION = qv( sprintf '0.35.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Crypt::Util qw( decrypt_from_config );
@@ -20,36 +20,32 @@ requires qw( config ); # As a class method
 sub dump_config_data {
    my ($self, $config, $db, $cfg_data) = @_;
 
-   my $params = $self->_merge_attributes( $config );
+   my $params = $self->_merge_attributes( $config, { database => $db } );
 
-   return __dump_config_data( $params, $db, $cfg_data );
+   return __dump_config_data( $params, $cfg_data );
 }
 
 sub extract_creds_from {
    my ($self, $config, $db, $cfg_data) = @_;
 
-   my $params = $self->_merge_attributes( $config );
+   my $params = $self->_merge_attributes( $config, { database => $db } );
 
-   return __extract_creds_from( $params, $db, $cfg_data );
+   return __extract_creds_from( $params, $cfg_data );
 }
 
 sub get_connect_info {
-   my ($self, $app, $params) = @_; my $attr = $self->_connect_config_attr;
+   my ($self, $app, $params) = @_; $app //= $self; $params //= {};
 
-   state $cache //= {}; $app //= $self; $params //= {};
+   merge_attributes $params, $app->config, $self->config, __connect_info_attr();
 
-   merge_attributes $params, $app->config, $self->config, $attr;
+   my $class    = $params->{class} = blessed $self || $self;
+   my $key      = __get_connect_info_cache_key( $params );
 
-   my $class    = blessed $self || $self; $params->{class} = $class;
-   my $db       = $params->{database}
-      or throw error => 'Class [_1] no database name', args => [ $class ];
-   my $key      = __get_connect_info_cache_key( $params, $db );
+   state $cache //= {}; defined $cache->{ $key } and return $cache->{ $key };
 
-   defined $cache->{ $key } and return $cache->{ $key };
-
-   my $cfg_data = $self->load_config_data( $params, $db );
-   my $creds    = $self->extract_creds_from( $params, $db, $cfg_data );
-   my $dsn      = 'dbi:'.$creds->{driver}.':database='.$db
+   my $cfg_data = __load_config_data( $params );
+   my $creds    = __extract_creds_from( $params, $cfg_data );
+   my $dsn      = 'dbi:'.$creds->{driver}.':database='.$params->{database}
                   .';host='.$creds->{host}.';port='.$creds->{port};
    my $password = decrypt_from_config( $params, $creds->{password} );
    my $opts     = __get_connect_options( $creds );
@@ -58,47 +54,51 @@ sub get_connect_info {
 }
 
 sub load_config_data {
-   return __load_config_data( $_[ 0 ]->_merge_attributes( $_[ 1 ] ), $_[ 2 ] );
+   my ($self, $config, $db) = @_;
+
+   my $params = $self->_merge_attributes( $config, { database => $db } );
+
+   return __load_config_data( $params );
 }
 
 # Private methods
-sub _connect_config_attr {
+sub _merge_attributes {
+   return merge_attributes { class => blessed $_[ 0 ] || $_[ 0 ] },
+                  $_[ 1 ], ($_[ 2 ] || {}), __connect_info_attr();
+}
+
+# Private functions
+sub __connect_info_attr {
    return [ qw( class ctlfile ctrldir database dataclass_attr extension
                 prefix read_secure salt seed seed_file subspace tempdir ) ];
 }
 
-sub _merge_attributes {
-   my ($self, $config) = @_;
-
-   my $attr = $self->_connect_config_attr; my $class = blessed $self || $self;
-
-   return merge_attributes { class => $class }, $config, {}, $attr;
-}
-
-# Private functions
 sub __dump_config_data {
-   my ($params, $db, $cfg_data) = @_;
+   my ($params, $cfg_data) = @_;
 
-   my $ctlfile = __get_credentials_file( $params, $db );
+   my $ctlfile = __get_credentials_file( $params );
    my $schema  = __get_dataclass_schema( $params->{dataclass_attr} );
 
    return $schema->dump( { data => $cfg_data, path => $ctlfile } );
 }
 
 sub __extract_creds_from {
-   my ($params, $db, $cfg_data) = @_;
+   my ($params, $cfg_data) = @_;
 
-   my $key = __get_connect_info_cache_key( $params, $db );
+   my $key = __get_connect_info_cache_key( $params );
 
    ($cfg_data->{credentials} and defined $cfg_data->{credentials}->{ $key })
       or throw error => 'Path [_1] database [_2] no credentials',
-               args  => [ __get_credentials_file( $params, $db ), $key ];
+               args  => [ __get_credentials_file( $params ), $key ];
 
    return $cfg_data->{credentials}->{ $key };
 }
 
 sub __get_connect_info_cache_key {
-   my ($params, $db) = @_;
+   my $params = shift;
+   my $db     = $params->{database}
+      or throw error => 'Class [_1] has no database name',
+               args  => [ $params->{class} ];
 
    return $params->{subspace} ? "${db}.".$params->{subspace} : $db;
 }
@@ -115,18 +115,18 @@ sub __get_connect_options {
 }
 
 sub __get_credentials_file {
-   my ($params, $db) = @_; my $ctlfile = $params->{ctlfile};
+   my $params = shift; my $ctlfile = $params->{ctlfile};
 
    defined $ctlfile and -f $ctlfile and return $ctlfile;
 
-   my $dir = $params->{ctrldir}; my $extn = $params->{extension} || CONFIG_EXTN;
+   my $dir = $params->{ctrldir}; my $db = $params->{database};
 
       $dir or throw class => Unspecified, args => [ 'ctrldir' ];
    -d $dir or throw error => 'Directory [_1] not found', args => [ $dir ];
-       $db or throw error => 'Class [_1] no database name',
+       $db or throw error => 'Class [_1] has no database name',
                     args  => [ $params->{class} ];
 
-   return catfile( $dir, $db.$extn );
+   return catfile( $dir, $db.($params->{extension} || CONFIG_EXTN) );
 }
 
 sub __get_dataclass_schema {
@@ -134,11 +134,10 @@ sub __get_dataclass_schema {
 }
 
 sub __load_config_data {
-   my ($params, $db) = @_;
-
+   my $params = shift;
    my $schema = __get_dataclass_schema( $params->{dataclass_attr} );
 
-   return $schema->load( __get_credentials_file( $params, $db ) );
+   return $schema->load( __get_credentials_file( $params ) );
 }
 
 sub __unicode_options {
@@ -159,7 +158,7 @@ Class::Usul::TraitFor::ConnectInfo - Provides the DBIC connect info array ref
 
 =head1 Version
 
-Describes v0.35.$Rev: 3 $ of L<Class::Usul::TraitFor::ConnectInfo>
+Describes v0.35.$Rev: 4 $ of L<Class::Usul::TraitFor::ConnectInfo>
 
 =head1 Synopsis
 
@@ -167,18 +166,19 @@ Describes v0.35.$Rev: 3 $ of L<Class::Usul::TraitFor::ConnectInfo>
 
    use Moo;
    use Class::Usul::Constants;
-   use Class::Usul::Types qw( ArrayRef NonEmptySimpleStr );
+   use Class::Usul::Types qw( NonEmptySimpleStr Object );
 
    with 'Class::Usul::TraitFor::ConnectInfo';
 
-   has 'database' => is => 'ro', isa => NonEmptySimpleStr, required => TRUE;
+   has 'database' => is => 'ro', isa => NonEmptySimpleStr,
+      default     => 'database_name';
 
-   has 'connect_info' => is => 'lazy', isa => ArrayRef, builder => sub {
-      $_[ 0 ]->get_connect_info( $_[ 0 ], { database => $_[ 0 ]->database } ) },
-      init_arg => undef;
+   has 'schema' => is => 'lazy', isa => Object, builder => sub {
+      my $self = shift; my $extra = $self->config->connect_params;
+      $self->schema_class->connect( @{ $self->get_connect_info }, $extra ) };
 
-   has 'schema_classes' => is => 'lazy', isa => HashRef, default => sub { {} },
-   documentation        => 'The database schema classes';
+   has 'schema_class' => is => 'ro', isa => NonEmptySimpleStr,
+      default         => 'dbic_schema_class_name';
 
    sub config { # A class method
       return { ...config parameters... }
@@ -199,7 +199,7 @@ The JSON data looks like this:
            "host" : "localhost",
            "password" : "{Twofish}U2FsdGVkX1/xcBKZB1giOdQkIt8EFgfNDFGm/C+fZTs=",
            "port" : "3306",
-           "user" : "mcp"
+           "user" : "username"
         }
      }
    }
@@ -251,11 +251,11 @@ None
 
 =over 3
 
-=item L<Moose::Role>
-
-=item L<Class::Usul::Crypt>
+=item L<Moo::Role>
 
 =item L<Class::Usul::Crypt::Util>
+
+=item L<Unexpected>
 
 =back
 

@@ -1,8 +1,8 @@
-# @(#)$Ident: 18programs.t 2014-01-07 21:57 pjf ;
+# @(#)$Ident: 18programs.t 2014-01-10 21:08 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 4 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir catfile updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -22,6 +22,7 @@ BEGIN {
 use Test::Requires "${perl_ver}";
 use Capture::Tiny  qw( capture );
 use English        qw( -no_match_vars );
+use File::DataClass::IO;
 use File::Basename qw( basename );
 use Test::Deep;
 
@@ -50,13 +51,13 @@ is $prog->can_call( 'dump_self' ), 1, 'Can call true';
 
 is $prog->can_call( 'add_leader' ), 0, 'Can call false';
 
-eval { $prog->file->io( 'Dummy' )->all }; my $e = $EVAL_ERROR || q();
+eval { io( 'Dummy' )->all }; my $e = $EVAL_ERROR || q();
 
 like $e, qr{ 'Dummy' \s+ cannot \s+ open }mx, 'Non existant file';
 
 is ref $e, 'Class::Usul::Exception', 'Our exception class';
 
-unlink $logfile; my $io = $prog->file->io( $logfile ); $io->touch;
+unlink $logfile; my $io = io( $logfile ); $io->touch;
 
 ok -f $logfile, 'Create logfile'; $prog->info( 'Information' );
 

@@ -1,10 +1,10 @@
-# @(#)$Ident: Usul.pm 2013-12-31 21:01 pjf ;
+# @(#)$Ident: Usul.pm 2014-01-11 16:46 pjf ;
 
 package Class::Usul;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants;
@@ -22,18 +22,18 @@ has 'config'       => is => 'lazy', isa => ConfigType, builder => sub {
    $_[ 0 ]->config_class->new( $_[ 0 ]->_config_attr ) },
    init_arg        => undef;
 
-has '_config_attr' => is => 'ro',   isa => HashRef, default => sub { {} },
+has '_config_attr' => is => 'ro',   isa => HashRef, builder => sub { {} },
    init_arg        => 'config';
 
 has 'config_class' => is => 'ro',   isa => LoadableClass,
    coerce          => LoadableClass->coercion,
    default         => 'Class::Usul::Config';
 
-has 'debug',       => is => 'rw',   isa => Bool, default => FALSE,
+has 'debug'        => is => 'rw',   isa => Bool, default => FALSE,
    trigger         => TRUE;
 
 has 'encoding'     => is => 'lazy', isa => EncodingType,
-   default         => sub { $_[ 0 ]->config->encoding };
+   builder         => sub { $_[ 0 ]->config->encoding };
 
 has 'l10n'         => is => 'lazy', isa => L10NType,
    builder         => sub { Class::Usul::L10N->new( builder => $_[ 0 ] ) },
@@ -44,13 +44,14 @@ has 'lock'         => is => 'lazy', isa => LockType;
 has 'log'          => is => 'lazy', isa => LogType,
    builder         => sub { Class::Usul::Log->new( builder => $_[ 0 ] ) };
 
-# Public methods
+# Construction
 sub new_from_class { # Instantiate from a class name with a config method
    my ($self, $app_class) = @_; my $class = blessed $self || $self;
 
    return $class->new( __build_attr_from_class( $app_class ) );
 }
 
+# Public methods
 sub dumper { # Damm handy for development
    my $self = shift; return data_dumper( @_ );
 }
@@ -81,7 +82,7 @@ sub __build_attr_from_class { # Coerce a hash ref from a string
    my $class = shift;
 
    defined $class
-      or throw class => Unspecified, args => [ 'Application class' ];
+      or throw class => Unspecified, args => [ 'application class' ];
    $class->can( 'config' )
       or throw error => 'Class [_1] is missing the config method',
                args  => [ $class ];
@@ -107,7 +108,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.35.$Rev: 1 $
+Describes Class::Usul version v0.35.$Rev: 4 $
 
 =head1 Synopsis
 

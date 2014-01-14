@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - Removed unecessary methods from ::File
+          - ::Functions now exports F::DC::IO::io
           - Renamed ::TF::MetaData::get_meta to get_package_meta
           - Moved ::TraitFor::LoadingClasses to CX::Usul
           - Moved ::Response::Meta to ::TraitFor::MetaData

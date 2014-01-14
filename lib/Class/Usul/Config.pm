@@ -1,9 +1,9 @@
-# @(#)$Ident: Config.pm 2013-11-24 11:01 pjf ;
+# @(#)$Ident: Config.pm 2014-01-14 17:44 pjf ;
 
 package Class::Usul::Config;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants;
@@ -18,29 +18,12 @@ use English                 qw( -no_match_vars );
 use File::Basename          qw( basename dirname );
 use File::DataClass::Types  qw( Directory File Path );
 use File::Gettext::Constants;
-use File::Spec::Functions   qw( canonpath catdir catfile rel2abs rootdir
-                                tmpdir );
+use File::Spec::Functions   qw( canonpath catdir catfile
+                                rel2abs rootdir tmpdir );
 use Scalar::Util            qw( blessed );
 
 # Public attributes
-has 'appclass'        => is => 'ro', isa => NonEmptySimpleStr,
-   required           => TRUE;
-
-has 'encoding'        => is => 'ro', isa => EncodingType,
-   coerce             => EncodingType->coercion, default => DEFAULT_ENCODING;
-
-has 'home'            => is => 'ro', isa => Directory,
-   documentation      => 'Directory containing the config file',
-   coerce             => Directory->coercion, required => TRUE;
-
-has 'l10n_attributes' => is => 'ro', isa => HashRef, default => sub { {} };
-
-has 'lock_attributes' => is => 'ro', isa => HashRef, default => sub { {} };
-
-has 'log_attributes'  => is => 'ro', isa => HashRef, default => sub { {} };
-
-has 'no_thrash'       => is => 'ro', isa => NonZeroPositiveInt, default => 3;
-
+has 'appclass'  => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;
 
 has 'appldir'   => is => 'lazy', isa => Directory,
    coerce       => Directory->coercion;
@@ -53,6 +36,17 @@ has 'ctrldir'   => is => 'lazy', isa => Path, coerce => Path->coercion;
 
 has 'dbasedir'  => is => 'lazy', isa => Path, coerce => Path->coercion;
 
+has 'encoding'  => is => 'ro',   isa => EncodingType,
+   coerce       => EncodingType->coercion, default => DEFAULT_ENCODING;
+
+has 'extension' => is => 'lazy', isa => NonEmptySimpleStr,
+   default      => CONFIG_EXTN;
+
+has 'home'      => is => 'lazy', isa => Directory,
+   coerce       => Directory->coercion, default => DEFAULT_CONFHOME;
+
+has 'locale'    => is => 'ro',   isa => NonEmptySimpleStr, default => 'en_GB';
+
 has 'localedir' => is => 'lazy', isa => Directory,
    coerce       => Directory->coercion;
 
@@ -61,11 +55,22 @@ has 'logfile'   => is => 'lazy', isa => Path, coerce => Path->coercion;
 has 'logsdir'   => is => 'lazy', isa => Directory,
    coerce       => Directory->coercion;
 
+has 'name'      => is => 'lazy', isa => NonEmptySimpleStr;
+
+has 'no_thrash' => is => 'ro',   isa => NonZeroPositiveInt, default => 3;
+
+has 'phase'     => is => 'lazy', isa => PositiveInt;
+
+has 'prefix'    => is => 'lazy', isa => NonEmptySimpleStr;
+
 has 'pathname'  => is => 'lazy', isa => File, coerce => File->coercion;
 
 has 'root'      => is => 'lazy', isa => Path, coerce => Path->coercion;
 
 has 'rundir'    => is => 'lazy', isa => Path, coerce => Path->coercion;
+
+has 'salt'      => is => 'lazy', isa => NonEmptySimpleStr,
+   builder      => sub { $_[ 0 ]->_inflate_symbol( $_[ 1 ], 'prefix' ) };
 
 has 'sessdir'   => is => 'lazy', isa => Path, coerce => Path->coercion;
 
@@ -78,18 +83,11 @@ has 'tempdir'   => is => 'lazy', isa => Directory,
 
 has 'vardir'    => is => 'lazy', isa => Path, coerce => Path->coercion;
 
+has 'l10n_attributes' => is => 'ro', isa => HashRef, default => sub { {} };
 
-has 'extension' => is => 'lazy', isa => NonEmptySimpleStr;
+has 'lock_attributes' => is => 'ro', isa => HashRef, default => sub { {} };
 
-has 'locale'    => is => 'ro',   isa => NonEmptySimpleStr, default => 'en_GB';
-
-has 'name'      => is => 'lazy', isa => NonEmptySimpleStr;
-
-has 'phase'     => is => 'lazy', isa => PositiveInt;
-
-has 'prefix'    => is => 'lazy', isa => NonEmptySimpleStr;
-
-has 'salt'      => is => 'lazy', isa => NonEmptySimpleStr;
+has 'log_attributes'  => is => 'ro', isa => HashRef, default => sub { {} };
 
 # Construction
 around 'BUILDARGS' => sub {
@@ -139,14 +137,17 @@ sub inflate_paths {
 
 # Private methods
 sub _build_appldir {
-   my ($self, $appclass, $home) = __unpack( @_ ); my $dir = home2appldir $home;
+   my ($self, $appclass, $home) = __unpack( @_ ); my $dir;
 
-   ($dir and -d catdir( $dir, 'bin' ))
-      or $dir = catdir(  NUL, 'var', (class2appdir $appclass) );
+   if ($dir = home2appldir $home) {
+      $dir = rel2abs( untaint_path( $dir ) );
+      -d catdir( $dir, 'lib' ) and return $dir;
+   }
 
-   -d $dir or $dir = $home;
-
-   return rel2abs( untaint_path( $dir || rootdir ) );
+   $dir = catdir ( NUL, 'var', class2appdir $appclass );
+   $dir = rel2abs( untaint_path( $dir    ) ); -d $dir and return $dir;
+   $dir = rel2abs( untaint_path( $home   ) ); -d $dir and return $dir;
+   return rel2abs( untaint_path( rootdir ) );
 }
 
 sub _build_binsdir {
@@ -165,17 +166,19 @@ sub _build_ctlfile {
 sub _build_ctrldir {
    my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir etc ) );
 
-   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], qw( appldir etc ) );
+   -d $dir and return $dir;
+
+   $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( appldir etc ) );
+
+   -d $dir and return $dir;
+
+   return [ NUL, qw( usr local etc ) ];
 }
 
 sub _build_dbasedir {
    my $dir =  $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir db ) );
 
    return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], 'vardir' );
-}
-
-sub _build_extension {
-   return CONFIG_EXTN;
 }
 
 sub _build_localedir {
@@ -211,10 +214,6 @@ sub _build_pathname {
                                                        : $PROGRAM_NAME );
 }
 
-sub _build_path_to {
-   my ($self, $appclass, $home) = __unpack( @_ ); return $home;
-}
-
 sub _build_phase {
    my $verdir  = basename( $_[ 0 ]->_inflate_path( $_[ 1 ], 'appldir' ) );
    my ($phase) = $verdir =~ m{ \A v \d+ \. \d+ p (\d+) \z }msx;
@@ -240,10 +239,6 @@ sub _build_rundir {
    return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], 'vardir' );
 }
 
-sub _build_salt {
-   return $_[ 0 ]->_inflate_symbol( $_[ 1 ], 'prefix' );
-}
-
 sub _build_sessdir {
    my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir hist ) );
 
@@ -251,11 +246,10 @@ sub _build_sessdir {
 }
 
 sub _build_shell {
-   my $file = catfile( NUL, qw( bin ksh ) ); -f $file and return $file;
-
-   $file = $ENV{SHELL}; -f $file and return $file;
-
-   return catfile( NUL, qw( bin sh ) );
+   my $file = $ENV{SHELL};                    -e $file and return $file;
+      $file = catfile( NUL, qw( bin ksh ) );  -e $file and return $file;
+      $file = catfile( NUL, qw( bin bash ) ); -e $file and return $file;
+   return     catfile( NUL, qw( bin sh ) );
 }
 
 sub _build_suid {
@@ -324,7 +318,7 @@ Class::Usul::Config - Inflate config values
 
 =head1 Version
 
-Describes Class::Usul::Config version v0.35.$Rev: 1 $
+Describes Class::Usul::Config version v0.35.$Rev: 4 $
 
 =head1 Synopsis
 

@@ -1,8 +1,8 @@
-# @(#)$Ident: 21ipc.t 2013-12-06 16:24 pjf ;
+# @(#)$Ident: 21ipc.t 2014-01-13 12:57 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 4 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir catfile tmpdir updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -84,8 +84,9 @@ SKIP: {
 }
 
 SKIP: {
+   $ENV{AUTHOR_TESTING} or skip 'Proc::ProcessTable to flakey to test', 1;
    eval { require Proc::ProcessTable };
-   $EVAL_ERROR and skip 'Proc::ProcessTable not installed', 3;
+   $EVAL_ERROR and skip 'Proc::ProcessTable not installed', 1;
 
    is $prog->ipc->process_exists( pid => $PID ), 1, 'process exists';
 

@@ -1,23 +1,19 @@
-# @(#)$Ident: File.pm 2014-01-05 02:28 pjf ;
+# @(#)$Ident: File.pm 2014-01-11 02:10 pjf ;
 
 package Class::Usul::File;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants;
-use Class::Usul::Functions   qw( arg_list create_token is_arrayref throw );
-use Class::Usul::Types       qw( BaseType );
-use English                  qw( -no_match_vars );
-use File::DataClass::Constants ( );
-use File::DataClass::IO        ( );
+use Class::Usul::Functions  qw( arg_list create_token is_arrayref io throw );
+use Class::Usul::Types      qw( BaseType );
+use English                 qw( -no_match_vars );
 use File::DataClass::Schema;
-use File::Spec::Functions    qw( catdir catfile rootdir );
-use Scalar::Util             qw( blessed );
-use Unexpected::Functions    qw( AlreadyExists NotFound Unspecified );
-
-File::DataClass::Constants->Exception_Class( EXCEPTION_CLASS );
+use File::Spec::Functions   qw( catfile );
+use Scalar::Util            qw( blessed );
+use Unexpected::Functions   qw( Unspecified );
 
 # Private attributes
 has '_usul' => is => 'ro', isa => BaseType,
@@ -25,18 +21,8 @@ has '_usul' => is => 'ro', isa => BaseType,
    required => TRUE, weak_ref => TRUE;
 
 # Public methods
-sub absolute {
-   my ($self, $base, $path) = @_;
-
-   $base //= rootdir; $path or return $self->io( $base );
-
-   is_arrayref $base and $base = catdir( @{ $base } );
-
-   return $self->io( $path )->absolute( $base );
-}
-
 sub data_dump {
-   my ($self, @rest) = @_; my $args = arg_list @rest; my $attr = {};
+   my ($self, @args) = @_; my $args = arg_list @args; my $attr = {};
 
    exists $args->{storage_class} and defined $args->{storage_class}
       and $attr->{storage_class} = delete $args->{storage_class};
@@ -45,7 +31,7 @@ sub data_dump {
 }
 
 sub data_load {
-   my ($self, @rest) = @_; my $args = arg_list @rest; my $attr = {};
+   my ($self, @args) = @_; my $args = arg_list @args; my $attr = {};
 
    defined $args->{storage_class}
        and $attr->{storage_class} = delete $args->{storage_class};
@@ -54,53 +40,24 @@ sub data_load {
        and $attr->{storage_attributes}->{force_array} = $args->{arrays};
 
   (is_arrayref $args->{paths} and defined $args->{paths}->[ 0 ])
-      or throw class => Unspecified, args => [ 'Path name' ];
+      or throw class => Unspecified, args => [ 'paths' ];
 
    return $self->dataclass_schema( $attr )->load( @{ $args->{paths} } );
 }
 
 sub dataclass_schema {
-   my ($self, @rest) = @_; my $attr = arg_list @rest;
+   my ($self, @args) = @_; my $attr = arg_list @args;
 
    if (blessed $self) { $attr->{builder} = $self->_usul }
    else { $attr->{cache_class} = 'none' }
 
-   $attr->{storage_class} ||= 'Any';
+   $attr->{storage_class} //= 'Any';
 
    return File::DataClass::Schema->new( $attr );
 }
 
 sub delete_tmp_files {
-   return $_[ 0 ]->io( $_[ 1 ] || $_[ 0 ]->tempdir )->delete_tmp_files;
-}
-
-sub extensions {
-   my $extensions = File::DataClass::Schema->extensions;
-
-   return wantarray ? keys %{ $extensions } : $extensions;
-}
-
-sub io {
-   my $self = shift; return File::DataClass::IO->new( @_ );
-}
-
-sub status_for {
-   return $_[ 0 ]->io( $_[ 1 ] )->stat;
-}
-
-sub symlink {
-   my ($self, $base, $from, $to) = @_;
-
-   $from or throw class => Unspecified, args => [ 'Symlink path from' ];
-   $from = $self->absolute( $base, $from );
-   $from->exists or throw class => NotFound, args => [ $from->pathname ];
-   $to or throw class => Unspecified, args => [ 'Symlink path to' ];
-   $to = $self->absolute( $base, $to ); $to->is_link and $to->unlink;
-   $to->exists and throw class => AlreadyExists, args => [ $to->pathname ];
-   CORE::symlink $from->pathname, $to->pathname
-      or throw error => 'Symlink from [_1] to [_2] failed: [_3]',
-               args  => [ $from->pathname, $to->pathname, $OS_ERROR ];
-   return "Symlinked ${from} to ${to}";
+   return io( $_[ 1 ] || $_[ 0 ]->tempdir )->delete_tmp_files;
 }
 
 sub tempdir {
@@ -108,7 +65,7 @@ sub tempdir {
 }
 
 sub tempfile {
-   return $_[ 0 ]->io( $_[ 1 ] || $_[ 0 ]->tempdir )->tempfile;
+   return io( $_[ 1 ] || $_[ 0 ]->tempdir )->tempfile;
 }
 
 sub tempname {
@@ -123,10 +80,6 @@ sub tempname {
    return $path;
 }
 
-sub uuid {
-   return $_[ 0 ]->io( $_[ 1 ] || UUID_PATH )->lock->chomp->getline;
-}
-
 1;
 
 __END__
@@ -135,32 +88,26 @@ __END__
 
 =head1 Name
 
-Class::Usul::File - File and directory IO base class
+Class::Usul::File - Data loading and dumping
 
 =head1 Version
 
-This documents version v0.35.$Rev: 1 $
+This documents version v0.35.$Rev: 4 $ of L<Class::Usul::File>
 
 =head1 Synopsis
 
-   package MyBaseClass;
+   package YourClass;
 
-   use base qw(Class::Usul::File);
+   use Class::Usul::File;
+
+   my $file_obj = Class::Usul::File->new( builder => Class::Usul->new );
 
 =head1 Description
 
-Provides file and directory methods to the application base class
+Provides data loading and dumping methods, Also temporary file methods
+and directories instantiated using the L<Class::Usul::Config> object
 
 =head1 Subroutines/Methods
-
-=head2 absolute
-
-   $absolute_path = $self->absolute( $base, $path );
-
-Prepends F<$base> to F<$path> unless F<$path> is an absolute path. The
-C<$path> argument is passed to the L<File::DataClass::IO> constructor and
-the C<$base> argument can be a string, object ref which stringifies, or an
-array ref
 
 =head2 data_dump
 
@@ -172,7 +119,7 @@ L<dump|File::DataClass::Schema/dump> method
 
 =head2 data_load
 
-   $self->load( @args );
+   $hash_ref = $self->load( @args );
 
 Accepts either a list or a hash ref. Calls L</dataclass_schema> with
 the I<storage_class> and I<arrays> attributes if supplied. Calls the
@@ -192,35 +139,6 @@ class method
 
 Delete this processes temporary files. Files are in the C<$dir> directory
 which defaults to C<< $self->tempdir >>
-
-=head2 extensions
-
-   $hash_ref  = $self->extensions;
-   $array_ref = [ $self->extensions ];
-
-Class method that returns the extensions supported by
-L<File::DataClass::Storage>. Returns the hash reference in a scalar context
-and the list of keys in a list context
-
-=head2 io
-
-   $io_obj = $self->io( $pathname );
-
-Expose the methods in L<File::DataClass::IO>
-
-=head2 status_for
-
-   $stat_ref = $self->status_for( $path );
-
-Return a hash for the given path containing it's inode status information
-
-=head2 symlink
-
-   $out_ref = $self->symlink( $base, $from, $to );
-
-Creates a symlink. If either C<$from> or C<$to> is a relative path then
-C<$base> is prepended to make it absolute. Returns a message indicating
-success or throws an exception on failure
 
 =head2 tempdir
 
@@ -244,12 +162,6 @@ Returns the pathname of a temporary file in the given directory which
 defaults to C<< $self->tempdir >>. The file will be deleted by
 L</delete_tmp_files> if it is called otherwise it will persist
 
-=head2 uuid
-
-   $uuid = $self->uuid;
-
-Return the contents of F</proc/sys/kernel/random/uuid>
-
 =head1 Diagnostics
 
 None
@@ -272,7 +184,7 @@ None
 
 =head1 Incompatibilities
 
-The L</uuid> method with only work on a OS with a F</proc> filesystem
+There are no known incompatibilities in this module
 
 =head1 Bugs and Limitations
 

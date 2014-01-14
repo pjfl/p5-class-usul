@@ -1,19 +1,17 @@
-# @(#)Ident: Util.pm 2014-01-07 08:20 pjf ;
+# @(#)Ident: Util.pm 2014-01-14 19:59 pjf ;
 
 package Class::Usul::Crypt::Util;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Crypt      qw( decrypt default_cipher encrypt );
 use Class::Usul::Functions  qw( merge_attributes throw );
-use English                 qw( -no_match_vars );
 use Exporter 5.57           qw( import  );
-use File::Spec::Functions   qw( catfile );
-use Scalar::Util            qw( blessed );
+use File::DataClass::IO;
 use Try::Tiny;
 
 our @EXPORT_OK = qw( decrypt_from_config encrypt_for_config
@@ -67,29 +65,23 @@ sub __get_crypt_args { # Sets cipher, salt, and seed keys in args hash
    if    ($params->{seed})           { $args->{seed} = $params->{seed}   }
    elsif (defined $cache->{ $file }) { $args->{seed} = $cache->{ $file } }
    elsif ($params->{read_secure})    { # munchies_admin -qnc read_secure --
-      my $cmd = $params->{read_secure}." ${file}.key";
+      my $cmd = $params->{read_secure}." ${file}";
 
       try   { $args->{seed} = $cache->{ $file } = qx( $cmd ) }
       catch { throw "Reading secure file: ${_}" }
    }
    else {
-      my $dir  = $params->{ctrldir} || $params->{tempdir};
-      my $path = catfile( $dir, "${file}.key" );
+      my $path = io $file;
 
-      -e $path and -r $path and $args->{seed}
-         = $cache->{ $file } = __read_all_from( $path );
+      $path->exists and ($path->stat->{mode} & 0777) == 0600
+         and $args->{seed} = $cache->{ $file } = $path->all;
+
+      not $args->{seed} and $path = io [ $params->{ctrldir}, "${file}.key" ]
+         and $path->exists and ($path->stat->{mode} & 0777) == 0600
+         and $args->{seed} = $cache->{ $file } = $path->all;
    }
 
    return $args;
-}
-
-# Private functions
-sub __read_all_from {
-   my $path = shift;
-
-   open my $fh, '<', $path or die 'Path ${path} cannot open: ${OS_ERROR}';
-
-   local $RS = undef; my $content = <$fh>; close $fh; return $content;
 }
 
 1;
@@ -112,7 +104,7 @@ Class::Usul::Crypt::Util - Decrypts/Encrypts password from/to configuration file
 
 =head1 Version
 
-This documents version v0.35.$Rev: 1 $ of L<Class::Usul::Crypt::Util>
+This documents version v0.35.$Rev: 4 $ of L<Class::Usul::Crypt::Util>
 
 =head1 Description
 

@@ -1,30 +1,33 @@
-# @(#)$Ident: Functions.pm 2014-01-09 15:09 pjf ;
+# @(#)$Ident: Functions.pm 2014-01-14 16:44 pjf ;
 
 package Class::Usul::Functions;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 4 $ =~ /\d+/gmx );
 use parent                  qw( Exporter::Tiny );
 
 use Class::Null;
 use Class::Usul::Constants;
-use Cwd                     qw( );
-use Data::Printer   alias => q(_data_dumper), colored => 1, indent => 3,
+use Cwd                        qw( );
+use Data::Printer      alias => q(_data_dumper), colored => 1, indent => 3,
     filters => { 'File::DataClass::IO' => sub { $_[ 0 ]->pathname }, };
-use Digest                  qw( );
-use Digest::MD5             qw( md5 );
-use English                 qw( -no_match_vars );
-use File::Basename          qw( basename dirname );
-use File::HomeDir           qw( );
-use File::Spec::Functions   qw( catdir catfile curdir tmpdir );
-use List::Util              qw( first );
-use Module::Runtime         qw( is_module_name require_module );
+use Digest                     qw( );
+use Digest::MD5                qw( md5 );
+use English                    qw( -no_match_vars );
+use File::Basename             qw( basename dirname );
+use File::DataClass::Functions qw( supported_extensions );
+use File::DataClass::IO        qw( );
+use File::HomeDir              qw( );
+use File::Spec::Functions      qw( catdir catfile curdir tmpdir );
+use List::Util                 qw( first );
+use Module::Runtime            qw( is_module_name require_module );
 use Path::Class::Dir;
-use Scalar::Util            qw( blessed openhandle );
+use Scalar::Util               qw( blessed openhandle );
 use Sys::Hostname;
-use Unexpected::Functions   qw( is_class_loaded Tainted Unspecified );
+use Unexpected::Functions      qw( is_class_loaded AlreadyExists
+                                   NotFound Tainted Unspecified );
 use User::pwent;
 
 our @EXPORT      = qw( is_member );
@@ -33,18 +36,18 @@ our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
                        base64_encode_ns bsonid bsonid_time bson64id
                        bson64id_time build class2appdir classdir
                        classfile create_token data_dumper distname
-                       downgrade elapsed emit emit_err emit_to
+                       elapsed emit emit_err emit_to
                        ensure_class_loaded env_prefix escape_TT
                        exception find_apphome find_source fold fqdn
                        fullname get_cfgfiles get_user hex2str
-                       home2appldir is_arrayref is_coderef
+                       home2appldir io is_arrayref is_coderef
                        is_hashref is_win32 loginid
                        logname merge_attributes my_prefix pad
                        prefix2class product split_on__ split_on_dash
-                       squeeze strip_leader sub_name sum thread_id
+                       squeeze strip_leader sub_name sum symlink thread_id
                        throw throw_on_error trim unescape_TT
                        untaint_cmdline untaint_identifier untaint_path
-                       untaint_string zip );
+                       untaint_string uuid zip );
 our %EXPORT_REFS =   ( assert => sub { ASSERT } );
 our %EXPORT_TAGS =   ( all => [ @EXPORT, @EXPORT_OK ], );
 
@@ -71,7 +74,6 @@ sub abs_path ($) {
    $y = Cwd::abs_path( untaint_path( $y ) );
 
    is_win32() and defined $y and $y =~ s{ / }{\\}gmx; # More hate
-
    return $y;
 }
 
@@ -88,7 +90,7 @@ sub arg_list (;@) {
 sub assert_directory ($) {
    my $y = abs_path( $_[ 0 ] ); (defined $y and length $y) or return $y;
 
-   return -d $y ? $y : undef;
+   return -d "${y}" ? $y : undef;
 }
 
 sub base64_decode_ns ($) {
@@ -213,9 +215,9 @@ sub distname ($) {
    (my $y = $_[ 0 ] || q()) =~ s{ :: }{-}gmx; return $y;
 }
 
-sub downgrade (;$) {
-   my $x = shift || q(); my ($y) = $x =~ m{ (.*) }msx; return $y;
-}
+#sub downgrade (;$) {
+#   my $x = shift || q(); my ($y) = $x =~ m{ (.*) }msx; return $y;
+#}
 
 sub elapsed () {
    return time - $BASETIME;
@@ -295,15 +297,9 @@ sub find_apphome ($;$$) {
    $path = assert_directory $ENV{ "${env_pref}_HOME" } and return $path;
    # 1b.   Environment variable - for config file
    $path = _get_env_var_for_conf( $env_pref ) and return $path;
-   # 2a.   Users home directory - contains application directory
-   $path = catdir( $my_home, $appdir, qw( default lib ), $classdir );
-   $path = assert_directory $path and return $path;
-   # 2b.   Users home directory - dot directory containing application
-   $path = catdir( $my_home, ".${appdir}", qw( default lib ), $classdir );
-   $path = assert_directory $path and return $path;
-   # 2c.   Users home directory - dot file containing shell env variable
+   # 2a.   Users home directory - dot file containing shell env variable
    $path = _get_dot_file_var( $my_home, $app_pref, $classdir ) and return $path;
-   # 2d.   Users home directory - dot directory is apphome
+   # 2b.   Users home directory - dot directory is apphome
    $path = catdir( $my_home, ".${app_pref}" );
    $path = assert_directory $path and return $path;
    # 3.    Well known path containing shell env file
@@ -366,7 +362,7 @@ sub get_cfgfiles ($;$$) {
    my @paths    = ();
 
    for my $dir (@{ $dirs }) {
-      for my $extn (@{ $extns || [ q() ] }) {
+      for my $extn (@{ $extns || [ supported_extensions() ] }) {
          for my $path (map { _catpath( $dir, $_ ) } "${app_pref}${extn}",
                        "${appdir}${extn}", "${app_pref}${suffix}${extn}",
                        "${appdir}${suffix}${extn}") {
@@ -396,6 +392,10 @@ sub home2appldir ($) {
    $dir = $dir->parent while ($dir ne $dir->parent and $dir !~ m{ lib \z }mx);
 
    return $dir ne $dir->parent ? $dir->parent : undef;
+}
+
+sub io (;@) {
+   return File::DataClass::IO->new( @_ );
 }
 
 sub is_arrayref (;$) {
@@ -495,6 +495,23 @@ sub sum (;@) {
    return ((fold { $_[ 0 ] + $_[ 1 ] })->( 0 ))->( @_ );
 }
 
+sub symlink (;$$$) {
+   my ($from, $to, $base) = @_;
+
+   defined $base and not CORE::length $base and $base = File::Spec->rootdir;
+   $from or throw( class => Unspecified, args => [ 'path from' ] );
+   $from = io( $from )->absolute( $base );
+   $from->exists or throw( class => NotFound, args => [ $from->pathname ] );
+   $to   or throw( class => Unspecified, args => [ 'path to' ] );
+   $to   = io( $to   )->absolute( $base );
+   $to->is_link and $to->unlink;
+   $to->exists  and throw( class => AlreadyExists, args => [ $to->pathname ] );
+   CORE::symlink $from->pathname, $to->pathname
+      or throw( error => 'Symlink from [_1] to [_2] failed: [_3]',
+                args  => [ $from->pathname, $to->pathname, $OS_ERROR ] );
+   return "Symlinked ${from} to ${to}";
+}
+
 sub thread_id {
    return exists $INC{ 'threads.pm' } ? threads->tid() : 0;
 }
@@ -546,6 +563,10 @@ sub untaint_string ($;$) {
       or throw( class => Tainted, args => [ $string ], level => 3 );
 
    return $untainted;
+}
+
+sub uuid {
+   return io( $_[ 0 ] || UUID_PATH )->lock->chomp->getline;
 }
 
 sub zip (@) {
@@ -603,7 +624,7 @@ sub _find_conf_in_inc {
    my ($classdir, $file, $extns) = @_;
 
    for my $dir (map { catdir( abs_path( $_ ), $classdir ) } @INC) {
-      for my $extn (@{ $extns || [] }) {
+      for my $extn (@{ $extns || [ supported_extensions() ] }) {
          my $path = _catpath( $dir, $file.$extn );
 
          -f $path and return dirname( $path );
@@ -616,7 +637,7 @@ sub _find_conf_in_inc {
 sub _get_dot_file_var {
    my ($dir, $file, $classdir) = @_;
 
-   my $path; $path = _read_variable( catfile( $dir, ".${file}" ), 'APPLDIR' )
+   my $path; $path = _read_variable( $dir, ".${file}", 'APPLDIR' )
          and $path = catdir( $path, 'lib', $classdir );
 
    return $path = assert_directory $path ? $path : undef;
@@ -632,7 +653,7 @@ sub _get_env_var_for_conf {
 sub _get_known_file_var {
    my ($appname, $classdir) = @_; my $path; $appname || return;
 
-   $path = _read_variable( catfile( @{ DEFAULT_DIR() }, $appname ), 'APPLDIR' );
+   $path = _read_variable( DEFAULT_ENVDIR(), $appname, 'APPLDIR' );
    $path and $path = catdir( $path, 'lib', $classdir );
 
    return $path = assert_directory $path ? $path : undef;
@@ -659,17 +680,17 @@ sub _index64 () {
 }
 
 sub _read_variable {
-   my ($file, $variable) = @_; -f $file or return; $variable or return;
+   my ($dir, $file, $variable) = @_; my $path;
 
-   open my $fh, '<', $file or throw( "File ${file} cannot open: ${OS_ERROR}" );
+  ($dir and $file and $variable) or return;
+   is_arrayref( $dir ) and $dir = catdir( @{ $dir } );
+   $path = io( _catpath( $dir, $file ) )->chomp;
+  ($path->exists and $path->is_file) or return;
 
-   my $content = do { local $RS; <$fh> }; close $fh;
-
-   return first  { length }
-          map    { trim( (split '=', $_)[ 1 ] ) }
-          grep   { m{ \A \s* $variable \s* [=] }mx }
-          map    { chomp }
-          split m{ [\n] }mx, $content;
+   return first   { length }
+          map     { trim( (split '=', $_)[ 1 ] ) }
+          grep    { m{ \A \s* $variable \s* [=] }mx }
+          reverse $path->getlines;
 }
 
 1;
@@ -684,7 +705,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.35.$Rev: 3 $
+This documents version v0.35.$Rev: 4 $
 
 =head1 Synopsis
 
@@ -949,6 +970,12 @@ Converts the pairs of hex digits into a string of characters
 
 Strips the trailing C<lib/my_package> from the supplied directory path
 
+=head2 io
+
+   $io_object_ref = io $path_to_file_or_directory;
+
+Returns a L<File::DataClass::IO> object reference
+
 =head2 is_arrayref
 
    $bool = is_arrayref $scalar_variable
@@ -1071,6 +1098,14 @@ Returns the name of the method that calls it
 
 Adds the list of values
 
+=head2 symlink
+
+   $message = symlink $from, $to, $base;
+
+It creates a symlink. If either C<$from> or C<$to> is a relative path
+then C<$base> is prepended to make it absolute. Returns a message
+indicating success or throws an exception on failure
+
 =head2 thread_id
 
    $tid = thread_id;
@@ -1134,6 +1169,12 @@ matching regex from L<CatalystX::Usul::Constants>
 
 Returns an untainted string or throws
 
+=head2 uuid
+
+   $uuid = uuid( $optional_uuid_proc_filesystem_path );
+
+Return the contents of F</proc/sys/kernel/random/uuid>
+
 =head2 zip
 
    %hash = zip @list_of_keys, @list_of_values;
@@ -1170,6 +1211,8 @@ None
 
 The L</home2appldir> method is dependent on the installation path
 containing a B<lib>
+
+The L</uuid> method with only work on a OS with a F</proc> filesystem
 
 =head1 Bugs and Limitations
 

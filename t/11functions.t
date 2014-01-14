@@ -1,8 +1,8 @@
-# @(#)$Ident: 11functions.t 2013-12-06 16:26 pjf ;
+# @(#)$Ident: 11functions.t 2014-01-10 19:44 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 4 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir catfile updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -20,6 +20,7 @@ BEGIN {
 }
 
 use Test::Requires "${perl_ver}";
+use Config;
 use Class::Usul::Constants ();
 
 BEGIN { Class::Usul::Constants->Assert( sub { 1 } ) }
@@ -56,9 +57,10 @@ $bool   = $before <= $id && $id <= $after ? 1 : 0;
 
 ok $bool, 'bson64id_time';
 
-sub build_test { my $v = shift; return $v + 1 } my $f = sub { 1 };
+sub build_test { my $v = shift; $v //= 0; return $v + 1 } my $f = sub { 1 };
 
-is build( \&build_test, $f )->(), 2, 'build';
+is build( \&build_test )->(), 1, 'build';
+is build( \&build_test, $f )->(), 2, 'build - non default function';
 
 is class2appdir( 'Test::Application' ), 'test-application', 'class2appdir';
 
@@ -76,7 +78,9 @@ ok $token eq q(ee26b0dd4af7e749aa1a8ee3c10ae9923f618980772e473f8819a5d4940e0db27
    || $token eq q(a94a8fe5ccb19ba61c4c0873d391e987982fbbd3)
    || $token eq q(098f6bcd4621d373cade4e832627b4f6), 'create_token';
 
-is distname( q(Test::Application) ), q(Test-Application), 'distname';
+is distname( 'Test::Application' ), 'Test-Application', 'distname';
+
+ok defined elapsed, 'elapsed';
 
 eval {
    ensure_class_loaded( 'Class::Usul::Response::Table' );
@@ -87,22 +91,24 @@ ok !exception, 'ensure_class_loaded';
 
 #close STDOUT; emit 'shit';
 
-is env_prefix( q(Test::Application) ), q(TEST_APPLICATION), 'env_prefix';
+is env_prefix( 'Test::Application' ), 'TEST_APPLICATION', 'env_prefix';
 
-is unescape_TT( escape_TT( q([% test %]) ) ), q([% test %]),
+is unescape_TT( escape_TT( '[% test %]' ) ), '[% test %]',
    'escape_TT/unscape_TT';
 
-is find_source( q(Class::Usul::Functions) ),
-   abs_path( catfile( qw(lib Class Usul Functions.pm) ) ), 'find_source';
+is find_source( 'Class::Usul::Functions' ),
+   abs_path( catfile( qw( lib Class Usul Functions.pm ) ) ), 'find_source';
 
 #warn fqdn( 'localhost' )."\n";
-#warn fullname()."\n";
+
+ok defined fullname(), 'fullname';
+
 #warn get_user()->name."\n";
 
 is hex2str( '41' ), 'A', 'hex2str - A';
 
-is home2appldir( catdir( qw(opt myapp v0.1 lib MyApp) ) ),
-   catdir( qw(opt myapp v0.1) ), 'home2appldir';
+is home2appldir( catdir( qw( opt myapp v0.1 lib MyApp ) ) ),
+   catdir( qw( opt myapp v0.1 ) ), 'home2appldir';
 
 ok is_arrayref( [] ),   'is_arrayref - true';
 ok ! is_arrayref( {} ), 'is_arrayref - false';
@@ -116,8 +122,8 @@ ok ! is_hashref( [] ), 'is_hashref - false';
 ok is_member( 2, 1, 2, 3 ),   'is_member - true';
 ok ! is_member( 4, 1, 2, 3 ), 'is_member - false';
 
-#warn loginid()."\n";
-#warn logname()."\n";
+ok defined loginid(), 'loginid';
+ok defined logname(), 'logname';
 
 my $src = { 'key2' => 'value2', }; my $dest = {};
 
@@ -134,6 +140,10 @@ is prefix2class( q(test-application) ), qw(Test::Application), 'prefix2class';
 
 is product( 1, 2, 3, 4 ), 24, 'product';
 
+my $path = &Class::Usul::Functions::_read_variable( 't', 'test.sh', 'APPLDIR' );
+
+is $path, '/opt/appname', 'reads variables from shell files';
+
 is split_on__( q(a_b_c), 1 ), q(b), 'split_on__';
 
 is split_on_dash( 'a-b-c', 1 ), 'b', 'split_on_dash';
@@ -145,6 +155,29 @@ is strip_leader( q(test: dummy) ), q(dummy), 'strip_leader';
 is sub_name(), q(main), 'sub_name';
 
 is sum( 1, 2, 3, 4 ), 10, 'sum';
+
+SKIP: {
+   $Config{d_symlink} or skip 'No symlink support', 1;
+
+   my $path = catfile( qw( t test_symlink ) );
+   my $src  = File::Spec->rel2abs( catdir( qw( t locale ) ) );
+
+   symlink [ qw( t locale ) ], [ qw( t test_symlink ) ];
+   ok -l $path, 'Creates default symlink';  -e $path and unlink $path;
+
+   symlink [ qw( locale ) ], [ qw( test_symlink ) ], 't';
+   ok -l $path, 'Creates relative symlink'; -e $path and unlink $path;
+
+   symlink $src, [ qw( test_symlink ) ], 't';
+   ok -l $path, 'Creates relative symlink from absolute path';
+   -e $path and unlink $path;
+
+   #symlink 'tmp', File::Spec->rel2abs( catdir( qw( t test_symlink ) ) ), q();
+   #ok -l $path, 'Creates null symlink';
+   #-e $path and unlink $path;
+
+   # TODO: Test with an absolute path for base
+}
 
 eval { throw( error => q(eNoMessage) ) }; my $e = exception;
 
@@ -165,6 +198,11 @@ is $e->class, q(Tainted), 'untaint_identifier';
 eval { untaint_path( '$$$' ) }; $e = exception;
 
 is $e->class, q(Tainted), 'untaint_path';
+
+SKIP: {
+   $ENV{AUTHOR_TESTING} or skip 'UUID test only for developers', 1;
+   ok length uuid, 'uuid';
+}
 
 is { zip( qw( a b c ), qw( 1 2 3 ) ) }->{b}, 2, 'zip';
 
