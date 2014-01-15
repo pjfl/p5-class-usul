@@ -1,17 +1,17 @@
-# @(#)$Ident: MetaData.pm 2014-01-13 18:25 pjf ;
+# @(#)$Ident: MetaData.pm 2014-01-15 16:33 pjf ;
 
 package # Hide from indexer
    Class::Usul::Response::Meta;
 
 use namespace::clean -except => 'meta';
-use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
-use Class::Usul::Constants; # Need EXCEPTION_CLASS for NotFound import
+use Class::Usul::Constants; # Need EXCEPTION_CLASS for PathNotFound import
 use Class::Usul::File;
 use Class::Usul::Functions  qw( io throw );
 use Class::Usul::Types      qw( ArrayRef HashRef Maybe Str );
-use Unexpected::Functions   qw( NotFound );
+use Unexpected::Functions   qw( PathNotFound );
 
 has 'abstract' => is => 'ro', isa => Maybe[Str];
 has 'author'   => is => 'ro', isa => Maybe[ArrayRef];
@@ -31,14 +31,14 @@ around 'BUILDARGS' => sub {
       $file->exists and return $file_class->data_load( paths => [ $file ] );
    }
 
-   throw class => NotFound, args => [ $file_name ], level => 3;
+   throw class => PathNotFound, args => [ $file_name ], level => 3;
    return;
 };
 
 package Class::Usul::TraitFor::MetaData;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Functions  qw( io );
 use Moo::Role;
@@ -69,7 +69,7 @@ Class::Usul::TraitFor::MetaData - Class for CPAN Meta file
 =head1 Version
 
 This document describes L<Class::Usul::TraitFor::MetaData>
-version v0.16.$Rev: 4 $
+version v0.16.$Rev: 1 $
 
 =head1 Synopsis
 

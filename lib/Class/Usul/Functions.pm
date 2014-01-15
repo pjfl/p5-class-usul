@@ -1,11 +1,11 @@
-# @(#)$Ident: Functions.pm 2014-01-14 16:44 pjf ;
+# @(#)$Ident: Functions.pm 2014-01-15 16:16 pjf ;
 
 package Class::Usul::Functions;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.36.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use parent                  qw( Exporter::Tiny );
 
 use Class::Null;
@@ -26,8 +26,8 @@ use Module::Runtime            qw( is_module_name require_module );
 use Path::Class::Dir;
 use Scalar::Util               qw( blessed openhandle );
 use Sys::Hostname;
-use Unexpected::Functions      qw( is_class_loaded AlreadyExists
-                                   NotFound Tainted Unspecified );
+use Unexpected::Functions      qw( is_class_loaded PathAlreadyExists
+                                   PathNotFound Tainted Unspecified );
 use User::pwent;
 
 our @EXPORT      = qw( is_member );
@@ -501,14 +501,13 @@ sub symlink (;$$$) {
    defined $base and not CORE::length $base and $base = File::Spec->rootdir;
    $from or throw( class => Unspecified, args => [ 'path from' ] );
    $from = io( $from )->absolute( $base );
-   $from->exists or throw( class => NotFound, args => [ $from->pathname ] );
+   $from->exists or throw( class => PathNotFound, args => [ "${from}" ] );
    $to   or throw( class => Unspecified, args => [ 'path to' ] );
-   $to   = io( $to   )->absolute( $base );
-   $to->is_link and $to->unlink;
-   $to->exists  and throw( class => AlreadyExists, args => [ $to->pathname ] );
-   CORE::symlink $from->pathname, $to->pathname
+   $to   = io( $to   )->absolute( $base ); $to->is_link and $to->unlink;
+   $to->exists  and throw( class => PathAlreadyExists, args => [ "${to}" ] );
+   CORE::symlink "${from}", "${to}"
       or throw( error => 'Symlink from [_1] to [_2] failed: [_3]',
-                args  => [ $from->pathname, $to->pathname, $OS_ERROR ] );
+                args  => [ "${from}", "${to}", $OS_ERROR ] );
    return "Symlinked ${from} to ${to}";
 }
 
@@ -705,7 +704,7 @@ CatalystX::Usul::Functions - Globally accessible functions
 
 =head1 Version
 
-This documents version v0.35.$Rev: 4 $
+This documents version v0.36.$Rev: 1 $
 
 =head1 Synopsis
 

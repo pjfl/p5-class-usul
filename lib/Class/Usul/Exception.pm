@@ -1,12 +1,13 @@
-# @(#)Ident: Exception.pm 2013-12-31 18:35 pjf ;
+# @(#)Ident: Exception.pm 2014-01-15 16:39 pjf ;
 
 package Class::Usul::Exception;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.36.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
-use Unexpected::Types qw( Int Str );
+use Unexpected::Functions   qw( has_exception );
+use Unexpected::Types       qw( Int Str );
 
 extends q(Unexpected);
 with    q(Unexpected::TraitFor::ErrorLeader);
@@ -14,12 +15,12 @@ with    q(Unexpected::TraitFor::ExceptionClasses);
 
 my $class = __PACKAGE__;
 
-$class->has_exception( $class );
+$class->ignore_class( 'Class::Usul::IPC', 'Sub::Quote' );
 
-$class->has_exception( 'Tainted' => {
-   parents => [ $class ], error => 'String [_1] contains possible taint' } );
+has_exception $class;
 
-$class->ignore_class ( 'Class::Usul::IPC', 'Sub::Quote' );
+has_exception 'Tainted' => parents => [ $class ],
+   error   => 'String [_1] contains possible taint';
 
 has '+class' => default => $class;
 
@@ -44,7 +45,7 @@ Class::Usul::Exception - Exception handling
 
 =head1 Version
 
-This documents version v0.35.$Rev: 1 $ of L<Class::Usul::Exception>
+This documents version v0.36.$Rev: 1 $ of L<Class::Usul::Exception>
 
 =head1 Synopsis
 

@@ -1,8 +1,8 @@
-# @(#)Ident: 10exception.t 2013-12-06 16:26 pjf ;
+# @(#)Ident: 10exception.t 2014-01-15 15:09 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.35.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.36.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -24,7 +24,7 @@ use English qw( -no_match_vars );
 
 use_ok 'Class::Usul::Exception';
 
-Class::Usul::Exception->has_exception( 'A' );
+Class::Usul::Exception->add_exception( 'A' );
 
 my $line = __LINE__; eval { Class::Usul::Exception->throw
    ( error => 'PracticeKill', class => 'A' ) };
