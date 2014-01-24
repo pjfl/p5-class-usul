@@ -4,7 +4,7 @@ package Class::Usul::TraitFor::ConnectInfo;
 
 use 5.010001;
 use namespace::sweep;
-use version;  our $VERSION = qv( sprintf '0.36.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version;  our $VERSION = qv( sprintf '0.37.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Crypt::Util qw( decrypt_from_config );
@@ -158,7 +158,7 @@ Class::Usul::TraitFor::ConnectInfo - Provides the DBIC connect info array ref
 
 =head1 Version
 
-Describes v0.36.$Rev: 1 $ of L<Class::Usul::TraitFor::ConnectInfo>
+Describes v0.37.$Rev: 1 $ of L<Class::Usul::TraitFor::ConnectInfo>
 
 =head1 Synopsis
 

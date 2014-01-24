@@ -3,7 +3,7 @@
 package Class::Usul::Schema;
 
 use namespace::sweep;
-use version;  our $VERSION = qv( sprintf '0.36.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version;  our $VERSION = qv( sprintf '0.37.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants;
@@ -335,7 +335,7 @@ Class::Usul::Schema - Support for database schemas
 
 =head1 Version
 
-Describes v0.36.$Rev: 1 $ of L<Class::Usul::Schame>
+Describes v0.37.$Rev: 1 $ of L<Class::Usul::Schame>
 
 =head1 Synopsis
 

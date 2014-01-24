@@ -3,7 +3,7 @@
 package Class::Usul::File;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.36.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.37.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants;
@@ -92,7 +92,7 @@ Class::Usul::File - Data loading and dumping
 
 =head1 Version
 
-This documents version v0.36.$Rev: 1 $ of L<Class::Usul::File>
+This documents version v0.37.$Rev: 1 $ of L<Class::Usul::File>
 
 =head1 Synopsis
 

@@ -1,5 +1,9 @@
 Revision history for Class::Usul
 
+0.37.1    2014-01-24 20:58:30
+          - Updated dependency on File::DataClass
+          - Updated git pre commit hook
+
 0.36.1    2014-01-15 17:20:32
           - Renamed Unexpected::has_exception to add_exception
           - Removed unecessary methods from ::File
