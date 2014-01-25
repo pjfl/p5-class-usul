@@ -1,9 +1,9 @@
-# @(#)$Ident: IPC.pm 2014-01-13 12:54 pjf ;
+# @(#)$Ident: IPC.pm 2014-01-25 00:34 pjf ;
 
 package Class::Usul::IPC;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.37.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Null;
@@ -30,6 +30,8 @@ use Unexpected::Functions     qw( Unspecified );
 our ($CHILD_ENUM, $CHILD_PID);
 
 # Public attributes
+has 'cache_ttys'     => is => 'ro',   isa => Bool, default => TRUE;
+
 has 'response_class' => is => 'lazy', isa => LoadableClass,
    default           => 'Class::Usul::Response::IPC',
    coerce            => LoadableClass->coercion;
@@ -296,7 +298,7 @@ sub _list_pids_by_file_system {
 sub _new_proc_process_table {
    my $self = shift; require Proc::ProcessTable;
 
-   return Proc::ProcessTable->new( cache_ttys => $self->config->cache_ttys );
+   return Proc::ProcessTable->new( cache_ttys => $self->cache_ttys );
 }
 
 sub _new_process_table {
@@ -655,7 +657,7 @@ Class::Usul::IPC - List/Create/Delete processes
 
 =head1 Version
 
-This documents version v0.37.$Rev: 1 $
+This documents version v0.38.$Rev: 1 $
 
 =head1 Synopsis
 

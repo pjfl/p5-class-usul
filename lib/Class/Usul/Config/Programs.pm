@@ -1,9 +1,9 @@
-# @(#)$Ident: Programs.pm 2014-01-01 22:41 pjf ;
+# @(#)$Ident: Programs.pm 2014-01-25 00:34 pjf ;
 
 package Class::Usul::Config::Programs;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.37.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants;
@@ -14,8 +14,6 @@ use File::DataClass::Types  qw( Path );
 use File::HomeDir;
 
 extends q(Class::Usul::Config);
-
-has 'cache_ttys'   => is => 'ro',   isa => Bool, default => TRUE;
 
 has 'doc_title'    => is => 'ro',   isa => NonEmptySimpleStr,
    default         => 'User Contributed Documentation';
@@ -55,7 +53,7 @@ Class::Usul::Config::Programs - Additional configuration attributes for CLI prog
 
 =head1 Version
 
-This documents version v0.37.$Rev: 1 $
+This documents version v0.38.$Rev: 1 $
 
 =head1 Synopsis
 

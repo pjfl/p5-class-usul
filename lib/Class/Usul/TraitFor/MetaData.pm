@@ -1,10 +1,10 @@
-# @(#)$Ident: MetaData.pm 2014-01-15 16:33 pjf ;
+# @(#)$Ident: MetaData.pm 2014-01-25 02:02 pjf ;
 
 package # Hide from indexer
    Class::Usul::Response::Meta;
 
 use namespace::clean -except => 'meta';
-use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants; # Need EXCEPTION_CLASS for PathNotFound import
@@ -38,7 +38,7 @@ around 'BUILDARGS' => sub {
 package Class::Usul::TraitFor::MetaData;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.16.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Functions  qw( io );
 use Moo::Role;
@@ -69,7 +69,7 @@ Class::Usul::TraitFor::MetaData - Class for CPAN Meta file
 =head1 Version
 
 This document describes L<Class::Usul::TraitFor::MetaData>
-version v0.16.$Rev: 1 $
+version v0.38.$Rev: 1 $
 
 =head1 Synopsis
 

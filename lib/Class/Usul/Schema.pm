@@ -1,9 +1,9 @@
-# @(#)Ident: Schema.pm 2014-01-10 21:11 pjf ;
+# @(#)Ident: Schema.pm 2014-01-25 00:16 pjf ;
 
 package Class::Usul::Schema;
 
 use namespace::sweep;
-use version;  our $VERSION = qv( sprintf '0.37.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version;  our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants;
@@ -60,7 +60,7 @@ has 'paragraph'         => is => 'ro',   isa => HashRef,
 
 # Public methods
 sub create_database : method {
-   my $self = shift; my $cmd;
+   my $self = shift; my $ddl;
 
    my $host = $self->host; my $database = $self->database;
    my $user = $self->user; my $password = $self->password;
@@ -69,24 +69,24 @@ sub create_database : method {
 
    if (lc $self->driver eq 'mysql') {
       $self->info( "Creating MySQL database ${database}" );
-      $cmd  = "create user '${user}'".'@';
-      $cmd .= "'${host}' identified by '${password}';";
-      $self->_run_db_cmd( $admin_creds, $cmd );
-      $cmd  = "create database if not exists ${database} default character ";
-      $cmd .= "set utf8 collate utf8_unicode_ci;";
-      $self->_run_db_cmd( $admin_creds, $cmd );
-      $cmd  = "grant all privileges on ${database}.* to '${user}'".'@';
-      $cmd .= "'${host}' with grant option;";
-      $self->_run_db_cmd( $admin_creds, $cmd );
+      $ddl  = "create user '${user}'".'@';
+      $ddl .= "'${host}' identified by '${password}';";
+      $self->_execute_ddl( $admin_creds, $ddl );
+      $ddl  = "create database if not exists ${database} default character ";
+      $ddl .= "set utf8 collate utf8_unicode_ci;";
+      $self->_execute_ddl( $admin_creds, $ddl );
+      $ddl  = "grant all privileges on ${database}.* to '${user}'".'@';
+      $ddl .= "'${host}' with grant option;";
+      $self->_execute_ddl( $admin_creds, $ddl );
       return OK;
    }
 
    if (lc $self->driver eq 'pg') {
       $self->info( "Creating PostgreSQL database ${database}" );
-      $cmd  = "create role ${user} login password '${password}';";
-      $self->_run_db_cmd( $admin_creds, $cmd );
-      $cmd  = "create database ${database} owner ${user} encoding 'UTF8';";
-      $self->_run_db_cmd( $admin_creds, $cmd );
+      $ddl  = "create role ${user} login password '${password}';";
+      $self->_execute_ddl( $admin_creds, $ddl );
+      $ddl  = "create database ${database} owner ${user} encoding 'UTF8';";
+      $self->_execute_ddl( $admin_creds, $ddl );
       return OK;
    }
 
@@ -146,7 +146,7 @@ sub driver {
 }
 
 sub drop_database : method {
-   my $self = shift; my $database = $self->database; my $cmd;
+   my $self = shift; my $database = $self->database; my $ddl;
 
    my $host = $self->host; my $user = $self->user;
 
@@ -155,16 +155,16 @@ sub drop_database : method {
    $self->info( "Droping database ${database}" );
 
    if (lc $self->driver eq 'mysql') {
-      $cmd = "drop database if exists ${database};";
-      $self->_run_db_cmd( $admin_creds, $cmd );
-      $cmd = "drop user '${user}'".'@'."'${host}';";
-      $self->_run_db_cmd( $admin_creds, $cmd, { expected_rv => 1 } );
+      $ddl = "drop database if exists ${database};";
+      $self->_execute_ddl( $admin_creds, $ddl );
+      $ddl = "drop user '${user}'".'@'."'${host}';";
+      $self->_execute_ddl( $admin_creds, $ddl, { expected_rv => 1 } );
       return OK;
    }
 
    if (lc $self->driver eq 'pg') {
-      $self->_run_db_cmd( $admin_creds, "drop database ${database};" );
-      $self->_run_db_cmd( $admin_creds, "drop user ${user};" );
+      $self->_execute_ddl( $admin_creds, "drop database ${database};" );
+      $self->_execute_ddl( $admin_creds, "drop user ${user};" );
       return OK;
    }
 
@@ -280,6 +280,28 @@ sub _deploy_and_populate {
    return;
 }
 
+sub _execute_ddl {
+   my ($self, $admin_creds, $ddl, $opts) = @_; $admin_creds ||= {};
+
+   my $drvr = lc $self->driver;
+   my $host = $self->host || 'localhost';
+   my $user = $admin_creds->{user} || $self->db_admin_ids->{ $drvr };
+   my $pass = $admin_creds->{password}
+      or $self->fatal( 'No database admin password' );
+   my $cmd  = "echo \"${ddl}\" | ";
+
+   if ($drvr eq 'mysql' ) {
+      $cmd .= "mysql -A -h ${host} -u ${user} -p${pass} mysql";
+   }
+   elsif ($drvr eq 'pg') {
+      $cmd .= "PGPASSWORD=${pass} psql -q -w -h ${host} -U ${user}";
+   }
+
+   $self->run_cmd( $cmd, { debug => $self->debug,
+                           out   => 'stdout', %{ $opts || {} } } );
+   return;
+}
+
 sub _get_db_admin_creds {
    my ($self, $reason) = @_;
 
@@ -298,29 +320,6 @@ sub _get_db_admin_creds {
    return $attrs;
 }
 
-sub _run_db_cmd {
-   my ($self, $admin_creds, $cmd, $opts) = @_; $admin_creds ||= {};
-
-   my $drvr = lc $self->driver;
-   my $host = $self->host || 'localhost';
-   my $user = $admin_creds->{user} || $self->db_admin_ids->{ $drvr };
-   my $pass = $admin_creds->{password}
-      or $self->fatal( 'No database admin password' );
-
-   $cmd = "echo \"${cmd}\" | ";
-
-   if ($drvr eq 'mysql' ) {
-      $cmd .= "mysql -A -h ${host} -u ${user} -p${pass} mysql";
-   }
-   elsif ($drvr eq 'pg') {
-      $cmd .= "PGPASSWORD=${pass} psql -q -w -h ${host} -U ${user}";
-   }
-
-   $self->run_cmd( $cmd, { debug => $self->debug,
-                           out   => 'stdout', %{ $opts || {} } } );
-   return;
-}
-
 1;
 
 __END__
@@ -335,7 +334,7 @@ Class::Usul::Schema - Support for database schemas
 
 =head1 Version
 
-Describes v0.37.$Rev: 1 $ of L<Class::Usul::Schame>
+Describes v0.38.$Rev: 1 $ of L<Class::Usul::Schame>
 
 =head1 Synopsis
 
