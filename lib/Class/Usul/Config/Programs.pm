@@ -1,16 +1,13 @@
-# @(#)$Ident: Programs.pm 2014-01-25 00:34 pjf ;
-
 package Class::Usul::Config::Programs;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants;
-use Class::Usul::Types      qw( ArrayRef Bool NonEmptySimpleStr
-                                NonZeroPositiveInt PositiveInt );
-use File::Basename          qw( basename );
-use File::DataClass::Types  qw( Path );
+use Class::Usul::Types     qw( ArrayRef Bool NonEmptySimpleStr
+                               NonZeroPositiveInt PositiveInt );
+use File::Basename         qw( basename );
+use File::DataClass::Types qw( Path );
 use File::HomeDir;
 
 extends q(Class::Usul::Config);
@@ -50,10 +47,6 @@ __END__
 =head1 Name
 
 Class::Usul::Config::Programs - Additional configuration attributes for CLI programs
-
-=head1 Version
-
-This documents version v0.38.$Rev: 1 $
 
 =head1 Synopsis
 

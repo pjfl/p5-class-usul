@@ -1,10 +1,7 @@
-# @(#)$Ident: Time.pm 2013-10-02 15:33 pjf ;
-
 package Class::Usul::Time;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Date::Format    ( );
 use Exporter 5.57 qw( import );
@@ -256,10 +253,6 @@ __END__
 =head1 Name
 
 Class::Usul::Time - Class methods for date and time manipulation
-
-=head1 Version
-
-This documents version v0.38.$Rev: 1 $
 
 =head1 Synopsis
 

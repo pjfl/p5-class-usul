@@ -1,24 +1,21 @@
-# @(#)$Ident: Types.pm 2013-11-30 13:27 pjf ;
-
 package Class::Usul::Types;
 
 use strict;
 use warnings;
 use namespace::clean -except => 'meta';
-use version; our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw( ensure_class_loaded exception );
-use Encode                  qw( find_encoding );
-use Scalar::Util            qw( blessed );
-use Type::Library              -base, -declare =>
-                            qw( BaseType ConfigType EncodingType
-                                FileType IPCType L10NType LockType
-                                LogType NullLoadingClass PromptType
-                                RequestType );
-use Type::Utils             qw( as class_type coerce extends
-                                from message subtype via where );
-use Unexpected::Functions   qw( inflate_message is_class_loaded );
+use Class::Usul::Functions qw( ensure_class_loaded exception );
+use Encode                 qw( find_encoding );
+use Scalar::Util           qw( blessed );
+use Type::Library             -base, -declare =>
+                           qw( BaseType ConfigType EncodingType
+                               FileType IPCType L10NType LockType
+                               LogType NullLoadingClass PromptType
+                               RequestType );
+use Type::Utils            qw( as class_type coerce extends
+                               from message subtype via where );
+use Unexpected::Functions  qw( inflate_message is_class_loaded );
 
 BEGIN { extends q(Unexpected::Types) };
 
@@ -133,10 +130,6 @@ __END__
 =head1 Name
 
 Class::Usul::Types - Defines type constraints
-
-=head1 Version
-
-This document describes Class::Usul::Types version v0.38.$Rev: 1 $
 
 =head1 Synopsis
 

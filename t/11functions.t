@@ -1,11 +1,8 @@
-# @(#)$Ident: 11functions.t 2014-01-10 19:44 pjf ;
-
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
-use File::Spec::Functions   qw( catdir catfile updir );
-use FindBin                 qw( $Bin );
-use lib                 catdir( $Bin, updir, 'lib' );
+use File::Spec::Functions qw( catdir catfile updir );
+use FindBin               qw( $Bin );
+use lib               catdir( $Bin, updir, 'lib' );
 
 use Test::More;
 use Test::Requires { version => 0.88 };
@@ -99,9 +96,14 @@ is unescape_TT( escape_TT( '[% test %]' ) ), '[% test %]',
 is find_source( 'Class::Usul::Functions' ),
    abs_path( catfile( qw( lib Class Usul Functions.pm ) ) ), 'find_source';
 
+is first_char 'ab', 'a', 'first_char';
+
 #warn fqdn( 'localhost' )."\n";
 
-ok defined fullname(), 'fullname';
+SKIP: {
+   $ENV{AUTHOR_TESTING} or skip 'fullname test only for developers', 1;
+   ok defined fullname(), 'fullname';
+}
 
 #warn get_user()->name."\n";
 

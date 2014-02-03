@@ -1,33 +1,30 @@
-# @(#)$Ident: Programs.pm 2014-01-12 19:57 pjf ;
-
 package Class::Usul::Programs;
 
 use attributes ();
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Inspector;
 use Class::Usul::Constants;
 use Class::Usul::File;
-use Class::Usul::Functions  qw( abs_path elapsed emit emit_err emit_to
-                                exception find_apphome find_source
-                                get_cfgfiles is_arrayref is_hashref is_member
-                                logname pad throw untaint_identifier );
+use Class::Usul::Functions qw( abs_path elapsed emit emit_err emit_to
+                               exception find_apphome find_source
+                               get_cfgfiles is_arrayref is_hashref is_member
+                               logname pad throw untaint_identifier );
 use Class::Usul::IPC;
 use Class::Usul::Options;
-use Class::Usul::Types      qw( ArrayRef Bool EncodingType FileType HashRef
-                                Int IPCType LoadableClass PositiveInt
-                                PromptType SimpleStr );
+use Class::Usul::Types     qw( ArrayRef Bool EncodingType FileType HashRef
+                               Int IPCType LoadableClass PositiveInt
+                               PromptType SimpleStr );
 use Config;
-use English                 qw( -no_match_vars );
-use File::Basename          qw( dirname );
-use File::DataClass::Types  qw( Directory );
-use List::Util              qw( first );
+use English                qw( -no_match_vars );
+use File::Basename         qw( dirname );
+use File::DataClass::Types qw( Directory );
+use List::Util             qw( first );
 use Pod::Eventual::Simple;
 use Pod::Man;
 use Pod::Usage;
-use Scalar::Util            qw( blessed );
+use Scalar::Util           qw( blessed );
 use Text::Autoformat;
 use Try::Tiny;
 
@@ -532,10 +529,6 @@ __END__
 =head1 Name
 
 Class::Usul::Programs - Provide support for command line programs
-
-=head1 Version
-
-This document describes version v0.38.$Rev: 1 $ of L<Class::Usul::Programs>
 
 =head1 Synopsis
 

@@ -1,5 +1,12 @@
 Revision history for Class::Usul
 
+0.39.1    2014-02-03 18:58:12
+          - Removed Ident and VERSION from most files
+          - Skipped ::Functions fullname test
+          - Added locales config attribute
+          - Log methods now return true
+          - Added ::Functions first_char
+
 0.38.1    2014-01-25 02:11:23
           - Fixed VERSION in ::TF::MetaData
           - Fixed IPC::cache_ttys

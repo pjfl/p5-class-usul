@@ -1,5 +1,3 @@
-# @(#)$Ident: Build.PL 2014-01-05 02:22 pjf ;
-
 use strict;
 use warnings;
 

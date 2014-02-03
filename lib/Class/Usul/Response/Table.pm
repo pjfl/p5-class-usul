@@ -1,9 +1,6 @@
-# @(#)$Ident: Table.pm 2013-08-04 16:20 pjf ;
-
 package Class::Usul::Response::Table;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Types qw( ArrayRef HashRef Int Str );
 use Moo;
@@ -30,10 +27,6 @@ __END__
 =head1 Name
 
 Class::Usul::Response::Table - Data structure for the table widget
-
-=head1 Version
-
-This documents version v0.38.$Rev: 1 $
 
 =head1 Synopsis
 

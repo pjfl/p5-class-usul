@@ -1,16 +1,13 @@
-# @(#)$Ident: Crypt.pm 2014-01-14 20:13 pjf ;
-
 package Class::Usul::Crypt;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw( create_token is_coderef is_hashref );
+use Class::Usul::Functions qw( create_token is_coderef is_hashref );
 use Crypt::CBC;
-use English                 qw( -no_match_vars );
-use Exporter 5.57           qw( import );
+use English                qw( -no_match_vars );
+use Exporter 5.57          qw( import );
 use MIME::Base64;
 use Sys::Hostname;
 
@@ -79,10 +76,6 @@ sub __decode {
 =head1 Name
 
 Class::Usul::Crypt - Encryption/decryption functions
-
-=head1 Version
-
-This documents version v0.38.$Rev: 1 $
 
 =head1 Synopsis
 

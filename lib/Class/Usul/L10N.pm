@@ -1,18 +1,15 @@
-# @(#)$Ident: L10N.pm 2014-01-11 17:05 pjf ;
-
 package Class::Usul::L10N;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Null;
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw( assert is_arrayref merge_attributes );
-use Class::Usul::Types      qw( ArrayRef Bool HashRef LogType
-                                SimpleStr Str Undef );
-use File::DataClass::Types  qw( Directory Lock Path );
+use Class::Usul::Functions qw( assert is_arrayref merge_attributes );
+use Class::Usul::Types     qw( ArrayRef Bool HashRef LogType
+                               SimpleStr Str Undef );
+use File::DataClass::Types qw( Directory Lock Path );
 use File::Gettext::Constants;
 use File::Gettext;
 use File::Spec;
@@ -186,10 +183,6 @@ __END__
 =head1 Name
 
 Class::Usul::L10N - Localize text strings
-
-=head1 Version
-
-This documents version v0.38.$Rev: 1 $
 
 =head1 Synopsis
 

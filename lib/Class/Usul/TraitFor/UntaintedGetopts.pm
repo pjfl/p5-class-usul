@@ -1,19 +1,16 @@
-# @(#)$Ident: UntaintedGetopts.pm 2013-11-23 11:12 pjf ;
-
 package Class::Usul::TraitFor::UntaintedGetopts;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw( untaint_cmdline );
+use Class::Usul::Functions qw( untaint_cmdline );
 use Data::Record;
-use Encode                  qw( decode );
+use Encode                 qw( decode );
 use Getopt::Long 2.38;
 use Getopt::Long::Descriptive 0.091;
 use JSON;
 use Regexp::Common;
-use Scalar::Util            qw( blessed );
+use Scalar::Util           qw( blessed );
 use Moo::Role;
 
 my $Extra_Argv = []; my $Usage = "Did we forget new_with_options?\n";
@@ -176,10 +173,6 @@ __END__
 =head1 Name
 
 Class::Usul::TraitFor::UntaintedGetopts - Untaints @ARGV before Getopts processes it
-
-=head1 Version
-
-This documents version v0.38.$Rev: 1 $
 
 =head1 Synopsis
 

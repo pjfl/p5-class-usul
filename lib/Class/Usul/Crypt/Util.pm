@@ -1,16 +1,13 @@
-# @(#)Ident: Util.pm 2014-01-14 19:59 pjf ;
-
 package Class::Usul::Crypt::Util;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
-use Class::Usul::Crypt      qw( decrypt default_cipher encrypt );
-use Class::Usul::Functions  qw( merge_attributes throw );
-use Exporter 5.57           qw( import  );
+use Class::Usul::Crypt     qw( decrypt default_cipher encrypt );
+use Class::Usul::Functions qw( merge_attributes throw );
+use Exporter 5.57          qw( import  );
 use File::DataClass::IO;
 use Try::Tiny;
 
@@ -101,10 +98,6 @@ Class::Usul::Crypt::Util - Decrypts/Encrypts password from/to configuration file
    use Class::Usul::Crypt::Util qw(decrypt_from_config);
 
    $password = decrypt_from_config( $encrypted_value_from_file );
-
-=head1 Version
-
-This documents version v0.38.$Rev: 1 $ of L<Class::Usul::Crypt::Util>
 
 =head1 Description
 

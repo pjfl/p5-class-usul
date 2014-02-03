@@ -1,9 +1,6 @@
-# @(#)$Ident: IPC.pm 2014-01-25 00:34 pjf ;
-
 package Class::Usul::IPC;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Null;
@@ -655,10 +652,6 @@ __END__
 
 Class::Usul::IPC - List/Create/Delete processes
 
-=head1 Version
-
-This documents version v0.38.$Rev: 1 $
-
 =head1 Synopsis
 
    use Class::Usul::IPC;
@@ -671,6 +664,18 @@ This documents version v0.38.$Rev: 1 $
 
 Displays the process table and allows signals to be sent to selected
 processes
+
+=head1 Configuration and Environment
+
+Defines these attributes;
+
+=over 3
+
+=item C<cache_ttys>
+
+Boolean that defaults to true. Passed to L<Proc::ProcessTable>
+
+=back
 
 =head1 Subroutines/Methods
 
@@ -813,10 +818,6 @@ This interrupt handler traps the pipe signal
 =head2 __handler
 
 This interrupt handler traps the child signal
-
-=head1 Configuration and Environment
-
-None
 
 =head1 Diagnostics
 

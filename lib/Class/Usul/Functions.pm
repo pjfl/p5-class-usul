@@ -1,12 +1,9 @@
-# @(#)$Ident: Functions.pm 2014-01-15 16:16 pjf ;
-
 package Class::Usul::Functions;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
-use parent                  qw( Exporter::Tiny );
+use parent qw( Exporter::Tiny );
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -38,7 +35,7 @@ our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
                        classfile create_token data_dumper distname
                        elapsed emit emit_err emit_to
                        ensure_class_loaded env_prefix escape_TT
-                       exception find_apphome find_source fold fqdn
+                       exception find_apphome find_source first_char fold fqdn
                        fullname get_cfgfiles get_user hex2str
                        home2appldir io is_arrayref is_coderef
                        is_hashref is_win32 loginid
@@ -247,7 +244,7 @@ sub emit_to ($;@) {
 }
 
 sub ensure_class_loaded ($;$) {
-   my ($class, $opts) = @_; $opts ||= {};
+   my ($class, $opts) = @_; $opts //= {};
 
    $class or throw( class => Unspecified, args => [ 'class name' ] );
    is_module_name( $class )
@@ -325,6 +322,10 @@ sub find_source ($) {
    }
 
    return;
+}
+
+sub first_char ($) {
+   return substr $_[ 0 ], 0, 1;
 }
 
 sub fold (&) {
@@ -702,10 +703,6 @@ __END__
 
 CatalystX::Usul::Functions - Globally accessible functions
 
-=head1 Version
-
-This documents version v0.38.$Rev: 1 $
-
 =head1 Synopsis
 
    package MyBaseClass;
@@ -922,6 +919,12 @@ Returns the path to the applications home directory
    $path = find_source $module_name;
 
 Find absolute path to the source code for the given module
+
+=head2 first_char
+
+   $single_char = first_char $some_string;
+
+Returns the first character of C<$string>
 
 =head2 fold
 

@@ -1,10 +1,7 @@
-# @(#)Ident: ConnectInfo.pm 2014-01-14 21:50 pjf ;
-
 package Class::Usul::TraitFor::ConnectInfo;
 
 use 5.010001;
 use namespace::sweep;
-use version;  our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Crypt::Util qw( decrypt_from_config );
@@ -155,10 +152,6 @@ sub __unicode_options {
 =head1 Name
 
 Class::Usul::TraitFor::ConnectInfo - Provides the DBIC connect info array ref
-
-=head1 Version
-
-Describes v0.38.$Rev: 1 $ of L<Class::Usul::TraitFor::ConnectInfo>
 
 =head1 Synopsis
 

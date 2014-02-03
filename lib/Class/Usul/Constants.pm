@@ -1,12 +1,9 @@
-# @(#)$Ident: Constants.pm 2014-01-14 16:50 pjf ;
-
 package Class::Usul::Constants;
 
 use 5.010001;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
-use parent                  qw( Exporter::Tiny );
+use parent qw( Exporter::Tiny );
 
 use Class::Usul::Exception;
 use File::DataClass::Constants ( );
@@ -115,10 +112,6 @@ __END__
 =head1 Name
 
 Class::Usul::Constants - Definitions of constant values
-
-=head1 Version
-
-This documents version v0.38.$Rev: 1 $
 
 =head1 Synopsis
 

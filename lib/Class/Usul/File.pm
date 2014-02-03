@@ -1,19 +1,16 @@
-# @(#)$Ident: File.pm 2014-01-11 02:10 pjf ;
-
 package Class::Usul::File;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw( arg_list create_token is_arrayref io throw );
-use Class::Usul::Types      qw( BaseType );
-use English                 qw( -no_match_vars );
+use Class::Usul::Functions qw( arg_list create_token is_arrayref io throw );
+use Class::Usul::Types     qw( BaseType );
+use English                qw( -no_match_vars );
 use File::DataClass::Schema;
-use File::Spec::Functions   qw( catfile );
-use Scalar::Util            qw( blessed );
-use Unexpected::Functions   qw( Unspecified );
+use File::Spec::Functions  qw( catfile );
+use Scalar::Util           qw( blessed );
+use Unexpected::Functions  qw( Unspecified );
 
 # Private attributes
 has '_usul' => is => 'ro', isa => BaseType,
@@ -89,10 +86,6 @@ __END__
 =head1 Name
 
 Class::Usul::File - Data loading and dumping
-
-=head1 Version
-
-This documents version v0.38.$Rev: 1 $ of L<Class::Usul::File>
 
 =head1 Synopsis
 

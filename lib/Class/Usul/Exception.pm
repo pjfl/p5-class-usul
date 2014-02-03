@@ -1,13 +1,10 @@
-# @(#)Ident: Exception.pm 2014-01-15 16:39 pjf ;
-
 package Class::Usul::Exception;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
-use Unexpected::Functions   qw( has_exception );
-use Unexpected::Types       qw( Int Str );
+use Unexpected::Functions qw( has_exception );
+use Unexpected::Types     qw( Int Str );
 
 extends q(Unexpected);
 with    q(Unexpected::TraitFor::ErrorLeader);
@@ -42,10 +39,6 @@ __END__
 =head1 Name
 
 Class::Usul::Exception - Exception handling
-
-=head1 Version
-
-This documents version v0.38.$Rev: 1 $ of L<Class::Usul::Exception>
 
 =head1 Synopsis
 

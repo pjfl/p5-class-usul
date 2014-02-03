@@ -1,14 +1,11 @@
-# @(#)Ident: Options.pm 2013-11-23 10:32 pjf ;
-
 package Class::Usul::Options;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw( throw );
-use Sub::Install            qw( install_sub );
+use Class::Usul::Functions qw( throw );
+use Sub::Install           qw( install_sub );
 
 my @OPTIONS_ATTRIBUTES
    = qw( autosplit doc format json negateable order repeatable short );
@@ -142,10 +139,6 @@ Class::Usul::Options - Command line processing
 
    use Moo;
    use Class::Usul::Options;
-
-=head1 Version
-
-This documents version v0.38.$Rev: 1 $ of L<Class::Usul::Options>
 
 =head1 Description
 

@@ -1,21 +1,18 @@
-# @(#)$Ident: Log.pm 2013-12-07 22:55 pjf ;
-
 package Class::Usul::Log;
 
 use namespace::clean -except => [ qw( class_stash meta ) ];
-use version; our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Null;
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw( merge_attributes );
-use Class::Usul::Types      qw( Bool EncodingType HashRef
-                                LoadableClass LogType Undef );
+use Class::Usul::Functions qw( merge_attributes );
+use Class::Usul::Types     qw( Bool EncodingType HashRef
+                               LoadableClass LogType Undef );
 use Encode;
-use File::Basename          qw( dirname );
-use File::DataClass::Types  qw( Path );
+use File::Basename         qw( dirname );
+use File::DataClass::Types qw( Path );
 use MooX::ClassStash;
-use Scalar::Util            qw( blessed );
+use Scalar::Util           qw( blessed );
 
 has '_debug_flag'     => is => 'ro',   isa => Bool, default => FALSE,
    init_arg           => 'debug';
@@ -57,7 +54,7 @@ sub BUILD {
 
          $self->_encoding and $text = encode( $self->_encoding, $text );
          $self->_log->$method( "${text}\n" );
-         return;
+         return TRUE;
       } );
 
       my $meth_msg = "${method}_message";
@@ -71,7 +68,7 @@ sub BUILD {
          $text  = (ucfirst $opts->{leader} || NUL)."[${user}] ";
          $text .= (ucfirst $msg || 'no message');
          $self->$method( $text );
-         return;
+         return TRUE;
       } );
    }
 
@@ -116,10 +113,6 @@ __END__
 =head1 Name
 
 Class::Usul::Log - Create methods for each logging level that encode their output
-
-=head1 Version
-
-This documents version v0.38.$Rev: 1 $
 
 =head1 Synopsis
 

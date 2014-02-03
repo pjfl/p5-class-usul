@@ -1,14 +1,11 @@
-# @(#)Ident: Prompting.pm 2013-11-27 14:31 pjf ;
-
 package Class::Usul::TraitFor::Prompting;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw( arg_list emit_to pad throw );
-use Class::Usul::Types      qw( BaseType );
-use English                 qw( -no_match_vars );
+use Class::Usul::Functions qw( arg_list emit_to pad throw );
+use Class::Usul::Types     qw( BaseType );
+use English                qw( -no_match_vars );
 use IO::Interactive;
 use Term::ReadKey;
 use Moo::Role;
@@ -237,10 +234,6 @@ Class::Usul::TraitFor::Prompting - Methods for requesting command line input
    use Moo;
 
    with q(Class::Usul::TraitForPrompting);
-
-=head1 Version
-
-This documents version v0.38.$Rev: 1 $ of L<Class::Usul::TraitFor::Prompting>
 
 =head1 Description
 

@@ -1,9 +1,6 @@
-# @(#)Ident: Schema.pm 2014-01-25 00:16 pjf ;
-
 package Class::Usul::Schema;
 
 use namespace::sweep;
-use version;  our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants;
@@ -331,10 +328,6 @@ __END__
 =head1 Name
 
 Class::Usul::Schema - Support for database schemas
-
-=head1 Version
-
-Describes v0.38.$Rev: 1 $ of L<Class::Usul::Schame>
 
 =head1 Synopsis
 

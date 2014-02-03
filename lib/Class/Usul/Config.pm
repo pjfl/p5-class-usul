@@ -1,26 +1,23 @@
-# @(#)$Ident: Config.pm 2014-01-14 17:44 pjf ;
-
 package Class::Usul::Config;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.38.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants;
 use Class::Usul::File;
-use Class::Usul::Functions  qw( app_prefix class2appdir home2appldir
-                                is_arrayref split_on__ split_on_dash
-                                untaint_path );
-use Class::Usul::Types      qw( EncodingType HashRef NonEmptySimpleStr
-                                NonZeroPositiveInt PositiveInt );
+use Class::Usul::Functions qw( app_prefix class2appdir home2appldir
+                               is_arrayref split_on__ split_on_dash
+                               untaint_path );
+use Class::Usul::Types     qw( ArrayRef EncodingType HashRef NonEmptySimpleStr
+                               NonZeroPositiveInt PositiveInt );
 use Config;
-use English                 qw( -no_match_vars );
-use File::Basename          qw( basename dirname );
-use File::DataClass::Types  qw( Directory File Path );
+use English                qw( -no_match_vars );
+use File::Basename         qw( basename dirname );
+use File::DataClass::Types qw( Directory File Path );
 use File::Gettext::Constants;
-use File::Spec::Functions   qw( canonpath catdir catfile
-                                rel2abs rootdir tmpdir );
-use Scalar::Util            qw( blessed );
+use File::Spec::Functions  qw( canonpath catdir catfile
+                               rel2abs rootdir tmpdir );
+use Scalar::Util           qw( blessed );
 
 # Public attributes
 has 'appclass'  => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;
@@ -45,10 +42,12 @@ has 'extension' => is => 'lazy', isa => NonEmptySimpleStr,
 has 'home'      => is => 'lazy', isa => Directory,
    coerce       => Directory->coercion, default => DEFAULT_CONFHOME;
 
-has 'locale'    => is => 'ro',   isa => NonEmptySimpleStr, default => 'en_GB';
+has 'locale'    => is => 'ro',   isa => NonEmptySimpleStr, default => LANG;
 
 has 'localedir' => is => 'lazy', isa => Directory,
    coerce       => Directory->coercion;
+
+has 'locales'   => is => 'ro',   isa => ArrayRef, builder => sub { [ LANG ] };
 
 has 'logfile'   => is => 'lazy', isa => Path, coerce => Path->coercion;
 
@@ -316,11 +315,9 @@ __END__
 
 Class::Usul::Config - Inflate config values
 
-=head1 Version
-
-Describes Class::Usul::Config version v0.38.$Rev: 1 $
-
 =head1 Synopsis
+
+   use Class::Usul::Config;
 
 =head1 Description
 
@@ -371,12 +368,18 @@ Hash ref of attributes used to construct a L<Class::Usul::L10N> object
 
 =item C<locale>
 
-The locale for language translation of text. Defaults to C<en_GB>
+The locale for language translation of text. Defaults to the constant
+C<LANG>
 
 =item C<localedir>
 
 Directory containing the GNU Gettext portable object files used to translate
 messages into different languages
+
+=item C<locales>
+
+Array reference containing the list of supported locales. The default list
+contains only the constant C<LANG>
 
 =item C<lock_attributes>
 
