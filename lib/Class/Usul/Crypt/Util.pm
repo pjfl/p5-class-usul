@@ -11,11 +11,11 @@ use Exporter 5.57          qw( import  );
 use File::DataClass::IO;
 use Try::Tiny;
 
-our @EXPORT_OK = qw( decrypt_from_config encrypt_for_config
+our @EXPORT_OK = qw( decrypt_from_config dh_base dh_mod encrypt_for_config
                      get_cipher is_encrypted );
 
 # Public functions
-sub decrypt_from_config {
+sub decrypt_from_config ($$) {
    my ($config, $encrypted) = @_;
    my ($cipher, $password)  = __extract_crypt_params( $encrypted );
    my $args                 = __get_crypt_args( $config, $cipher );
@@ -23,7 +23,15 @@ sub decrypt_from_config {
    return $password ? decrypt $args, $password : $encrypted;
 }
 
-sub encrypt_for_config {
+sub dh_base () {
+   return '592155621307';
+}
+
+sub dh_mod () {
+   return '102741865585308610019579133521460132878234021355217332894922266664319790986413';
+}
+
+sub encrypt_for_config ($$;$) {
    my ($config, $password, $encrypted) = @_;
 
    my ($cipher) = __extract_crypt_params( $encrypted );
@@ -32,11 +40,11 @@ sub encrypt_for_config {
    return $password ? "{${cipher}}".(encrypt $args, $password) : $password;
 }
 
-sub get_cipher {
+sub get_cipher ($) {
    my ($cipher) = __extract_crypt_params( $_[ 0 ] ); return $cipher;
 }
 
-sub is_encrypted {
+sub is_encrypted ($) {
    return $_[ 0 ] =~ m{ \A [{] .+ [}] .* \z }mx ? TRUE : FALSE;
 }
 
@@ -114,6 +122,18 @@ Implements a functional interface
    $plain_text = decrypt_from_config( $params, $password );
 
 Strips the C<{Twofish2}> prefix and then decrypts the password
+
+=head2 dh_base
+
+   $random_prime = dh_base;
+
+Suitable base value in Diffie-Hellman key exchange
+
+=head2 dh_mod
+
+   $large_prime = dh_mod;
+
+Suitable modulo value in Diffie-Hellman key exchange
 
 =head2 encrypt_for_config
 

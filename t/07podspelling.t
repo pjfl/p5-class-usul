@@ -66,6 +66,7 @@ DBIC
 DDL
 dbattrs
 debian
+Diffie
 distmeta
 distname
 DSN
@@ -78,6 +79,7 @@ gecos
 gettext
 getopts
 hashref
+Hellman
 hostname
 ids
 io

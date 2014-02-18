@@ -34,31 +34,31 @@ sub encrypt (;$$) {
 
 # Private functions
 sub __cipher {
-   Crypt::CBC->new( -cipher => __cname( $_[ 0 ] ), -key => __token( $_[ 0 ] ) );
+   Crypt::CBC->new( -cipher => __cname( $_[ 0 ] ), -key => __wards( $_[ 0 ] ) );
 }
 
 sub __cname {
    (is_hashref $_[ 0 ]) ? $_[ 0 ]->{cipher} || default_cipher : default_cipher;
 }
 
-sub __token {
-   substr create_token( __inflate( $_[ 0 ] ) ), 0, 32;
+sub __wards {
+   (is_hashref $_[ 0 ]) || !$_[ 0 ] ? __token( $_[ 0 ] ) : $_[ 0 ];
 }
 
-sub __inflate {
-   __compose( (is_hashref $_[ 0 ]) ? $_[ 0 ] : { salt => $_[ 0 ] || NUL } );
+sub __token {
+   substr create_token( __compose( $_[ 0 ] || {} ) ), 0, 32;
 }
 
 sub __compose {
-   __evaluate( __deref( $_[ 0 ]->{seed} ) // $SEED ).__deref( $_[ 0 ]->{salt} );
+   __evaluate( __deref( $_[ 0 ]->{seed} ) || $SEED ).__deref( $_[ 0 ]->{salt} );
 }
 
 sub __deref {
-   (is_coderef $_[ 0 ]) ? $_[ 0 ]->() : $_[ 0 ];
+   (is_coderef $_[ 0 ]) ? ($_[ 0 ]->() // NUL) : ($_[ 0 ] // NUL);
 }
 
 sub __evaluate {
-   my $x = __prepare( $_[ 0 ] ); $x ? ((eval __decode( $x )) || q()) : q();
+   my $x = __prepare( $_[ 0 ] ); $x ? ((eval __decode( $x )) || NUL) : NUL;
 }
 
 sub __prepare {

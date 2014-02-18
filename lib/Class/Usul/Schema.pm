@@ -5,9 +5,10 @@ use namespace::sweep;
 use Moo;
 use Class::Usul::Constants;
 use Class::Usul::Crypt::Util qw( encrypt_for_config );
-use Class::Usul::Functions   qw( distname ensure_class_loaded io );
+use Class::Usul::Functions   qw( distname ensure_class_loaded io throw );
 use Class::Usul::Options;
 use Class::Usul::Types       qw( ArrayRef Bool HashRef NonEmptySimpleStr Str );
+use Try::Tiny;
 
 extends q(Class::Usul::Programs);
 with    q(Class::Usul::TraitFor::ConnectInfo);
@@ -271,7 +272,16 @@ sub _deploy_and_populate {
       my @rows = map { [ map    { s{ \A [\'\"] }{}mx; s{ [\'\"] \z }{}mx; $_ }
                          split m{ , \s* }mx, $_ ] } @{ $hash->{rows} };
 
-      @{ $res->{ $class } } = $schema->populate( $class, [ $flds, @rows ] );
+      try {
+         @{ $res->{ $class } } = $schema->populate( $class, [ $flds, @rows ] );
+      }
+      catch {
+         if ($_->can( 'class' ) and $_->class eq 'ValidationErrors') {
+            $self->warning( "${_}" ) for (@{ $_->args });
+         }
+
+         throw $_;
+      };
    }
 
    return;
