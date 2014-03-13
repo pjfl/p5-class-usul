@@ -1,5 +1,6 @@
 package Class::Usul::IPC;
 
+use 5.01;
 use namespace::sweep;
 
 use Moo;
@@ -272,11 +273,11 @@ sub _default_run_options {
 
    is_arrayref $opts->{in} and $opts->{in} = join $RS, @{ $opts->{in} };
 
-   $opts->{debug      } ||= $self->debug;
-   $opts->{expected_rv} ||= 0;
-   $opts->{in         } ||= 'stdin';
-   $opts->{tempdir    } ||= $self->tempdir;
-   $opts->{pid_ref    } ||= $self->tempfile( $opts->{tempdir} );
+   $opts->{debug      } //= $self->debug;
+   $opts->{expected_rv} //= 0;
+   $opts->{in         } //= 'stdin';
+   $opts->{tempdir    } //= $self->tempdir;
+   $opts->{pid_ref    } //= $self->tempfile( $opts->{tempdir} );
    return $opts;
 }
 
@@ -341,7 +342,7 @@ sub _return_codes_or_throw {
 sub _run_cmd_ipc_run_args {
    my $self = shift; my $opts = $self->_default_run_options( @_ );
 
-   $opts->{err} ||= NUL; $opts->{out} ||= NUL;
+   $opts->{err} //= NUL; $opts->{out} //= NUL;
 
    return $opts;
 }
@@ -350,17 +351,17 @@ sub _run_cmd_system_args {
    my $self = shift; my $opts = $self->_default_run_options( @_ );
 
    if ($opts->{in} ne 'stdin') {
-      $opts->{in_ref} ||= $self->tempfile( $opts->{tempdir} );
+      $opts->{in_ref} //= $self->tempfile( $opts->{tempdir} );
       $opts->{in_ref}->print( $opts->{in} );
       $opts->{in} = $opts->{in_ref}->pathname;
    }
 
    # Different semi-random file names in the temp directory
-   $opts->{err_ref} ||= $self->tempfile( $opts->{tempdir} );
-   $opts->{out_ref} ||= $self->tempfile( $opts->{tempdir} );
-   $opts->{err    } ||= 'out' if ($opts->{async});
-   $opts->{err    } ||= $opts->{err_ref}->pathname;
-   $opts->{out    } ||= $opts->{out_ref}->pathname;
+   $opts->{err_ref} //= $self->tempfile( $opts->{tempdir} );
+   $opts->{out_ref} //= $self->tempfile( $opts->{tempdir} );
+   $opts->{err    } //= 'out' if ($opts->{async});
+   $opts->{err    } //= $opts->{err_ref}->pathname;
+   $opts->{out    } //= $opts->{out_ref}->pathname;
    return $opts;
 }
 

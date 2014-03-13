@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Removed dh_base and dh_mod
           - Fixed ::Crypt for user supplied passwords
 
 0.39.1    2014-02-03 18:58:12
