@@ -2,7 +2,6 @@ package Class::Usul::Types;
 
 use strict;
 use warnings;
-use namespace::clean -except => 'meta';
 
 use Class::Usul::Constants;
 use Class::Usul::Functions qw( ensure_class_loaded exception );
@@ -16,6 +15,8 @@ use Type::Library             -base, -declare =>
 use Type::Utils            qw( as class_type coerce extends
                                from message subtype via where );
 use Unexpected::Functions  qw( inflate_message is_class_loaded );
+
+use namespace::clean -except => 'meta';
 
 BEGIN { extends q(Unexpected::Types) };
 

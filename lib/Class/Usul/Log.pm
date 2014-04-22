@@ -1,8 +1,5 @@
 package Class::Usul::Log;
 
-use namespace::clean -except => [ qw( class_stash meta ) ];
-
-use Moo;
 use Class::Null;
 use Class::Usul::Constants;
 use Class::Usul::Functions qw( merge_attributes );
@@ -11,8 +8,12 @@ use Class::Usul::Types     qw( Bool EncodingType HashRef
 use Encode;
 use File::Basename         qw( dirname );
 use File::DataClass::Types qw( Path );
-use MooX::ClassStash;
 use Scalar::Util           qw( blessed );
+
+use namespace::clean -except => [ qw( class_stash meta ) ];
+
+use Moo;
+use MooX::ClassStash;
 
 has '_debug_flag'     => is => 'ro',   isa => Bool, default => FALSE,
    init_arg           => 'debug';

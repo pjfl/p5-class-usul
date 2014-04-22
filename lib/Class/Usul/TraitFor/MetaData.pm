@@ -1,14 +1,14 @@
 package # Hide from indexer
    Class::Usul::Response::Meta;
 
-use namespace::clean -except => 'meta';
-
 use Moo;
 use Class::Usul::Constants; # Need EXCEPTION_CLASS for PathNotFound import
 use Class::Usul::File;
 use Class::Usul::Functions qw( io throw );
 use Class::Usul::Types     qw( ArrayRef HashRef Maybe Str );
 use Unexpected::Functions  qw( PathNotFound );
+
+use namespace::clean -except => 'meta';
 
 has 'abstract' => is => 'ro', isa => Maybe[Str];
 has 'author'   => is => 'ro', isa => Maybe[ArrayRef];
