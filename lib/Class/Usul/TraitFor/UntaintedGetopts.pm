@@ -8,7 +8,7 @@ use Data::Record;
 use Encode                 qw( decode );
 use Getopt::Long 2.38;
 use Getopt::Long::Descriptive 0.091;
-use JSON;
+use JSON::MaybeXS          qw( decode_json );
 use Regexp::Common;
 use Scalar::Util           qw( blessed );
 use Moo::Role;
@@ -232,7 +232,7 @@ None
 
 =item L<Getopt::Long::Descriptive>
 
-=item L<JSON>
+=item L<JSON::MaybeXS>
 
 =item L<Moo::Role>
 

@@ -17,6 +17,7 @@ BEGIN {
 }
 
 use Test::Requires "${perl_ver}";
+use Capture::Tiny qw( capture );
 use Config;
 use Class::Usul::Constants ();
 
@@ -79,14 +80,20 @@ is distname( 'Test::Application' ), 'Test-Application', 'distname';
 
 ok defined elapsed, 'elapsed';
 
+my ($stdout, $stderr, $exit) = capture { emit 'test'; }; chomp $stdout;
+
+is $stdout, 'test', 'emit';
+
+($stdout, $stderr, $exit) = capture { emit_err 'test'; }; chomp $stderr;
+
+is $stderr, 'test', 'emit_err';
+
 eval {
    ensure_class_loaded( 'Class::Usul::Response::Table' );
    Class::Usul::Response::Table->new;
 };
 
 ok !exception, 'ensure_class_loaded';
-
-#close STDOUT; emit 'shit';
 
 is env_prefix( 'Test::Application' ), 'TEST_APPLICATION', 'env_prefix';
 
@@ -98,14 +105,15 @@ is find_source( 'Class::Usul::Functions' ),
 
 is first_char 'ab', 'a', 'first_char';
 
-#warn fqdn( 'localhost' )."\n";
+SKIP: {
+   $ENV{AUTHOR_TESTING} or skip 'fqdn test only for developers', 1;
+   is fqdn( 'localhost' ), 'localhost', 'fqdn';
+}
 
 SKIP: {
    $ENV{AUTHOR_TESTING} or skip 'fullname test only for developers', 1;
    ok defined fullname(), 'fullname';
 }
-
-#warn get_user()->name."\n";
 
 is hex2str( '41' ), 'A', 'hex2str - A';
 
