@@ -1,6 +1,7 @@
 package Class::Usul::L10N;
 
 use 5.010001;
+use feature 'state';
 use namespace::sweep;
 
 use Moo;

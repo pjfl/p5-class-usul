@@ -3,7 +3,8 @@ package Class::Usul::Functions;
 use 5.010001;
 use strict;
 use warnings;
-use parent qw( Exporter::Tiny );
+use feature 'state';
+use parent  'Exporter::Tiny';
 
 use Class::Null;
 use Class::Usul::Constants;
@@ -224,7 +225,7 @@ sub elapsed () {
 sub emit (;@) {
    my @args = @_; $args[ 0 ] //= q(); chomp( @args );
 
-   local ($OFS, $ORS) = is_win32() ? ("\r\n", "\r\n") : ("\n", "\n");
+   local ($OFS, $ORS) = ("\n", "\n");
 
    return openhandle *STDOUT ? emit_to( *STDOUT, @args ) : undef;
 }
@@ -232,7 +233,7 @@ sub emit (;@) {
 sub emit_err (;@) {
    my @args = @_; $args[ 0 ] //= q(); chomp( @args );
 
-   local ($OFS, $ORS) = is_win32() ? ("\r\n", "\r\n") : ("\n", "\n");
+   local ($OFS, $ORS) = ("\n", "\n");
 
    return openhandle *STDERR ? emit_to( *STDERR, @args ) : undef;
 }

@@ -3,6 +3,7 @@ package Class::Usul::Crypt::Util;
 use 5.010001;
 use strict;
 use warnings;
+use feature 'state';
 
 use Class::Usul::Constants;
 use Class::Usul::Crypt     qw( decrypt default_cipher encrypt );

@@ -1,6 +1,7 @@
 package Class::Usul::TraitFor::ConnectInfo;
 
 use 5.010001;
+use feature 'state';
 use namespace::sweep;
 
 use Class::Usul::Constants;
