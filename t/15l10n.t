@@ -18,6 +18,7 @@ BEGIN {
 }
 
 use Test::Requires "${perl_ver}";
+use Test::Requires 'Hash::MoreUtils';
 use English qw( -no_match_vars );
 
 {  package Logger;

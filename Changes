@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+0.42.1    2014-05-18 08:32:38
+          - b1a3c1dc-de3e-11e3-84c4-fc77f9652e90 Test::Requires Hash::MoreUtils
+
 0.41.1    2014-05-01 15:30:31
           - Moo / Role::Tiny upgrade. Must explicitely use feature 'state'
           - Removed special behaviour for Win32 from ::F::emit
