@@ -276,7 +276,7 @@ sub list_methods : method {
    for my $key (sort keys %{ $abstract }) {
       my ($method, @rest) = split SPC, $abstract->{ $key };
 
-      emit( (pad $method, $max).SPC.(join SPC, @rest) );
+      emit( (pad $key, $max).SPC.(join SPC, @rest) );
    }
 
    return OK;

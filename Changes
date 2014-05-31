@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - ::Programs::list_methods avoid POD markup in method name
+
 0.42.1    2014-05-18 08:32:38
           - b1a3c1dc-de3e-11e3-84c4-fc77f9652e90 Test::Requires Hash::MoreUtils
 
