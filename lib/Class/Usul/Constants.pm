@@ -61,9 +61,9 @@ sub EXTNS               () { ( qw( .pl .pm .t ) ) }
 sub LOG_LEVELS          () { ( qw( alert debug error fatal info warn ) ) }
 sub PREFIX              () { [ q(), q(opt) ] }
 sub UNDEFINED_RV        () { -1 }
-sub UNTAINT_CMDLINE     () { qr{ \A ([^\$;|&><]+)    \z }mx }
-sub UNTAINT_IDENTIFIER  () { qr{ \A ([a-zA-Z0-9_]+)  \z }mx }
-sub UNTAINT_PATH        () { qr{ \A ([^\$%;|&><\*]+) \z }mx }
+sub UNTAINT_CMDLINE     () { qr{ \A ([^\$&;<>|]+)      \z }mx }
+sub UNTAINT_IDENTIFIER  () { qr{ \A ([a-zA-Z0-9_]+)    \z }mx }
+sub UNTAINT_PATH        () { qr{ \A ([^\$%&\*;<>\`|]+) \z }mx }
 sub USUL_CONFIG_KEY     () { __PACKAGE__->Config_Key }
 sub UUID_PATH           () { [ q(), qw( proc sys kernel random uuid ) ] }
 

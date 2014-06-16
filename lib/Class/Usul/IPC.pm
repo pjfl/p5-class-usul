@@ -412,7 +412,7 @@ sub _run_cmd_using_ipc_run {
                                          rv   => $rv,   sig     => $sig );
    }
 
-   my ($stderr, $stdout);
+   my ($stderr, $stdout) = (NUL, NUL);
 
    if ($out ne 'null' and $out ne 'stdout') {
        not blessed $out and $out = __run_cmd_filter_out( $stdout = $buf_out );
@@ -432,7 +432,7 @@ sub _run_cmd_using_ipc_run {
       throw error => $error, out => $out, rv => $rv;
    }
 
-   return $self->response_class->new( core   => $core,   out    => $out,
+   return $self->response_class->new( core   => $core,   out    => "${out}",
                                       rv     => $rv,     sig    => $sig,
                                       stderr => $stderr, stdout => $stdout );
 }
@@ -479,7 +479,7 @@ sub _run_cmd_using_system {
 
    my $sig = $rv & 127; my $core = $rv & 128; $rv = $rv >> 8;
 
-   my ($stderr, $stdout);
+   my ($stderr, $stdout) = (NUL, NUL);
 
    if ($opts->{async}) {
       if ($rv != 0) {
@@ -513,7 +513,7 @@ sub _run_cmd_using_system {
       throw error => $error, out => $out, rv => $rv;
    }
 
-   return $self->response_class->new( core   => $core,   out    => $out,
+   return $self->response_class->new( core   => $core,   out    => "${out}",
                                       rv     => $rv,     sig    => $sig,
                                       stderr => $stderr, stdout => $stdout );
 }
