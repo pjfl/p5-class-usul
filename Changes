@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Added l10n_domains attr to ::Programs
           - ::IPC::run_cmd better arg processing for out parameter
           - Made untaint_path more stringent
           - ::Programs::list_methods avoid POD markup in method name
