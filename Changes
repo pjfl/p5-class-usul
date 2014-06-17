@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+0.43.1    2014-06-17 10:20:46
+          - Updated prereqs
           - Deprecated ::L10N::domain_names in favour of
             l10n_attributes->{domains}
           - ::IPC::run_cmd better arg processing for out parameter

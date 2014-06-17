@@ -157,7 +157,7 @@ sub _gettext {
 
       my $locale = $args->{locale} or return;
       my $lang   = $self->_extract_lang_from( $locale );
-      my $names  = $args->{domain_names} // $self->domains;
+      my $names  = $args->{domains} // $args->{domain_names} // $self->domains;
       my @names  = grep { defined and length } @{ $names };
       my $key    = $lang.SEP.(join '+', @names );
 
@@ -195,13 +195,13 @@ Class::Usul::L10N - Localize text strings
    use Class::Usul::L10N;
 
    my $l10n = Class::Usul::L10N->new( {
-      localedir    => 'path_to_message_catalogs',
-      log          => Log::Handler->new, } );
+      localedir => 'path_to_message_catalogs',
+      log       => Log::Handler->new, } );
 
    $local_text = $l10n->localize( 'message_to_localize', {
-      l10n_domains => [ 'message_file', 'another_message_file' ],
-      locale       => 'de_DE',
-      params       => { name => 'value', }, } );
+      domains => [ 'message_file', 'another_message_file' ],
+      locale  => 'de_DE',
+      params  => { name => 'value', }, } );
 
 =head1 Description
 
