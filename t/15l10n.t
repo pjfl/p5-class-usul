@@ -34,11 +34,12 @@ use English qw( -no_match_vars );
 
 use Class::Usul::L10N;
 
-my $l10n = Class::Usul::L10N->new( debug        => 0,
-                                   domain_names => [ q(default) ],
-                                   localedir    => catdir( qw(t locale) ),
-                                   log          => Logger->new,
-                                   tempdir      => q(t) );
+my $l10n = Class::Usul::L10N->new( debug           => 0,
+                                   l10n_attributes => {
+                                      domains      => [ 'default' ], },
+                                   localedir       => catdir( qw( t locale ) ),
+                                   log             => Logger->new,
+                                   tempdir         => 't' );
 my $args = { locale => 'de_DE' };
 my $text = $l10n->localize( 'December', $args );
 

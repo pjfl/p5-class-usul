@@ -89,36 +89,33 @@ option 'version'      => is => 'ro',   isa => Bool, default => FALSE,
    documentation      => 'Displays the version number of the program class',
    short              => 'V';
 
-has 'l10n_domains' => is => 'lazy', isa => ArrayRef,
-   default         => sub { [ DEFAULT_L10N_DOMAIN, $_[ 0 ]->config->name ] };
+has 'meta_class'  => is => 'lazy', isa => LoadableClass,
+   default        => 'Class::Usul::Response::Meta',
+   coerce         => LoadableClass->coercion;
 
-has 'meta_class'   => is => 'lazy', isa => LoadableClass,
-   default         => 'Class::Usul::Response::Meta',
-   coerce          => LoadableClass->coercion;
+has 'mode'        => is => 'rw',   isa => PositiveInt,
+   default        => sub { $_[ 0 ]->config->mode }, lazy => TRUE;
 
-has 'mode'         => is => 'rw',   isa => PositiveInt,
-   default         => sub { $_[ 0 ]->config->mode }, lazy => TRUE;
-
-has 'params'       => is => 'ro',   isa => HashRef, default => sub { {} };
+has 'params'      => is => 'ro',   isa => HashRef, default => sub { {} };
 
 # Private attributes
-has '_file'        => is => 'lazy', isa => FileType,
-   builder         => sub { Class::Usul::File->new( builder => $_[ 0 ] ) },
-   init_arg        => undef, reader => 'file';
+has '_file'       => is => 'lazy', isa => FileType,
+   builder        => sub { Class::Usul::File->new( builder => $_[ 0 ] ) },
+   init_arg       => undef, reader => 'file';
 
-has '_ipc'         => is => 'lazy', isa => IPCType,
-   builder         => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) },
-   handles         => [ qw( run_cmd ) ], init_arg => undef, reader => 'ipc';
+has '_ipc'        => is => 'lazy', isa => IPCType,
+   builder        => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) },
+   handles        => [ qw( run_cmd ) ], init_arg => undef, reader => 'ipc';
 
-has '_os'          => is => 'lazy', isa => HashRef, init_arg => undef,
-   reader          => 'os';
+has '_os'         => is => 'lazy', isa => HashRef, init_arg => undef,
+   reader         => 'os';
 
-has '_quiet_flag'  => is => 'rw',   isa => Bool,
-   default         => sub { $_[ 0 ]->quiet_flag },
-   init_arg        => 'quiet', lazy => TRUE, writer => '_set__quiet_flag';
+has '_quiet_flag' => is => 'rw',   isa => Bool,
+   default        => sub { $_[ 0 ]->quiet_flag },
+   init_arg       => 'quiet', lazy => TRUE, writer => '_set__quiet_flag';
 
-has '_run_method'  => is => 'lazy', isa => SimpleStr, init_arg => undef,
-   reader          => 'run_method';
+has '_run_method' => is => 'lazy', isa => SimpleStr, init_arg => undef,
+   reader         => 'run_method';
 
 # Construction
 around 'BUILDARGS' => sub {
@@ -291,7 +288,6 @@ sub loc {
    my $args = (is_hashref $car) ? { %{ $car } }
             : { params => (is_arrayref $car) ? $car : [ @args ] };
 
-   $args->{domain_names     } //= $self->l10n_domains;
    $args->{locale           } //= $self->locale;
    $args->{quote_bind_values} //= TRUE;
 
@@ -608,12 +604,6 @@ Defines these attributes;
 Overrides the default in the base class, setting it to
 C<Class::Usul::Config::Programs>
 
-=item C<l10n_domains>
-
-An array reference of L10N files to search when localizing text.
-Defaults to the constant C<DEFAULT_L10N_DOMAINS> and the attributes value
-C<< $self->config->name >>
-
 =item C<params>
 
 List of value that are passed to the method called by L</run>
@@ -745,7 +735,7 @@ be called via the L<run method|/run>
    $localized_text = $self->loc( $message, @options );
 
 Localizes the message. Calls L<Class::Usul::L10N/localize>. The
-domains to search are in the C<l10n_domains> attribute. Adds
+domains to search are in the C<l10n_domains> configuration attribute. Adds
 C<< $self->locale >> to the arguments passed to C<localize>
 
 =head2 output

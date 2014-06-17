@@ -19,9 +19,6 @@ use Try::Tiny;
 # Public attributes
 has 'debug'           => is => 'rw',   isa => Bool, default => FALSE;
 
-has 'domain_names'    => is => 'ro',   isa => ArrayRef[Str],
-   default            => sub { [ 'messages' ] };
-
 has 'l10n_attributes' => is => 'ro',   isa => HashRef, default => sub { {} };
 
 has 'localedir'       => is => 'ro',   isa => Path | Undef,
@@ -37,13 +34,17 @@ has 'tempdir'         => is => 'ro',   isa => Directory,
    coerce             => Directory->coercion, default => File::Spec->tmpdir;
 
 # Private attributes
+has '_domains'        => is => 'lazy', isa => ArrayRef[Str], builder => sub {
+   $_[ 0 ]->l10n_attributes->{domains} // [ 'messages' ] },
+   reader             => 'domains';
+
 has '_source_name'    => is => 'lazy', isa => SimpleStr, builder => sub {
-   $_[ 0 ]->l10n_attributes->{source_name} || 'po' },
-   init_arg           => undef, reader => 'source_name';
+   $_[ 0 ]->l10n_attributes->{source_name} // 'po' },
+   reader             => 'source_name';
 
 has '_use_country'    => is => 'lazy', isa => Bool, builder => sub {
-   $_[ 0 ]->l10n_attributes->{use_country} || FALSE },
-   init_arg           => undef, reader => 'use_country';
+   $_[ 0 ]->l10n_attributes->{use_country} // FALSE },
+   reader             => 'use_country';
 
 # Construction
 around 'BUILDARGS' => sub {
@@ -55,6 +56,10 @@ around 'BUILDARGS' => sub {
    merge_attributes $attr, $builder, {}, [ qw( debug log ) ];
    merge_attributes $attr, $config,  {},
       [ qw( l10n_attributes localedir tempdir ) ];
+
+   my $names = delete $attr->{domain_names}; # Deprecated
+
+   $attr->{l10n_attributes}->{domains} //= $names;
 
    return $attr;
 };
@@ -152,8 +157,8 @@ sub _gettext {
 
       my $locale = $args->{locale} or return;
       my $lang   = $self->_extract_lang_from( $locale );
-      my @names  = grep { defined and length }
-                       @{ $args->{domain_names} || $self->domain_names };
+      my $names  = $args->{domain_names} // $self->domains;
+      my @names  = grep { defined and length } @{ $names };
       my $key    = $lang.SEP.(join '+', @names );
 
       defined $cache->{ $key } and return $cache->{ $key };
@@ -194,7 +199,7 @@ Class::Usul::L10N - Localize text strings
       log          => Log::Handler->new, } );
 
    $local_text = $l10n->localize( 'message_to_localize', {
-      domain_names => [ 'message_file', 'another_message_file' ],
+      l10n_domains => [ 'message_file', 'another_message_file' ],
       locale       => 'de_DE',
       params       => { name => 'value', }, } );
 
@@ -217,21 +222,21 @@ Defines the following attributes;
 
 =over 3
 
-=item C<domain_names>
-
-Names of the mo/po files to search for
-
 =item C<l10n_attributes>
 
 Hash ref passed to the L<File::Gettext> constructor
 
 =over 3
 
-=item C<source_name>
+=item C<_domains>
+
+Names of the mo/po files to search for
+
+=item C<_source_name>
 
 Either C<po> for Portable Object (the default) or C<mo> for the Machine Object
 
-=item C<use_country>
+=item C<_use_country>
 
 See above
 

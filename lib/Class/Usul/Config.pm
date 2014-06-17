@@ -9,7 +9,7 @@ use Class::Usul::Functions qw( app_prefix class2appdir home2appldir
                                is_arrayref split_on__ split_on_dash
                                untaint_path );
 use Class::Usul::Types     qw( ArrayRef EncodingType HashRef NonEmptySimpleStr
-                               NonZeroPositiveInt PositiveInt );
+                               NonZeroPositiveInt PositiveInt Str );
 use Config;
 use English                qw( -no_match_vars );
 use File::Basename         qw( basename dirname );
@@ -82,11 +82,13 @@ has 'tempdir'   => is => 'lazy', isa => Directory,
 
 has 'vardir'    => is => 'lazy', isa => Path, coerce => Path->coercion;
 
-has 'l10n_attributes' => is => 'ro', isa => HashRef, default => sub { {} };
+has 'l10n_attributes' => is => 'lazy', isa => HashRef,
+   default            => sub { {
+      domains         => [ DEFAULT_L10N_DOMAIN, $_[ 0 ]->name ] } };
 
-has 'lock_attributes' => is => 'ro', isa => HashRef, default => sub { {} };
+has 'lock_attributes' => is => 'ro',   isa => HashRef, default => sub { {} };
 
-has 'log_attributes'  => is => 'ro', isa => HashRef, default => sub { {} };
+has 'log_attributes'  => is => 'ro',   isa => HashRef, default => sub { {} };
 
 # Construction
 around 'BUILDARGS' => sub {
@@ -364,7 +366,11 @@ Directory containing the config file. Required
 
 =item C<l10n_attributes>
 
-Hash ref of attributes used to construct a L<Class::Usul::L10N> object
+Hash ref of attributes used to construct a L<Class::Usul::L10N>
+object. By default contains one key, C<domains>, an array reference
+which defaults to the constant C<DEFAULT_L10N_DOMAIN> and the
+applications configuration name. The filename(s) used to translate
+messages into different languages
 
 =item C<locale>
 
