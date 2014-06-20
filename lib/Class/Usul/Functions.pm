@@ -19,7 +19,7 @@ use File::Basename             qw( basename dirname );
 use File::DataClass::Functions qw( supported_extensions );
 use File::DataClass::IO        qw( );
 use File::HomeDir              qw( );
-use File::Spec::Functions      qw( catdir catfile curdir tmpdir );
+use File::Spec::Functions      qw( catdir catfile curdir );
 use List::Util                 qw( first );
 use Module::Runtime            qw( is_module_name require_module );
 use Path::Class::Dir;
@@ -214,6 +214,13 @@ sub distname ($) {
    (my $y = $_[ 0 ] || q()) =~ s{ :: }{-}gmx; return $y;
 }
 
+#head2 downgrade
+#   $sv_pv = downgrade $sv_pvgv;
+#Horrendous Perl bug is promoting C<PV> and C<PVMG> type scalars to
+#C<PVGV>. Serializing these values with L<Storable> throws a can't
+#store SCALAR items error. This functions copies the string value of
+#the input scalar to the output scalar but resets the output scalar
+#type to C<PV>
 #sub downgrade (;$) {
 #   my $x = shift || q(); my ($y) = $x =~ m{ (.*) }msx; return $y;
 #}
@@ -313,7 +320,7 @@ sub find_apphome ($;$$) {
    # 6.    Pass the default in
    $path = assert_directory $default and return $path;
    # 7.    Default to /tmp
-   return  untaint_path( tmpdir );
+   return  untaint_path( DEFAULT_CONFHOME );
 }
 
 sub find_source ($) {
@@ -847,16 +854,6 @@ Uses L<Data::Printer> to dump C<$thing> in colour to I<stderr>
 
 Takes a class name and returns it with B<::> changed to
 B<->, e.g. C<App::Munchies> becomes C<App-Munchies>
-
-=head2 downgrade
-
-   $sv_pv = downgrade $sv_pvgv;
-
-Horrendous Perl bug is promoting C<PV> and C<PVMG> type scalars to
-C<PVGV>. Serializing these values with L<Storable> throws a can't
-store SCALAR items error. This functions copies the string value of
-the input scalar to the output scalar but resets the output scalar
-type to C<PV>
 
 =head2 elapsed
 

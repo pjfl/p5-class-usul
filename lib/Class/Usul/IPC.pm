@@ -7,9 +7,10 @@ use Moo;
 use Class::Null;
 use Class::Usul::Constants;
 use Class::Usul::File;
-use Class::Usul::Functions    qw( arg_list emit_to get_user io is_arrayref
-                                  is_coderef is_win32 loginid merge_attributes
-                                  strip_leader throw );
+use Class::Usul::Functions    qw( arg_list emit_to get_user io
+                                  is_arrayref is_coderef is_win32
+                                  loginid merge_attributes
+                                  strip_leader throw throw_on_error );
 use Class::Usul::Time         qw( time2str );
 use Class::Usul::Types        qw( BaseType Bool FileType LoadableClass );
 use English                   qw( -no_match_vars );
@@ -23,7 +24,7 @@ use POSIX                     qw( WIFEXITED WNOHANG );
 use Scalar::Util              qw( blessed );
 use Socket                    qw( AF_UNIX SOCK_STREAM PF_UNSPEC );
 use Try::Tiny;
-use Unexpected::Functions     qw( Unspecified );
+use Unexpected::Functions     qw( TimeOut Unspecified );
 
 our ($CHILD_ENUM, $CHILD_PID);
 
@@ -64,19 +65,17 @@ sub child_list {
       push @pids, $pid;
    }
 
-   return @pids;
+   return sort { $a <=> $b } @pids;
 }
 
-sub popen { # Robbed from IPC::Cmd
+sub popen { # Robbed in part from IPC::Cmd
    my ($self, $cmd, @opts) = @_;
-
-   $cmd or throw class => Unspecified, args => [ 'command' ];
-
-   is_arrayref $cmd and $cmd = join SPC, @{ $cmd };
 
    my $opts = $self->_default_run_options( @opts );
 
    $opts->{err} ||= NUL; $opts->{out} ||= NUL;
+   $cmd or throw class => Unspecified, args => [ 'command' ];
+   is_arrayref $cmd and $cmd = join SPC, @{ $cmd };
 
    my ($out, $stderr, $stdout) = (NUL, NUL, NUL);
 
@@ -119,32 +118,37 @@ sub popen { # Robbed from IPC::Cmd
 
    my ($err_h, %hands, $in_h, $out_h, $pid, @ready);
 
-   $opts->{debug} and $self->log->debug( "Running ${cmd}" );
+   $self->log->debug( "Running ${cmd}" );
 
    try {
-      local $SIG{PIPE} = \&__cleaner;
-
+      local $SIG{PIPE} = \&__pipe_handler;
+      $opts->{timeout} and local $SIG{ALRM} = sub {
+         throw class => TimeOut, args => [ $cmd, $opts->{timeout} ];
+      };
+      alarm $opts->{timeout} || 0;
       ($pid, $in_h, $out_h, $err_h) = $open3->( $cmd );
       $opts->{in} ne 'stdin' and emit_to( $in_h, $opts->{in} );
       close $in_h;
+
+      my $selector = IO::Select->new(); $selector->add( $err_h, $out_h );
+
+      $hands{ fileno $err_h } = $errhand; $hands{ fileno $out_h } = $outhand;
+
+      while (@ready = $selector->can_read) {
+         for my $fh (@ready) {
+            my $buf; my $bytes_read = sysread( $fh, $buf, 64 * 1024 );
+
+            if ($bytes_read) { $hands{ fileno $fh }->( "${buf}" ) }
+            else { $selector->remove( $fh ); close $fh }
+         }
+      }
+
+      $pid and waitpid $pid, 0;
+      alarm 0;
    }
    catch { throw $_ };
 
-   my $selector = IO::Select->new(); $selector->add( $err_h, $out_h );
-
-   $hands{ fileno $err_h } = $errhand; $hands{ fileno $out_h } = $outhand;
-
-   while (@ready = $selector->can_read) {
-      for my $fh (@ready) {
-         my $buf; my $bytes_read = sysread( $fh, $buf, 64 * 1024 );
-
-         if ($bytes_read) { $hands{ fileno $fh }->( "${buf}" ) }
-         else { $selector->remove( $fh ); close $fh }
-      }
-   }
-
-   waitpid $pid, 0; my $e_num = $CHILD_PID > 0 ? $CHILD_ENUM : $CHILD_ERROR;
-
+   my $e_num = $CHILD_PID > 0 ? $CHILD_ENUM : $CHILD_ERROR;
    my $codes = $self->_return_codes_or_throw( $cmd, $opts, $e_num, $stderr );
 
    return $self->response_class->new( core   => $codes->{core},
@@ -203,20 +207,22 @@ sub process_table {
 }
 
 sub run_cmd {
-   my ($self, $cmd, @opts) = @_;
+   my ($self, $cmd, @opts) = @_; my $opts = arg_list @opts;
 
    $cmd or throw class => Unspecified, args => [ 'command' ];
 
    if (is_arrayref $cmd) {
-      if (not is_win32 and can_load( modules => { 'IPC::Run' => '0.84' } )) {
-         return $self->_run_cmd_using_ipc_run( $cmd, @opts );
-      }
+      not is_win32 and not $opts->{use_system}
+         and can_load( modules => { 'IPC::Run' => '0.84' } )
+         and return $self->_run_cmd_using_ipc_run( $cmd, @opts );
 
       $cmd = join SPC, @{ $cmd };
    }
 
-   return is_win32 ? $self->popen( $cmd, @opts )
-                   : $self->_run_cmd_using_system( $cmd, @opts );
+   ($opts->{async} or $opts->{use_system} or not  __can_use_ipc_open3())
+      and return $self->_run_cmd_using_system( $cmd, @opts );
+
+   return $self->popen( $cmd, @opts );
 }
 
 sub signal_process {
@@ -273,10 +279,10 @@ sub _default_run_options {
 
    is_arrayref $opts->{in} and $opts->{in} = join $RS, @{ $opts->{in} };
 
-   $opts->{debug      } //= $self->debug;
    $opts->{expected_rv} //= 0;
    $opts->{in         } //= 'stdin';
    $opts->{tempdir    } //= $self->tempdir;
+   $opts->{timeout    } //= 0;
    $opts->{pid_ref    } //= $self->tempfile( $opts->{tempdir} );
    return $opts;
 }
@@ -332,7 +338,7 @@ sub _return_codes_or_throw {
    my $rv = $e_num >> 8; my $core = $e_num & 128; my $sig = $e_num & 127;
 
    if ($rv > $opts->{expected_rv}) {
-      $opts->{debug} and $self->log->debug( "RV ${rv}: ${e_str}" );
+      $self->log->debug( "RV ${rv}: ${e_str}" );
       throw error => $e_str, level => 3, rv => $rv;
    }
 
@@ -393,12 +399,19 @@ sub _run_cmd_using_ipc_run {
    elsif (blessed $err)     { push @cmd_args, "2>${err}"      }
    elsif ($err ne 'stderr') { push @cmd_args, '2>', \$buf_err }
 
-   $opts->{debug} and $self->log->debug( "Running ${cmd_str}" );
+   $self->log->debug( "Running ${cmd_str}" );
 
-   try   { ($rv, $h) = __ipc_run_harness( $opts, $cmd_ref, @cmd_args ) }
+   try {
+      $opts->{timeout} and local $SIG{ALRM} = sub {
+         throw class => TimeOut, args => [ $cmd_str, $opts->{timeout} ];
+      };
+      alarm $opts->{timeout} || 0;
+      ($rv, $h) = __ipc_run_harness( $opts, $cmd_ref, @cmd_args );
+      alarm 0;
+   }
    catch { throw $_ };
 
-   $opts->{debug} and $self->log->debug( "Run harness returned ${rv}" );
+   $self->log->debug( "Run harness returned ${rv}" );
 
    my $sig = $rv & 127; my $core = $rv & 128; $rv = $rv >> 8;
 
@@ -428,7 +441,7 @@ sub _run_cmd_using_ipc_run {
 
    if ($rv > $opts->{expected_rv}) {
       $error ||= "Unknown error rv ${rv}";
-      $opts->{debug} and $self->log->debug( "RV ${rv}: ${error}" );
+      $self->log->debug( "RV ${rv}: ${error}" );
       throw error => $error, out => $out, rv => $rv;
    }
 
@@ -452,20 +465,26 @@ sub _run_cmd_using_system {
    $cmd .= $err eq 'stderr' ? NUL : $err eq 'null' ? " 2>${null}"
                                   : $err ne 'out'  ? " 2>${err}"  : ' 2>&1';
 
-   $cmd .= ' & echo $! 1>'.$opts->{pid_ref}->pathname if ($opts->{async});
+   $opts->{async} and $cmd .= ' & echo $! 1>'.$opts->{pid_ref}->pathname;
+   $self->log->debug( "Running ${cmd}" );
 
-   $opts->{debug} and $self->log->debug( "Running ${cmd}" );
+   {  local ($CHILD_ENUM, $CHILD_PID) = (0, 0);
 
-   {  local ($CHILD_ERROR, $EVAL_ERROR, $OS_ERROR);
-      local ($CHILD_ENUM, $CHILD_PID) = ( 0, 0 );
+      try {
+         local $SIG{CHLD} = \&__child_handler;
+         $opts->{timeout} and local $SIG{ALRM} = sub {
+            throw class => TimeOut, args => [ $cmd, $opts->{timeout} ];
+         };
+         alarm $opts->{timeout} || 0;
+         $rv = system $cmd;
+         alarm 0;
+      }
+      catch { throw $_ };
 
-      eval { local $SIG{CHLD} = \&__handler; $rv = system $cmd };
-
-      $EVAL_ERROR and throw $EVAL_ERROR; my $os_error = $OS_ERROR;
+      my $os_error = $OS_ERROR;
 
       $msg = "System rv ${rv} child pid ${CHILD_PID} error ${CHILD_ENUM}";
-
-      $opts->{debug} and $self->log->debug( $msg );
+      $self->log->debug( $msg );
       # On some systems the child handler reaps the child process so the system
       # call returns -1 and sets $OS_ERROR to 'No child processes'. This line
       # and the child handler code fix the problem
@@ -509,7 +528,7 @@ sub _run_cmd_using_system {
 
    if ($rv > $opts->{expected_rv}) {
       $error ||= "Unknown error rv ${rv}";
-      $opts->{debug} and $self->log->debug( "RV ${rv}: ${error}" );
+      $self->log->debug( "RV ${rv}: ${error}" );
       throw error => $error, out => $out, rv => $rv;
    }
 
@@ -561,12 +580,14 @@ sub _set_fields {
 }
 
 # Private functions
-sub __cleaner {
-   local $OS_ERROR; # So that wait does not step on existing value
+sub __can_use_ipc_open3 {
+   lc $OSNAME eq 'vms' and return FALSE;
 
-   $CHILD_PID = wait; $CHILD_ENUM = (255 << 8) + 13; $SIG{PIPE} = \&__cleaner;
+   can_load( modules => {
+      map { $_ => '0.0' } qw( IPC::Open3 IO::Select Symbol ) } )
+      and return TRUE;
 
-   return;
+   return FALSE;
 }
 
 sub __cmd_matches_pattern {
@@ -575,7 +596,7 @@ sub __cmd_matches_pattern {
    return !$pattern || $cmd =~ m{ $pattern }msx ? TRUE : FALSE;
 }
 
-sub __handler {
+sub __child_handler {
    local $OS_ERROR; # So that waitpid does not step on existing value
 
    while ((my $child_pid = waitpid -1, WNOHANG) > 0) {
@@ -584,7 +605,7 @@ sub __handler {
       }
    }
 
-   $SIG{CHLD} = \&__handler; # In case of unreliable signals
+   $SIG{CHLD} = \&__child_handler; # In case of unreliable signals
    return;
 }
 
@@ -620,6 +641,14 @@ sub __partition_command {
    }
 
    return \@command;
+}
+
+sub __pipe_handler {
+   local $OS_ERROR; # So that wait does not step on existing value
+
+   $CHILD_PID = wait; $CHILD_ENUM = (255 << 8) + 13;
+   $SIG{PIPE} = \&__pipe_handler;
+   return;
 }
 
 sub __proc_belongs_to_user {
@@ -812,13 +841,13 @@ all of it's children will be sent the signal. If the C<force>
 parameter is set to true the after a grace period each process and
 it's children are sent signal C<KILL>
 
-=head2 __cleaner
-
-This interrupt handler traps the pipe signal
-
-=head2 __handler
+=head2 __child_handler
 
 This interrupt handler traps the child signal
+
+=head2 __pipe_handler
+
+This interrupt handler traps the pipe signal
 
 =head1 Diagnostics
 

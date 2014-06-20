@@ -24,7 +24,7 @@ use File::Basename;
 
    sub new   { return bless {}, __PACKAGE__ }
    sub alert { warn '[ALERT] '.$_[ 1 ]."\n" }
-   sub debug { warn '[DEBUG] '.$_[ 1 ]."\n" }
+   sub debug { }
    sub error { warn '[ERROR] '.$_[ 1 ]."\n" }
    sub fatal { warn '[ALERT] '.$_[ 1 ]."\n" }
    sub info  { warn '[ALERT] '.$_[ 1 ]."\n" }
@@ -80,6 +80,10 @@ SKIP: {
       'popen captures stdin and stdout';
 }
 
+$cmd = "${perl} -e\"sleep 5\"";
+
+is popen_test( q(), $cmd, { timeout => 1 } )->class, 'TimeOut', 'popen timeout';
+
 SKIP: {
    $ENV{AUTHOR_TESTING} or skip 'Proc::ProcessTable to flakey to test', 1;
    eval { require Proc::ProcessTable };
@@ -89,7 +93,8 @@ SKIP: {
 
    my @pids = $prog->ipc->child_list( $PID );
 
-   is $pids[ 0 ], $PID, 'child list';
+   is $pids[ 0 ], $PID, 'child list - first pid';
+   is scalar @pids, 3, 'child list - proc count';
 
    my $table = $prog->ipc->process_table;
 
@@ -108,21 +113,27 @@ sub run_cmd_test {
 SKIP: {
    $osname eq q(mswin32) and skip 'run_cmd system test - not on MSWin32', 5;
 
-   $cmd = "${perl} -v"; $r = run_cmd_test( q(out), $cmd );
+   $cmd = "${perl} -v"; $r = run_cmd_test( q(out), $cmd, { use_system => 1 } );
 
    like $r, qr{ larry \s+ wall }imsx, 'run_cmd system';
 
-   $cmd = "${perl} -e \"exit 2\""; $r = run_cmd_test( q(), $cmd );
+   $cmd = "${perl} -e \"exit 2\"";
+   $r   = run_cmd_test( q(), $cmd, { use_system => 1 } );
 
    is ref $r, EXCEPTION_CLASS, 'run_cmd system exception is right class';
 
    like $r, qr{ Unknown \s+ error }msx, 'run_cmd system default error string';
 
-   is run_cmd_test( q(rv), $cmd, { expected_rv => 2 } ), 2,
+   is run_cmd_test( q(rv), $cmd, { expected_rv => 2, use_system => 1 } ), 2,
       'run_cmd system expected rv';
 
    like run_cmd_test( q(out), $cmd, { async => 1 } ), qr{ background }msx,
       'run_cmd system async';
+
+   $cmd = "${perl} -e \"sleep 5\"";
+
+   is run_cmd_test( q(), $cmd, { timeout => 1, use_system => 1 } )->class,
+      'TimeOut', 'run_cmd system timeout';
 }
 
 SKIP: {
@@ -156,6 +167,11 @@ SKIP: {
 
    unlike run_cmd_test( q(rv), $cmd, { async => 1 } ), qr{ \(-1\) }msx,
       'run_cmd IPC::Run async coderef captures pid';
+
+   $cmd = [ $perl, '-e', 'sleep 5' ];
+
+   is run_cmd_test( q(), $cmd, { timeout => 1 } )->class, 'TimeOut',
+      'run_cmd IPC::Run timeout';
 }
 
 # This fails on some platforms. The stderr is not redirected as expected

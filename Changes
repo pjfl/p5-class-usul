@@ -1,5 +1,10 @@
 Revision history for Class::Usul
 
+0.44.1    2014-06-20 14:38:41
+          - Implemented timeouts in ::IPC::run_cmd
+          - ::IPC::run_cmd improved method selection
+          - Removed debug attr from ::IPC::run_cmd
+
 0.43.1    2014-06-17 10:20:46
           - Updated prereqs
           - Deprecated ::L10N::domain_names in favour of

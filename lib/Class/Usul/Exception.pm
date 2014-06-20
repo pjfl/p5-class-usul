@@ -19,6 +19,9 @@ has_exception $class;
 has_exception 'Tainted' => parents => [ $class ],
    error   => 'String [_1] contains possible taint';
 
+has_exception 'TimeOut' => parents => [ $class ],
+   error   => 'Command [_1] aborted by alarm after [_2] seconds';
+
 has '+class' => default => $class;
 
 has 'out'    => is => 'ro', isa => Str, default => q();
