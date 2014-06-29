@@ -34,7 +34,7 @@ our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
                        assert_directory base64_decode_ns
                        base64_encode_ns bsonid bsonid_time bson64id
                        bson64id_time build class2appdir classdir
-                       classfile create_token data_dumper distname
+                       classfile create_token curry data_dumper distname
                        elapsed emit emit_err emit_to
                        ensure_class_loaded env_prefix escape_TT
                        exception find_apphome find_source first_char fold fqdn
@@ -204,6 +204,10 @@ sub create_token (;$) {
    $digest->add( $seed || join q(), time, rand 10_000, $PID, {} );
 
    return $digest->hexdigest;
+}
+
+sub curry (&$;@) {
+   my ($code, @args) = @_; return sub { return $code->( @args, @_ ) };
 }
 
 sub data_dumper (;@) {
@@ -841,6 +845,16 @@ C<App/Munchies.pm>
 Create a random string token using the first available L<Digest>
 algorithm. If C<$seed> is defined then add that to the digest,
 otherwise add some random data. Returns a hexadecimal string
+
+=head2 curry
+
+   $curried_code_ref = curry $code_ref, @args;
+   $result = $curried_code_ref->( @more_args );
+
+Returns a subroutine reference which when called, calls and returns the
+initial code reference passing in the original argument list and the
+arguments from the curried call. Must be called with a code reference and
+at least one argument
 
 =head2 data_dumper
 

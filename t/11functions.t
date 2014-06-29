@@ -76,6 +76,8 @@ ok $token eq q(ee26b0dd4af7e749aa1a8ee3c10ae9923f618980772e473f8819a5d4940e0db27
    || $token eq q(a94a8fe5ccb19ba61c4c0873d391e987982fbbd3)
    || $token eq q(098f6bcd4621d373cade4e832627b4f6), 'create_token';
 
+is curry( sub { $_[ 0 ].$_[ 1 ] }, 'a' )->( 'b' ), 'ab', 'curry';
+
 is distname( 'Test::Application' ), 'Test-Application', 'distname';
 
 ok defined elapsed, 'elapsed';
