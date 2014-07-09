@@ -67,6 +67,15 @@ my $header = $l10n->get_po_header( $args );
 ok $header->{project_id_version} eq q(libintl-perl-text 1.12),
    'get_po_header';
 
+$text = $l10n->localizer( 'de_DE', 'December [_1]', '1st' );
+ok $text eq 'Dezember 1st', 'localizer';
+
+$text = $l10n->localizer( 'de_DE', 'December [_1]', [ '1st' ] );
+ok $text eq 'Dezember 1st', 'localizer - arrayref';
+
+$text = $l10n->localizer( 'de_DE', 'December [_1]', { params => [ '1st' ] } );
+ok $text eq 'Dezember 1st', 'localizer - hashref';
+
 unlink catfile( qw( t file-dataclass-schema.dat ) );
 
 done_testing;

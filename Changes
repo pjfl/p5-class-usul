@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+0.45.1    2014-07-09 20:39:04
+          - Added localizer to L10N
           - Added curry function
 
 0.44.1    2014-06-20 14:38:41

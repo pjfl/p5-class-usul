@@ -7,7 +7,7 @@ use namespace::sweep;
 use Moo;
 use Class::Null;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw( assert is_arrayref merge_attributes );
+use Class::Usul::Functions qw( assert is_arrayref is_hashref merge_attributes );
 use Class::Usul::Types     qw( ArrayRef Bool HashRef LogType
                                SimpleStr Str Undef );
 use File::DataClass::Types qw( Directory Lock Path );
@@ -105,6 +105,17 @@ sub localize {
 
    $text =~ s{ \{($re)\} }{ defined $args{ $1 } ? $args{ $1 } : "{$1}" }egmx;
    return $text;
+}
+
+sub localizer {
+   my ($self, $locale, $key, @args) = @_; my $car = $args[ 0 ];
+
+   my $args = (is_hashref $car) ? { %{ $car } }
+            : { params => (is_arrayref $car) ? $car : [ @args ] };
+
+   $args->{locale} //= $locale;
+
+   return $self->localize( $key, $args );
 }
 
 # Private methods
@@ -286,20 +297,29 @@ Causes a reload of the domain files the next time a message is localized
 
    $local_text = $l10n->localize( $key, $args );
 
-Localizes the message. The message catalog is loaded from a GNU
-Gettext portable object file. Returns the C<$key> if the message is
-not in the catalog (and C<< $args->{no_default} >> is not
-true). Language is selected by the C<< $args->{locale} >>
+Localizes the message indexed by C<$key>. The message catalog is
+loaded from a GNU Gettext portable object file. Returns the C<$key> if
+the message is not in the catalog (and C<< $args->{no_default} >> is
+not true). Language is selected by the C<< $args->{locale} >>
 attribute. Expands positional parameters of the form C<< [_<n>] >> if
-C<< $args->{params} >> is an array ref of values to
-substitute. Otherwise expands named attributes of the form C<<
-{attr_name} >> using the C<$args> hash for substitution values. If C<<
-$args->{quote_bind_values} >> is true the placeholder values are
-displayed wrapped in quotes, The attribute C<< $args->{count} >> is
+C<< $args->{params} >> is an array reference of values to
+substitute. Otherwise expands named attributes of the form
+C<< {attr_name} >> using the C<$args> hash for substitution values. If
+C<< $args->{quote_bind_values} >> is true the placeholder values are
+displayed wrapped in quotes. The attribute C<< $args->{count} >> is
 passed to the portable object files plural function which is used to
-select either the singular or plural form of the translation. If C<<
-$args->{context} >> is supplied it is prepended to the C<$key> before
+select either the singular or plural form of the translation. If
+C<< $args->{context} >> is supplied it is prepended to the C<$key> before
 the lookup in the catalog takes place
+
+=head2 localizer
+
+   $local_text = $l10n->localizer( $locale, $key, @args );
+
+Curries the call to L<localize>. It constructs the C<$args> parameter in the
+call to L<localize> from the C<@args> parameter, defaulting the C<locale>
+attribute to C<$locale>. The C<@args> parameter can be a hash reference,
+an array reference or a list of values
 
 =head1 Diagnostics
 

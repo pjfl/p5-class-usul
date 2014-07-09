@@ -51,6 +51,9 @@ msgstr "November"
 msgid "December"
 msgstr "Dezember"
 
+msgid "December [_1]"
+msgstr "Dezember [_1]"
+
 msgid "View"
 msgstr "Anzeigen"
 
