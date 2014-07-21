@@ -182,7 +182,7 @@ sub class2appdir ($) {
 }
 
 sub classdir ($) {
-   return catdir( split m{ :: }mx, $_[ 0 ] );
+   return catdir( split m{ :: }mx, $_[ 0 ] || q() );
 }
 
 sub classfile ($) {
@@ -368,7 +368,8 @@ sub fullname () {
 sub get_cfgfiles ($;$$) {
    my ($appclass, $dirs, $extns) = @_;
 
-   $appclass // throw( class => Unspecified, args => [ 'application class' ] );
+   $appclass // throw( class => Unspecified, args => [ 'application class' ],
+                       level => 2 );
    is_arrayref( $dirs ) or $dirs = [ $dirs // curdir ];
 
    my $app_pref = app_prefix   $appclass;
