@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - Removed dependency on Path::Class
+          - The find_apphome function will search XDG_DATA_HOME
           - Set exception level to 2 in get_cfgfiles
 
 0.45.1    2014-07-09 20:39:04

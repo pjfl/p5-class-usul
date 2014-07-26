@@ -22,7 +22,6 @@ use File::HomeDir              qw( );
 use File::Spec::Functions      qw( catdir catfile curdir );
 use List::Util                 qw( first );
 use Module::Runtime            qw( is_module_name require_module );
-use Path::Class::Dir;
 use Scalar::Util               qw( blessed openhandle );
 use Sys::Hostname;
 use Unexpected::Functions      qw( is_class_loaded PathAlreadyExists
@@ -294,7 +293,7 @@ sub exception (;@) {
 sub find_apphome ($;$$) {
    my ($appclass, $default, $extns) = @_; my $path;
 
-   # 0. Undef appclass and pass the directory in (short circuit the search)
+   # 0. Appclass false and pass the directory in (short circuit the search)
    not $appclass and $path = assert_directory $default and return $path;
 
    my $app_pref = app_prefix   $appclass;
@@ -306,10 +305,13 @@ sub find_apphome ($;$$) {
    # 1a.   Environment variable - for application directory
    $path = assert_directory $ENV{ "${env_pref}_HOME" } and return $path;
    # 1b.   Environment variable - for config file
-   $path = _get_env_var_for_conf( $env_pref ) and return $path;
-   # 2a.   Users home directory - dot file containing shell env variable
+   $path = _get_env_var_for_conf( "${env_pref}_CONFIG" ) and return $path;
+   # 2a.   Users XDG_DATA_HOME env variable or XDG default share directory
+   $path = $ENV{ 'XDG_DATA_HOME' } || catdir( $my_home, '.local', 'share' );
+   $path = assert_directory catdir( $path, $appdir ) and return $path;
+   # 2b.   Users home directory - dot file containing shell env variable
    $path = _get_dot_file_var( $my_home, $app_pref, $classdir ) and return $path;
-   # 2b.   Users home directory - dot directory is apphome
+   # 2c.   Users home directory - dot directory is apphome
    $path = catdir( $my_home, ".${app_pref}" );
    $path = assert_directory $path and return $path;
    # 3.    Well known path containing shell env file
@@ -404,7 +406,7 @@ sub hex2str (;$) {
 }
 
 sub home2appldir ($) {
-   $_[ 0 ] or return; my $dir = Path::Class::Dir->new( $_[ 0 ] );
+   $_[ 0 ] or return; my $dir = io( $_[ 0 ] );
 
    $dir = $dir->parent while ($dir ne $dir->parent and $dir !~ m{ lib \z }mx);
 
@@ -660,7 +662,7 @@ sub _get_dot_file_var {
 }
 
 sub _get_env_var_for_conf {
-   my $file = $ENV{ ($_[ 0 ] || return).'_CONFIG' };
+   my $file = $ENV{ ($_[ 0 ] || return) };
    my $path = $file ? dirname( $file ) : NUL;
 
    return $path = assert_directory $path ? $path : undef;
@@ -933,8 +935,9 @@ Returns the path to the applications home directory. Searches the following:
    # 0.  Undef appclass and pass the directory in (short circuit the search)
    # 1a. Environment variable - for application directory
    # 1b. Environment variable - for config file
-   # 2a. Users home directory - dot file containing shell env variable
-   # 2b. Users home directory - dot directory is apphome
+   # 2a. Users XDG_DATA_HOME env variable or XDG default share directory
+   # 2b. Users home directory - dot file containing shell env variable
+   # 2c. Users home directory - dot directory is apphome
    # 3.  Well known path containing shell env file
    # 4.  Default install prefix
    # 5a. Config file found in @INC - underscore as separator
@@ -1232,8 +1235,6 @@ None
 =item L<File::HomeDir>
 
 =item L<List::Util>
-
-=item L<Path::Class::Dir>
 
 =back
 
