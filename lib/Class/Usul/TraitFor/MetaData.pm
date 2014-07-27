@@ -2,11 +2,8 @@ package # Hide from indexer
    Class::Usul::Response::Meta;
 
 use Moo;
-use Class::Usul::Constants; # Need EXCEPTION_CLASS for PathNotFound import
 use Class::Usul::File;
-use Class::Usul::Functions qw( io throw );
-use Class::Usul::Types     qw( ArrayRef HashRef Maybe Str );
-use Unexpected::Functions  qw( PathNotFound );
+use Class::Usul::Types qw( ArrayRef HashRef Maybe Str );
 
 use namespace::clean -except => 'meta';
 
@@ -18,25 +15,18 @@ has 'provides' => is => 'ro', isa => Maybe[HashRef];
 has 'version'  => is => 'ro', isa => Maybe[Str];
 
 around 'BUILDARGS' => sub {
-   my ($orig, $self, @args) = @_; my $attr = $orig->( $self, @args );
+   my ($orig, $self, @args) = @_;
 
-   my $file_class = 'Class::Usul::File'; my $file_name = 'META.json';
-
-   for my $dir (@{ $attr->{directories} || [] }, io()->cwd) {
-      my $file = $dir->catfile( $file_name );
-
-      $file->exists and return $file_class->data_load( paths => [ $file ] );
-   }
-
-   throw class => PathNotFound, args => [ $file_name ], level => 3;
-   return;
+   return Class::Usul::File->data_load( paths => [ $args[ 0 ] ] );
 };
 
 package Class::Usul::TraitFor::MetaData;
 
 use namespace::sweep;
 
-use Class::Usul::Functions qw( io );
+use Class::Usul::Constants qw( EXCEPTION_CLASS );
+use Class::Usul::Functions qw( io throw );
+use Unexpected::Functions  qw( PathNotFound );
 use Moo::Role;
 
 requires qw( config );
@@ -44,12 +34,19 @@ requires qw( config );
 sub get_package_meta {
    my ($self, $dir) = @_; my $conf = $self->config;
 
-   my @dirs = $dir ? (io( $dir )) : ();
+   my @dirs = $dir ? (io( $dir )) : (); my $file = 'META.json';
 
    $conf->can( 'ctrldir' ) and push @dirs, $conf->ctrldir;
    $conf->can( 'appldir' ) and push @dirs, $conf->appldir;
 
-   return Class::Usul::Response::Meta->new( directories => \@dirs );
+   for my $dir (@dirs, io()->cwd) {
+      my $path = $dir->catfile( $file );
+
+      $path->exists and return Class::Usul::Response::Meta->new( $path );
+   }
+
+   throw class => PathNotFound, args => [ $file ], level => 3;
+   return; # Not reached
 }
 
 1;
