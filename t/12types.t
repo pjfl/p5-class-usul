@@ -18,6 +18,8 @@ BEGIN {
 
 use Test::Requires "${perl_ver}";
 use English qw( -no_match_vars );
+use Try::Tiny;
+use Unexpected::Functions qw( catch_class );
 
 {  package MyNLC;
 
@@ -57,6 +59,13 @@ is $obj->dt1, '2001-09-11T12:00:00', 'DateTimeType - coerces from string';
 eval { $obj->dt2 }; my $e = $EVAL_ERROR;
 
 is $e->class, 'DateTimeCoercion', 'DateTimeType - throw expected class';
+
+my $ret = '';
+
+try         { $obj->dt2 }
+catch_class [ 'DateTimeCoercion' => sub { $ret = 'handled' } ];
+
+is $ret, 'handled', 'DateTimeType - can catch_class';
 
 done_testing;
 
