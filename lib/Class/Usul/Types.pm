@@ -8,7 +8,7 @@ use Class::Usul::Functions qw( ensure_class_loaded exception );
 use Encode                 qw( find_encoding );
 use Scalar::Util           qw( blessed );
 use Type::Library             -base, -declare =>
-                           qw( BaseType ConfigType EncodingType
+                           qw( BaseType ConfigType DateTimeType EncodingType
                                FileType IPCType L10NType LockType
                                LogType NullLoadingClass PromptType
                                RequestType );
@@ -28,6 +28,12 @@ class_type PromptType, { class => 'Class::Usul::Prompt' };
 subtype ConfigType, as Object,
    where   { __has_min_config_attributes( $_ ) },
    message { __exception_message_for_configtype( $_ ) };
+
+subtype DateTimeType, as Object,
+   where   { blessed $_ && $_->isa( 'DateTime' ) },
+   message { __exception_message_for_datetime( $_ ) };
+
+coerce DateTimeType, from Str, via {  __str2date_time( $_ ) };
 
 subtype EncodingType, as Str,
    where   { find_encoding( $_ ) },
@@ -62,6 +68,13 @@ subtype RequestType, as Object,
 sub __exception_message_for_configtype {
    $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
       ( 'Object [_1] is missing some config attributes', blessed $_[ 0 ] );
+
+   return __exception_message_for_object_reference( $_[ 0 ] );
+}
+
+sub __exception_message_for_datetime {
+   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
+      ( 'Object [_1] is not of class DateTime', blessed $_[ 0 ] );
 
    return __exception_message_for_object_reference( $_[ 0 ] );
 }
@@ -120,7 +133,13 @@ sub __load_if_exists {
    }
 
    ensure_class_loaded( 'Class::Null' ); return 'Class::Null';
-};
+}
+
+sub __str2date_time {
+   my $str = shift; ensure_class_loaded 'Class::Usul::Time';
+
+   return Class::Usul::Time::str2date_time( $str );
+}
 
 1;
 

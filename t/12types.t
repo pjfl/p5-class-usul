@@ -17,6 +17,7 @@ BEGIN {
 }
 
 use Test::Requires "${perl_ver}";
+use English qw( -no_match_vars );
 
 {  package MyNLC;
 
@@ -35,6 +36,27 @@ my $obj = MyNLC->new;
 
 is $obj->test1, 'Class::Usul', 'NullLoadingClass - loads if exists';
 is $obj->test2, 'Class::Null', 'NullLoadingClass - loads Class::Null if not';
+
+{  package MyDT;
+
+   use Moo;
+   use Class::Usul::Types qw( DateTimeType );
+
+   has 'dt1' => is => 'ro',   isa => DateTimeType,
+      default => '11/9/2001 12:00 UTC', coerce => DateTimeType->coercion;
+   has 'dt2' => is => 'lazy', isa => DateTimeType,
+      default => 'today at noon', coerce => DateTimeType->coercion;
+
+   $INC{ 'MyDT.pm' } = __FILE__;
+}
+
+$obj = MyDT->new;
+
+is $obj->dt1, '2001-09-11T12:00:00', 'DateTimeType - coerces from string';
+
+eval { $obj->dt2 }; my $e = $EVAL_ERROR;
+
+is $e->class, 'DateTimeCoercion', 'DateTimeType - throw expected class';
 
 done_testing;
 

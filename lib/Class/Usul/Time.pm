@@ -3,11 +3,14 @@ package Class::Usul::Time;
 use strict;
 use warnings;
 
-use Date::Format    ( );
-use Exporter 5.57 qw( import );
-use Time::HiRes   qw( usleep );
+use Class::Usul::Constants qw( EXCEPTION_CLASS );
+use Class::Usul::Functions qw( throw );
+use Date::Format             ( );
+use Exporter 5.57          qw( import );
+use Time::HiRes            qw( usleep );
 use Time::Local;
 use Time::Zone;
+use Unexpected::Functions  qw( DateTimeCoercion );
 
 our @EXPORT     = qw( str2time time2str );
 our @EXPORT_OK  = qw( nap str2date_time str2time time2str );
@@ -26,16 +29,19 @@ sub str2date_time ($;$) {
 
    require DateTime::Format::Epoch;
 
-   my $dt            = DateTime->new( year => 1970, month => 1, day => 1, );
-   my $formatter     = DateTime::Format::Epoch->new
+   my $dt        = DateTime->new( year => 1970, month => 1, day => 1, );
+   my $formatter = DateTime::Format::Epoch->new
       ( epoch             => $dt,
         unit              => 'seconds',
         type              => 'int',
         skip_leap_seconds => 1,
         start_at          => 0,
         local_epoch       => undef, );
+   my $time      = str2time( $dstr, $zone );
 
-   return $formatter->parse_datetime( str2time( $dstr, $zone ) );
+   defined $time or throw class => DateTimeCoercion, args => [ $dstr ];
+
+   return $formatter->parse_datetime( $time );
 }
 
 sub str2time ($;$) {

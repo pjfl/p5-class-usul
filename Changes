@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Added DateTime type, coercion, and exception
           - Added test for metadata role
           - Removed dependency on Path::Class
           - The find_apphome function will search XDG_DATA_HOME

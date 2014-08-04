@@ -16,6 +16,9 @@ $class->ignore_class( 'Class::Usul::IPC', 'Sub::Quote' );
 
 has_exception $class;
 
+has_exception 'DateTimeCoercion' => parents => [ $class ],
+   error   => 'String [_1] will not coerce to a DateTime object';
+
 has_exception 'Tainted' => parents => [ $class ],
    error   => 'String [_1] contains possible taint';
 
