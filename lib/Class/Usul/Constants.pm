@@ -14,6 +14,8 @@ my $Config_Extn     = '.json';
 my $Config_Key      = 'Plugin::Usul';
 my $Exception_Class = 'Class::Usul::Exception';
 
+File::DataClass::Constants->Exception_Class( __PACKAGE__->Exception_Class );
+
 our @EXPORT = qw( ARRAY ASSERT BRK CODE COMMA CONFIG_EXTN DEFAULT_CONFHOME
                   DEFAULT_ENVDIR DEFAULT_ENCODING DEFAULT_L10N_DOMAIN
                   DIGEST_ALGORITHMS ENCODINGS EVIL EXCEPTION_CLASS
@@ -22,8 +24,6 @@ our @EXPORT = qw( ARRAY ASSERT BRK CODE COMMA CONFIG_EXTN DEFAULT_CONFHOME
                   SPC TRUE UNDEFINED_RV UNTAINT_CMDLINE
                   UNTAINT_IDENTIFIER UNTAINT_PATH USUL_CONFIG_KEY
                   UUID_PATH WIDTH YES );
-
-File::DataClass::Constants->Exception_Class( __PACKAGE__->Exception_Class );
 
 sub ARRAY    () { q(ARRAY)   }
 sub BRK      () { q(: )      }
@@ -99,6 +99,8 @@ sub Exception_Class {
 
    $class->can( 'throw' ) or $Exception_Class->throw
       ( "Exception class ${class} is not loaded or has no throw method" );
+
+   File::DataClass::Constants->Exception_Class( $class );
 
    return $Exception_Class = $class;
 }

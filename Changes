@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Propagte changes in Exception Class to File::DataClass
           - Added DateTime type, coercion, and exception
           - Added test for metadata role
           - Removed dependency on Path::Class
