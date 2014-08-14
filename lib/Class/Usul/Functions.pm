@@ -258,16 +258,19 @@ sub emit_to ($;@) {
 sub ensure_class_loaded ($;$) {
    my ($class, $opts) = @_; $opts //= {};
 
-   $class or throw( class => Unspecified, args => [ 'class name' ] );
-   is_module_name( $class )
-      or throw( error => 'String [_1] invalid classname', args => [ $class ] );
+   $class or throw( class => Unspecified,
+                     args => [ 'class name' ], level => 2 );
+
+   is_module_name( $class ) or throw( error => 'String [_1] invalid classname',
+                                      args => [ $class ], level => 2 );
+
    not $opts->{ignore_loaded} and is_class_loaded( $class ) and return 1;
 
-   eval { require_module( $class ) }; throw_on_error();
+   eval { require_module( $class ) }; throw_on_error( { level => 3 } );
 
    is_class_loaded( $class )
       or throw( error => 'Class [_1] loaded but package undefined',
-                args  => [ $class ] );
+                args  => [ $class ], level => 2 );
 
    return 1;
 }

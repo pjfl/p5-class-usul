@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Added level > 1 to Functions::ensure_class_loaded
           - Propagte changes in Exception Class to File::DataClass
           - Added DateTime type, coercion, and exception
           - Added test for metadata role
