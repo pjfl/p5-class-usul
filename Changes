@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Conditionally load Proc::ProcessTable if available
           - Added level > 1 to Functions::ensure_class_loaded
           - Propagte changes in Exception Class to File::DataClass
           - Added DateTime type, coercion, and exception

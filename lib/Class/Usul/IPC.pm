@@ -300,9 +300,12 @@ sub _list_pids_by_file_system {
 }
 
 sub _new_proc_process_table {
-   my $self = shift; require Proc::ProcessTable;
+   my $self = shift;
 
-   return Proc::ProcessTable->new( cache_ttys => $self->cache_ttys );
+   can_load( modules => { 'Proc::ProcessTable' => '0' } )
+      and return Proc::ProcessTable->new( cache_ttys => $self->cache_ttys );
+
+   return Class::Null->new;
 }
 
 sub _new_process_table {
