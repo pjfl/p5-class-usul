@@ -31,8 +31,6 @@ has 'ctlfile'   => is => 'lazy', isa => Path, coerce => Path->coercion;
 
 has 'ctrldir'   => is => 'lazy', isa => Path, coerce => Path->coercion;
 
-has 'dbasedir'  => is => 'lazy', isa => Path, coerce => Path->coercion;
-
 has 'encoding'  => is => 'ro',   isa => EncodingType,
    coerce       => EncodingType->coercion, default => DEFAULT_ENCODING;
 
@@ -72,6 +70,8 @@ has 'salt'      => is => 'lazy', isa => NonEmptySimpleStr,
    builder      => sub { $_[ 0 ]->_inflate_symbol( $_[ 1 ], 'prefix' ) };
 
 has 'sessdir'   => is => 'lazy', isa => Path, coerce => Path->coercion;
+
+has 'sharedir'  => is => 'lazy', isa => Path, coerce => Path->coercion;
 
 has 'shell'     => is => 'lazy', isa => File, coerce => File->coercion;
 
@@ -176,12 +176,6 @@ sub _build_ctrldir {
    return [ NUL, qw( usr local etc ) ];
 }
 
-sub _build_dbasedir {
-   my $dir =  $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir db ) );
-
-   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], 'vardir' );
-}
-
 sub _build_localedir {
    my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir locale ) );
 
@@ -244,6 +238,12 @@ sub _build_sessdir {
    my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir hist ) );
 
    return -d $dir ? $dir : $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir' );
+}
+
+sub _build_sharedir {
+   my $dir =  $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir share ) );
+
+   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], 'vardir' );
 }
 
 sub _build_shell {
@@ -348,10 +348,6 @@ File in the C<ctrldir> directory that contains this programs control data
 
 Directory containing the per program configuration files
 
-=item C<dbasedir>
-
-Directory containing the data file used to create the applications database
-
 =item C<encoding>
 
 String default to the constant I<DEFAULT_ENCODING>
@@ -442,6 +438,10 @@ attribute value
 =item C<sessdir>
 
 Directory. The session directory
+
+=item C<sharedir>
+
+Directory containing assets used by the application
 
 =item C<shell>
 

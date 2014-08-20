@@ -97,7 +97,7 @@ sub create_ddl : method {
 
    for my $schema_class (values %{ $self->schema_classes }) {
       ensure_class_loaded( $schema_class );
-      $self->_create_ddl( $schema_class, $self->config->dbasedir );
+      $self->_create_ddl( $schema_class, $self->config->sharedir );
    }
 
    return OK;
@@ -133,7 +133,7 @@ sub deploy_and_populate : method {
 
    for my $schema_class (values %{ $self->schema_classes }) {
       ensure_class_loaded( $schema_class );
-      $self->_deploy_and_populate( $schema_class, $self->config->dbasedir );
+      $self->_deploy_and_populate( $schema_class, $self->config->sharedir );
    }
 
    return OK;
