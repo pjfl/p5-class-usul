@@ -26,6 +26,8 @@ BEGIN { Class::Usul::Constants->Assert( sub { 1 } ) }
 use Class::Usul::Functions qw( :all );
 use English qw( -no_match_vars );
 
+sub diagnostic ($) { warn $_[ 0 ]; return 1 }
+
 is abs_path( catfile( 't', updir, 't' ) ), File::Spec->rel2abs( 't' ),
    'abs_path';
 
@@ -102,8 +104,15 @@ is env_prefix( 'Test::Application' ), 'TEST_APPLICATION', 'env_prefix';
 is unescape_TT( escape_TT( '[% test %]' ) ), '[% test %]',
    'escape_TT/unscape_TT';
 
-is find_source( 'Class::Usul::Functions' ),
-   abs_path( catfile( qw( lib Class Usul Functions.pm ) ) ), 'find_source';
+my $path = find_source( 'Class::Usul::Functions' );
+
+SKIP: {
+   $path or (diagnostic( '@INC contains '.(join ':', @INC) )
+             and is_win32() and skip 'Possible NTFS issue', 1);
+
+   is $path, abs_path( catfile( qw( lib Class Usul Functions.pm ) ) ),
+      'find_source';
+}
 
 is first_char 'ab', 'a', 'first_char';
 
@@ -152,7 +161,7 @@ is prefix2class( q(test-application) ), qw(Test::Application), 'prefix2class';
 
 is product( 1, 2, 3, 4 ), 24, 'product';
 
-my $path = &Class::Usul::Functions::_read_variable( 't', 'test.sh', 'APPLDIR' );
+$path = &Class::Usul::Functions::_read_variable( 't', 'test.sh', 'APPLDIR' );
 
 is $path, '/opt/appname', 'reads variables from shell files';
 
