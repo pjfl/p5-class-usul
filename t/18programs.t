@@ -14,6 +14,7 @@ BEGIN {
    my $builder = eval { Module::Build->current };
       $builder and $notes = $builder->notes;
       $perl_ver = $notes->{min_perl_version} || 5.008;
+      $Bin =~ m{ : .+ : }mx and plan skip_all => 'Two colons in $Bin path';
 }
 
 use Test::Requires "${perl_ver}";
@@ -71,22 +72,17 @@ is   ref $prog->os, 'HASH', 'Has OS hash';
 
 my $path = find_source 'Class::Usul::Functions';
 
-SKIP: {
-   $path or (is_win32() and skip 'Possible NTFS issue', 1);
+$prog = Class::Usul::Programs->new
+   (  appclass => 'Class::Usul',
+      config   => { logsdir => 't', tempdir => 't', },
+      method   => 'list_methods',
+      noask    => 1,
+      quiet    => 1, );
 
-   $prog = Class::Usul::Programs->new
-      (  appclass => 'Class::Usul',
-         config   => { logsdir => 't',
-                       tempdir => 't', },
-         method   => 'list_methods',
-         noask    => 1,
-         quiet    => 1, );
-
-   ($out, $err) = capture { $prog->run };
-   like $out, qr{ available \s command \s line }mx, 'Runs list methods';
-   ($out, $err) = capture { $prog->error };
-   like $err, qr{ no \s message }mx, 'Default error';
-}
+($out, $err) = capture { $prog->run };
+like $out, qr{ available \s command \s line }mx, 'Runs list methods';
+($out, $err) = capture { $prog->error };
+like $err, qr{ no \s message }mx, 'Default error';
 
 done_testing;
 

@@ -1,5 +1,4 @@
 #!/usr/bin/env perl
-# @(#)Ident: usul_cli 2013-10-13 10:32 pjf ;
 
 use strict;
 use warnings;
@@ -9,11 +8,11 @@ use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
 
 # Replace this with the name of your subclass
-use Class::Usul::Programs;
+use Class::Usul::Lock;
 
 # Appclass is the class name of the application to which this program belongs.
 # It is used to determine the location of the default configuration file
-exit Class::Usul::Programs->new_with_options( appclass => 'Class::Usul' )->run;
+exit Class::Usul::Lock->new_with_options( appclass => 'Class::Usul' )->run;
 
 __END__
 
@@ -21,29 +20,25 @@ __END__
 
 =head1 NAME
 
-usul_cli - A command line interface to OO methods
+usul_lock - A command line interface to the IPC::SRLock module
 
 =head1 SYNOPSIS
 
 =over 3
 
-=item B<usul_cli> B<-nc> I<method> [B<-o> I<var=value,...>]
+=item B<usul_lock> B<-nc> I<method> [B<-o> I<var=value,...>]
 
 Calls the named method
 
-=item B<usul_cli> B<-H> | B<-h> | B<-?> [I<method>]
+=item B<usul_lock> B<-H> | B<-h> | B<-?> [I<method>]
 
 Display man page | program options | usage string or method docs
 
-=item B<usul_cli> B<-nc> list_methods
+=item B<usul_lock> B<-nc> list_methods
 
 Displays a list of available methods
 
 =back
-
-=head1 VERSION
-
-0.1.$Rev: 1 $
 
 =head1 DESCRIPTION
 

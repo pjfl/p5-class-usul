@@ -1,5 +1,9 @@
 Revision history for Class::Usul
 
+0.46.1    2014-08-28 18:05:46
+          - Replace namespace::sweep with namespace::autoclean
+          - Make packages specify which constants they use
+          - Replaced diagnostic with new boilerplate plan skip_all test
           - Added diagnostic to test since
             f3a3dae7-6bf7-1014-bf26-fc13b95c3ac1
           - Renamed config dbasedir to sharedir

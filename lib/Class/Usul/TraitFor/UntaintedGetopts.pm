@@ -1,8 +1,8 @@
 package Class::Usul::TraitFor::UntaintedGetopts;
 
-use namespace::sweep;
+use namespace::autoclean;
 
-use Class::Usul::Constants;
+use Class::Usul::Constants qw( FAILED NUL );
 use Class::Usul::Functions qw( untaint_cmdline );
 use Data::Record;
 use Encode                 qw( decode );

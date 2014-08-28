@@ -3,7 +3,7 @@ package Class::Usul::Constants;
 use 5.010001;
 use strict;
 use warnings;
-use parent qw( Exporter::Tiny );
+use parent 'Exporter::Tiny';
 
 use Class::Usul::Exception;
 use File::DataClass::Constants ( );
@@ -19,8 +19,8 @@ File::DataClass::Constants->Exception_Class( __PACKAGE__->Exception_Class );
 our @EXPORT = qw( ARRAY ASSERT BRK CODE COMMA CONFIG_EXTN DEFAULT_CONFHOME
                   DEFAULT_ENVDIR DEFAULT_ENCODING DEFAULT_L10N_DOMAIN
                   DIGEST_ALGORITHMS ENCODINGS EVIL EXCEPTION_CLASS
-                  EXTNS FAILED FALSE HASH LANG LBRACE LOCALIZE
-                  LOG_LEVELS MODE NO NUL OK PHASE PREFIX QUIT SEP
+                  FAILED FALSE HASH LANG LBRACE LOCALIZE
+                  LOG_LEVELS MODE NO NUL OK PERL_EXTNS PHASE PREFIX QUIT SEP
                   SPC TRUE UNDEFINED_RV UNTAINT_CMDLINE
                   UNTAINT_IDENTIFIER UNTAINT_PATH USUL_CONFIG_KEY
                   UUID_PATH WIDTH YES );
@@ -57,8 +57,8 @@ sub DEFAULT_L10N_DOMAIN () { q(default) }
 sub DIGEST_ALGORITHMS   () { ( qw( SHA-512 SHA-256 SHA-1 MD5 ) ) }
 sub ENCODINGS           () { ( qw( ascii iso-8859-1 UTF-8 guess ) ) }
 sub EXCEPTION_CLASS     () { __PACKAGE__->Exception_Class }
-sub EXTNS               () { ( qw( .pl .pm .t ) ) }
 sub LOG_LEVELS          () { ( qw( alert debug error fatal info warn ) ) }
+sub PERL_EXTNS          () { ( qw( .pl .pm .t ) ) }
 sub PREFIX              () { [ q(), q(opt) ] }
 sub UNDEFINED_RV        () { -1 }
 sub UNTAINT_CMDLINE     () { qr{ \A ([^\$&;<>|]+)      \z }mx }
@@ -70,7 +70,7 @@ sub UUID_PATH           () { [ q(), qw( proc sys kernel random uuid ) ] }
 sub Assert {
    my ($self, $subr) = @_; defined $subr or return $Assert;
 
-   ref $subr eq 'CODE' or $self->Exception_Class->throw
+   ref $subr eq 'CODE' or EXCEPTION_CLASS->throw
       ( "Assert subroutine ${subr} is not a code reference" );
 
    return $Assert = $subr;
@@ -79,7 +79,7 @@ sub Assert {
 sub Config_Extn {
    my ($self, $extn) = @_; defined $extn or return $Config_Extn;
 
-   (length $extn < 255 and $extn !~ m{ \n }mx) or $self->Exception_Class->throw
+   (length $extn < 255 and $extn !~ m{ \n }mx) or EXCEPTION_CLASS->throw
       ( "Config extension ${extn} is not a simple string" );
 
    return $Config_Extn = $extn;
@@ -88,7 +88,7 @@ sub Config_Extn {
 sub Config_Key {
    my ($self, $key) = @_; defined $key or return $Config_Key;
 
-   (length $key < 255 and $key !~ m{ \n }mx) or $self->Exception_Class->throw
+   (length $key < 255 and $key !~ m{ \n }mx) or EXCEPTION_CLASS->throw
       ( "Config key ${key} is not a simple string" );
 
    return $Config_Key = $key;
@@ -208,10 +208,6 @@ The name of the class used to throw exceptions. Defaults to
 L<Class::Usul::Exception> but can be changed by setting the
 C<Exception_Class> class attribute
 
-=head2 EXTNS
-
-List of possible file suffixes used on Perl scripts
-
 =head2 FAILED
 
 Non zero exit code indicating program failure
@@ -256,6 +252,10 @@ Empty string
 =head2 OK
 
 Returns good program exit code, zero
+
+=head2 PERL_EXTNS
+
+List of possible file suffixes used on Perl scripts
 
 =head2 PHASE
 

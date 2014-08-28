@@ -1,9 +1,9 @@
 package Class::Usul::Config::Programs;
 
-use namespace::sweep;
+use namespace::autoclean;
 
 use Moo;
-use Class::Usul::Constants;
+use Class::Usul::Constants qw( MODE );
 use Class::Usul::Types     qw( ArrayRef Bool NonEmptySimpleStr
                                NonZeroPositiveInt PositiveInt );
 use File::Basename         qw( basename );
@@ -16,7 +16,7 @@ has 'doc_title'    => is => 'ro',   isa => NonEmptySimpleStr,
    default         => 'User Contributed Documentation';
 
 has 'man_page_cmd' => is => 'ro',   isa => ArrayRef,
-   default         => sub { [ qw( nroff -man ) ] };
+   default         => sub { [ 'nroff', '-man' ] };
 
 has 'mode'         => is => 'ro',   isa => PositiveInt, default => MODE;
 

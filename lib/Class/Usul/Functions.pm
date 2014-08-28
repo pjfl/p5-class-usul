@@ -7,7 +7,10 @@ use feature 'state';
 use parent  'Exporter::Tiny';
 
 use Class::Null;
-use Class::Usul::Constants;
+use Class::Usul::Constants     qw( ASSERT DEFAULT_CONFHOME DEFAULT_ENVDIR
+                                   DIGEST_ALGORITHMS EVIL EXCEPTION_CLASS
+                                   PERL_EXTNS PREFIX UNTAINT_CMDLINE
+                                   UNTAINT_IDENTIFIER UNTAINT_PATH UUID_PATH );
 use Cwd                        qw( );
 use Data::Printer      alias => q(_data_dumper), colored => 1, indent => 3,
     filters => { 'File::DataClass::IO' => sub { $_[ 0 ]->pathname },
@@ -23,7 +26,7 @@ use File::Spec::Functions      qw( catdir catfile curdir );
 use List::Util                 qw( first );
 use Module::Runtime            qw( is_module_name require_module );
 use Scalar::Util               qw( blessed openhandle );
-use Sys::Hostname;
+use Sys::Hostname              qw( hostname );
 use Unexpected::Functions      qw( is_class_loaded PathAlreadyExists
                                    PathNotFound Tainted Unspecified );
 use User::pwent;
@@ -466,7 +469,7 @@ sub merge_attributes ($$$;$) {
 }
 
 sub my_prefix (;$) {
-   return split_on__( basename( $_[ 0 ] || q(), EXTNS ) );
+   return split_on__( basename( $_[ 0 ] || q(), PERL_EXTNS ) );
 }
 
 sub pad ($$;$$) {
@@ -666,7 +669,7 @@ sub _get_dot_file_var {
 
 sub _get_env_var_for_conf {
    my $file = $ENV{ ($_[ 0 ] || return) };
-   my $path = $file ? dirname( $file ) : NUL;
+   my $path = $file ? dirname( $file ) : q();
 
    return $path = assert_directory $path ? $path : undef;
 }
@@ -1073,7 +1076,7 @@ may be an object in which case its accessor methods are called
 
 Takes the basename of the supplied argument and returns the first _
 (underscore) separated field. Supplies basename with
-L<extensions|Class::Usul::Constants/EXTNS>
+L<extensions|Class::Usul::Constants/PERL_EXTNS>
 
 =head2 pad
 

@@ -1,11 +1,11 @@
 package Class::Usul::IPC;
 
 use 5.01;
-use namespace::sweep;
+use namespace::autoclean;
 
 use Moo;
 use Class::Null;
-use Class::Usul::Constants;
+use Class::Usul::Constants    qw( EXCEPTION_CLASS FALSE NUL OK SPC TRUE );
 use Class::Usul::File;
 use Class::Usul::Functions    qw( arg_list emit_to get_user io
                                   is_arrayref is_coderef is_win32

@@ -1,12 +1,12 @@
 package Class::Usul;
 
 use 5.010001;
-use namespace::sweep;
 use feature 'state';
-use version; our $VERSION = qv( sprintf '0.45.%d', q$Rev: 11 $ =~ /\d+/gmx );
+use namespace::autoclean;
+use version; our $VERSION = qv( sprintf '0.46.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
-use Class::Usul::Constants;
+use Class::Usul::Constants  qw( EXCEPTION_CLASS FALSE TRUE USUL_CONFIG_KEY );
 use Class::Usul::Functions  qw( data_dumper merge_attributes throw );
 use Class::Usul::L10N;
 use Class::Usul::Log;
@@ -107,7 +107,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.45.$Rev: 11 $
+Describes Class::Usul version v0.46.$Rev: 1 $
 
 =head1 Synopsis
 

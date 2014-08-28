@@ -1,9 +1,9 @@
 package Class::Usul::Schema;
 
-use namespace::sweep;
+use namespace::autoclean;
 
 use Moo;
-use Class::Usul::Constants;
+use Class::Usul::Constants   qw( COMMA FAILED FALSE NUL OK SPC TRUE );
 use Class::Usul::Crypt::Util qw( encrypt_for_config );
 use Class::Usul::Functions   qw( distname ensure_class_loaded io throw );
 use Class::Usul::Options;
@@ -18,29 +18,33 @@ option 'attrs'          => is => 'ro',   isa => HashRef,
    documentation        => 'Default database connection attributes',
    default              => sub { { add_drop_table => TRUE,
                                    no_comments    => TRUE, } },
-   init_arg             => 'dbattrs';
+   format               => 's%',   init_arg       => 'dbattrs';
 
 option 'database'       => is => 'ro',   isa => NonEmptySimpleStr,
    documentation        => 'The database to connect to',
-   required             => TRUE;
+   format               => 's', required => TRUE;
 
 option 'db_admin_ids'   => is => 'ro',   isa => HashRef,
    documentation        => 'The admin user ids for each RDBMS',
-   default              => sub { { mysql => 'root', pg => 'postgres', } };
+   default              => sub { { mysql => 'root', pg => 'postgres', } },
+   format               => 's%';
 
 option 'preversion'     => is => 'ro',   isa => Str, default => NUL,
-   documentation        => 'Previous schema version';
+   documentation        => 'Previous schema version',
+   format               => 's';
 
-option 'rdbms'          => is => 'ro',   isa => ArrayRef,
+option 'rdbms'          => is => 'ro',   isa => ArrayRef, autosplit => COMMA,
    documentation        => 'List of RDBMSs',
-   default              => sub { [ qw( MySQL PostgreSQL ) ] };
+   default              => sub { [ qw( MySQL PostgreSQL ) ] },
+   format               => 's@';
 
 option 'schema_classes' => is => 'lazy', isa => HashRef, default => sub { {} },
-   documentation        => 'The database schema classes';
+   documentation        => 'The database schema classes',
+   format               => 's%';
 
 option 'schema_version' => is => 'ro',   isa => NonEmptySimpleStr,
    documentation        => 'Current schema version',
-   default              => '0.1';
+   default              => '0.1', format => 's';
 
 option 'unlink'         => is => 'ro',   isa => Bool, default => FALSE,
    documentation        => 'If true remove DDL file before creating new ones';

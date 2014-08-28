@@ -1,6 +1,6 @@
 package Class::Usul::Exception;
 
-use namespace::sweep;
+use namespace::autoclean;
 
 use Moo;
 use Unexpected::Functions qw( has_exception );

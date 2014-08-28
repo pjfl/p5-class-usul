@@ -1,36 +1,35 @@
 package Class::Usul::Lock;
 
-use namespace::sweep;
+use namespace::autoclean;
 
 use Moo;
-use Class::Usul::Constants;
+use Class::Usul::Constants qw( COMMA OK );
 use Class::Usul::Functions qw( emit );
 use Class::Usul::Options;
-use Class::Usul::Time;
+use Class::Usul::Time      qw( time2str );
 use Class::Usul::Types     qw( Int Str );
 
 extends q(Class::Usul::Programs);
 
-option 'lock_key'     => is => 'ro', format => 's',
+option 'lock_key'     => is => 'ro', isa => Str, format => 's',
    documentation      => 'Key used to set/reset a lock',
-   short              => q(k);
+   short              => 'k';
 
-option 'lock_pid'     => is => 'ro', format => 'i',
+option 'lock_pid'     => is => 'ro', isa => Int, format => 'i',
    documentation      => 'Process id associated with a lock. Defaults to $$',
-   short              => q(p);
+   short              => 'p';
 
-option 'lock_timeout' => is => 'ro', format => 'i',
+option 'lock_timeout' => is => 'ro', isa => Int, format => 'i',
    documentation      => 'Timeout in secounds before a lock is declared stale',
-   short              => q(t);
+   short              => 't';
 
 sub list : method {
-   my $self = shift; my $line;
+   my $self = shift;
 
    for my $ref (@{ $self->lock->list || [] }) {
-      $line  = $ref->{key}.q(,).$ref->{pid}.q(,);
-      $line .= time2str( '%Y-%m-%d %H:%M:%S', $ref->{stime} ).q(,);
-      $line .= $ref->{timeout};
-      emit $line;
+      my $stime = time2str '%Y-%m-%d %H:%M:%S', $ref->{stime};
+
+      emit join COMMA, $ref->{key}, $ref->{pid}, $stime, $ref->{timeout};
    }
 
    return OK;

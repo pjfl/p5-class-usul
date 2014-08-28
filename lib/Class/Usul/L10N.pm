@@ -2,16 +2,17 @@ package Class::Usul::L10N;
 
 use 5.010001;
 use feature 'state';
-use namespace::sweep;
+use namespace::autoclean;
 
 use Moo;
 use Class::Null;
-use Class::Usul::Constants;
-use Class::Usul::Functions qw( assert is_arrayref is_hashref merge_attributes );
-use Class::Usul::Types     qw( ArrayRef Bool HashRef LogType
-                               SimpleStr Str Undef );
-use File::DataClass::Types qw( Directory Lock Path );
-use File::Gettext::Constants;
+use Class::Usul::Constants   qw( FALSE LBRACE LOCALIZE NUL SEP );
+use Class::Usul::Functions   qw( assert is_arrayref
+                                 is_hashref merge_attributes );
+use Class::Usul::Types       qw( ArrayRef Bool HashRef LogType
+                                 SimpleStr Str Undef );
+use File::DataClass::Types   qw( Directory Lock Path );
+use File::Gettext::Constants qw( CONTEXT_SEP );
 use File::Gettext;
 use File::Spec;
 use Try::Tiny;
@@ -53,7 +54,7 @@ around 'BUILDARGS' => sub {
    my $builder = delete $attr->{builder} or return $attr;
    my $config  = $builder->can( 'config' ) ? $builder->config : {};
 
-   merge_attributes $attr, $builder, {}, [ qw( debug log ) ];
+   merge_attributes $attr, $builder, {}, [ 'debug', 'log' ];
    merge_attributes $attr, $config,  {},
       [ qw( l10n_attributes localedir tempdir ) ];
 

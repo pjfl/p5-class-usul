@@ -2,9 +2,9 @@ package Class::Usul::TraitFor::ConnectInfo;
 
 use 5.010001;
 use feature 'state';
-use namespace::sweep;
+use namespace::autoclean;
 
-use Class::Usul::Constants;
+use Class::Usul::Constants   qw( EXCEPTION_CLASS CONFIG_EXTN FALSE TRUE );
 use Class::Usul::Crypt::Util qw( decrypt_from_config );
 use Class::Usul::File;
 use Class::Usul::Functions   qw( merge_attributes throw );
@@ -132,10 +132,9 @@ sub __get_dataclass_schema {
 }
 
 sub __load_config_data {
-   my $params = shift;
-   my $schema = __get_dataclass_schema( $params->{dataclass_attr} );
+   my $schema = __get_dataclass_schema( $_[ 0 ]->{dataclass_attr} );
 
-   return $schema->load( __get_credentials_file( $params ) );
+   return $schema->load( __get_credentials_file( $_[ 0 ] ) );
 }
 
 sub __unicode_options {

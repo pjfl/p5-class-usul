@@ -3,7 +3,7 @@ package Class::Usul::Options;
 use strict;
 use warnings;
 
-use Class::Usul::Constants;
+use Class::Usul::Constants qw( TRUE );
 use Class::Usul::Functions qw( throw );
 use Sub::Install           qw( install_sub );
 
@@ -145,6 +145,22 @@ Class::Usul::Options - Command line processing
 This is a clone of L<MooX::Options> but is closer to L<MooseX::Getopt::Dashes>
 
 =head1 Configuration and Environment
+
+Format of the parameters, same as L<Getopt::Long::Descriptive>
+
+    i : integer
+
+    i@: array of integer
+
+    s : string
+
+    s@: array of string
+
+    s%: hash of string
+
+    f : float value
+
+By default, it's a boolean value.
 
 Defines no attributes
 

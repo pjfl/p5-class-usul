@@ -22,7 +22,7 @@ around 'BUILDARGS' => sub {
 
 package Class::Usul::TraitFor::MetaData;
 
-use namespace::sweep;
+use namespace::autoclean;
 
 use Class::Usul::Constants qw( EXCEPTION_CLASS );
 use Class::Usul::Functions qw( io throw );

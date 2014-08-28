@@ -1,11 +1,12 @@
 package Class::Usul::Programs;
 
 use attributes ();
-use namespace::sweep;
+use namespace::autoclean;
 
 use Moo;
 use Class::Inspector;
-use Class::Usul::Constants;
+use Class::Usul::Constants qw( BRK FAILED FALSE NUL OK SPC
+                               TRUE UNDEFINED_RV WIDTH );
 use Class::Usul::File;
 use Class::Usul::Functions qw( abs_path elapsed emit emit_err emit_to
                                exception find_apphome find_source
@@ -502,8 +503,8 @@ sub __get_pod_header_for_method {
 
 sub __list_methods_of {
    return map  { s{ \A .+ :: }{}msx; $_ }
-          grep { my $method = $_; grep { $_ eq 'method' }
-                                  attributes::get( \&{ $method } ) }
+          grep { my $subr = $_;
+                 grep { $_ eq 'method' } attributes::get( \&{ $subr } ) }
               @{ Class::Inspector->methods
                     ( blessed $_[ 0 ] || $_[ 0 ], 'full', 'public' ) };
 }

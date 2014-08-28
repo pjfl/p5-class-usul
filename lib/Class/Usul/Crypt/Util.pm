@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use feature 'state';
 
-use Class::Usul::Constants;
+use Class::Usul::Constants qw( FALSE NUL TRUE );
 use Class::Usul::Crypt     qw( decrypt default_cipher encrypt );
 use Class::Usul::Functions qw( merge_attributes throw );
 use Exporter 5.57          qw( import  );

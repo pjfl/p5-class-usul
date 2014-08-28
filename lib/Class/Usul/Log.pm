@@ -1,7 +1,7 @@
 package Class::Usul::Log;
 
 use Class::Null;
-use Class::Usul::Constants;
+use Class::Usul::Constants qw( FALSE LOG_LEVELS NUL TRUE );
 use Class::Usul::Functions qw( merge_attributes );
 use Class::Usul::Types     qw( Bool EncodingType HashRef
                                LoadableClass LogType Undef );

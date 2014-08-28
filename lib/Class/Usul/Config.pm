@@ -1,23 +1,25 @@
 package Class::Usul::Config;
 
-use namespace::sweep;
+use namespace::autoclean;
 
 use Moo;
-use Class::Usul::Constants;
+use Class::Usul::Constants   qw( CONFIG_EXTN DEFAULT_CONFHOME
+                                 DEFAULT_ENCODING DEFAULT_L10N_DOMAIN
+                                 FALSE LANG NUL PERL_EXTNS PHASE TRUE );
 use Class::Usul::File;
-use Class::Usul::Functions qw( app_prefix class2appdir home2appldir
-                               is_arrayref split_on__ split_on_dash
-                               untaint_path );
-use Class::Usul::Types     qw( ArrayRef EncodingType HashRef NonEmptySimpleStr
-                               NonZeroPositiveInt PositiveInt Str );
+use Class::Usul::Functions   qw( app_prefix class2appdir home2appldir
+                                 is_arrayref split_on__ split_on_dash
+                                 untaint_path );
+use Class::Usul::Types       qw( ArrayRef EncodingType HashRef NonEmptySimpleStr
+                                 NonZeroPositiveInt PositiveInt Str );
 use Config;
-use English                qw( -no_match_vars );
-use File::Basename         qw( basename dirname );
-use File::DataClass::Types qw( Directory File Path );
-use File::Gettext::Constants;
-use File::Spec::Functions  qw( canonpath catdir catfile
-                               rel2abs rootdir tmpdir );
-use Scalar::Util           qw( blessed );
+use English                  qw( -no_match_vars );
+use File::Basename           qw( basename dirname );
+use File::DataClass::Types   qw( Directory File Path );
+use File::Gettext::Constants qw( LOCALE_DIRS );
+use File::Spec::Functions    qw( canonpath catdir catfile
+                                 rel2abs rootdir tmpdir );
+use Scalar::Util             qw( blessed );
 
 # Public attributes
 has 'appclass'  => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;
@@ -199,7 +201,8 @@ sub _build_logsdir {
 }
 
 sub _build_name {
-   my $name = basename( $_[ 0 ]->_inflate_path( $_[ 1 ], 'pathname' ), EXTNS );
+   my $name = basename(   $_[ 0 ]->_inflate_path
+                        ( $_[ 1 ], 'pathname' ), PERL_EXTNS );
 
    return (split_on__ $name, 1) || (split_on_dash $name, 1) || $name;
 }

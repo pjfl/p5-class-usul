@@ -1,9 +1,9 @@
 package Class::Usul::File;
 
-use namespace::sweep;
+use namespace::autoclean;
 
 use Moo;
-use Class::Usul::Constants;
+use Class::Usul::Constants qw( EXCEPTION_CLASS TRUE );
 use Class::Usul::Functions qw( arg_list create_token is_arrayref io throw );
 use Class::Usul::Types     qw( BaseType );
 use English                qw( -no_match_vars );

@@ -3,7 +3,7 @@ package Class::Usul::Crypt;
 use strict;
 use warnings;
 
-use Class::Usul::Constants;
+use Class::Usul::Constants qw( NUL );
 use Class::Usul::Functions qw( create_token is_coderef is_hashref );
 use Crypt::CBC;
 use English                qw( -no_match_vars );

@@ -1,8 +1,8 @@
 package Class::Usul::TraitFor::Prompting;
 
-use namespace::sweep;
+use namespace::autoclean;
 
-use Class::Usul::Constants;
+use Class::Usul::Constants qw( BRK FAILED FALSE NO NUL QUIT SPC TRUE YES );
 use Class::Usul::Functions qw( arg_list emit_to pad throw );
 use Class::Usul::Types     qw( BaseType );
 use English                qw( -no_match_vars );

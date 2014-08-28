@@ -3,7 +3,7 @@ package Class::Usul::Types;
 use strict;
 use warnings;
 
-use Class::Usul::Constants;
+use Class::Usul::Constants qw( DEFAULT_ENCODING FALSE LOG_LEVELS NUL TRUE );
 use Class::Usul::Functions qw( ensure_class_loaded exception );
 use Encode                 qw( find_encoding );
 use Scalar::Util           qw( blessed );
@@ -122,9 +122,9 @@ sub __has_log_level_methods {
 sub __has_min_config_attributes {
    my $obj = shift; my @config_attr = ( qw(appldir home root tempdir vardir) );
 
-   $obj->can( $_ ) or return FALSE() for (@config_attr);
+   $obj->can( $_ ) or return FALSE for (@config_attr);
 
-   return TRUE();
+   return TRUE;
 }
 
 sub __load_if_exists {

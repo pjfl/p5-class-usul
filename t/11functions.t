@@ -14,6 +14,7 @@ BEGIN {
    my $builder = eval { Module::Build->current };
       $builder and $notes = $builder->notes;
       $perl_ver = $notes->{min_perl_version} || 5.008;
+      $Bin =~ m{ : .+ : }mx and plan skip_all => 'Two colons in $Bin path';
 }
 
 use Test::Requires "${perl_ver}";
@@ -25,8 +26,6 @@ BEGIN { Class::Usul::Constants->Assert( sub { 1 } ) }
 
 use Class::Usul::Functions qw( :all );
 use English qw( -no_match_vars );
-
-sub diagnostic ($) { warn $_[ 0 ]; return 1 }
 
 is abs_path( catfile( 't', updir, 't' ) ), File::Spec->rel2abs( 't' ),
    'abs_path';
@@ -106,13 +105,8 @@ is unescape_TT( escape_TT( '[% test %]' ) ), '[% test %]',
 
 my $path = find_source( 'Class::Usul::Functions' );
 
-SKIP: {
-   $path or (diagnostic( '@INC contains '.(join ':', @INC) )
-             and is_win32() and skip 'Possible NTFS issue', 1);
-
-   is $path, abs_path( catfile( qw( lib Class Usul Functions.pm ) ) ),
-      'find_source';
-}
+is $path, abs_path( catfile( qw( lib Class Usul Functions.pm ) ) ),
+   'find_source';
 
 is first_char 'ab', 'a', 'first_char';
 
