@@ -1,6 +1,6 @@
 package Class::Usul::Response::Table;
 
-use namespace::sweep;
+use namespace::autoclean;
 
 use Class::Usul::Types qw( ArrayRef HashRef Int Str );
 use Moo;

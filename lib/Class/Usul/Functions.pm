@@ -368,9 +368,9 @@ sub fqdn (;$) {
 sub fullname () {
    my $y = (split m{ \s* , \s * }msx, (get_user()->gecos || q()))[ 0 ];
 
-   $y =~ s{ [\&] }{}gmx; # Because af25e158-d0c7-11e3-bdcb-31d9eda79835
+   $y ||= q(); $y =~ s{ [\&] }{}gmx; # Coz af25e158-d0c7-11e3-bdcb-31d9eda79835
 
-   return untaint_cmdline( $y || q());
+   return untaint_cmdline( $y );
 }
 
 sub get_cfgfiles ($;$$) {

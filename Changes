@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+0.47.1    2014-08-28 21:36:17
+          - Removed last of ::sweep statements
+
 0.46.1    2014-08-28 18:05:46
           - Replace namespace::sweep with namespace::autoclean
           - Make packages specify which constants they use

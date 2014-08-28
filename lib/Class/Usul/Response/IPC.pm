@@ -1,6 +1,6 @@
 package Class::Usul::Response::IPC;
 
-use namespace::sweep;
+use namespace::autoclean;
 
 use Class::Usul::Types qw( Int Object Str Undef );
 use Moo;
