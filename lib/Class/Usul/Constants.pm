@@ -16,14 +16,14 @@ my $Exception_Class = 'Class::Usul::Exception';
 
 File::DataClass::Constants->Exception_Class( __PACKAGE__->Exception_Class );
 
-our @EXPORT = qw( ARRAY ASSERT BRK CODE COMMA CONFIG_EXTN DEFAULT_CONFHOME
-                  DEFAULT_ENVDIR DEFAULT_ENCODING DEFAULT_L10N_DOMAIN
-                  DIGEST_ALGORITHMS ENCODINGS EVIL EXCEPTION_CLASS
-                  FAILED FALSE HASH LANG LBRACE LOCALIZE
-                  LOG_LEVELS MODE NO NUL OK PERL_EXTNS PHASE PREFIX QUIT SEP
-                  SPC TRUE UNDEFINED_RV UNTAINT_CMDLINE
-                  UNTAINT_IDENTIFIER UNTAINT_PATH USUL_CONFIG_KEY
-                  UUID_PATH WIDTH YES );
+our @EXPORT = qw( ARRAY AS_PARA ASSERT BRK CODE COMMA CONFIG_EXTN
+                  DEFAULT_CONFHOME DEFAULT_ENVDIR DEFAULT_ENCODING
+                  DEFAULT_L10N_DOMAIN DIGEST_ALGORITHMS ENCODINGS EVIL
+                  EXCEPTION_CLASS FAILED FALSE HASH LANG LBRACE
+                  LOCALIZE LOG_LEVELS MODE NO NUL OK PERL_EXTNS PHASE
+                  PREFIX QUIT SEP SPC TRUE UNDEFINED_RV
+                  UNTAINT_CMDLINE UNTAINT_IDENTIFIER UNTAINT_PATH
+                  USUL_CONFIG_KEY UUID_PATH WIDTH YES );
 
 sub ARRAY    () { q(ARRAY)   }
 sub BRK      () { q(: )      }
@@ -48,6 +48,7 @@ sub TRUE     () { 1          }
 sub WIDTH    () { 80         }
 sub YES      () { q(y)       }
 
+sub AS_PARA             () { { cl => 1, fill => 1, nl => 1 } }
 sub ASSERT              () { __PACKAGE__->Assert }
 sub CONFIG_EXTN         () { __PACKAGE__->Config_Extn }
 sub DEFAULT_CONFHOME    () { tmpdir }
@@ -147,9 +148,15 @@ Defines the following class attributes;
 
 String C<ARRAY>
 
+=head2 AS_PARA
+
+Returns a hash reference containing the keys and values that causes the auto
+formatting L<output|Class::Usul::Programs/output> subroutine to clear left,
+fill paragraphs, and append an extra newline
+
 =head2 ASSERT
 
-Return a coderef which is imported by L<Class::Usul::Functions> into
+Return a code reference which is imported by L<Class::Usul::Functions> into
 the callers namespace as the C<assert> function. By default this will
 be the empty subroutine, C<sub {}>. Change this by setting the C<Assert>
 class attribute

@@ -3,7 +3,7 @@ package Class::Usul::Schema;
 use namespace::autoclean;
 
 use Moo;
-use Class::Usul::Constants   qw( COMMA FAILED FALSE NUL OK SPC TRUE );
+use Class::Usul::Constants   qw( AS_PARA COMMA FAILED FALSE NUL OK SPC TRUE );
 use Class::Usul::Crypt::Util qw( encrypt_for_config );
 use Class::Usul::Functions   qw( distname ensure_class_loaded io throw );
 use Class::Usul::Options;
@@ -56,9 +56,6 @@ option 'yes'            => is => 'ro',   isa => Bool, default => FALSE,
 has 'connect_info'      => is => 'lazy', isa => ArrayRef, builder => sub {
    $_[ 0 ]->get_connect_info( $_[ 0 ], { database => $_[ 0 ]->database } ) },
    init_arg             => undef;
-
-has 'paragraph'         => is => 'ro',   isa => HashRef,
-   default              => sub { { cl => TRUE, fill => TRUE, nl => TRUE } };
 
 # Public methods
 sub create_database : method {
@@ -113,7 +110,7 @@ sub create_schema : method { # Create databases and edit credentials
       $text   .= 'For Postgres the driver is Pg and the port 5432';
    my $default = $self->yes;
 
-   $self->output( $text, $self->paragraph );
+   $self->output( $text, AS_PARA );
    $self->yorn( 'Create database schema', $default, TRUE, 0 ) or return OK;
    # Edit the config file that contains the database connection info
    $self->edit_credentials;
@@ -320,7 +317,7 @@ sub _get_db_admin_creds {
    my $text   = 'Need the database administrators id and password to perform ';
       $text  .= "a ${reason} operation";
 
-   $self->output( $text, $self->paragraph );
+   $self->output( $text, AS_PARA );
 
    my $prompt = 'Database administrator id';
    my $user   = $self->db_admin_ids->{ lc $self->driver } || NUL;

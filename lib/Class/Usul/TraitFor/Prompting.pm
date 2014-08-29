@@ -27,7 +27,7 @@ sub get_line { # General text input routine.
    $question  = $self->_prepare( $question || 'Enter your answer' );
    $default //= NUL;
 
-   my $advice       = $quit ? $self->loc( '('.QUIT.' to quit)' ) : NUL;
+   my $advice       = $quit ? $self->loc( '([_1] to quit)', QUIT ) : NUL;
    my $right_prompt = $advice.($multiline ? NUL : " [${default}]");
    my $left_prompt  = $question;
 
@@ -154,7 +154,8 @@ sub __prompt { # Robbed from IO::Prompt
    my ($len, $newlines, $next, $text);
 
    unless (IO::Interactive::is_interactive()) {
-      $ENV{PERL_MM_USE_DEFAULT} and return $default;
+      ($ENV{PERL_MM_USE_DEFAULT} or $ENV{PERL_MB_USE_DEFAULT})
+         and return $default;
       $onechar and return getc $IN;
       return scalar <$IN>;
    }

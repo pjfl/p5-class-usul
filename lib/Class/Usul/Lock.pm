@@ -100,15 +100,15 @@ C<t> switch
 
 =head1 Subroutines/Methods
 
-=head2 list
+=head2 list - Lists the locks in the lock table
 
-Lists the locks in the lock table
+Output is comma separated
 
-=head2 reset
+=head2 reset - Resets the specified lock
 
 Resets the lock keyed by the C<lock_key> attribute
 
-=head2 set
+=head2 set - Sets the specified lock
 
 Set the lock keyed by the I<lock_key> attribute. Optionally use the
 C<lock_pid> and C<lock_timeout> attributes

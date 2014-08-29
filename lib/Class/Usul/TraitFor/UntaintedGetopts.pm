@@ -83,7 +83,7 @@ sub __build_options {
                  keys %{ $options_data }) {
       my $option = $options_data->{ $name }; my $doc = $option->{doc};
 
-      not defined $doc and $doc = "No help for ${name}";
+      defined $doc or $doc = "No help for ${name}";
       push @options, [ __option_specification( $name, $option ), $doc ];
       defined $option->{autosplit} or next;
       $splitters->{ $name } = Data::Record->new( {
