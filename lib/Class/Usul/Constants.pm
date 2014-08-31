@@ -11,7 +11,6 @@ use File::Spec::Functions    qw( tmpdir );
 
 my $Assert          = sub {};
 my $Config_Extn     = '.json';
-my $Config_Key      = 'Plugin::Usul';
 my $Exception_Class = 'Class::Usul::Exception';
 
 File::DataClass::Constants->Exception_Class( __PACKAGE__->Exception_Class );
@@ -23,7 +22,7 @@ our @EXPORT = qw( ARRAY AS_PARA ASSERT BRK CODE COMMA CONFIG_EXTN
                   LOCALIZE LOG_LEVELS MODE NO NUL OK PERL_EXTNS PHASE
                   PREFIX QUIT SEP SPC TRUE UNDEFINED_RV
                   UNTAINT_CMDLINE UNTAINT_IDENTIFIER UNTAINT_PATH
-                  USUL_CONFIG_KEY UUID_PATH WIDTH YES );
+                  UUID_PATH WIDTH YES );
 
 sub ARRAY    () { q(ARRAY)   }
 sub BRK      () { q(: )      }
@@ -65,7 +64,6 @@ sub UNDEFINED_RV        () { -1 }
 sub UNTAINT_CMDLINE     () { qr{ \A ([^\$&;<>|]+)      \z }mx }
 sub UNTAINT_IDENTIFIER  () { qr{ \A ([a-zA-Z0-9_]+)    \z }mx }
 sub UNTAINT_PATH        () { qr{ \A ([^\$%&\*;<>\`|]+) \z }mx }
-sub USUL_CONFIG_KEY     () { __PACKAGE__->Config_Key }
 sub UUID_PATH           () { [ q(), qw( proc sys kernel random uuid ) ] }
 
 sub Assert {
@@ -84,15 +82,6 @@ sub Config_Extn {
       ( "Config extension ${extn} is not a simple string" );
 
    return $Config_Extn = $extn;
-}
-
-sub Config_Key {
-   my ($self, $key) = @_; defined $key or return $Config_Key;
-
-   (length $key < 255 and $key !~ m{ \n }mx) or EXCEPTION_CLASS->throw
-      ( "Config key ${key} is not a simple string" );
-
-   return $Config_Key = $key;
 }
 
 sub Exception_Class {

@@ -8,8 +8,8 @@ use Class::Usul::Types qw( ArrayRef HashRef Maybe Str );
 use namespace::clean -except => 'meta';
 
 has 'abstract' => is => 'ro', isa => Maybe[Str];
-has 'author'   => is => 'ro', isa => Maybe[ArrayRef];
-has 'license'  => is => 'ro', isa => Maybe[ArrayRef];
+has 'authors'  => is => 'ro', isa => Maybe[ArrayRef], init_arg => 'author';
+has 'licenses' => is => 'ro', isa => Maybe[ArrayRef], init_arg => 'license';
 has 'name'     => is => 'ro', isa => Maybe[Str];
 has 'provides' => is => 'ro', isa => Maybe[HashRef];
 has 'version'  => is => 'ro', isa => Maybe[Str];
@@ -72,6 +72,8 @@ Class::Usul::TraitFor::MetaData - Class for CPAN Meta file
 Loads the specified JSON file and returns on object
 which define accessors for it's attributes
 
+Could use L<CPAN::Meta> but that would add some more dependencies
+
 =head1 Configuration and Environment
 
 Defines the following attributes
@@ -80,9 +82,9 @@ Defines the following attributes
 
 =item C<abstract>
 
-=item C<author>
+=item C<authors>
 
-=item C<license>
+=item C<licenses>
 
 =item C<name>
 
@@ -102,7 +104,7 @@ Monkey with the constructors signature
 
    $response_obj = $self->get_package_meta( $dir );
 
-Extracts; I<name>, I<version>, I<author> and I<abstract> from the
+Extracts; I<name>, I<version>, I<authors> and I<abstract> from the
 F<META.json> file.  Looks in the optional C<$dir> directory
 for the file in addition to C<< $config->appldir >> and C<< $config->ctrldir >>.
 Returns a response object with read-only accessors defined

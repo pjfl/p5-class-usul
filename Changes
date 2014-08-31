@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - Removed new_from_class since only used by CX::Usul
+          - Sync MetaData attr names with CPAN::Meta
           - Created AS_PARA constant
 
 0.47.1    2014-08-28 21:36:17

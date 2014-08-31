@@ -3,18 +3,16 @@ package Class::Usul;
 use 5.010001;
 use feature 'state';
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.47.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.47.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
 use Moo;
-use Class::Usul::Constants  qw( EXCEPTION_CLASS FALSE TRUE USUL_CONFIG_KEY );
-use Class::Usul::Functions  qw( data_dumper merge_attributes throw );
+use Class::Usul::Constants  qw( EXCEPTION_CLASS FALSE TRUE );
+use Class::Usul::Functions  qw( data_dumper merge_attributes );
 use Class::Usul::L10N;
 use Class::Usul::Log;
 use Class::Usul::Types      qw( Bool ConfigType EncodingType HashRef
                                 L10NType LoadableClass LockType LogType );
 use IPC::SRLock;
-use Scalar::Util            qw( blessed );
-use Unexpected::Functions   qw( Unspecified );
 
 # Public attributes
 has 'config'       => is => 'lazy', isa => ConfigType, builder => sub {
@@ -44,10 +42,16 @@ has 'log'          => is => 'lazy', isa => LogType,
    builder         => sub { Class::Usul::Log->new( builder => $_[ 0 ] ) };
 
 # Construction
-sub new_from_class { # Instantiate from a class name with a config method
-   my ($self, $app_class) = @_; my $class = blessed $self || $self;
+sub _build_lock { # There is only one lock object. Instantiate on first use
+   my $self = shift; state $cache; $cache and return $cache;
 
-   return $class->new( __build_attr_from_class( $app_class ) );
+   my $config = $self->config; my $attr = { %{ $config->lock_attributes } };
+
+   merge_attributes $attr, $self,   {}, [ 'debug', 'log' ];
+   merge_attributes $attr, $config, { 'exception_class' => EXCEPTION_CLASS },
+                                    [ 'exception_class', 'tempdir' ];
+
+   return $cache = IPC::SRLock->new( $attr );
 }
 
 # Public methods
@@ -56,43 +60,12 @@ sub dumper { # Damm handy for development
 }
 
 # Private methods
-sub _build_lock { # There is only one lock object. Instantiate on first use
-   my $self = shift; state $cache; $cache and return $cache;
-
-   my $config = $self->config; my $attr = { %{ $config->lock_attributes } };
-
-   merge_attributes $attr, $self,   {}, [ qw( debug log ) ];
-   merge_attributes $attr, $config, { exception_class => EXCEPTION_CLASS },
-      [ qw( exception_class tempdir ) ];
-
-   return $cache = IPC::SRLock->new( $attr );
-}
-
 sub _trigger_debug { # Propagate the debug state to child objects
    my ($self, $debug) = @_;
 
    $self->l10n->debug( $debug ); $debug and $self->lock->debug( $debug );
 
    return;
-}
-
-# Private functions
-sub __build_attr_from_class { # Coerce a hash ref from a string
-   my $class = shift;
-
-   defined $class
-      or throw class => Unspecified, args => [ 'application class' ];
-   $class->can( 'config' )
-      or throw error => 'Class [_1] is missing the config method',
-               args  => [ $class ];
-
-   my $config = { %{ $class->config || {} } };
-   my $attr   = { %{ delete $config->{ USUL_CONFIG_KEY() } || {} } };
-   my $name   = delete $config->{name}; $config->{appclass} ||= $name;
-
-   $attr->{config} //= $config;
-   $attr->{debug } //= $class->can( 'debug' ) ? $class->debug : FALSE;
-   return $attr;
 }
 
 1;
@@ -107,7 +80,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.47.$Rev: 4 $
+Describes Class::Usul version v0.47.$Rev: 5 $
 
 =head1 Synopsis
 
@@ -168,15 +141,6 @@ Defines an instance of L<IPC::SRLock>
 Defines the application context log. Defaults to a L<Log::Handler> object
 
 =head1 Subroutines/Methods
-
-=head2 new_from_class
-
-   $usul_object = $self->new_from_class( $application_class ):
-
-Returns a new instance of self starting only with an application class name.
-The application class in expected to provide C<config> and C<debug> class
-methods. The hash ref C<< $application_class->config >> will be passed as
-the C<config> attribute to the constructor for this class
 
 =head2 dumper
 
