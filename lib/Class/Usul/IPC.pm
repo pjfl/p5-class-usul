@@ -71,11 +71,12 @@ sub child_list {
 sub popen { # Robbed in part from IPC::Cmd
    my ($self, $cmd, @opts) = @_;
 
+   $cmd or throw class => Unspecified, args => [ 'command' ];
+   is_arrayref $cmd and $cmd = join SPC, @{ $cmd };
+
    my $opts = $self->_default_run_options( @opts );
 
    $opts->{err} ||= NUL; $opts->{out} ||= NUL;
-   $cmd or throw class => Unspecified, args => [ 'command' ];
-   is_arrayref $cmd and $cmd = join SPC, @{ $cmd };
 
    my ($out, $stderr, $stdout) = (NUL, NUL, NUL);
 
@@ -619,6 +620,7 @@ sub __ipc_run_harness {
       is_coderef $cmd_ref->[ 0 ] and $cmd_ref = $cmd_ref->[ 0 ];
 
       my $h = IPC::Run::harness( $cmd_ref, @cmd_args, init => sub {
+         # TODO: MooseX::Daemonize::Core and double fork with setsid
          $opts->{pid_ref}->print( $PID )->close }, '&' );
 
       $h->start; return ( 0, $h );
