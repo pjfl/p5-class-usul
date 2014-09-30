@@ -45,6 +45,22 @@ my $prog   = Class::Usul::Programs->new( appclass => 'Class::Usul',
                                          noask    => 1,
                                          quiet    => 1, );
 
+SKIP: {
+   $ENV{AUTHOR_TESTING} or skip 'Proc::ProcessTable to flakey to test', 1;
+   eval { require Proc::ProcessTable };
+   $EVAL_ERROR and skip 'Proc::ProcessTable not installed', 1;
+
+   is $prog->ipc->process_exists( pid => $PID ), 1, 'process exists';
+
+   my @pids = $prog->ipc->child_list( $PID );
+
+   is $pids[ 0 ], $PID, 'child list - first pid';
+
+   my $table = $prog->ipc->process_table;
+
+   ok $table->count > 0, 'process table';
+}
+
 sub popen_test {
    my $want = shift; my $r = eval { $prog->ipc->popen( @_ ) };
 
@@ -75,7 +91,7 @@ like popen_test( 'out', $cmd ), qr{ pit \s+ of \s+ fire }msx,
 
 SKIP: {
    $osname eq 'mswin32' and skip 'popen capture stdin - not on MSWin32', 1;
-   $cmd = "${perl} -e \"print <>\"";
+   $cmd = "${perl} -e 'print <>'";
 
    is popen_test( 'out', $cmd, { in => [ 'some text' ] } ), 'some text',
       'popen captures stdin and stdout';
@@ -89,23 +105,6 @@ $cmd = "${perl} -e\"sleep 5\"";
 
 is popen_test( q(), $cmd, { timeout => 1 } )->class, 'TimeOut', 'popen timeout';
 
-SKIP: {
-   $ENV{AUTHOR_TESTING} or skip 'Proc::ProcessTable to flakey to test', 1;
-   eval { require Proc::ProcessTable };
-   $EVAL_ERROR and skip 'Proc::ProcessTable not installed', 1;
-
-   is $prog->ipc->process_exists( pid => $PID ), 1, 'process exists';
-
-   my @pids = $prog->ipc->child_list( $PID );
-
-   is $pids[ 0 ], $PID, 'child list - first pid';
-   is scalar @pids, 3, 'child list - proc count';
-
-   my $table = $prog->ipc->process_table;
-
-   ok $table->count > 0, 'process table';
-}
-
 sub run_cmd_test {
    my $want = shift; my $r = eval { $prog->run_cmd( @_ ) };
 
@@ -116,67 +115,102 @@ sub run_cmd_test {
 }
 
 SKIP: {
-   $osname eq 'mswin32' and skip 'run_cmd system test - not on MSWin32', 5;
+   $osname eq 'mswin32' and skip 'system test - not on MSWin32', 5;
 
    $cmd = "${perl} -v"; $r = run_cmd_test( 'out', $cmd, { use_system => 1 } );
 
-   like $r, qr{ larry \s+ wall }imsx, 'run_cmd system';
+   like $r, qr{ larry \s+ wall }imsx, 'system';
 
    $cmd = "${perl} -e \"exit 2\"";
    $r   = run_cmd_test( q(), $cmd, { use_system => 1 } );
 
-   is ref $r, EXCEPTION_CLASS, 'run_cmd system exception is right class';
+   is ref $r, EXCEPTION_CLASS, 'system exception is right class';
 
-   like $r, qr{ Unknown \s+ error }msx, 'run_cmd system default error string';
+   like $r, qr{ Unknown \s+ error }msx, 'system default error string';
 
    is run_cmd_test( 'rv', $cmd, { expected_rv => 2, use_system => 1 } ), 2,
-      'run_cmd system expected rv';
+      'system expected rv';
 
    like run_cmd_test( 'out', $cmd, { async => 1 } ), qr{ background }msx,
-      'run_cmd system async';
+      'system async';
 
    $cmd = "${perl} -e \"sleep 5\"";
 
    is run_cmd_test( q(), $cmd, { timeout => 1, use_system => 1 } )->class,
-      'TimeOut', 'run_cmd system timeout';
+      'TimeOut', 'system timeout';
 }
 
 SKIP: {
-   $osname eq 'mswin32' and skip 'run_cmd IPC::Run test - not on MSWin32', 6;
+   $osname eq 'mswin32' and skip 'IPC::Run test - not on MSWin32', 6;
 
    eval { require IPC::Run }; $EVAL_ERROR
       and skip 'IPC::Run test - not installed', 6;
 
    $cmd = [ $perl, '-v' ];
 
-   like run_cmd_test( 'out', $cmd ), qr{ larry \s+ wall }imsx,
-      'run_cmd IPC::Run';
+   like run_cmd_test( 'out', $cmd, { use_ipc_run => 1 } ),
+      qr{ larry \s+ wall }imsx, 'IPC::Run';
 
    $cmd = [ $perl, '-e', 'exit 1' ];
 
-   like run_cmd_test( q(), $cmd ), qr{ Unknown \s+ error }msx,
-      'run_cmd IPC::Run default error string';
+   like run_cmd_test( q(), $cmd, { use_ipc_run => 1 } ),
+      qr{ Unknown \s+ error }msx, 'IPC::Run default error string';
 
-   is run_cmd_test( 'rv', $cmd, { expected_rv => 1 } ), 1,
-      'run_cmd IPC::Run expected rv';
+   is run_cmd_test( 'rv', $cmd, { expected_rv => 1, use_ipc_run => 1 } ), 1,
+      'IPC::Run expected rv';
 
    $cmd = [ $perl, '-v' ];
 
-   like run_cmd_test( 'out', $cmd, { async => 1 } ), qr{ background }msx,
-      'run_cmd IPC::Run async';
+   like run_cmd_test( 'out', $cmd, { async => 1, use_ipc_run => 1 } ),
+      qr{ background }msx, 'IPC::Run async';
 
    $cmd = [ sub { print 'Hello World' } ];
 
-   like run_cmd_test( 'out', $cmd, { async => 1 } ), qr{ background }msx,
-      'run_cmd IPC::Run async coderef';
+   like run_cmd_test( 'out', $cmd, { async => 1, use_ipc_run => 1 } ),
+      qr{ background }msx, 'IPC::Run async coderef';
 
-   unlike run_cmd_test( 'rv', $cmd, { async => 1 } ), qr{ \(-1\) }msx,
-      'run_cmd IPC::Run async coderef captures pid';
+   unlike run_cmd_test( 'rv', $cmd, { async => 1, use_ipc_run => 1 } ),
+      qr{ \(-1\) }msx, 'IPC::Run async coderef captures pid';
 
    $cmd = [ $perl, '-e', 'sleep 5' ];
 
-   is run_cmd_test( q(), $cmd, { timeout => 1 } )->class, 'TimeOut',
-      'run_cmd IPC::Run timeout';
+   is run_cmd_test( q(), $cmd, { timeout => 1, use_ipc_run => 1 } )->class,
+      'TimeOut', 'IPC::Run timeout';
+}
+
+SKIP: {
+   $osname eq 'mswin32' and skip 'fork and exec - not on MSWin32', 1;
+
+   $cmd = [ $perl, '-v' ];
+
+   like run_cmd_test( 'out', $cmd ), qr{ larry \s+ wall }imsx,
+      'fork and exec - captures stdout';
+
+   $cmd = [ $perl, '-e', 'exit 1' ];
+
+   like run_cmd_test( q(), $cmd ),
+      qr{ Unknown \s+ error }msx, 'fork and exec - default error string';
+
+   is run_cmd_test( 'rv', $cmd, { expected_rv => 1 } ), 1,
+      'fork and exec - expected rv';
+
+   $cmd = [ $perl, '-v' ];
+
+   like run_cmd_test( 'out', $cmd, { async => 1 } ),
+      qr{ background }msx, 'fork and exec - async';
+
+   $cmd = [ sub { print 'Hello World' } ];
+
+   like run_cmd_test( 'out', $cmd, { async => 1 } ),
+      qr{ background }msx, 'fork and exec - async coderef';
+
+   unlike run_cmd_test( 'rv', $cmd, { async => 1 } ),
+      qr{ \(-1\) }msx, 'fork and exec - async coderef captures pid';
+
+   $cmd = [ $perl, '-e', 'sleep 5' ];
+
+   is run_cmd_test( q(), $cmd, { timeout => 1 } )->class,
+      'TimeOut', 'fork and exec - timeout';
 }
 
 # This fails on some platforms. The stderr is not redirected as expected

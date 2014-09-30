@@ -62,7 +62,7 @@ option 'home'         => is => 'lazy', isa => Directory, format => 's',
    coerce             => Directory->coercion;
 
 option 'locale'       => is => 'ro',   isa => SimpleStr, format => 's',
-   documentation      => 'Loads the specified language message catalog',
+   documentation      => 'Loads the specified language message catalogue',
    default            => sub { $_[ 0 ]->config->locale }, short => 'L';
 
 option 'method'       => is => 'rw',   isa => SimpleStr, format => 's',
@@ -545,7 +545,7 @@ Class::Usul::Programs - Provide support for command line programs
 =head1 Description
 
 This base class provides methods common to command line programs. The
-constructor can initialise a multi-lingual message catalog if required
+constructor can initialise a multi-lingual message catalogue if required
 
 =head1 Configuration and Environment
 
@@ -574,7 +574,7 @@ Print short help text extracted from this POD
 =item C<L locale>
 
 Print text and error messages in the selected language. If no language
-catalog is supplied prints text and errors in terse English. Defaults
+catalogue is supplied prints text and errors in terse English. Defaults
 to C<en_GB>
 
 =item C<n noask>
@@ -690,18 +690,6 @@ code of one
 If it is an interactive session prompts the user to turn debugging
 on. Returns true if debug is on. Also offers the option to quit
 
-=head2 _get_homedir
-
-   $path = $self->_get_homedir( $args );
-
-Environment variable containing the path to a file which contains
-the application installation directory. Defaults to the environment
-variable <uppercase application name>_HOME
-
-Search through sub directories of @INC looking for the file
-F<yourApplication.json>. Uses the location of this file to return the
-path to the installation directory
-
 =head2 help - Display help text about a method
 
    $exit_code = $self->help;
@@ -735,7 +723,7 @@ be called via the L<run method|/run>
 
    $localized_text = $self->loc( $message, @options );
 
-Localizes the message. Calls L<Class::Usul::L10N/localize>. The
+Localises the message. Calls L<Class::Usul::L10N/localize>. The
 domains to search are in the C<l10n_domains> configuration attribute. Adds
 C<< $self->locale >> to the arguments passed to C<localize>
 
@@ -756,7 +744,7 @@ to turn quiet mode off
 
 =head2 run
 
-   $rv = $self->run;
+   $exit_code = $self->run;
 
 Call the method specified by the C<-c> option on the command
 line. Returns the exit code

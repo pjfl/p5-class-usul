@@ -66,6 +66,9 @@ DBIC
 DDL
 dbattrs
 debian
+decrypt
+decrypts
+decrypted
 Diffie
 distmeta
 distname
@@ -88,11 +91,13 @@ isa
 json
 lbrace
 loc
+localize
 localizer
 login
 loginid
 logname
 lookup
+merchantability
 MSWin
 multi
 namespace

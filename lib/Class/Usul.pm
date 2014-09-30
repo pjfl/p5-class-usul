@@ -95,7 +95,7 @@ Describes Class::Usul version v0.47.$Rev: 6 $
 These modules provide a set of base classes for Perl packages and
 applications that provide configuration file loading
 L<Class::Usul::Config>, locking to single thread processes
-L<IPC::SRLock>, logging L<Class::Usul::Log> and localization
+L<IPC::SRLock>, logging L<Class::Usul::Log> and localisation
 L<Class::Usul::L10N>
 
 The class L<Class::Usul::Programs> is a base class for command line interfaces

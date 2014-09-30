@@ -18,6 +18,7 @@ use Data::Printer      alias => q(_data_dumper), colored => 1, indent => 3,
 use Digest                     qw( );
 use Digest::MD5                qw( md5 );
 use English                    qw( -no_match_vars );
+use Fcntl                      qw( F_SETFL O_NONBLOCK );
 use File::Basename             qw( basename dirname );
 use File::DataClass::Functions qw( supported_extensions );
 use File::DataClass::IO        qw( );
@@ -43,7 +44,8 @@ our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
                        fullname get_cfgfiles get_user hex2str
                        home2appldir io is_arrayref is_coderef
                        is_hashref is_win32 loginid
-                       logname merge_attributes my_prefix pad
+                       logname merge_attributes my_prefix
+                       nonblocking_write_pipe_pair pad
                        prefix2class product split_on__ split_on_dash
                        squeeze strip_leader sub_name sum symlink thread_id
                        throw throw_on_error trim unescape_TT
@@ -470,6 +472,16 @@ sub merge_attributes ($$$;$) {
 
 sub my_prefix (;$) {
    return split_on__( basename( $_[ 0 ] || q(), PERL_EXTNS ) );
+}
+
+sub nonblocking_write_pipe_pair () {
+   my ($r, $w); pipe $r, $w or throw( 'No pipe' );
+
+   fcntl $w, F_SETFL, O_NONBLOCK; $w->autoflush( 1 );
+
+   binmode $r; binmode $w;
+
+   return [ $r, $w ];
 }
 
 sub pad ($$;$$) {
@@ -1069,6 +1081,13 @@ Merges attribute hashes. The C<$dest> hash is updated and returned. The
 C<$dest> hash values take precedence over the C<$src> hash values which
 take precedence over the C<$defaults> hash values. The C<$src> hash
 may be an object in which case its accessor methods are called
+
+=head2 nonblocking_write_pipe_pair
+
+   $array_ref = non_blocking_write_pipe;
+
+Returns a pair of file handles, read then write. The write file handle is
+non blocking, binmode is set on both
 
 =head2 my_prefix
 

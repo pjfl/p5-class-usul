@@ -183,7 +183,7 @@ which will contain the applications installation information
 
 =head2 DEFAULT_L10N_DOMAIN
 
-String C<default>. The name of the default message catalog
+String C<default>. The name of the default message catalogue
 
 =head2 DIGEST_ALGORITHMS
 
@@ -226,7 +226,7 @@ The left brace character, C<{>
 
 =head2 LOCALIZE
 
-The character sequence that introduces a localization substitution
+The character sequence that introduces a localisation substitution
 parameter, C<[_>
 
 =head2 LOG_LEVELS

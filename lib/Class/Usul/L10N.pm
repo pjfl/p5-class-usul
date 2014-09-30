@@ -200,7 +200,7 @@ __END__
 
 =head1 Name
 
-Class::Usul::L10N - Localize text strings
+Class::Usul::L10N - Localise text strings
 
 =head1 Synopsis
 
@@ -217,7 +217,7 @@ Class::Usul::L10N - Localize text strings
 
 =head1 Description
 
-Localize text strings by looking them up in a GNU Gettext PO message catalog
+Localise text strings by looking them up in a GNU Gettext PO message catalogue
 
 =head1 Configuration and Environment
 
@@ -280,7 +280,7 @@ Monkey with the constructors signature
 
 =head2 BUILD
 
-Finish initializing the object
+Finish initialising the object
 
 =head2 get_po_header
 
@@ -292,15 +292,15 @@ Returns a hash ref containing the keys and values of the PO header record
 
    $l10n->invalidate_cache;
 
-Causes a reload of the domain files the next time a message is localized
+Causes a reload of the domain files the next time a message is localised
 
 =head2 localize
 
    $local_text = $l10n->localize( $key, $args );
 
-Localizes the message indexed by C<$key>. The message catalog is
+Localises the message indexed by C<$key>. The message catalogue is
 loaded from a GNU Gettext portable object file. Returns the C<$key> if
-the message is not in the catalog (and C<< $args->{no_default} >> is
+the message is not in the catalogue (and C<< $args->{no_default} >> is
 not true). Language is selected by the C<< $args->{locale} >>
 attribute. Expands positional parameters of the form C<< [_<n>] >> if
 C<< $args->{params} >> is an array reference of values to
@@ -311,7 +311,7 @@ displayed wrapped in quotes. The attribute C<< $args->{count} >> is
 passed to the portable object files plural function which is used to
 select either the singular or plural form of the translation. If
 C<< $args->{context} >> is supplied it is prepended to the C<$key> before
-the lookup in the catalog takes place
+the lookup in the catalogue takes place
 
 =head2 localizer
 
