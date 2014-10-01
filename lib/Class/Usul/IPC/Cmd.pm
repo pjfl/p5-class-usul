@@ -7,7 +7,7 @@ use Moo;
 use Class::Null;
 use Class::Usul::Constants    qw( EXCEPTION_CLASS FALSE NUL OK SPC TRUE );
 use Class::Usul::Functions    qw( arg_list emit_to io is_arrayref
-                                  is_coderef is_member is_win32
+                                  is_coderef is_hashref is_member is_win32
                                   merge_attributes nonblocking_write_pipe_pair
                                   strip_leader throw );
 use Class::Usul::Time         qw( nap );
@@ -25,6 +25,7 @@ use Module::Load::Conditional qw( can_load );
 use POSIX                     qw( _exit setsid sysconf WIFEXITED WNOHANG );
 use Scalar::Util              qw( blessed openhandle weaken );
 use Socket                    qw( AF_UNIX SOCK_STREAM PF_UNSPEC );
+use Sub::Install              qw( install_sub );
 use Try::Tiny;
 use Unexpected::Functions     qw( TimeOut Unspecified );
 
@@ -37,9 +38,6 @@ has 'close_all_files'  => is => 'ro',   isa => Bool, default => FALSE;
 
 has 'cmd'              => is => 'ro',   isa => ArrayRef | NonEmptySimpleStr,
    required            => TRUE;
-
-has 'config'           => is => 'lazy', isa => Object,
-   builder             => sub { Class::Null->new };
 
 has 'detach'           => is => 'ro',   isa => Bool, default => FALSE;
 
@@ -54,7 +52,8 @@ has 'in'               => is => 'ro',   isa => Path | SimpleStr,
    coerce              => sub { __arrayref2str( $_[ 0 ] ) },
    default             => NUL;
 
-has 'is_daemon'        => is => 'rwp',  isa => Bool, default => FALSE;
+has 'is_daemon'        => is => 'rwp',  isa => Bool, default => FALSE
+   init_arg            => undef;
 
 has 'log'              => is => 'lazy', isa => LogType,
    builder             => sub { Class::Null->new };
@@ -67,13 +66,21 @@ has 'nap_time'         => is => 'ro',   isa => Num, default => 0.3;
 
 has 'out'              => is => 'ro',   isa => Path | SimpleStr, default => NUL;
 
-has 'pidfile'          => is => 'lazy', isa => Path, builder => sub {
-   return                 io( $_[ 0 ]->config->rundir // tmpdir )->tempfile },
+has 'pidfile'          => is => 'lazy', isa => Path,
+   builder             => sub { $_[ 0 ]->rundir->tempfile },
    coerce              => Path->coercion;
 
 has 'response_class'   => is => 'lazy', isa => LoadableClass,
    default             => 'Class::Usul::Response::IPC',
    coerce              => LoadableClass->coercion;
+
+has 'rundir'           => is => 'lazy', isa => Directory,
+   builder             => sub { $_[ 0 ]->tempdir },
+   coerce              => Directory->coercion;
+
+has 'tempdir'          => is => 'lazy', isa => Directory,
+   builder             => sub { tmpdir }, coerce => Directory->coercion,
+   handles             => { _tempfile => 'tempfile' };
 
 has 'timeout'          => is => 'ro',   isa => PositiveInt, default => 0;
 
@@ -85,8 +92,39 @@ has 'working_dir'      => is => 'lazy', isa => Directory | Undef,
    default             => undef;
 
 # Construction
+around 'BUILDARGS' => sub {
+   my ($orig, $self, @args) = @_; my $n = 0; $n++ while (defined $args[ $n ]);
+
+   return (              $n == 0) ? {}
+        : (is_hashref $args[ 0 ]) ? { %{ $args[ 0 ] } }
+        : (              $n == 1) ? { cmd => $args[ 0 ] }
+        : (is_hashref $args[ 1 ]) ? { cmd => $args[ 0 ], %{ $args[ 1 ] } }
+        : (          $n % 2 == 1) ? { cmd => @args }
+                                  : { @args };
+};
+
 sub BUILD {
    $_[ 0 ]->pidfile->chomp->lock; return;
+}
+
+sub import {
+   my $class  = shift;
+   my $params = { (is_hashref $_[ 0 ]) ? %{+ shift } : () };
+   my @wanted = @_;
+   my $target = caller;
+
+   is_member 'run_cmd', @wanted and install_sub {
+       as => 'run_cmd', into => $target, code => sub {
+          my $cmd = shift; my $attr = arg_list @_;
+
+          $attr->{cmd} = $cmd or throw Unspecified, args => [ 'command' ];
+
+          $attr->{ $_ } //= $params->{ $_ } for (keys %{ $params });
+
+          return __PACKAGE__->new( $attr )->_run_cmd;
+       } };
+
+   return;
 }
 
 # Public methods
@@ -118,6 +156,7 @@ sub _run_cmd {
    return $self->_run_cmd_using_open3( $cmd );
 }
 
+# Fork and exec implementation
 sub _run_cmd_using_fork_and_exec {
    my $self = shift; my $cmd = $self->cmd->[ 0 ]; my $prog = basename( $cmd );
 
@@ -148,12 +187,12 @@ sub _run_cmd_using_fork_and_exec {
    }
 
    # Child
-   $self->_redirect_io( $in_h->[ 0 ], $out_h->[ 1 ], $err_h->[ 1 ] );
+   $self->_redirect_child_io( $in_h->[ 0 ], $out_h->[ 1 ], $err_h->[ 1 ] );
    $self->working_dir and chdir $self->working_dir;
-   is_coderef $cmd or exec @{ $self->cmd }
-                   or throw 'Command [_1] failed to execute: [_2]',
-                         args => [ $cmd, $OS_ERROR ];
-   _exit $self->_execute_coderef( $cmd );
+   is_coderef $cmd and _exit $self->_execute_coderef( $cmd );
+
+   exec @{ $self->cmd } or throw 'Command [_1] failed to execute: [_2]',
+                                  args => [ $cmd, $OS_ERROR ];
 }
 
 sub _sync_response {
@@ -204,7 +243,7 @@ sub _daemonise { # Returns false to the parent true to the child
    $_[ 0 ]->_fork_process; return $_[ 0 ]->_detach_process;
 }
 
-sub _detach_process {
+sub _detach_process { # And this method came from MooseX::Daemonize
    my $self = shift; $self->is_daemon or return FALSE; # Return if parent ...
 
    # Now we are the child ...
@@ -250,7 +289,7 @@ sub _fork_process { # Returns pid to the parent undef to the child
    return;
 }
 
-sub _redirect_io {
+sub _redirect_child_io {
    my ($self, $in_h, $out_h, $err_h) = @_;
 
    my $in = $self->in; my $out = $self->out; my $err = $self->err;
@@ -318,10 +357,6 @@ sub _shutdown {
    exit OK;
 }
 
-sub _tempfile {
-   return io( $_[ 0 ]->config->tempdir // tmpdir )->tempfile;
-}
-
 sub _wait_for_and_read {
    my ($self, $pidfile) = @_; my $waited = 0;
 
@@ -334,6 +369,7 @@ sub _wait_for_and_read {
    return $pidfile->chomp->getline || -1;
 }
 
+# IPC::Run implementation
 sub _run_cmd_using_ipc_run {
    my $self = shift; my ($buf_err, $buf_out, $error, $h, $rv);
 
@@ -366,8 +402,7 @@ sub _run_cmd_using_ipc_run {
          throw TimeOut, args => [ $cmd_str, $tmout ];
       } and alarm $tmout;
 
-      ($rv, $h) = $self->_ipc_run_harness( $cmd_ref, @cmd_args );
-      alarm 0;
+      ($rv, $h) = $self->_ipc_run_harness( $cmd_ref, @cmd_args ); alarm 0;
    }
    catch { throw $_ };
 
@@ -429,6 +464,7 @@ sub _ipc_run_harness {
    return ( $rv, $h );
 }
 
+# IPC::Open3 implementation
 sub _run_cmd_using_open3 { # Robbed in part from IPC::Cmd
    my ($self, $cmd) = @_; my ($fltout, $stderr, $stdout) = (NUL, NUL, NUL);
 
@@ -498,6 +534,7 @@ sub _run_cmd_using_open3 { # Robbed in part from IPC::Cmd
          stderr => $stderr,        stdout => $stdout );
 }
 
+# System implmentation
 sub _run_cmd_using_system {
    my ($self, $cmd) = @_; my ($error, $rv);
 
@@ -710,16 +747,23 @@ Class::Usul::IPC::Cmd - Execute system commands
    use Class::Usul::IPC::Cmd;
 
    sub run_cmd {
-      my ($self, $cmd, @opts) = @_; my $opts = arg_list @opts;
+      my ($self, $cmd, @args) = @_; my $attr = arg_list @args;
 
-      $opts->{cmd   } = $cmd or throw Unspecified, args => [ 'command' ];
-      $opts->{config} = $self->config;
-      $opts->{log   } = $self->log;
+      $attr->{cmd    } = $cmd or throw Unspecified, args => [ 'command' ];
+      $attr->{log    } = $self->log;
+      $attr->{rundir } = $self->config->rundir;
+      $attr->{tempdir} = $self->config->tempdir;
 
-      return Class::Usul::IPC::Cmd->new( $opts )->run_cmd;
+      return Class::Usul::IPC::Cmd->new( $attr )->run_cmd;
    }
 
    $self->run_cmd( [ 'perl', '-v' ], { async => 1 } );
+
+   # Alternatively there is a functional interface
+
+   use Class::Usul::IPC::Cmd { log => ..., tempdir => ... }, 'run_cmd';
+
+   run_cmd( [ 'perl', '-v' ], { async => 1 } );
 
 =head1 Description
 
@@ -738,8 +782,6 @@ Defines the following attributes;
 =item C<close_all_files>
 
 =item C<cmd>
-
-=item C<config>
 
 =item C<detach>
 
@@ -763,7 +805,11 @@ Defines the following attributes;
 
 =item C<out>
 
-=item C<run_cmd>
+=item C<pidfile>
+
+=item C<rundir>
+
+=item C<tempdir>
 
 =item C<timeout>
 
@@ -771,11 +817,25 @@ Defines the following attributes;
 
 =item C<use_system>
 
+=item C<working_dir>
+
 =back
 
 =head1 Subroutines/Methods
 
 =head2 C<BUILD>
+
+Set chomp and lock on the C<pidfile>
+
+=head2 C<run_cmd>
+
+   $response_object = Class::Usul::IPC::Cmd->run_cmd( $cmd, @args );
+
+Runs a given external command. If the command argument is an array reference
+the internal fork and execute implementation will be used, if a string is
+passed the L<IPC::Open3> implementation will be use instead
+
+Returns a L<Class::Ususl::Response::IPC> object reference
 
 =head1 Diagnostics
 

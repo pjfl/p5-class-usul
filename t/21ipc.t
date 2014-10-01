@@ -40,6 +40,7 @@ my $perl   = $EXECUTABLE_NAME;
 my $prog   = Class::Usul::Programs->new( appclass => 'Class::Usul',
                                          config   => { cache_ttys => 0,
                                                        logsdir    => 't',
+                                                       rundir     => 't',
                                                        tempdir    => 't', },
                                          log      => Logger->new,
                                          method   => 'dump_self',
@@ -217,12 +218,16 @@ SKIP: {
       qr{ background }msx, 'fork and exec - async';
 
    $cmd = [ sub { print 'Hello World' } ];
-   $r   = run_cmd_test( q(), $cmd, { async => 1 } );
+   $r   = run_cmd_test( q(), $cmd, { async => 1, out => $path } );
 
-   like $r->out, qr{ background }msx, 'fork and exec - async coderef';
-
+   like   $r->out, qr{ background }msx, 'fork and exec - async coderef';
    unlike $r->rv, qr{ \(-1\) }msx, 'fork and exec - async coderef captures pid';
 
+   sleep 1 while ($prog->ipc->process_exists( pid => $r->pid ));
+
+   is $path->slurp, 'Hello World', 'fork and exec - async coderef writes file';
+
+   $path->exists and $path->unlink;
    $cmd = [ $perl, '-e', 'sleep 5' ];
 
    is run_cmd_test( q(), $cmd, { timeout => 1 } )->class,

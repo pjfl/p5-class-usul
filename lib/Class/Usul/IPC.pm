@@ -102,13 +102,14 @@ sub process_table {
 }
 
 sub run_cmd {
-   my ($self, $cmd, @opts) = @_; my $opts = arg_list @opts;
+   my ($self, $cmd, @args) = @_; my $attr = arg_list @args;
 
-   $opts->{cmd   } = $cmd or throw Unspecified, args => [ 'command' ];
-   $opts->{config} = $self->config;
-   $opts->{log   } = $self->log;
+   $attr->{cmd    } = $cmd or throw Unspecified, args => [ 'command' ];
+   $attr->{log    } = $self->log;
+   $attr->{rundir } = $self->config->rundir;
+   $attr->{tempdir} = $self->config->tempdir;
 
-   return Class::Usul::IPC::Cmd->new( $opts )->run_cmd;
+   return Class::Usul::IPC::Cmd->new( $attr )->run_cmd;
 }
 
 sub signal_process {

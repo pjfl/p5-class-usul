@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Added functional interface to ::IPC::Cmd
           - ::IPC::Cmd async processes no more zombies
           - Factored out C::U::IPC::Cmd. IPC::Run no longer required
           - Removed new_from_class since only used by CX::Usul
