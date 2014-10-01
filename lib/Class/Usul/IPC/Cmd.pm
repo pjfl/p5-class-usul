@@ -5,7 +5,8 @@ use namespace::autoclean;
 
 use Moo;
 use Class::Null;
-use Class::Usul::Constants    qw( EXCEPTION_CLASS FALSE NUL OK SPC TRUE );
+use Class::Usul::Constants    qw( EXCEPTION_CLASS FALSE NUL OK SPC TRUE
+                                  UNDEFINED_RV );
 use Class::Usul::Functions    qw( arg_list emit_to io is_arrayref
                                   is_coderef is_hashref is_member is_win32
                                   merge_attributes nonblocking_write_pipe_pair
@@ -52,7 +53,7 @@ has 'in'               => is => 'ro',   isa => Path | SimpleStr,
    coerce              => sub { __arrayref2str( $_[ 0 ] ) },
    default             => NUL;
 
-has 'is_daemon'        => is => 'rwp',  isa => Bool, default => FALSE
+has 'is_daemon'        => is => 'rwp',  isa => Bool, default => FALSE,
    init_arg            => undef;
 
 has 'log'              => is => 'lazy', isa => LogType,
@@ -169,6 +170,8 @@ sub _run_cmd_using_fork_and_exec {
          my $pid = $self->_wait_for_and_read( $pidfile ); $pidfile->close;
          my $out = "Started ${prog}(${pid}) in the background";
 
+         $self->log->debug( $out );
+
          return $self->response_class->new( out => $out, pid => $pid );
       }
 
@@ -180,8 +183,12 @@ sub _run_cmd_using_fork_and_exec {
       if ($self->async) {
          my $out = "Started ${prog}(${pid}) in the background";
 
+         $self->log->debug( $out );
+
          return $self->response_class->new( out => $out, pid => $pid );
       }
+
+      $self->log->debug( "Running ${prog}($pid)" );
 
       return $self->_sync_response( $pid, $in_h, $out_h, $err_h );
    }
@@ -271,7 +278,8 @@ sub _execute_coderef {
 
    try {
       $self->_setup_signals; my (undef, @args) = @{ $self->cmd };
-      $rv = $code->( $self, @args ); $rv = $rv << 8; $self->_remove_pid;
+      $rv = $code->( $self, @args ) // UNDEFINED_RV; $rv = $rv << 8;
+      $self->_remove_pid;
    }
    catch {
       blessed $_ and $_->can( 'rv' ) and $rv = $_->rv; $rv //= 255;
@@ -354,7 +362,7 @@ sub _shutdown {
 
    $pidfile->exists and $pidfile->getline == $PID and $self->_remove_pid;
 
-   exit OK;
+   _exit OK;
 }
 
 sub _wait_for_and_read {
