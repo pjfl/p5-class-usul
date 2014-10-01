@@ -1,5 +1,6 @@
 package Class::Usul::IPC::Cmd;
 
+use 5.01;
 use namespace::autoclean;
 
 use Moo;
@@ -22,7 +23,7 @@ use IO::Select;
 use IPC::Open3;
 use Module::Load::Conditional qw( can_load );
 use POSIX                     qw( _exit setsid sysconf WIFEXITED WNOHANG );
-use Scalar::Util              qw( blessed openhandle );
+use Scalar::Util              qw( blessed openhandle weaken );
 use Socket                    qw( AF_UNIX SOCK_STREAM PF_UNSPEC );
 use Try::Tiny;
 use Unexpected::Functions     qw( TimeOut Unspecified );
@@ -30,69 +31,60 @@ use Unexpected::Functions     qw( TimeOut Unspecified );
 our ($CHILD_ENUM, $CHILD_PID);
 
 # Public attributes
-has 'async'           => is => 'ro',   isa => Bool, default => FALSE;
+has 'async'            => is => 'ro',   isa => Bool, default => FALSE;
 
-has 'close_all_files' => is => 'ro',   isa => Bool, default => FALSE;
+has 'close_all_files'  => is => 'ro',   isa => Bool, default => FALSE;
 
-has 'cmd'             => is => 'ro',   isa => ArrayRef | NonEmptySimpleStr,
-   required           => TRUE;
+has 'cmd'              => is => 'ro',   isa => ArrayRef | NonEmptySimpleStr,
+   required            => TRUE;
 
-has 'detach'          => is => 'ro',   isa => Bool, default => FALSE;
+has 'config'           => is => 'lazy', isa => Object,
+   builder             => sub { Class::Null->new };
 
-has 'err'             => is => 'ro',   isa => Path | SimpleStr, default => NUL;
+has 'detach'           => is => 'ro',   isa => Bool, default => FALSE;
 
-has 'expected_rv'     => is => 'ro',   isa => PositiveInt, default => 0;
+has 'err'              => is => 'ro',   isa => Path | SimpleStr, default => NUL;
 
-has 'ignore_zombies'  => is => 'ro',   isa => Bool, default => FALSE;
+has 'expected_rv'      => is => 'ro',   isa => PositiveInt, default => 0;
 
-has 'in'              => is => 'ro',   isa => Path | SimpleStr,
-   coerce             => sub { __arrayref2str( $_[ 0 ] ) },
-   default            => NUL;
+has 'ignore_zombies'   => is => 'lazy', isa => Bool,
+   builder             => sub { $_[ 0 ]->async ? TRUE : FALSE };
 
-has 'is_daemon'       => is => 'rwp',  isa => Bool, default => FALSE;
+has 'in'               => is => 'ro',   isa => Path | SimpleStr,
+   coerce              => sub { __arrayref2str( $_[ 0 ] ) },
+   default             => NUL;
 
-has 'log'             => is => 'ro',   isa => LogType,
-   builder            => sub { Class::Null->new };
+has 'is_daemon'        => is => 'rwp',  isa => Bool, default => FALSE;
 
-has 'keep_fds'        => is => 'ro',   isa => ArrayRef, builder => sub { [] };
+has 'log'              => is => 'lazy', isa => LogType,
+   builder             => sub { Class::Null->new };
 
-has 'max_daemon_wait' => is => 'ro',   isa => PositiveInt, default => 15;
+has 'keep_fds'         => is => 'ro',   isa => ArrayRef, builder => sub { [] };
 
-has 'nap_time'        => is => 'ro',   isa => Num, default => 0.3;
+has 'max_pidfile_wait' => is => 'ro',   isa => PositiveInt, default => 15;
 
-has 'out'             => is => 'ro',   isa => Path | SimpleStr, default => NUL;
+has 'nap_time'         => is => 'ro',   isa => Num, default => 0.3;
 
-has 'pidfile'         => is => 'lazy', isa => Path,
-   builder            => sub { $_[ 0 ]->_tempfile },
-   coerce             => Path->coercion;
+has 'out'              => is => 'ro',   isa => Path | SimpleStr, default => NUL;
 
-has 'response_class'  => is => 'lazy', isa => LoadableClass,
-   default            => 'Class::Usul::Response::IPC',
-   coerce             => LoadableClass->coercion;
+has 'pidfile'          => is => 'lazy', isa => Path, builder => sub {
+   return                 io( $_[ 0 ]->config->rundir // tmpdir )->tempfile },
+   coerce              => Path->coercion;
 
-has 'tempdir'         => is => 'ro',   isa => Directory,
-   builder            => sub { tmpdir }, coerce => Directory->coercion;
+has 'response_class'   => is => 'lazy', isa => LoadableClass,
+   default             => 'Class::Usul::Response::IPC',
+   coerce              => LoadableClass->coercion;
 
-has 'timeout'         => is => 'ro',   isa => PositiveInt, default => 0;
+has 'timeout'          => is => 'ro',   isa => PositiveInt, default => 0;
 
-has 'use_ipc_run'     => is => 'ro',   isa => Bool, default => FALSE;
+has 'use_ipc_run'      => is => 'ro',   isa => Bool, default => FALSE;
 
-has 'use_system'      => is => 'ro',   isa => Bool, default => FALSE;
+has 'use_system'       => is => 'ro',   isa => Bool, default => FALSE;
 
-has 'working_dir'     => is => 'lazy', isa => Directory | Undef,
-   default            => undef;
+has 'working_dir'      => is => 'lazy', isa => Directory | Undef,
+   default             => undef;
 
 # Construction
-around 'BUILDARGS' => sub {
-   my ($orig, $self, @args) = @_; my $attr = $orig->( $self, @args );
-
-   my $builder = delete $attr->{builder} or return $attr;
-
-   merge_attributes $attr, $builder,         {}, [ 'log' ];
-   merge_attributes $attr, $builder->config, {}, [ 'tempdir' ];
-   return $attr;
-};
-
 sub BUILD {
    $_[ 0 ]->pidfile->chomp->lock; return;
 }
@@ -103,6 +95,111 @@ sub run_cmd {
 }
 
 # Private methods
+sub _run_cmd {
+   my $self = shift; my $cmd = $self->cmd; my $has_pipes = __has_pipes( $cmd );
+
+   if (is_arrayref $cmd) {
+      $cmd->[ 0 ] or throw Unspecified, args => [ 'command' ];
+
+      unless (is_win32) {
+         ($has_pipes or $self->use_ipc_run)
+            and can_load( modules => { 'IPC::Run' => '0.84' } )
+            and return $self->_run_cmd_using_ipc_run;
+
+         not $has_pipes and return $self->_run_cmd_using_fork_and_exec;
+      }
+
+      $cmd = join SPC, @{ $cmd };
+   }
+
+   not is_win32 and ($has_pipes or $self->async or $self->use_system)
+      and return $self->_run_cmd_using_system( $cmd );
+
+   return $self->_run_cmd_using_open3( $cmd );
+}
+
+sub _run_cmd_using_fork_and_exec {
+   my $self = shift; my $cmd = $self->cmd->[ 0 ]; my $prog = basename( $cmd );
+
+   my ($in_h, $out_h, $err_h) = __three_nonblocking_write_pipe_pairs();
+
+   if ($self->detach) {
+      my $pidfile = $self->pidfile;
+
+      unless ($self->_daemonise) { # Parent
+         my $pid = $self->_wait_for_and_read( $pidfile ); $pidfile->close;
+         my $out = "Started ${prog}(${pid}) in the background";
+
+         return $self->response_class->new( out => $out, pid => $pid );
+      }
+
+      $pidfile->println( $PID ); # Child
+   }
+   elsif (my $pid = $self->_fork_process) { # Parent
+      $in_h = $in_h->[ 1 ]; $out_h = $out_h->[ 0 ]; $err_h = $err_h->[ 0 ];
+
+      if ($self->async) {
+         my $out = "Started ${prog}(${pid}) in the background";
+
+         return $self->response_class->new( out => $out, pid => $pid );
+      }
+
+      return $self->_sync_response( $pid, $in_h, $out_h, $err_h );
+   }
+
+   # Child
+   $self->_redirect_io( $in_h->[ 0 ], $out_h->[ 1 ], $err_h->[ 1 ] );
+   $self->working_dir and chdir $self->working_dir;
+   is_coderef $cmd or exec @{ $self->cmd }
+                   or throw 'Command [_1] failed to execute: [_2]',
+                         args => [ $cmd, $OS_ERROR ];
+   _exit $self->_execute_coderef( $cmd );
+}
+
+sub _sync_response {
+   my ($self, $pid, $in_h, $out_h, $err_h) = @_;
+
+   my $cmd = $self->cmd->[ 0 ]; my $prog = basename( $cmd );
+
+   my ($fltout, $stderr, $stdout) = (NUL, NUL, NUL);
+
+   my $out = $self->out; my $outhand = sub {
+      my $buf = shift; defined $buf or return;
+
+      $out ne 'null'   and $fltout .= $buf;
+      $out ne 'null'   and $stdout .= $buf;
+      $out eq 'stdout' and emit_to \*STDOUT, $buf;
+      return;
+   };
+
+   my $err = $self->err; my $errhand = sub {
+      my $buf = shift; defined $buf or return;
+
+      $err eq 'out'    and $fltout .= $buf;
+      $err ne 'null'   and $stderr .= $buf;
+      $err eq 'stderr' and emit_to \*STDERR, $buf;
+      return;
+   };
+
+   try {
+      my $tmout = $self->timeout; $tmout and local $SIG{ALRM} = sub {
+         throw TimeOut, args => [ $prog, $tmout ];
+      } and alarm $tmout;
+
+      $self->_send_in( $in_h ); close $in_h;
+      __drain( $out_h, $outhand, $err_h, $errhand );
+      waitpid $pid, 0; alarm 0;
+   }
+   catch { throw $_ };
+
+   my $codes = $self->_return_codes_or_throw( $cmd, $CHILD_ERROR, $stderr );
+
+   return $self->response_class->new
+      (  core   => $codes->{core}, out    => __filter_out( $fltout ),
+         rv     => $codes->{rv},   sig    => $codes->{sig},
+         stderr => $stderr,        stdout => $stdout );
+}
+
 sub _daemonise { # Returns false to the parent true to the child
    $_[ 0 ]->_fork_process; return $_[ 0 ]->_detach_process;
 }
@@ -130,6 +227,21 @@ sub _detach_process {
    return TRUE;
 }
 
+sub _execute_coderef {
+   my ($self, $code) = @_; my $rv;
+
+   try {
+      $self->_setup_signals; my (undef, @args) = @{ $self->cmd };
+      $rv = $code->( $self, @args ); $rv = $rv << 8; $self->_remove_pid;
+   }
+   catch {
+      blessed $_ and $_->can( 'rv' ) and $rv = $_->rv; $rv //= 255;
+      emit_to \*STDERR, $_;
+   };
+
+   return $rv;
+}
+
 sub _fork_process { # Returns pid to the parent undef to the child
    my $self = shift; $self->ignore_zombies and $SIG{CHLD} = 'IGNORE';
 
@@ -138,24 +250,25 @@ sub _fork_process { # Returns pid to the parent undef to the child
    return;
 }
 
-sub _ipc_run_harness {
-   my ($self, $cmd_ref, @cmd_args) = @_;
+sub _redirect_io {
+   my ($self, $in_h, $out_h, $err_h) = @_;
 
-   if ($self->async) {
-      my $pidfile = $self->pidfile;
+   my $in = $self->in; my $out = $self->out; my $err = $self->err;
 
-      is_coderef $cmd_ref->[ 0 ] and $cmd_ref = $cmd_ref->[ 0 ];
-
-      my $h = IPC::Run::harness( $cmd_ref, @cmd_args, init => sub {
-         $pidfile->println( $PID )->close }, '&' );
-
-      $h->start; return ( 0, $h );
+   if ($self->async or $self->detach) {
+      $in ||= 'null'; $out ||= 'null'; $err ||= 'null';
    }
 
-   my $h  = IPC::Run::harness( $cmd_ref, @cmd_args ); $h->run;
-   my $rv = $h->full_result || 0; $rv =~ m{ unknown }msx and throw $rv;
-
-   return ( $rv, $h );
+   __redirect_stdin ( (   blessed $in) ? "${in}"
+                    : ($in  eq 'null') ? devnull
+                                       : $in_h );
+   __redirect_stdout( (  blessed $out) ? "${out}"
+                    : ($out eq 'null') ? devnull
+                                       : $out_h );
+   __redirect_stderr( (  blessed $err) ? "${err}"
+                    : ($err eq 'null') ? devnull
+                                       : $err_h );
+   return;
 }
 
 sub _remove_pid {
@@ -184,140 +297,41 @@ sub _return_codes_or_throw {
    return { core => $core, rv => $rv, sig => $sig, };
 }
 
-sub _run_cmd {
-   my $self = shift; my $cmd = $self->cmd;
+sub _send_in {
+   my ($self, $fh) = @_; my $in = $self->in or return;
 
-   if (is_arrayref $cmd) {
-      $cmd->[ 0 ] or throw Unspecified, args => [ 'command' ];
+   if    (blessed $in)                      { emit_to $fh, $in->slurp }
+   elsif ($in ne 'null' and $in ne 'stdin') { emit_to $fh, $in }
 
-      unless (is_win32) {
-         not $self->use_ipc_run and return $self->_run_cmd_using_fork_and_exec;
-
-         $self->use_ipc_run and can_load( modules => { 'IPC::Run' => '0.84' } )
-            and return $self->_run_cmd_using_ipc_run;
-      }
-
-      $cmd = join SPC, @{ $cmd };
-   }
-
-   not is_win32 and ($self->async or $self->use_system)
-      and return $self->_run_cmd_using_system( $cmd );
-
-   # Open3 does not return the exit code of the child
-   return $self->_run_cmd_using_open3( $cmd );
+   return;
 }
 
-sub _run_cmd_using_fork_and_exec {
-   my $self = shift; my $cmd = $self->cmd->[ 0 ];
+sub _setup_signals {
+   my $self = shift; $SIG{INT} = sub { $self->_shutdown };
+}
 
-   my $in_h  = nonblocking_write_pipe_pair;
-   my $out_h = nonblocking_write_pipe_pair;
-   my $err_h = nonblocking_write_pipe_pair;
+sub _shutdown {
+   my $self = shift; my $pidfile = $self->pidfile;
 
-   if ($self->detach) {
-      my $pidfile = $self->pidfile;
+   $pidfile->exists and $pidfile->getline == $PID and $self->_remove_pid;
 
-      unless ($self->_daemonise) { # Parent
-         my $waited = 0;
+   exit OK;
+}
 
-         while (not $pidfile->exists or not $pidfile->is_empty) {
-            nap $self->nap_time; $waited += $self->nap_time;
-            $waited > $self->max_daemon_wait
-               and throw 'File [_1] contains no process id';
-         }
+sub _tempfile {
+   return io( $_[ 0 ]->config->tempdir // tmpdir )->tempfile;
+}
 
-         return $self->response_class->new( pid => $pidfile->getline );
-      }
+sub _wait_for_and_read {
+   my ($self, $pidfile) = @_; my $waited = 0;
 
-      $pidfile->println( $PID ); # Child
-   }
-   elsif (my $pid = $self->_fork_process) { # Parent
-      $in_h = $in_h->[ 1 ]; $out_h = $out_h->[ 0 ]; $err_h = $err_h->[ 0 ];
-
-      my $prog = basename( $cmd );
-
-      if ($self->async) {
-         my $out = "Started ${prog}(${pid}) in the background";
-
-         return $self->response_class->new( out => $out, pid => $pid );
-      }
-
-      my ($fltout, $stderr, $stdout) = (NUL, NUL, NUL); my (%hands, @ready);
-
-      my $err = $self->err; my $errhand = sub {
-         my $buf = shift; defined $buf or return;
-
-         $err eq 'out'    and $fltout .= $buf;
-         $err ne 'null'   and $stderr .= $buf;
-         $err eq 'stderr' and emit_to \*STDERR, $buf;
-         return;
-      };
-
-      my $out = $self->out; my $outhand = sub {
-         my $buf = shift; defined $buf or return; $fltout .= $buf;
-
-         $out ne 'null'   and $stdout .= $buf;
-         $out eq 'stdout' and emit_to \*STDOUT, $buf;
-         return;
-      };
-
-      try {
-         my $tmout = $self->timeout; $tmout and local $SIG{ALRM} = sub {
-            throw TimeOut, args => [ $prog, $tmout ];
-         };
-         alarm $tmout;
-
-         if (blessed $self->in) { emit_to $in_h, $self->in->slurp }
-         elsif ($self->in ne 'null' and $self->in ne 'stdin') {
-            emit_to $in_h, $self->in;
-         }
-
-         close $in_h;
-
-         my $selector = IO::Select->new(); $selector->add( $err_h, $out_h );
-
-         $hands{ fileno $err_h } = $errhand; $hands{ fileno $out_h } = $outhand;
-
-         while (@ready = $selector->can_read) {
-            for my $fh (@ready) {
-               my $buf; my $bytes_read = sysread( $fh, $buf, 64 * 1024 );
-
-               if ($bytes_read) { $hands{ fileno $fh }->( "${buf}" ) }
-               else { $selector->remove( $fh ); close $fh }
-            }
-         }
-
-         waitpid $pid, 0;
-         alarm 0;
-      }
-      catch { throw $_ };
-
-      my $codes = $self->_return_codes_or_throw( $cmd, $CHILD_ERROR, $stderr );
-
-      return $self->response_class->new
-         (  core   => $codes->{core}, out    => __filter_out( $fltout ),
-            rv     => $codes->{rv},   sig    => $codes->{sig},
-            stderr => $stderr,        stdout => $stdout );
+   while (not $pidfile->exists or $pidfile->is_empty) {
+      nap $self->nap_time; $waited += $self->nap_time;
+      $waited > $self->max_pidfile_wait
+         and throw 'File [_1] contains no process id', args => [ $pidfile ];
    }
 
-   # Child
-   __redirect_stdin (  $in_h->[ 0 ] );
-   __redirect_stdout( $out_h->[ 1 ] );
-   __redirect_stderr( $err_h->[ 1 ] );
-
-   $self->working_dir and chdir $self->working_dir;
-
-   unless (is_coderef $cmd) {
-      exec @{ $self->cmd }
-         or throw 'Command [_1] failed to execute: [_2]',
-            args => [ $cmd, $OS_ERROR ];
-   }
-
-   $self->_setup_signals; my (undef, @args) = @{ $self->cmd };
-
-   my $rv = $cmd->( $self, @args ); $rv = $rv << 8; $self->_remove_pid;
-
-   _exit $rv;
+   return $pidfile->chomp->getline || -1;
 }
 
 sub _run_cmd_using_ipc_run {
@@ -350,8 +364,8 @@ sub _run_cmd_using_ipc_run {
    try {
       my $tmout = $self->timeout; $tmout and local $SIG{ALRM} = sub {
          throw TimeOut, args => [ $cmd_str, $tmout ];
-      };
-      alarm $tmout;
+      } and alarm $tmout;
+
       ($rv, $h) = $self->_ipc_run_harness( $cmd_ref, @cmd_args );
       alarm 0;
    }
@@ -362,9 +376,9 @@ sub _run_cmd_using_ipc_run {
    my $sig = $rv & 127; my $core = $rv & 128; $rv = $rv >> 8;
 
    if ($self->async) {
-      my $pid = $self->pidfile->getline || -1; $self->pidfile->close;
+      my $pid = $self->_wait_for_and_read( $self->pidfile );
 
-      $out = "Started ${prog}(${pid}) in the background";
+      $self->pidfile->close; $out = "Started ${prog}(${pid}) in the background";
 
       return $self->response_class->new
          ( core => $core, harness => $h,  out => $out,
@@ -396,6 +410,25 @@ sub _run_cmd_using_ipc_run {
          sig  => $sig,  stderr => $stderr,  stdout => $stdout );
 }
 
+sub _ipc_run_harness {
+   my ($self, $cmd_ref, @cmd_args) = @_;
+
+   if ($self->async) {
+      is_coderef $cmd_ref->[ 0 ] and $cmd_ref = $cmd_ref->[ 0 ];
+
+      my $pidfile = $self->pidfile; weaken( $pidfile );
+      my $h       = IPC::Run::harness( $cmd_ref, @cmd_args, init => sub {
+         IPC::Run::close_terminal(); $pidfile->println( $PID ) }, '&' );
+
+      $h->start; return ( 0, $h );
+   }
+
+   my $h  = IPC::Run::harness( $cmd_ref, @cmd_args ); $h->run;
+   my $rv = $h->full_result || 0; $rv =~ m{ unknown }msx and throw $rv;
+
+   return ( $rv, $h );
+}
+
 sub _run_cmd_using_open3 { # Robbed in part from IPC::Cmd
    my ($self, $cmd) = @_; my ($fltout, $stderr, $stdout) = (NUL, NUL, NUL);
 
@@ -408,8 +441,9 @@ sub _run_cmd_using_open3 { # Robbed in part from IPC::Cmd
       return;
    };
    my $out = $self->out; my $outhand = sub {
-      my $buf = shift; defined $buf or return; $fltout .= $buf;
+      my $buf = shift; defined $buf or return;
 
+      $out ne 'null'   and $fltout .= $buf;
       $out ne 'null'   and $stdout .= $buf;
       $out eq 'stdout' and emit_to \*STDOUT, $buf;
       return;
@@ -434,47 +468,29 @@ sub _run_cmd_using_open3 { # Robbed in part from IPC::Cmd
       return ($pid, *TO_CHLD_W, *FR_CHLD_R, *FR_CHLD_ERR_R);
    };
 
-   local ($CHILD_ENUM, $CHILD_PID) = ( 0, 0 );
+   $self->log->debug( "Running ${cmd}" ); my $codes;
 
-   my ($err_h, %hands, $in_h, $out_h, $pid, @ready);
+   {  local ($CHILD_ENUM, $CHILD_PID) = (0, 0);
 
-   $self->log->debug( "Running ${cmd}" );
+      try {
+         local $SIG{PIPE} = \&__pipe_handler;
 
-   try {
-      local $SIG{PIPE} = \&__pipe_handler;
-      my $tmout = $self->timeout; $tmout and local $SIG{ALRM} = sub {
-         throw TimeOut, args => [ $cmd, $tmout ];
-      };
-      alarm $tmout;
-      ($pid, $in_h, $out_h, $err_h) = $open3->( $cmd );
+         my $tmout = $self->timeout; $tmout and local $SIG{ALRM} = sub {
+            throw TimeOut, args => [ $cmd, $tmout ];
+         } and alarm $tmout;
 
-      if (blessed $self->in) { emit_to $in_h, $self->in->slurp }
-      elsif ($self->in ne 'null' and $self->in ne 'stdin') {
-         emit_to $in_h, $self->in;
+         my ($pid, $in_h, $out_h, $err_h) = $open3->( $cmd );
+
+         $self->_send_in( $in_h ); close $in_h;
+         __drain( $out_h, $outhand, $err_h, $errhand );
+         $pid and waitpid $pid, 0; alarm 0;
       }
+      catch { throw $_ };
 
-      close $in_h;
+      my $e_num = $CHILD_PID > 0 ? $CHILD_ENUM : $CHILD_ERROR;
 
-      my $selector = IO::Select->new(); $selector->add( $err_h, $out_h );
-
-      $hands{ fileno $err_h } = $errhand; $hands{ fileno $out_h } = $outhand;
-
-      while (@ready = $selector->can_read) {
-         for my $fh (@ready) {
-            my $buf; my $bytes_read = sysread( $fh, $buf, 64 * 1024 );
-
-            if ($bytes_read) { $hands{ fileno $fh }->( "${buf}" ) }
-            else { $selector->remove( $fh ); close $fh }
-         }
-      }
-
-      $pid and waitpid $pid, 0;
-      alarm 0;
+      $codes = $self->_return_codes_or_throw( $cmd, $e_num, $stderr );
    }
-   catch { throw $_ };
-
-   my $e_num = $CHILD_PID > 0 ? $CHILD_ENUM : $CHILD_ERROR;
-   my $codes = $self->_return_codes_or_throw( $cmd, $e_num, $stderr );
 
    return $self->response_class->new
       (  core   => $codes->{core}, out    => __filter_out( $fltout ),
@@ -487,7 +503,7 @@ sub _run_cmd_using_system {
 
    my $prog = basename( (split SPC, $cmd)[ 0 ] ); my $null = devnull;
 
-   my $in   = $self->in; my $out = $self->out; my $err = $self->err;
+   my $in   = $self->in || 'stdin'; my $out = $self->out; my $err = $self->err;
 
    if ($in ne 'null' and $in ne 'stdin' and not blessed $in) {
       # Different semi-random file names in the temp directory
@@ -515,9 +531,9 @@ sub _run_cmd_using_system {
 
          my $tmout = $self->timeout; $tmout and local $SIG{ALRM} = sub {
             throw TimeOut, args => [ $cmd, $tmout ];
-         };
+         } and alarm $tmout;
 
-         alarm $tmout; $rv = system $cmd; alarm 0;
+         $rv = system $cmd; alarm 0;
       }
       catch { throw $_ };
 
@@ -541,9 +557,9 @@ sub _run_cmd_using_system {
       $rv != 0 and throw 'Program [_1] failed to start',
                          args => [ $prog ], rv => $rv;
 
-      my $pid = $self->pidfile->getline || -1; $self->pidfile->close;
+      my $pid = $self->_wait_for_and_read( $self->pidfile );
 
-      $out = "Started ${prog}(${pid}) in the background";
+      $self->pidfile->close; $out = "Started ${prog}(${pid}) in the background";
 
       return $self->response_class->new
          (  core => $core, out => $out, pid => $pid, rv => $rv, sig => $sig );
@@ -571,22 +587,6 @@ sub _run_cmd_using_system {
          sig  => $sig,  stderr => $stderr,  stdout => $stdout );
 }
 
-sub _setup_signals {
-   my $self = shift; $SIG{INT} = sub { $self->_shutdown };
-}
-
-sub _shutdown {
-   my $self = shift; my $pidfile = $self->pidfile;
-
-   $pidfile->exists and $pidfile->getline == $PID and $self->_remove_pid;
-
-   exit OK;
-}
-
-sub _tempfile {
-   return io( $_[ 0 ]->tempdir )->tempfile;
-}
-
 # Private functions
 sub __arrayref2str {
    return (is_arrayref $_[ 0 ]) ? join $RS, @{ $_[ 0 ] } : $_[ 0 ];
@@ -605,10 +605,35 @@ sub __child_handler {
    return;
 }
 
+sub __drain {
+   my ($out_h, $outhand, $err_h, $errhand) = @_; my (%hands, @ready);
+
+   my $selector = IO::Select->new(); $selector->add( $err_h, $out_h );
+
+   $hands{ fileno $err_h } = $errhand; $hands{ fileno $out_h } = $outhand;
+
+   while (@ready = $selector->can_read) {
+      for my $fh (@ready) {
+         my $buf; my $bytes_read = sysread $fh, $buf, 64 * 1024;
+
+         if ($bytes_read) { $hands{ fileno $fh }->( "${buf}" ) }
+         else { $selector->remove( $fh ); close $fh }
+      }
+   }
+
+   return;
+}
+
 sub __filter_out {
    return join "\n", map    { strip_leader $_ }
                      grep   { not m{ (?: Started | Finished ) }msx }
                      split m{ [\n] }msx, $_[ 0 ];
+}
+
+sub __has_pipes {
+   return (  is_arrayref $_[ 0 ]) ? is_member '|', $_[ 0 ]
+        : ($_[ 0 ] =~ m{ [|] }mx) ? TRUE
+                                  : FALSE;
 }
 
 sub __partition_command {
@@ -662,6 +687,12 @@ sub __redirect_stdout {
    return;
 }
 
+sub __three_nonblocking_write_pipe_pairs {
+   return nonblocking_write_pipe_pair,
+          nonblocking_write_pipe_pair,
+          nonblocking_write_pipe_pair;
+}
+
 1;
 
 __END__
@@ -672,14 +703,29 @@ __END__
 
 =head1 Name
 
-Class::Usul::TraitFor::Daemonise - One-line description of the modules purpose
+Class::Usul::IPC::Cmd - Execute system commands
 
 =head1 Synopsis
 
-   use Class::Usul::TraitFor::Daemonise;
-   # Brief but working code examples
+   use Class::Usul::IPC::Cmd;
+
+   sub run_cmd {
+      my ($self, $cmd, @opts) = @_; my $opts = arg_list @opts;
+
+      $opts->{cmd   } = $cmd or throw Unspecified, args => [ 'command' ];
+      $opts->{config} = $self->config;
+      $opts->{log   } = $self->log;
+
+      return Class::Usul::IPC::Cmd->new( $opts )->run_cmd;
+   }
+
+   $self->run_cmd( [ 'perl', '-v' ], { async => 1 } );
 
 =head1 Description
+
+Refactored L<IPC::Cmd> with a consistant OO API
+
+Would have used L<MooseX::Daemonize> but using L<Moo> not L<Moose>
 
 =head1 Configuration and Environment
 
@@ -692,6 +738,8 @@ Defines the following attributes;
 =item C<close_all_files>
 
 =item C<cmd>
+
+=item C<config>
 
 =item C<detach>
 
@@ -709,15 +757,13 @@ Defines the following attributes;
 
 =item C<log>
 
-=item C<max_daemon_wait>
+=item C<max_pidfile_wait>
 
 =item C<nap_time>
 
 =item C<out>
 
 =item C<run_cmd>
-
-=item C<tempdir>
 
 =item C<timeout>
 
@@ -730,8 +776,6 @@ Defines the following attributes;
 =head1 Subroutines/Methods
 
 =head2 C<BUILD>
-
-=head2 C<BUILDARGS>
 
 =head1 Diagnostics
 
@@ -756,6 +800,8 @@ Patches are welcome
 =head1 Acknowledgements
 
 Larry Wall - For the Perl programming language
+
+L<MooseX::Daemonize> - Stole some code from that module
 
 =head1 Author
 

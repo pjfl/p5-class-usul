@@ -26,8 +26,9 @@ has 'table_class'    => is => 'lazy', isa => LoadableClass,
    coerce            => LoadableClass->coercion;
 
 # Private attributes
-has '_usul'          => is => 'ro', isa => BaseType, handles => [ 'config' ],
-   init_arg          => 'builder', required => TRUE, weak_ref => TRUE;
+has '_usul'          => is => 'ro', isa => BaseType,
+   handles           => [ 'config', 'log' ], init_arg => 'builder',
+   required          => TRUE, weak_ref => TRUE;
 
 # Public methods
 sub child_list {
@@ -103,8 +104,9 @@ sub process_table {
 sub run_cmd {
    my ($self, $cmd, @opts) = @_; my $opts = arg_list @opts;
 
-   $cmd or throw Unspecified, args => [ 'command' ];
-   $opts->{builder} = $self->_usul; $opts->{cmd} = $cmd;
+   $opts->{cmd   } = $cmd or throw Unspecified, args => [ 'command' ];
+   $opts->{config} = $self->config;
+   $opts->{log   } = $self->log;
 
    return Class::Usul::IPC::Cmd->new( $opts )->run_cmd;
 }

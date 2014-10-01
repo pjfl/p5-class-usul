@@ -33,6 +33,7 @@ use File::Basename;
 
 use Class::Usul::Programs;
 use Class::Usul::Constants qw(EXCEPTION_CLASS);
+use Class::Usul::Functions qw( io );
 
 my $osname = lc $OSNAME;
 my $perl   = $EXECUTABLE_NAME;
@@ -74,41 +75,43 @@ sub popen_test {
 my $cmd = "${perl} -v"; my $r;
 
 like popen_test( 'out', $cmd ), qr{ larry \s+ wall }imsx,
-   'popen captures stdout';
+   'popen - captures stdout';
 
 $cmd = "${perl} -e \"exit 2\""; $r = popen_test( 'out', $cmd );
 
-is ref $r, EXCEPTION_CLASS, 'popen exception is right class';
+is ref $r, EXCEPTION_CLASS, 'popen - exception is right class';
 
-like $r, qr{ Unknown \s+ error }msx, 'popen default error string';
+like $r, qr{ Unknown \s+ error }msx, 'popen - default error string';
 
-is popen_test( 'rv', $cmd, { expected_rv => 2 } ), 2, 'popen expected rv';
+is popen_test( 'rv', $cmd, { expected_rv => 2 } ), 2, 'popen - expected rv';
 
 $cmd = "${perl} -e \"die q(In a pit of fire)\"";
 
 like popen_test( 'out', $cmd ), qr{ pit \s+ of \s+ fire }msx,
-   'popen expected error string';
+   'popen - expected error string';
 
 SKIP: {
    $osname eq 'mswin32' and skip 'popen capture stdin - not on MSWin32', 1;
    $cmd = "${perl} -e 'print <>'";
 
    is popen_test( 'out', $cmd, { in => [ 'some text' ] } ), 'some text',
-      'popen captures stdin and stdout';
+      'popen - captures stdin and stdout';
 }
 
 $cmd = "${perl} -e\"warn 'danger'\"";
 
-like popen_test( 'err', $cmd ), qr{ \A danger }mx, 'popen captures stderr';
+like popen_test( 'err', $cmd ), qr{ \A danger }mx, 'popen - captures stderr';
 
 $cmd = "${perl} -e\"sleep 5\"";
 
-is popen_test( q(), $cmd, { timeout => 1 } )->class, 'TimeOut', 'popen timeout';
+is popen_test( q(), $cmd, { timeout => 1 } )->class, 'TimeOut',
+   'popen - timeout';
 
 sub run_cmd_test {
    my $want = shift; my $r = eval { $prog->run_cmd( @_ ) };
 
    $EVAL_ERROR    and return $EVAL_ERROR;
+   $want eq 'err' and return $r->stderr;
    $want eq 'out' and return $r->out;
    $want eq 'rv'  and return $r->rv;
    return $r;
@@ -119,25 +122,26 @@ SKIP: {
 
    $cmd = "${perl} -v"; $r = run_cmd_test( 'out', $cmd, { use_system => 1 } );
 
-   like $r, qr{ larry \s+ wall }imsx, 'system';
+   like $r, qr{ larry \s+ wall }imsx, 'system - captures stdout';
 
    $cmd = "${perl} -e \"exit 2\"";
    $r   = run_cmd_test( q(), $cmd, { use_system => 1 } );
 
-   is ref $r, EXCEPTION_CLASS, 'system exception is right class';
+   is ref $r, EXCEPTION_CLASS, 'system - exception is right class';
 
-   like $r, qr{ Unknown \s+ error }msx, 'system default error string';
+   like $r, qr{ Unknown \s+ error }msx, 'system - default error string';
 
    is run_cmd_test( 'rv', $cmd, { expected_rv => 2, use_system => 1 } ), 2,
-      'system expected rv';
+      'system - expected rv';
 
-   like run_cmd_test( 'out', $cmd, { async => 1 } ), qr{ background }msx,
-      'system async';
+   $r = run_cmd_test( q(), $cmd, { async => 1 } );
+
+   like $r->out, qr{ background }msx, 'system - async';
 
    $cmd = "${perl} -e \"sleep 5\"";
 
    is run_cmd_test( q(), $cmd, { timeout => 1, use_system => 1 } )->class,
-      'TimeOut', 'system timeout';
+      'TimeOut', 'system - timeout';
 }
 
 SKIP: {
@@ -149,42 +153,55 @@ SKIP: {
    $cmd = [ $perl, '-v' ];
 
    like run_cmd_test( 'out', $cmd, { use_ipc_run => 1 } ),
-      qr{ larry \s+ wall }imsx, 'IPC::Run';
+      qr{ larry \s+ wall }imsx, 'IPC::Run - captures stdout';
 
    $cmd = [ $perl, '-e', 'exit 1' ];
 
    like run_cmd_test( q(), $cmd, { use_ipc_run => 1 } ),
-      qr{ Unknown \s+ error }msx, 'IPC::Run default error string';
+      qr{ Unknown \s+ error }msx, 'IPC::Run - default error string';
 
    is run_cmd_test( 'rv', $cmd, { expected_rv => 1, use_ipc_run => 1 } ), 1,
-      'IPC::Run expected rv';
+      'IPC::Run - expected rv';
 
    $cmd = [ $perl, '-v' ];
+   $r   = run_cmd_test( q(), $cmd, { async => 1, use_ipc_run => 1 } );
 
-   like run_cmd_test( 'out', $cmd, { async => 1, use_ipc_run => 1 } ),
-      qr{ background }msx, 'IPC::Run async';
+   like $r->out, qr{ background }msx, 'IPC::Run - async';
 
    $cmd = [ sub { print 'Hello World' } ];
+   $r   = run_cmd_test( q(), $cmd, { async => 1, use_ipc_run => 1 } );
 
-   like run_cmd_test( 'out', $cmd, { async => 1, use_ipc_run => 1 } ),
-      qr{ background }msx, 'IPC::Run async coderef';
-
-   unlike run_cmd_test( 'rv', $cmd, { async => 1, use_ipc_run => 1 } ),
-      qr{ \(-1\) }msx, 'IPC::Run async coderef captures pid';
+   like   $r->out, qr{ background }msx, 'IPC::Run - async coderef';
+   unlike $r->rv,  qr{ \(-1\) }msx,     'IPC::Run - async coderef captures pid';
 
    $cmd = [ $perl, '-e', 'sleep 5' ];
 
    is run_cmd_test( q(), $cmd, { timeout => 1, use_ipc_run => 1 } )->class,
-      'TimeOut', 'IPC::Run timeout';
+      'TimeOut', 'IPC::Run - timeout';
 }
 
 SKIP: {
    $osname eq 'mswin32' and skip 'fork and exec - not on MSWin32', 1;
-
    $cmd = [ $perl, '-v' ];
 
    like run_cmd_test( 'out', $cmd ), qr{ larry \s+ wall }imsx,
       'fork and exec - captures stdout';
+
+   my $path = io [ qw( t outfile ) ];
+
+   run_cmd_test( q(), $cmd, { out => $path } );
+
+   like $path->slurp, qr{ larry \s+ wall }imsx,
+      'fork and exec - captures stdout to file';
+
+   $path->exists and $path->unlink;
+   $cmd = [ $perl, '-e', 'warn "danger"' ];
+
+   like run_cmd_test( 'err', $cmd ), qr{ danger }mx,
+      'fork and exec - captures stderr';
+
+   like run_cmd_test( 'out', $cmd, { err => 'out' } ), qr{ danger }mx,
+      'fork and exec - dups stderr on stdout';
 
    $cmd = [ $perl, '-e', 'exit 1' ];
 
@@ -200,12 +217,11 @@ SKIP: {
       qr{ background }msx, 'fork and exec - async';
 
    $cmd = [ sub { print 'Hello World' } ];
+   $r   = run_cmd_test( q(), $cmd, { async => 1 } );
 
-   like run_cmd_test( 'out', $cmd, { async => 1 } ),
-      qr{ background }msx, 'fork and exec - async coderef';
+   like $r->out, qr{ background }msx, 'fork and exec - async coderef';
 
-   unlike run_cmd_test( 'rv', $cmd, { async => 1 } ),
-      qr{ \(-1\) }msx, 'fork and exec - async coderef captures pid';
+   unlike $r->rv, qr{ \(-1\) }msx, 'fork and exec - async coderef captures pid';
 
    $cmd = [ $perl, '-e', 'sleep 5' ];
 
