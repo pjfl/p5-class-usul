@@ -276,9 +276,10 @@ Class::Usul::IPC - List/Create/Delete processes
 
 =head1 Synopsis
 
+   use Class::Usul;
    use Class::Usul::IPC;
 
-   my $ipc = Class::Usul::IPC->new;
+   my $ipc = Class::Usul::IPC->new( builder => Class::Usul->new );
 
    $result_object = $ipc->run_cmd( [ qw( ls -l ) ] );
 
@@ -334,77 +335,14 @@ subclass. Called by L<Class::Usul::Model::Process/proc_table>
 
    $response = $self->run_cmd( $cmd, $opts );
 
-Runs the given command. If C<$cmd> is a string then an implementation
-based on the C<system> function is used. If C<$cmd> is an arrayref
-then an implementation based on L<IPC::Run> is used if it is
-installed. If L<IPC::Run> is not installed then the arrayref is joined
-with spaces and the C<system> implementation is used. The keys of the
-C<$opts> hashref are:
-
-=over 3
-
-=item C<async>
-
-If C<async> is true then the command is run in the background
-
-=item C<err>
-
-Passing I<< err => q(out) >> mixes the normal and error output
-together
-
-=item C<in>
-
-Input to the command. Can be a string or an array ref
-
-=item C<out>
-
-Destination for standard output
-
-=item C<tempdir>
-
-Location for temporary files
-
-=back
-
-Returns a L<Class::Usul::Response::IPC> object or throws an
-error. The response object has the following attributes:
-
-=over 3
-
-=item C<core>
-
-Returns true if the command generated a core dump
-
-=item C<err>
-
-Contains a cleaned up version of the commands C<STDERR>
-
-=item C<out>
-
-Contains a cleaned up version of the commands C<STDOUT>
-
-=item C<pid>
-
-The id of the background process. Only set if command is running I<async>
-
-=item C<rv>
-
-The return value of the command
-
-=item C<sig>
-
-If the command died as the result of receiving a signal return the
-signal number
-
-=item C<stderr>
-
-Contains the commands C<STDERR>
-
-=item C<stdout>
-
-Contains the commands C<STDOUT>
-
-=back
+Runs the given command. If C<$cmd> is a string then an implementation based on
+the L<IPC::Open3> function is used. If C<$cmd> is an array reference then an
+implementation using C<fork> and C<exec> in L<Class::Usul::IPC::Cmd> is used to
+execute the command. If the command contains pipes then an implementation based
+on L<IPC::Run> is used if it is installed. If L<IPC::Run> is not installed then
+the arrayref is joined with spaces and the C<system> implementation is
+used. The C<$opts> hash reference and the C<$response> object are described
+in L<Class::Usul::IPC::Cmd>
 
 On C<MSWin32> the L</popen> method is used instead. That method does not
 support the C<async> option
@@ -428,14 +366,6 @@ all of it's children will be sent the signal. If the C<force>
 parameter is set to true the after a grace period each process and
 it's children are sent signal C<KILL>
 
-=head2 __child_handler
-
-This interrupt handler traps the child signal
-
-=head2 __pipe_handler
-
-This interrupt handler traps the pipe signal
-
 =head1 Diagnostics
 
 None
@@ -448,13 +378,11 @@ None
 
 =item L<Class::Usul::Constants>
 
+=item L<Class::Usul::IPC::Cmd>
+
 =item L<Class::Usul::Response::IPC>
 
 =item L<Class::Usul::Response::Table>
-
-=item L<IPC::Open3>
-
-=item L<IPC::SysV>
 
 =item L<Module::Load::Conditional>
 

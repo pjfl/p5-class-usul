@@ -161,16 +161,15 @@ sub _run_cmd {
 sub _run_cmd_using_fork_and_exec {
    my $self = shift; my $cmd = $self->cmd->[ 0 ]; my $prog = basename( $cmd );
 
-   my ($in_h, $out_h, $err_h) = __three_nonblocking_write_pipe_pairs();
+   my ($in_h, $out_h, $err_h) = __three_nonblocking_write_pipe_pairs(); my $out;
 
    if ($self->detach) {
       my $pidfile = $self->pidfile;
 
       unless ($self->_daemonise) { # Parent
          my $pid = $self->_wait_for_and_read( $pidfile ); $pidfile->close;
-         my $out = "Started ${prog}(${pid}) in the background";
 
-         $self->log->debug( $out );
+         $self->log->debug( $out = "Started ${prog}(${pid}) in the background");
 
          return $self->response_class->new( out => $out, pid => $pid );
       }
@@ -181,16 +180,14 @@ sub _run_cmd_using_fork_and_exec {
       $in_h = $in_h->[ 1 ]; $out_h = $out_h->[ 0 ]; $err_h = $err_h->[ 0 ];
 
       if ($self->async) {
-         my $out = "Started ${prog}(${pid}) in the background";
-
-         $self->log->debug( $out );
+         $self->log->debug( $out = "Started ${prog}(${pid}) in the background");
 
          return $self->response_class->new( out => $out, pid => $pid );
       }
 
       $self->log->debug( "Running ${prog}($pid)" );
 
-      return $self->_sync_response( $pid, $in_h, $out_h, $err_h );
+      return $self->_wait_for_child( $pid, $in_h, $out_h, $err_h );
    }
 
    # Child
@@ -198,11 +195,11 @@ sub _run_cmd_using_fork_and_exec {
    $self->working_dir and chdir $self->working_dir;
    is_coderef $cmd and _exit $self->_execute_coderef( $cmd );
 
-   exec @{ $self->cmd } or throw 'Command [_1] failed to execute: [_2]',
-                                  args => [ $cmd, $OS_ERROR ];
+   exec @{ $self->cmd } or throw 'Program [_1] failed to start: [_2]',
+                                  args => [ $prog, $OS_ERROR ];
 }
 
-sub _sync_response {
+sub _wait_for_child {
    my ($self, $pid, $in_h, $out_h, $err_h) = @_;
 
    my $cmd = $self->cmd->[ 0 ]; my $prog = basename( $cmd );
@@ -282,11 +279,10 @@ sub _execute_coderef {
       $self->_remove_pid;
    }
    catch {
-      blessed $_ and $_->can( 'rv' ) and $rv = $_->rv; $rv //= 255;
-      emit_to \*STDERR, $_;
+      blessed $_ and $_->can( 'rv' ) and $rv = $_->rv; emit_to \*STDERR, $_;
    };
 
-   return $rv;
+   return $rv // UNDEFINED_RV;
 }
 
 sub _fork_process { # Returns pid to the parent undef to the child
@@ -327,11 +323,11 @@ sub _return_codes_or_throw {
 
    $e_str ||= 'Unknown error'; chomp $e_str;
 
-   if ($e_num == -1) {
+   if ($e_num == UNDEFINED_RV) {
       my $error = 'Program [_1] failed to start: [_2]';
       my $prog  = basename( (split SPC, $cmd)[ 0 ] );
 
-      throw $error, args => [ $prog, $e_str ], level => 3, rv => -1;
+      throw $error, args => [ $prog, $e_str ], level => 3, rv => UNDEFINED_RV;
    }
 
    my $rv = $e_num >> 8; my $core = $e_num & 128; my $sig = $e_num & 127;
@@ -374,7 +370,7 @@ sub _wait_for_and_read {
          and throw 'File [_1] contains no process id', args => [ $pidfile ];
    }
 
-   return $pidfile->chomp->getline || -1;
+   return $pidfile->chomp->getline || UNDEFINED_RV;
 }
 
 # IPC::Run implementation
@@ -589,9 +585,9 @@ sub _run_cmd_using_system {
       # On some systems the child handler reaps the child process so the system
       # call returns -1 and sets $OS_ERROR to 'No child processes'. This line
       # and the child handler code fix the problem
-      $rv == -1 and $CHILD_PID > 0 and $rv = $CHILD_ENUM;
-      $rv == -1 and throw 'Program [_1] failed to start: [_2]',
-                          args => [ $prog, $os_error ], rv => $rv;
+      $rv == UNDEFINED_RV and $CHILD_PID > 0 and $rv = $CHILD_ENUM;
+      $rv == UNDEFINED_RV and throw 'Program [_1] failed to start: [_2]',
+                                    args => [ $prog, $os_error ], rv => $rv;
    }
 
    my $sig = $rv & 127; my $core = $rv & 128; $rv = $rv >> 8;
@@ -769,7 +765,7 @@ Class::Usul::IPC::Cmd - Execute system commands
 
    # Alternatively there is a functional interface
 
-   use Class::Usul::IPC::Cmd { log => ..., tempdir => ... }, 'run_cmd';
+   use Class::Usul::IPC::Cmd { tempdir => ... }, 'run_cmd';
 
    run_cmd( [ 'perl', '-v' ], { async => 1 } );
 
@@ -777,7 +773,8 @@ Class::Usul::IPC::Cmd - Execute system commands
 
 Refactored L<IPC::Cmd> with a consistant OO API
 
-Would have used L<MooseX::Daemonize> but using L<Moo> not L<Moose>
+Would have used L<MooseX::Daemonize> but using L<Moo> not L<Moose> so
+robbed some code from there instead
 
 =head1 Configuration and Environment
 
@@ -787,45 +784,112 @@ Defines the following attributes;
 
 =item C<async>
 
+Boolean defaults to false. If true the call to C<run_cmd> will return without
+waiting for the child process to complete. If true the C<ignore_zombies>
+attribute will default to true
+
 =item C<close_all_files>
+
+Boolean defaults to false. If true and the C<detach> attribute is also true
+then all open file descriptors in the child are closed except those in the
+C<keep_fds> list attribute
 
 =item C<cmd>
 
+An array reference or a simple string. Required. The external command to
+execute
+
 =item C<detach>
+
+Boolean defaults to false. If true the child process will double fork, set
+thie session id and ignore hangup signals
 
 =item C<err>
 
+A L<File::DataClass::IO> object reference or a simple str. Defaults to null.
+Determines where the standard error of the command will be redirected to
+
 =item C<expected_rv>
+
+Positive integer default to zero. The maximum return value which is
+considered a success
 
 =item C<ignore_zombies>
 
+Boolean defaults to false unless the C<async> attribute is true in which case
+this attribute also defaults to true. If true ignores child processes. If you
+plan to call C<waitpid> to wait for the child process to finish you should
+set this to false
+
 =item C<in>
+
+A L<File::DataClass::IO> object reference or a simple str. Defaults to null.
+Determines where the standard input of the command will be redirected from
 
 =item C<is_daemon>
 
+Boolean without an initial argument. It will be true in daemonized child
+process and false in it's parent
+
 =item C<keep_fds>
+
+An array reference of file numbers that are to be left open in detached
+children
 
 =item C<log>
 
+A log object defaults to an instance of L<Class::Null>. Calls are made to
+it at the debug level
+
 =item C<max_pidfile_wait>
+
+Postive integer defaults to 15. The maximum number of seconds the parent
+process should wait for the child's PID file to appear and be populated
 
 =item C<nap_time>
 
+Positve number defaults to 0.3. The number of seconds to wait between testing
+for the existance of the child's PID file
+
 =item C<out>
+
+A L<File::DataClass::IO> object reference or a simple str. Defaults to null.
+Determines where the standard output of the command will be redirected to
 
 =item C<pidfile>
 
+A L<File::DataClass::IO> object reference. Defaults to a temporary file
+in the configuration C<rundir> which will automatically unlink when closed
+
 =item C<rundir>
+
+A L<File::DataClass::IO> object reference. Defaults to the C<tempdir>
+attribute. Directory in which the PID files a stored
 
 =item C<tempdir>
 
+A L<File::DataClasS::IO> object reference. Defaults to C<tmpdir> from
+L<File::Spec>. The directory for storing temporary files
+
 =item C<timeout>
+
+Positive integer defaults to 0. If greater then zero an alarm will be raised
+after this many seconds if the external command has not completed
 
 =item C<use_ipc_run>
 
+Boolean defaults to false. If true forces the use of the L<IPC::Rum>
+implementation
+
 =item C<use_system>
 
+Boolean defaults to false. If true forces the use of the C<system>
+implementation
+
 =item C<working_dir>
+
+A L<File::DataClass::IO> object reference. Defaults to null. If set the child
+will C<chdir> to this directory before executing the external command
 
 =back
 
@@ -840,18 +904,33 @@ Set chomp and lock on the C<pidfile>
    $response_object = Class::Usul::IPC::Cmd->run_cmd( $cmd, @args );
 
 Runs a given external command. If the command argument is an array reference
-the internal fork and execute implementation will be used, if a string is
+the internal C<fork> and C<exec> implementation will be used, if a string is
 passed the L<IPC::Open3> implementation will be use instead
 
 Returns a L<Class::Ususl::Response::IPC> object reference
 
 =head1 Diagnostics
 
+Passing a logger object reference in with the C<log> attribute will cause
+the C<run_cmd> method to log at the debug level
+
 =head1 Dependencies
 
 =over 3
 
-=item L<Class::Usul>
+=item L<Class::Null>
+
+=item L<File::DataClass>
+
+=item L<Module::Load::Conditional>
+
+=item L<Moo>
+
+=item L<Sub::Install>
+
+=item L<Try::Tiny>
+
+=item L<Unexpected>
 
 =back
 
