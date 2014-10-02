@@ -148,7 +148,7 @@ sub _run_cmd {
          not $has_pipes and return $self->_run_cmd_using_fork_and_exec;
       }
 
-      $cmd = join SPC, @{ $cmd };
+      $cmd = join SPC, map { m{ [ ] }mx ? __quote( $_ ) : $_ } @{ $cmd };
    }
 
    not is_win32 and ($has_pipes or $self->async or $self->use_system)
@@ -163,6 +163,7 @@ sub _run_cmd_using_fork_and_exec {
 
    my ($in_h, $out_h, $err_h) = __three_nonblocking_write_pipe_pairs(); my $out;
 
+# TODO: Set pipe handler
    if ($self->detach) {
       my $pidfile = $self->pidfile;
 
@@ -410,8 +411,6 @@ sub _run_cmd_using_ipc_run {
    }
    catch { throw $_ };
 
-   $self->log->debug( "Run harness returned ${rv}" );
-
    my $sig = $rv & 127; my $core = $rv & 128; $rv = $rv >> 8;
 
    if ($self->async) {
@@ -508,7 +507,7 @@ sub _run_cmd_using_open3 { # Robbed in part from IPC::Cmd
       return ($pid, *TO_CHLD_W, *FR_CHLD_R, *FR_CHLD_ERR_R);
    };
 
-   $self->log->debug( "Running ${cmd}" ); my $codes;
+   $self->log->debug( "Running ${cmd}" ); my $e_num;
 
    {  local ($CHILD_ENUM, $CHILD_PID) = (0, 0);
 
@@ -527,10 +526,10 @@ sub _run_cmd_using_open3 { # Robbed in part from IPC::Cmd
       }
       catch { throw $_ };
 
-      my $e_num = $CHILD_PID > 0 ? $CHILD_ENUM : $CHILD_ERROR;
-
-      $codes = $self->_return_codes_or_throw( $cmd, $e_num, $stderr );
+      $e_num = $CHILD_PID > 0 ? $CHILD_ENUM : $CHILD_ERROR;
    }
+
+   my $codes = $self->_return_codes_or_throw( $cmd, $e_num, $stderr );
 
    return $self->response_class->new
       (  core   => $codes->{core}, out    => __filter_out( $fltout ),
@@ -701,6 +700,10 @@ sub __pipe_handler {
    return;
 }
 
+sub __quote {
+   my $v = shift; return is_win32 ? '"'.$v.'"' : "'${v}'";
+}
+
 sub __redirect_stderr {
    my $v  = shift; my $err = \*STDERR; close $err;
 
@@ -771,7 +774,7 @@ Class::Usul::IPC::Cmd - Execute system commands
 
 =head1 Description
 
-Refactored L<IPC::Cmd> with a consistant OO API
+Refactored L<IPC::Cmd> with a consistent OO API
 
 Would have used L<MooseX::Daemonize> but using L<Moo> not L<Moose> so
 robbed some code from there instead
@@ -802,12 +805,14 @@ execute
 =item C<detach>
 
 Boolean defaults to false. If true the child process will double fork, set
-thie session id and ignore hangup signals
+the session id and ignore hangup signals
 
 =item C<err>
 
 A L<File::DataClass::IO> object reference or a simple str. Defaults to null.
-Determines where the standard error of the command will be redirected to
+Determines where the standard error of the command will be redirected to.
+Values are the same as for C<out>. Additionally a value of 'out' will
+redirect standard error to standard output
 
 =item C<expected_rv>
 
@@ -824,11 +829,14 @@ set this to false
 =item C<in>
 
 A L<File::DataClass::IO> object reference or a simple str. Defaults to null.
-Determines where the standard input of the command will be redirected from
+Determines where the standard input of the command will be redirected from.
+Object references should stringify to the name of the file containing input.
+A scalar is the input unless it is 'stdin' or 'null' which cause redirection
+from standard input and the null device
 
 =item C<is_daemon>
 
-Boolean without an initial argument. It will be true in daemonized child
+Boolean without an initial argument. It will be true in daemonised child
 process and false in it's parent
 
 =item C<keep_fds>
@@ -843,18 +851,36 @@ it at the debug level
 
 =item C<max_pidfile_wait>
 
-Postive integer defaults to 15. The maximum number of seconds the parent
+Positive integer defaults to 15. The maximum number of seconds the parent
 process should wait for the child's PID file to appear and be populated
 
 =item C<nap_time>
 
-Positve number defaults to 0.3. The number of seconds to wait between testing
-for the existance of the child's PID file
+Positive number defaults to 0.3. The number of seconds to wait between testing
+for the existence of the child's PID file
 
 =item C<out>
 
 A L<File::DataClass::IO> object reference or a simple str. Defaults to null.
-Determines where the standard output of the command will be redirected to
+Determines where the standard output of the command will be redirected to.
+Values include;
+
+=over 3
+
+=item C<null>
+
+Redirect to the null device as defined by L<File::Spec>
+
+=item C<stdout>
+
+Output is not redirected to standard output
+
+=item C<$object_ref>
+
+The object reference should stringify to the name of a file to which standard
+output will be redirected
+
+=back
 
 =item C<pidfile>
 
@@ -895,6 +921,18 @@ will C<chdir> to this directory before executing the external command
 
 =head1 Subroutines/Methods
 
+=head2 C<BUILDARGS>
+
+   $obj_ref = Class::Usul::IPC::Cmd->new( cmd => ..., out => ... );
+   $obj_ref = Class::Usul::IPC::Cmd->new( { cmd => ..., out => ... } );
+   $obj_ref = Class::Usul::IPC::Cmd->new( $cmd, out => ... );
+   $obj_ref = Class::Usul::IPC::Cmd->new( $cmd, { out => ... } );
+   $obj_ref = Class::Usul::IPC::Cmd->new( $cmd );
+
+The constructor accepts a list of keys and values, a hash reference, the
+command followed by a list of keys and values, the command followed by a
+hash reference
+
 =head2 C<BUILD>
 
 Set chomp and lock on the C<pidfile>
@@ -902,6 +940,8 @@ Set chomp and lock on the C<pidfile>
 =head2 C<run_cmd>
 
    $response_object = Class::Usul::IPC::Cmd->run_cmd( $cmd, @args );
+
+Can be called as a class method or an object method
 
 Runs a given external command. If the command argument is an array reference
 the internal C<fork> and C<exec> implementation will be used, if a string is

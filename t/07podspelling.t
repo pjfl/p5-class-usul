@@ -61,6 +61,7 @@ cli
 coderef
 config
 cpan
+daemonised
 datetime
 DBIC
 DDL
@@ -111,6 +112,7 @@ PostgreSQL
 prepends
 RDBMSs
 RDBMs
+refactored
 runtime
 schemas
 sep
