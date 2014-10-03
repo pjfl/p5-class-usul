@@ -45,7 +45,7 @@ sub get_package_meta {
       $path->exists and return Class::Usul::Response::Meta->new( $path );
    }
 
-   throw class => PathNotFound, args => [ $file ], level => 3;
+   throw PathNotFound, args => [ $file ], level => 3;
    return; # Not reached
 }
 

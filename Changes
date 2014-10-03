@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Shortened throw calls, can remove class key
           - Fixed spelling
           - Added POD to ::IPC::Cmd
           - Added functional interface to ::IPC::Cmd

@@ -21,8 +21,7 @@ sub import {
                           @args, };
 
    for my $want (grep { not $target->can( $_ ) } qw( around has with )) {
-      throw error => 'Method [_1] not found in class [_2]',
-             args => [ $want, $target ];
+      throw 'Method [_1] not found in class [_2]', args => [ $want, $target ];
    }
 
    my $around = $target->can( 'around' );
@@ -68,8 +67,8 @@ sub import {
                                 _parse_options unshift_argv );
 
       for my $ban (grep { $_ eq $name } @banish_keywords) {
-         throw error => 'Method [_1] used by class [_2] as an attribute',
-                args =>[ $ban, $target ];
+         throw 'Method [_1] used by class [_2] as an attribute',
+               args =>[ $ban, $target ];
       }
 
       $has->( $name => _filter_attributes( %attributes ) );

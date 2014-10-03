@@ -39,7 +39,7 @@ sub str2date_time ($;$) {
         local_epoch       => undef, );
    my $time      = str2time( $dstr, $zone );
 
-   defined $time or throw class => DateTimeCoercion, args => [ $dstr ];
+   defined $time or throw DateTimeCoercion, args => [ $dstr ];
 
    return $formatter->parse_datetime( $time );
 }

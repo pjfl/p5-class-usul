@@ -179,7 +179,7 @@ sub __prompt { # Robbed from IO::Prompt
          }
          elsif ($next eq $cntl{EOF}) {
             __restore_mode( $IN );
-            close $IN or throw error => 'IO error: [_1]', args =>[ $OS_ERROR ];
+            close $IN or throw 'IO error: [_1]', args =>[ $OS_ERROR ];
             return $input;
          }
          elsif ($next !~ m{ $cntl }mx) {

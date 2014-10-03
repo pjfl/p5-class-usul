@@ -86,7 +86,7 @@ sub __extract_creds_from {
    my $key = __get_connect_info_cache_key( $params );
 
    ($cfg_data->{credentials} and defined $cfg_data->{credentials}->{ $key })
-      or throw error => 'Path [_1] database [_2] no credentials',
+      or throw 'Path [_1] database [_2] no credentials',
                args  => [ __get_credentials_file( $params ), $key ];
 
    return $cfg_data->{credentials}->{ $key };
@@ -95,8 +95,7 @@ sub __extract_creds_from {
 sub __get_connect_info_cache_key {
    my $params = shift;
    my $db     = $params->{database}
-      or throw error => 'Class [_1] has no database name',
-               args  => [ $params->{class} ];
+      or throw 'Class [_1] has no database name', args => [ $params->{class} ];
 
    return $params->{subspace} ? "${db}.".$params->{subspace} : $db;
 }
@@ -119,9 +118,9 @@ sub __get_credentials_file {
 
    my $dir = $params->{ctrldir}; my $db = $params->{database};
 
-      $dir or throw class => Unspecified, args => [ 'ctrldir' ];
-   -d $dir or throw error => 'Directory [_1] not found', args => [ $dir ];
-       $db or throw error => 'Class [_1] has no database name',
+      $dir or throw Unspecified, args => [ 'ctrldir' ];
+   -d $dir or throw 'Directory [_1] not found', args => [ $dir ];
+       $db or throw 'Class [_1] has no database name',
                     args  => [ $params->{class} ];
 
    return catfile( $dir, $db.($params->{extension} || CONFIG_EXTN) );

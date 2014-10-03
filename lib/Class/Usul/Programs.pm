@@ -332,7 +332,7 @@ sub run {
 
       try {
          defined ($rv = $self->$method( @{ $params } ))
-            or throw error => 'Method [_1] return value undefined',
+            or throw 'Method [_1] return value undefined',
                      args  => [ $method ], rv => UNDEFINED_RV;
       }
       catch { $rv = $self->_catch_run_exception( $method, $_ ) };
