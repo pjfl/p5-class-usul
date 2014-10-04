@@ -161,36 +161,32 @@ sub _run_cmd {
 sub _run_cmd_using_fork_and_exec {
    my $self = shift; my $cmd = $self->cmd->[ 0 ]; my $prog = basename( $cmd );
 
-   my ($in_h, $out_h, $err_h) = __three_nonblocking_write_pipe_pairs(); my $out;
+   my ($in_h, $out_h, $err_h) = __three_nonblocking_write_pipe_pairs();
 
-# TODO: Set pipe handler
-   if ($self->detach) {
-      my $pidfile = $self->pidfile;
+   {  local ($CHILD_ENUM, $CHILD_PID) = (0, 0);
+      local $SIG{PIPE} = \&__pipe_handler;
 
-      unless ($self->_daemonise) { # Parent
-         my $pid = $self->_wait_for_and_read( $pidfile ); $pidfile->close;
+      if ($self->detach) {
+         my $pidfile = $self->pidfile;
 
-         $self->log->debug( $out = "Started ${prog}(${pid}) in the background");
+         unless ($self->_daemonise) { # Parent
+            my $pid = $self->_wait_for_and_read( $pidfile ); $pidfile->close;
 
-         return $self->response_class->new( out => $out, pid => $pid );
+            return $self->_new_response( $prog, $pid );
+         }
+
+         $pidfile->println( $PID ); # Child
       }
+      elsif (my $pid = $self->_fork_process) { # Parent
+         $in_h = $in_h->[ 1 ]; $out_h = $out_h->[ 0 ]; $err_h = $err_h->[ 0 ];
 
-      $pidfile->println( $PID ); # Child
-   }
-   elsif (my $pid = $self->_fork_process) { # Parent
-      $in_h = $in_h->[ 1 ]; $out_h = $out_h->[ 0 ]; $err_h = $err_h->[ 0 ];
+         $self->async and return $self->_new_response( $prog, $pid );
 
-      if ($self->async) {
-         $self->log->debug( $out = "Started ${prog}(${pid}) in the background");
+         $self->log->debug( "Running ${prog}($pid)" );
 
-         return $self->response_class->new( out => $out, pid => $pid );
+         return $self->_wait_for_child( $pid, $in_h, $out_h, $err_h );
       }
-
-      $self->log->debug( "Running ${prog}($pid)" );
-
-      return $self->_wait_for_child( $pid, $in_h, $out_h, $err_h );
    }
-
    # Child
    $self->_redirect_child_io( $in_h->[ 0 ], $out_h->[ 1 ], $err_h->[ 1 ] );
    $self->working_dir and chdir $self->working_dir;
@@ -236,7 +232,8 @@ sub _wait_for_child {
    }
    catch { throw $_ };
 
-   my $codes = $self->_return_codes_or_throw( $cmd, $CHILD_ERROR, $stderr );
+   my $e_num = $CHILD_PID > 0 ? $CHILD_ENUM : $CHILD_ERROR;
+   my $codes = $self->_return_codes_or_throw( $cmd, $e_num, $stderr );
 
    return $self->response_class->new
       (  core   => $codes->{core}, out    => __filter_out( $fltout ),
@@ -272,10 +269,10 @@ sub _detach_process { # And this method came from MooseX::Daemonize
 }
 
 sub _execute_coderef {
-   my ($self, $code) = @_; my $rv;
+   my ($self, $code) = @_; my (undef, @args) = @{ $self->cmd }; my $rv;
 
    try {
-      $self->_setup_signals; my (undef, @args) = @{ $self->cmd };
+      $SIG{INT} = sub { $self->_shutdown };
       $rv = $code->( $self, @args ) // UNDEFINED_RV; $rv = $rv << 8;
       $self->_remove_pid;
    }
@@ -292,6 +289,14 @@ sub _fork_process { # Returns pid to the parent undef to the child
    my $pid; $pid = fork and return $pid; $self->_set_is_daemon( TRUE );
 
    return;
+}
+
+sub _new_response {
+   my ($self, $prog, $pid) = @_;
+
+   $self->log->debug( my $out = "Started ${prog}(${pid}) in the background");
+
+   return $self->response_class->new( out => $out, pid => $pid );
 }
 
 sub _redirect_child_io {
@@ -348,10 +353,6 @@ sub _send_in {
    elsif ($in ne 'null' and $in ne 'stdin') { emit_to $fh, $in }
 
    return;
-}
-
-sub _setup_signals {
-   my $self = shift; $SIG{INT} = sub { $self->_shutdown };
 }
 
 sub _shutdown {
