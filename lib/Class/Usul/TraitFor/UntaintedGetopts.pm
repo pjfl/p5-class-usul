@@ -127,7 +127,7 @@ sub __option_specification {
    my $dash_name   = $name; $dash_name =~ tr/_/-/; # Dash name support
    my $option_spec = $dash_name;
 
-   defined $opt->{short} and $option_spec .= '|'.$opt->{short};
+   defined $opt->{short } and $option_spec .= '|'.$opt->{short};
    $opt->{repeatable} and not defined $opt->{format} and $option_spec .= '+';
    $opt->{negateable} and $option_spec .= '!';
    defined $opt->{format} and $option_spec .= '='.$opt->{format};
