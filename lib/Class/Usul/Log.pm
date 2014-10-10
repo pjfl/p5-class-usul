@@ -76,7 +76,7 @@ sub BUILD {
    return;
 }
 
-sub fh {
+sub filehandle {
    return $_[ 0 ]->_log->output( 'file-out' )->{fh};
 }
 
@@ -147,24 +147,24 @@ Defines the following attributes
 
 =over 3
 
-=item debug
+=item C<debug>
 
 Debug flag defaults to FALSE
 
-=item encoding
+=item C<encoding>
 
 Optional output encoding. If present output to the logfile is encoded
 
-=item log
+=item C<log>
 
 Optional log object. Will instantiate an instance of L<Log::Handler> if this
 is not provided
 
-=item log_attributes
+=item C<log_attributes>
 
 Attributes used to create the log object
 
-=item logfile
+=item C<logfile>
 
 Path to the logfile
 
@@ -172,18 +172,18 @@ Path to the logfile
 
 =head1 Subroutines/Methods
 
-=head2 BUILDARGS
+=head2 C<BUILDARGS>
 
 Monkey with the constructors signature
 
-=head2 BUILD
+=head2 C<BUILD>
 
 Creates a set of methods defined by the C<LOG_LEVELS> constant. The
 method expects C<< $self->log >> and C<< $self->encoding >> to be set.
 It encodes the output string prior calling the log method at the given
 level
 
-=head2 fh
+=head2 C<filehandle>
 
 Return the loggers file handle
 

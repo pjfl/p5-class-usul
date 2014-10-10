@@ -152,7 +152,7 @@ class attribute
 
 =head2 BRK
 
-Separate leader from message,  (: )
+Separate leader from message with the characters colon space
 
 =head2 CODE
 
@@ -170,7 +170,8 @@ setting the C<Config_Extn> class attribute
 =head2 DEFAULT_CONFHOME
 
 Default directory for the config file. The function C<find_apphome>
-defaults to returning this value if it cannot find a more suitable one
+defaults to returning this value if it cannot find a more suitable one.
+Returns the L<temporary directory|File::Spec::Functions/tmpdir>
 
 =head2 DEFAULT_ENCODING
 
@@ -178,8 +179,9 @@ String C<UTF-8>
 
 =head2 DEFAULT_ENVDIR
 
-An arrayref which if passed to L<catfile|File::Spec/catdir> is the directory
-which will contain the applications installation information
+An array reference which if passed to L<catdir|File::Spec/catdir> is the
+directory which will contain the applications installation information.
+Directory defaults to F</etc/default>
 
 =head2 DEFAULT_L10N_DOMAIN
 
@@ -235,7 +237,7 @@ List of methods the log object is expected to support
 
 =head2 MODE
 
-Default file creation mask
+Default file creation mask, 027
 
 =head2 NO
 
@@ -243,7 +245,7 @@ The letter C<n>
 
 =head2 NUL
 
-Empty string
+Empty (zero length) string
 
 =head2 OK
 
@@ -255,11 +257,12 @@ List of possible file suffixes used on Perl scripts
 
 =head2 PHASE
 
-The default phase number used to select installation specific config
+The default phase number used to select installation specific config, 2
 
 =head2 PREFIX
 
-Array ref representing the default parent path for a normal install
+Array reference representing the default parent path for a normal install.
+Defaults to F</opt>
 
 =head2 QUIT
 
@@ -301,7 +304,7 @@ the C<Config_Key> class attribute
 
 =head2 UUID_PATH
 
-An arrayref which if passed to L<catfile|File::Spec/catdir> is the path
+An array reference which if passed to L<catdir|File::Spec/catdir> is the path
 which will return a unique identifier if opened and read
 
 =head2 WIDTH

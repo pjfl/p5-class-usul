@@ -59,7 +59,9 @@ has 'is_daemon'        => is => 'rwp',  isa => Bool, default => FALSE,
 has 'log'              => is => 'lazy', isa => LogType,
    builder             => sub { Class::Null->new };
 
-has 'keep_fds'         => is => 'ro',   isa => ArrayRef, builder => sub { [] };
+has 'keep_fhs'         => is => 'lazy', isa => ArrayRef,
+   builder             => sub {
+      my $fh = $_[ 0 ]->log->can( 'filehandle' ); $fh ? [ $fh->() ] : [] };
 
 has 'max_pidfile_wait' => is => 'ro',   isa => PositiveInt, default => 15;
 
@@ -260,7 +262,7 @@ sub _detach_process { # And this method came from MooseX::Daemonize
 
       (not defined $openmax or $openmax < 0) and $openmax = 64;
 
-      for (grep { not is_member $_, $self->keep_fds } 0 .. $openmax) {
+      for (grep { not is_member $_, $self->keep_fhs } 0 .. $openmax) {
          POSIX::close( $_ );
       }
    }
@@ -796,7 +798,7 @@ attribute will default to true
 
 Boolean defaults to false. If true and the C<detach> attribute is also true
 then all open file descriptors in the child are closed except those in the
-C<keep_fds> list attribute
+C<keep_fhs> list attribute
 
 =item C<cmd>
 
@@ -840,9 +842,9 @@ from standard input and the null device
 Boolean without an initial argument. It will be true in daemonised child
 process and false in it's parent
 
-=item C<keep_fds>
+=item C<keep_fhs>
 
-An array reference of file numbers that are to be left open in detached
+An array reference of file handles that are to be left open in detached
 children
 
 =item C<log>
