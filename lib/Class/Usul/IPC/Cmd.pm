@@ -273,8 +273,9 @@ sub _detach_process { # And this method came from MooseX::Daemonize
 sub _execute_coderef {
    my ($self, $code) = @_; my (undef, @args) = @{ $self->cmd }; my $rv;
 
+   $SIG{INT} = sub { $self->_shutdown };
+
    try {
-      $SIG{INT} = sub { $self->_shutdown };
       $rv = $code->( $self, @args ) // UNDEFINED_RV; $rv = $rv << 8;
       $self->_remove_pid;
    }

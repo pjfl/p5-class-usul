@@ -16,9 +16,10 @@ with    q(Class::Usul::TraitFor::ConnectInfo);
 # Public attributes
 option 'attrs'          => is => 'ro',   isa => HashRef,
    documentation        => 'Default database connection attributes',
-   default              => sub { { add_drop_table => TRUE,
-                                   no_comments    => TRUE, } },
-   format               => 's%',   init_arg       => 'dbattrs';
+   default              => sub { { add_drop_table    => TRUE,
+                                   no_comments       => TRUE,
+                                   quote_identifiers => TRUE, } },
+   format               => 's%',   init_arg          => 'dbattrs';
 
 option 'database'       => is => 'ro',   isa => NonEmptySimpleStr,
    documentation        => 'The database to connect to',
