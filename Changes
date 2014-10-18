@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+0.48.0    2014-10-18 15:46:39
+          - Factored out C::U::IPC::Cmd. IPC::Run no longer required
           - Had to add quote_identifiers to dbi connect attrs
             after laptop rebuild to make create_ddl work again
           - Shortened throw calls, can remove class key
@@ -7,7 +9,6 @@ Revision history for Class::Usul
           - Added POD to ::IPC::Cmd
           - Added functional interface to ::IPC::Cmd
           - ::IPC::Cmd async processes no more zombies
-          - Factored out C::U::IPC::Cmd. IPC::Run no longer required
           - Removed new_from_class since only used by CX::Usul
           - Sync MetaData attr names with CPAN::Meta
           - Created AS_PARA constant

@@ -174,7 +174,7 @@ sub _run_cmd_using_fork_and_exec {
          unless ($self->_daemonise) { # Parent
             my $pid = $self->_wait_for_and_read( $pidfile ); $pidfile->close;
 
-            return $self->_new_response( $prog, $pid );
+            return $self->_new_async_response( $prog, $pid );
          }
 
          $pidfile->println( $PID ); # Child
@@ -182,7 +182,7 @@ sub _run_cmd_using_fork_and_exec {
       elsif (my $pid = $self->_fork_process) { # Parent
          $in_h = $in_h->[ 1 ]; $out_h = $out_h->[ 0 ]; $err_h = $err_h->[ 0 ];
 
-         $self->async and return $self->_new_response( $prog, $pid );
+         $self->async and return $self->_new_async_response( $prog, $pid );
 
          $self->log->debug( "Running ${prog}($pid)" );
 
@@ -294,10 +294,10 @@ sub _fork_process { # Returns pid to the parent undef to the child
    return;
 }
 
-sub _new_response {
+sub _new_async_response {
    my ($self, $prog, $pid) = @_;
 
-   $self->log->debug( my $out = "Started ${prog}(${pid}) in the background");
+   $self->log->debug( my $out = "Started ${prog}(${pid}) in the background" );
 
    return $self->response_class->new( out => $out, pid => $pid );
 }

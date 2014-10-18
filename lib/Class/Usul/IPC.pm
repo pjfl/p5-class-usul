@@ -15,20 +15,16 @@ use Module::Load::Conditional qw( can_load );
 use Unexpected::Functions     qw( Unspecified );
 
 # Public attributes
-has 'cache_ttys'     => is => 'ro',   isa => Bool, default => TRUE;
+has 'cache_ttys'  => is => 'ro',   isa => Bool, default => TRUE;
 
-has 'response_class' => is => 'lazy', isa => LoadableClass,
-   default           => 'Class::Usul::Response::IPC',
-   coerce            => LoadableClass->coercion;
-
-has 'table_class'    => is => 'lazy', isa => LoadableClass,
-   default           => 'Class::Usul::Response::Table',
-   coerce            => LoadableClass->coercion;
+has 'table_class' => is => 'lazy', isa => LoadableClass,
+   default        => 'Class::Usul::Response::Table',
+   coerce         => LoadableClass->coercion;
 
 # Private attributes
-has '_usul'          => is => 'ro', isa => BaseType,
-   handles           => [ 'config', 'log' ], init_arg => 'builder',
-   required          => TRUE, weak_ref => TRUE;
+has '_usul'       => is => 'ro', isa => BaseType,
+   handles        => [ 'config', 'log' ], init_arg => 'builder',
+   required       => TRUE, weak_ref => TRUE;
 
 # Public methods
 sub child_list {
