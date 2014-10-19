@@ -1,5 +1,10 @@
 Revision history for Class::Usul
 
+          - ::Programs run_method now accepts dashes in method names
+          - Made ::Programs method attr rwp
+          - Added AS_PASSWORD constant for ::Prompting get_line
+          - Renamed dbattrs to db_attr in ::Schema
+
 0.48.0    2014-10-18 15:46:39
           - Factored out C::U::IPC::Cmd. IPC::Run no longer required
           - Had to add quote_identifiers to dbi connect attrs

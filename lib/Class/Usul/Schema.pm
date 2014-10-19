@@ -3,7 +3,8 @@ package Class::Usul::Schema;
 use namespace::autoclean;
 
 use Moo;
-use Class::Usul::Constants   qw( AS_PARA COMMA FAILED FALSE NUL OK SPC TRUE );
+use Class::Usul::Constants   qw( AS_PARA AS_PASSWORD COMMA
+                                 FAILED FALSE NUL OK SPC TRUE );
 use Class::Usul::Crypt::Util qw( encrypt_for_config );
 use Class::Usul::Functions   qw( distname ensure_class_loaded io throw );
 use Class::Usul::Options;
@@ -14,13 +15,6 @@ extends q(Class::Usul::Programs);
 with    q(Class::Usul::TraitFor::ConnectInfo);
 
 # Public attributes
-option 'attrs'          => is => 'ro',   isa => HashRef,
-   documentation        => 'Default database connection attributes',
-   default              => sub { { add_drop_table    => TRUE,
-                                   no_comments       => TRUE,
-                                   quote_identifiers => TRUE, } },
-   format               => 's%',   init_arg          => 'dbattrs';
-
 option 'database'       => is => 'ro',   isa => NonEmptySimpleStr,
    documentation        => 'The database to connect to',
    format               => 's', required => TRUE;
@@ -28,6 +22,13 @@ option 'database'       => is => 'ro',   isa => NonEmptySimpleStr,
 option 'db_admin_ids'   => is => 'ro',   isa => HashRef,
    documentation        => 'The admin user ids for each RDBMS',
    default              => sub { { mysql => 'root', pg => 'postgres', } },
+   format               => 's%';
+
+option 'db_attr'        => is => 'ro',   isa => HashRef,
+   documentation        => 'Default database connection attributes',
+   default              => sub { { add_drop_table    => TRUE,
+                                   no_comments       => TRUE,
+                                   quote_identifiers => TRUE, } },
    format               => 's%';
 
 option 'preversion'     => is => 'ro',   isa => Str, default => NUL,
@@ -69,14 +70,14 @@ sub create_database : method {
 
    if (lc $self->driver eq 'mysql') {
       $self->info( "Creating MySQL database ${database}" );
-      $ddl  = "create user '${user}'".'@';
-      $ddl .= "'${host}' identified by '${password}';";
+      $ddl  = "create user '${user}'".'@'.
+              "'${host}' identified by '${password}';";
       $self->_execute_ddl( $admin_creds, $ddl );
-      $ddl  = "create database if not exists ${database} default character ";
-      $ddl .= "set utf8 collate utf8_unicode_ci;";
+      $ddl  = "create database if not exists ${database} default character ".
+              "set utf8 collate utf8_unicode_ci;";
       $self->_execute_ddl( $admin_creds, $ddl );
-      $ddl  = "grant all privileges on ${database}.* to '${user}'".'@';
-      $ddl .= "'${host}' with grant option;";
+      $ddl  = "grant all privileges on ${database}.* to '${user}'".'@'.
+              "'${host}' with grant option;";
       $self->_execute_ddl( $admin_creds, $ddl );
       return OK;
    }
@@ -107,8 +108,8 @@ sub create_ddl : method {
 
 sub create_schema : method { # Create databases and edit credentials
    my $self    = shift;
-   my $text    = 'Schema creation requires a database, id and password. ';
-      $text   .= 'For Postgres the driver is Pg and the port 5432';
+   my $text    = 'Schema creation requires a database, id and password. '.
+                 'For Postgres the driver is Pg and the port 5432';
    my $default = $self->yes;
 
    $self->output( $text, AS_PARA );
@@ -120,14 +121,6 @@ sub create_schema : method { # Create databases and edit credentials
    # Call DBIx::Class::deploy to create schema and populate it with static data
    $self->deploy_and_populate;
    return OK;
-}
-
-sub dbattrs {
-   my $self = shift; my $attrs = $self->connect_info->[ 3 ];
-
-   $attrs->{ $_ } = $self->attrs->{ $_ } for (keys %{ $self->attrs });
-
-   return $attrs;
 }
 
 sub deploy_and_populate : method {
@@ -232,7 +225,7 @@ sub _create_ddl {
    my ($self, $schema_class, $dir) = @_;
 
    my $schema  = $schema_class->connect( $self->dsn, $self->user,
-                                         $self->password, $self->dbattrs );
+                                         $self->password, $self->_db_attr );
    my $version = $self->schema_version;
 
    if ($self->unlink) {
@@ -244,18 +237,26 @@ sub _create_ddl {
    }
 
    $schema->create_ddl_dir( $self->rdbms, $version, $dir,
-                            $self->preversion, $self->dbattrs );
+                            $self->preversion, $self->_db_attr );
    return;
+}
+
+sub _db_attr {
+   my $self = shift; my $attr = $self->connect_info->[ 3 ];
+
+   $attr->{ $_ } = $self->db_attr->{ $_ } for (keys %{ $self->db_attr });
+
+   return $attr;
 }
 
 sub _deploy_and_populate {
    my ($self, $schema_class, $dir) = @_; my $res;
 
    my $schema = $schema_class->connect( $self->dsn, $self->user,
-                                        $self->password, $self->dbattrs );
+                                        $self->password, $self->_db_attr );
 
    $self->info( "Deploying schema ${schema_class} and populating" );
-   $schema->storage->ensure_connected; $schema->deploy( $self->dbattrs, $dir );
+   $schema->storage->ensure_connected; $schema->deploy( $self->_db_attr, $dir );
 
    my $dist = distname $schema_class;
    my $extn = $self->config->extension;
@@ -306,17 +307,15 @@ sub _execute_ddl {
       $cmd .= "PGPASSWORD=${pass} psql -q -w -h ${host} -U ${user}";
    }
 
-   $self->run_cmd( $cmd, { debug => $self->debug,
-                           out   => 'stdout', %{ $opts || {} } } );
-   return;
+   return $self->run_cmd( $cmd, { out => 'stdout', %{ $opts || {} } } );
 }
 
 sub _get_db_admin_creds {
    my ($self, $reason) = @_;
 
    my $attrs  = { password => NUL, user => NUL, };
-   my $text   = 'Need the database administrators id and password to perform ';
-      $text  .= "a ${reason} operation";
+   my $text   = 'Need the database administrators id and password to perform '.
+                "a ${reason} operation";
 
    $self->output( $text, AS_PARA );
 
@@ -325,7 +324,7 @@ sub _get_db_admin_creds {
 
    $attrs->{user    } = $self->get_line( $prompt, $user, TRUE, 0 );
    $prompt    = 'Database administrator password';
-   $attrs->{password} = $self->get_line( $prompt, NUL, TRUE, 0, FALSE, TRUE );
+   $attrs->{password} = $self->get_line( $prompt, AS_PASSWORD );
    return $attrs;
 }
 
@@ -373,12 +372,6 @@ Defines the following attributes
 
 =over 3
 
-=item C<attrs>
-
-Hash ref which defaults to
-C<< { add_drop_table => TRUE, no_comments => TRUE, } >>. It has an
-initialisation argument of C<dbattrs>
-
 =item C<database>
 
 String which is required
@@ -386,6 +379,11 @@ String which is required
 =item C<db_admin_ids>
 
 Hash ref which defaults to C<< { mysql => 'root', pg => 'postgres', } >>
+
+=item C<db_attr>
+
+Hash ref which defaults to
+C<< { add_drop_table => TRUE, no_comments => TRUE, } >>
 
 =item C<paragraph>
 
@@ -438,14 +436,6 @@ Creates the DDL for multiple RDBMs
 
 Calls L<create_database> followed by L<deploy_and_populate>
 
-=head2 dbattrs
-
-   $self->dbattrs;
-
-Merges the C<attrs> attribute with the database attributes returned by the
-L<get_connect_info|Class::Usul::TraitFor::ConnectInfo/get_connect_info>
-method
-
 =head2 deploy_and_populate - Create tables and populates them with initial data
 
    $self->deploy_and_populate;
@@ -495,6 +485,14 @@ The unencrypted password used to connect to the database
    $self->user;
 
 The user id used to connect to the database
+
+=head2 _db_attr
+
+   $hash_ref = $self->_db_attr;
+
+Merges the C<db_attr> attribute with the database attributes returned by the
+L<get_connect_info|Class::Usul::TraitFor::ConnectInfo/get_connect_info>
+method
 
 =head1 Diagnostics
 

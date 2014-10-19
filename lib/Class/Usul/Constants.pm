@@ -15,7 +15,7 @@ my $Exception_Class = 'Class::Usul::Exception';
 
 File::DataClass::Constants->Exception_Class( __PACKAGE__->Exception_Class );
 
-our @EXPORT = qw( ARRAY AS_PARA ASSERT BRK CODE COMMA CONFIG_EXTN
+our @EXPORT = qw( ARRAY AS_PARA AS_PASSWORD ASSERT BRK CODE COMMA CONFIG_EXTN
                   DEFAULT_CONFHOME DEFAULT_ENVDIR DEFAULT_ENCODING
                   DEFAULT_L10N_DOMAIN DIGEST_ALGORITHMS ENCODINGS EVIL
                   EXCEPTION_CLASS FAILED FALSE HASH LANG LBRACE
@@ -48,6 +48,7 @@ sub WIDTH    () { 80         }
 sub YES      () { q(y)       }
 
 sub AS_PARA             () { { cl => 1, fill => 1, nl => 1 } }
+sub AS_PASSWORD         () { (q(), 1, 0, 0, 1) }
 sub ASSERT              () { __PACKAGE__->Assert }
 sub CONFIG_EXTN         () { __PACKAGE__->Config_Extn }
 sub DEFAULT_CONFHOME    () { tmpdir }
@@ -142,6 +143,12 @@ String C<ARRAY>
 Returns a hash reference containing the keys and values that causes the auto
 formatting L<output|Class::Usul::Programs/output> subroutine to clear left,
 fill paragraphs, and append an extra newline
+
+=head2 AS_PASSWORD
+
+Returns a list of arguments for
+L<get_line|Class::Usul::TraitFor::Prompting/get_line> which causes it to prompt
+for a password
 
 =head2 ASSERT
 

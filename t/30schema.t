@@ -8,12 +8,12 @@ use Test::More;
 use Test::Requires { version => 0.88 };
 use Module::Build;
 
-my $notes = {}; my $perl_ver;
+my $builder; my $notes = {}; my $perl_ver;
 
 BEGIN {
-   my $builder = eval { Module::Build->current };
-      $builder and $notes = $builder->notes;
-      $perl_ver = $notes->{min_perl_version} || 5.008;
+   $builder   = eval { Module::Build->current };
+   $builder and $notes = $builder->notes;
+   $perl_ver  = $notes->{min_perl_version} || 5.008;
 }
 
 use Test::Requires "${perl_ver}";
@@ -26,7 +26,7 @@ my $prog = Class::Usul::Schema->new( {
    noask    => 1,
 } );
 
-is $prog->dbattrs->{no_comments}, 1, 'Database attributes';
+is $prog->db_attr->{no_comments}, 1, 'Database attributes';
 is $prog->driver, 'mysql', 'Driver';
 is $prog->dsn, 'dbi:mysql:database=test;host=localhost;port=3306', 'DSN';
 is $prog->host, 'localhost', 'Host';

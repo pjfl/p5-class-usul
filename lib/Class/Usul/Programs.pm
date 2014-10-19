@@ -65,7 +65,7 @@ option 'locale'       => is => 'ro',   isa => SimpleStr, format => 's',
    documentation      => 'Loads the specified language message catalogue',
    default            => sub { $_[ 0 ]->config->locale }, short => 'L';
 
-option 'method'       => is => 'rw',   isa => SimpleStr, format => 's',
+option 'method'       => is => 'rwp',  isa => SimpleStr, format => 's',
    documentation      => 'Name of the method to call',
    default            => NUL, order => 1, short => 'c';
 
@@ -156,19 +156,18 @@ sub _build__os {
 }
 
 sub _build__run_method {
-   my $self = shift; my $method = $self->method;
+   my $self = shift; my $method = __dash2underscore( $self->method );
 
-   unless ($method) {
-      if ($method = $self->extra_argv( 0 ) and $self->can_call( $method )) {
-         $method = $self->next_argv;
-      }
-      else { $method = NUL }
+   unless ($self->can_call( $method )) {
+      $method = __dash2underscore( $self->extra_argv( 0 ) );
+      $method = $self->can_call( $method )
+              ? __dash2underscore( $self->next_argv ) : NUL;
    }
 
    $method ||= 'run_chain';
   ($method eq 'help' or $method eq 'run_chain') and $self->quiet( TRUE );
 
-   return $self->method( $method );
+   return $self->_set_method( $method );
 }
 
 # Public methods
@@ -188,7 +187,7 @@ sub add_leader {
 }
 
 sub can_call {
-   return ($_[ 0 ]->can( $_[ 1 ] )
+   return ($_[ 1 ] && $_[ 0 ]->can( $_[ 1 ] )
            && (is_member $_[ 1 ], __list_methods_of( $_[ 0 ] ))) ? TRUE : FALSE;
 }
 
@@ -458,8 +457,7 @@ sub _output_usage {
 
    defined $method and $method = untaint_identifier $method;
 
-   $method and $self->can_call( $method )
-      and return $self->_usage_for( $method );
+   $self->can_call( $method ) and return $self->_usage_for( $method );
 
    $verbose > 1 and return $self->_man_page_from( $self->config );
 
@@ -490,6 +488,10 @@ sub _usage_for {
 }
 
 # Private functions
+sub __dash2underscore {
+   (my $x = $_[ 0 ]) =~ s{ [\-] }{_}gmx; return $x;
+}
+
 sub __get_pod_header_for_method {
    my ($class, $method) = @_;
 
