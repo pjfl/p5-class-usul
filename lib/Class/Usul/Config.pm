@@ -29,6 +29,9 @@ has 'appldir'   => is => 'lazy', isa => Directory,
 
 has 'binsdir'   => is => 'lazy', isa => Path, coerce => Path->coercion;
 
+has 'cfgfiles'  => is => 'lazy', isa => ArrayRef[NonEmptySimpleStr],
+   builder      => sub { [] };
+
 has 'ctlfile'   => is => 'lazy', isa => Path, coerce => Path->coercion;
 
 has 'ctrldir'   => is => 'lazy', isa => Path, coerce => Path->coercion;
@@ -47,7 +50,8 @@ has 'locale'    => is => 'ro',   isa => NonEmptySimpleStr, default => LANG;
 has 'localedir' => is => 'lazy', isa => Directory,
    coerce       => Directory->coercion;
 
-has 'locales'   => is => 'ro',   isa => ArrayRef, builder => sub { [ LANG ] };
+has 'locales'   => is => 'ro',   isa => ArrayRef[NonEmptySimpleStr],
+   builder      => sub { [ LANG ] };
 
 has 'logfile'   => is => 'lazy', isa => Path, coerce => Path->coercion;
 
@@ -96,7 +100,7 @@ has 'log_attributes'  => is => 'ro',   isa => HashRef, default => sub { {} };
 around 'BUILDARGS' => sub {
    my ($orig, $class, @args) = @_; my $attr = $orig->( $class, @args );
 
-   my $paths; if ($paths = delete $attr->{cfgfiles} and $paths->[ 0 ]) {
+   my $paths; if ($paths = $attr->{cfgfiles} and $paths->[ 0 ]) {
       my $loaded = Class::Usul::File->data_load( paths => $paths ) || {};
 
       $attr = { %{ $attr }, %{ $loaded } };
@@ -208,8 +212,10 @@ sub _build_name {
 }
 
 sub _build_pathname {
-   return rel2abs( ('-' eq substr $PROGRAM_NAME, 0, 1) ? $EXECUTABLE_NAME
-                                                       : $PROGRAM_NAME );
+   my $name = ('-' eq substr $PROGRAM_NAME, 0, 1) ? $EXECUTABLE_NAME
+                                                  : $PROGRAM_NAME;
+
+   return rel2abs( (split m{ [ ][\-][ ] }mx, $name)[ 0 ] );
 }
 
 sub _build_phase {
@@ -240,7 +246,7 @@ sub _build_rundir {
 sub _build_sessdir {
    my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir hist ) );
 
-   return -d $dir ? $dir : $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir' );
+   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], 'vardir' );
 }
 
 sub _build_sharedir {
@@ -342,6 +348,11 @@ Directory. Defaults to the application's install directory
 =item C<binsdir>
 
 Directory. Defaults to the application's I<bin> directory
+
+=item C<cfgfiles>
+
+An array reference of non empty simple strings. The list of configuration
+files to load when instantiating an instance of the configuration class
 
 =item C<ctlfile>
 
