@@ -167,6 +167,7 @@ sub _run_cmd_using_fork_and_exec {
 
    {  local ($CHILD_ENUM, $CHILD_PID) = (0, 0);
       local $SIG{PIPE} = \&__pipe_handler;
+      $self->ignore_zombies and local $SIG{CHLD} = 'IGNORE';
 
       if ($self->detach) {
          my $pidfile = $self->pidfile;
@@ -194,7 +195,7 @@ sub _run_cmd_using_fork_and_exec {
    $self->working_dir and chdir $self->working_dir;
    is_coderef $cmd and _exit $self->_execute_coderef( $cmd );
 
-   exec @{ $self->cmd } or throw 'Program [_1] failed to start: [_2]',
+   exec @{ $self->cmd } or throw 'Program [_1] failed to exec: [_2]',
                                   args => [ $prog, $OS_ERROR ];
 }
 
@@ -276,7 +277,7 @@ sub _execute_coderef {
    $SIG{INT} = sub { $self->_shutdown };
 
    try {
-      $rv = $code->( $self, @args ) // UNDEFINED_RV; $rv = $rv << 8;
+      $rv = $code->( $self, @args ); defined $rv and $rv = $rv << 8;
       $self->_remove_pid;
    }
    catch {
@@ -287,7 +288,7 @@ sub _execute_coderef {
 }
 
 sub _fork_process { # Returns pid to the parent undef to the child
-   my $self = shift; $self->ignore_zombies and $SIG{CHLD} = 'IGNORE';
+   my $self = shift;
 
    my $pid; $pid = fork and return $pid; $self->_set_is_daemon( TRUE );
 
