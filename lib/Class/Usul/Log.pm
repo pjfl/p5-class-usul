@@ -51,10 +51,11 @@ sub BUILD {
 
    for my $method (LOG_LEVELS) {
       $meta->has_method( $method ) or $meta->add_method( $method => sub {
-         my ($self, $text) = @_; $text or return; chomp $text;
+         my ($self, $text) = @_; $text or return FALSE;
 
+         $text = "${text}"; chomp $text; $text .= "\n";
          $self->_encoding and $text = encode( $self->_encoding, $text );
-         $self->_log->$method( "${text}\n" );
+         $self->_log->$method( $text );
          return TRUE;
       } );
 
@@ -63,11 +64,11 @@ sub BUILD {
       $meta->has_method( $meth_msg ) or $meta->add_method( $meth_msg => sub {
          my ($self, $opts, $msg) = @_; my $text;
 
-         my $user = $opts->{user} ? $opts->{user}->username : q(unknown);
+         my $user = $opts->{user} ? $opts->{user}->username : 'unknown';
 
          $msg ||= NUL; $msg = "${msg}"; chomp $msg;
-         $text  = (ucfirst $opts->{leader} || NUL)."[${user}] ";
-         $text .= (ucfirst $msg || 'no message');
+         $text  = (ucfirst $opts->{leader} || NUL)."[${user}] ".
+                  (ucfirst $msg || 'no message');
          $self->$method( $text );
          return TRUE;
       } );

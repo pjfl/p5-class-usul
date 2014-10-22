@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Fixed object serialisation in ::Log
           - Fixed child signal handling in ::Cmd fork and exec
           - Added cfgfiles as a Config attr
           - Added Hash::MoreUtils to test prereqs
