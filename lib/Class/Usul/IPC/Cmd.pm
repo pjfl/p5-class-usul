@@ -53,9 +53,6 @@ has 'in'               => is => 'ro',   isa => Path | SimpleStr,
    coerce              => sub { __arrayref2str( $_[ 0 ] ) },
    default             => NUL;
 
-has 'is_daemon'        => is => 'rwp',  isa => Bool, default => FALSE,
-   init_arg            => undef;
-
 has 'log'              => is => 'lazy', isa => LogType,
    builder             => sub { Class::Null->new };
 
@@ -161,37 +158,33 @@ sub _run_cmd {
 
 # Fork and exec implementation
 sub _run_cmd_using_fork_and_exec {
-   my $self = shift; my $cmd = $self->cmd->[ 0 ]; my $prog = basename( $cmd );
+   my $self = shift; my $cmd = $self->cmd->[ 0 ];
+
+   my $pidfile = $self->pidfile; my $prog = basename( $cmd );
 
    my ($in_h, $out_h, $err_h) = __three_nonblocking_write_pipe_pairs();
 
    {  local ($CHILD_ENUM, $CHILD_PID) = (0, 0);
+#      local $SIG{CHLD} = \&__child_handler;
       local $SIG{PIPE} = \&__pipe_handler;
       $self->ignore_zombies and local $SIG{CHLD} = 'IGNORE';
 
-      if ($self->detach) {
-         my $pidfile = $self->pidfile;
-
-         unless ($self->_daemonise) { # Parent
-            my $pid = $self->_wait_for_and_read( $pidfile ); $pidfile->close;
+      if (my $pid = fork) { # Parent
+         if ($self->detach) {
+            $pid = $self->_wait_for_and_read( $pidfile ); $pidfile->close;
 
             return $self->_new_async_response( $prog, $pid );
          }
 
-         $pidfile->println( $PID ); # Child
-      }
-      elsif (my $pid = $self->_fork_process) { # Parent
          $in_h = $in_h->[ 1 ]; $out_h = $out_h->[ 0 ]; $err_h = $err_h->[ 0 ];
-
          $self->async and return $self->_new_async_response( $prog, $pid );
-
          $self->log->debug( "Running ${prog}($pid)" );
-
          return $self->_wait_for_child( $pid, $in_h, $out_h, $err_h );
       }
    }
    # Child
    $self->_redirect_child_io( $in_h->[ 0 ], $out_h->[ 1 ], $err_h->[ 1 ] );
+   $self->detach and $self->_detach_process and $pidfile->println( $PID );
    $self->working_dir and chdir $self->working_dir;
    is_coderef $cmd and _exit $self->_execute_coderef( $cmd );
 
@@ -244,16 +237,11 @@ sub _wait_for_child {
          stderr => $stderr,        stdout => $stdout );
 }
 
-sub _daemonise { # Returns false to the parent true to the child
-   $_[ 0 ]->_fork_process; return $_[ 0 ]->_detach_process;
-}
-
 sub _detach_process { # And this method came from MooseX::Daemonize
-   my $self = shift; $self->is_daemon or return FALSE; # Return if parent ...
+   my $self = shift;
 
-   # Now we are the child ...
    setsid or throw 'Cannot detach from controlling process';
-   $SIG{HUP} = 'IGNORE'; fork and _exit OK; chdir rootdir;
+   $SIG{HUP} = 'IGNORE'; fork and _exit OK; $self->working_dir or chdir rootdir;
 #  Clearing file creation mask allows direct control of the access mode of
 #  created files and directories in open, mkdir, and mkpath functions
    umask 0;
@@ -285,14 +273,6 @@ sub _execute_coderef {
    };
 
    return $rv // UNDEFINED_RV;
-}
-
-sub _fork_process { # Returns pid to the parent undef to the child
-   my $self = shift;
-
-   my $pid; $pid = fork and return $pid; $self->_set_is_daemon( TRUE );
-
-   return;
 }
 
 sub _new_async_response {
@@ -714,7 +694,8 @@ sub __redirect_stderr {
 
    my $op = openhandle $v ? '>&' : '>'; my $sink = $op eq '>' ? $v : fileno $v;
 
-   open $err, $op, $sink or throw "Could not redirect STDERR: ${OS_ERROR}";
+   open $err, $op, $sink
+      or throw "Could not redirect STDERR to ${sink}: ${OS_ERROR}";
    return;
 }
 
@@ -723,7 +704,8 @@ sub __redirect_stdin {
 
    my $op = openhandle $v ? '<&' : '<'; my $src = $op eq '<' ? $v : fileno $v;
 
-   open $in,  $op, $src  or throw "Could not redirect STDIN: ${OS_ERROR}";
+   open $in,  $op, $src
+      or throw "Could not redirect STDIN from ${src}: ${OS_ERROR}";
    return;
 }
 
@@ -732,7 +714,8 @@ sub __redirect_stdout {
 
    my $op = openhandle $v ? '>&' : '>'; my $sink = $op eq '>' ? $v : fileno $v;
 
-   open $out, $op, $sink or throw "Could not redirect STDOUT: ${OS_ERROR}";
+   open $out, $op, $sink
+      or throw "Could not redirect STDOUT to ${sink}: ${OS_ERROR}";
    return;
 }
 
@@ -838,11 +821,6 @@ Determines where the standard input of the command will be redirected from.
 Object references should stringify to the name of the file containing input.
 A scalar is the input unless it is 'stdin' or 'null' which cause redirection
 from standard input and the null device
-
-=item C<is_daemon>
-
-Boolean without an initial argument. It will be true in daemonised child
-process and false in it's parent
 
 =item C<keep_fhs>
 

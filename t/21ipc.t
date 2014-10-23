@@ -239,6 +239,14 @@ SKIP: {
       $r   = run_cmd_test( q(), $cmd, { expected_rv => 255 } );
       is $r->rv, 0, 'fork and exec - external command expected rv';
    }
+
+   $r = run_cmd_test( q(), [ $perl, '-v' ], { detach => 1, out => $path } );
+
+   like $r->out, qr{ background }imsx, 'fork and exec - detaches';
+   waitpid $r->pid, 0;
+   like $path->slurp, qr{ larry \s+ wall }imsx,
+      'fork and exec - detaches and writes file';
+   $path->exists and $path->unlink;
 }
 
 # This fails on some platforms. The stderr is not redirected as expected
