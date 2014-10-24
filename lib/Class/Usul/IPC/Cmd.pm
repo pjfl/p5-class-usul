@@ -46,8 +46,8 @@ has 'err'              => is => 'ro',   isa => Path | SimpleStr, default => NUL;
 
 has 'expected_rv'      => is => 'ro',   isa => PositiveInt, default => 0;
 
-has 'ignore_zombies'   => is => 'lazy', isa => Bool,
-   builder             => sub { $_[ 0 ]->async ? TRUE : FALSE };
+has 'ignore_zombies'   => is => 'lazy', isa => Bool, builder => sub {
+   ($_[ 0 ]->async || $_[ 0 ]->detach) ? TRUE : FALSE };
 
 has 'in'               => is => 'ro',   isa => Path | SimpleStr,
    coerce              => sub { __arrayref2str( $_[ 0 ] ) },
@@ -165,8 +165,8 @@ sub _run_cmd_using_fork_and_exec {
    my ($in_h, $out_h, $err_h, $stat_h) = __four_nonblocking_write_pipe_pairs();
 
    {  local ($CHILD_ENUM, $CHILD_PID) = (0, 0);
-      local $SIG{CHLD} = $self->ignore_zombies ? 'IGNORE' : \&__child_handler;
       local $SIG{PIPE} = \&__pipe_handler;
+      $self->ignore_zombies and local $SIG{CHLD} = 'IGNORE';
 
       if (my $pid = fork) { # Parent
          $in_h  = $in_h->[ 1 ];  $out_h  = $out_h->[ 0 ];
