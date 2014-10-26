@@ -134,23 +134,25 @@ sub run_cmd {
 
 # Private methods
 sub _run_cmd {
-   my $self = shift; my $cmd = $self->cmd; my $has_pipes = __has_pipes( $cmd );
+   my $self = shift; my $cmd = $self->cmd;
+
+   my $has_shell_meta = __has_shell_meta( $cmd );
 
    if (is_arrayref $cmd) {
       $cmd->[ 0 ] or throw Unspecified, args => [ 'command' ];
 
       unless (is_win32) {
-         ($has_pipes or $self->use_ipc_run)
+         ($has_shell_meta or $self->use_ipc_run)
             and can_load( modules => { 'IPC::Run' => '0.84' } )
             and return $self->_run_cmd_using_ipc_run;
 
-         not $has_pipes and return $self->_run_cmd_using_fork_and_exec;
+         not $has_shell_meta and return $self->_run_cmd_using_fork_and_exec;
       }
 
       $cmd = join SPC, map { m{ [ ] }mx ? __quote( $_ ) : $_ } @{ $cmd };
    }
 
-   not is_win32 and ($has_pipes or $self->async or $self->use_system)
+   not is_win32 and ($has_shell_meta or $self->async or $self->use_system)
       and return $self->_run_cmd_using_system( $cmd );
 
    return $self->_run_cmd_using_open3( $cmd );
@@ -266,7 +268,7 @@ sub _execute_coderef {
       blessed $_ and $_->can( 'rv' ) and $rv = $_->rv; emit_to \*STDERR, $_;
    };
 
-   return $rv // UNDEFINED_RV;
+   return $rv // OK;
 }
 
 sub _new_async_response {
@@ -660,10 +662,12 @@ sub __four_nonblocking_write_pipe_pairs {
           nonblocking_write_pipe_pair;
 }
 
-sub __has_pipes {
-   return (  is_arrayref $_[ 0 ]) ? is_member '|', $_[ 0 ]
-        : ($_[ 0 ] =~ m{ [|] }mx) ? TRUE
-                                  : FALSE;
+sub __has_shell_meta {
+   return (     is_arrayref $_[ 0 ]) ? is_member '|',  $_[ 0 ]
+        : (     is_arrayref $_[ 0 ]) ? is_member '&&', $_[ 0 ]
+        : ($_[ 0 ] =~ m{ [|]    }mx) ? TRUE
+        : ($_[ 0 ] =~ m{ [&][&] }mx) ? TRUE
+                                     : FALSE;
 }
 
 sub __out_handler {

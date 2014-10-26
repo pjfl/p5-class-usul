@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Fixed exit code when async process is killed
           - Fixed trapping exec failure if ::Cmd fork and exec
           - Fixed object serialisation in ::Log
           - Fixed child signal handling in ::Cmd fork and exec
