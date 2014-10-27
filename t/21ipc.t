@@ -249,9 +249,7 @@ SKIP: {
    $path->exists and $path->unlink;
 
    $r = run_cmd_test( q(), [ '/bin/not_found' ], { expected_rv => 255 } );
-   like "${r}", qr{ \Qno such file\E }imx, 'fork and exec - traps exec failure';
-
-   
+   like "${r}", qr{ Can.t \s+ exec }imx, 'fork and exec - traps exec failure';
 }
 
 # This fails on some platforms. The stderr is not redirected as expected

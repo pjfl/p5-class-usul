@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - Fixed badly written test
+
 0.49.1    2014-10-27 13:04:54
           [ Bug Fixes ]
           - Fixed exit code when async process is killed
