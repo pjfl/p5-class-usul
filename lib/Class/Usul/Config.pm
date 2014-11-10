@@ -89,12 +89,12 @@ has 'tempdir'   => is => 'lazy', isa => Directory,
 has 'vardir'    => is => 'lazy', isa => Path, coerce => Path->coercion;
 
 has 'l10n_attributes' => is => 'lazy', isa => HashRef,
-   default            => sub { {
+   builder            => sub { {
       domains         => [ DEFAULT_L10N_DOMAIN, $_[ 0 ]->name ] } };
 
-has 'lock_attributes' => is => 'ro',   isa => HashRef, default => sub { {} };
+has 'lock_attributes' => is => 'ro',   isa => HashRef, builder => sub { {} };
 
-has 'log_attributes'  => is => 'ro',   isa => HashRef, default => sub { {} };
+has 'log_attributes'  => is => 'ro',   isa => HashRef, builder => sub { {} };
 
 # Construction
 around 'BUILDARGS' => sub {

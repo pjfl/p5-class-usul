@@ -11,22 +11,17 @@ use Class::Usul::Functions   qw( assert is_arrayref
                                  is_hashref merge_attributes );
 use Class::Usul::Types       qw( ArrayRef Bool HashRef LogType
                                  SimpleStr Str Undef );
-use File::DataClass::Types   qw( Directory Lock Path );
+use File::DataClass::Types   qw( Directory Path );
 use File::Gettext::Constants qw( CONTEXT_SEP );
 use File::Gettext;
 use File::Spec;
 use Try::Tiny;
 
 # Public attributes
-has 'debug'           => is => 'rw',   isa => Bool, default => FALSE;
-
 has 'l10n_attributes' => is => 'ro',   isa => HashRef, default => sub { {} };
 
 has 'localedir'       => is => 'ro',   isa => Path | Undef,
    coerce             => Path->coercion;
-
-has 'lock'            => is => 'ro',   isa => Lock,
-   default            => sub { Class::Null->new };
 
 has 'log'             => is => 'ro',   isa => LogType,
    default            => sub { Class::Null->new };
@@ -54,7 +49,7 @@ around 'BUILDARGS' => sub {
    my $builder = delete $attr->{builder} or return $attr;
    my $config  = $builder->can( 'config' ) ? $builder->config : {};
 
-   merge_attributes $attr, $builder, {}, [ 'debug', 'log' ];
+   merge_attributes $attr, $builder, {}, [ 'log' ];
    merge_attributes $attr, $config,  {},
       [ qw( l10n_attributes localedir tempdir ) ];
 
@@ -257,10 +252,6 @@ See above
 =item C<localedir>
 
 Base directory to search for mo/po files
-
-=item C<lock>
-
-Optional L<IPC::SRLock> object passed to L<File::Gettext>
 
 =item C<log>
 

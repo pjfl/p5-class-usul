@@ -3,7 +3,7 @@ package Class::Usul;
 use 5.010001;
 use feature 'state';
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.50.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.50.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants  qw( EXCEPTION_CLASS FALSE TRUE );
@@ -26,8 +26,7 @@ has 'config_class' => is => 'ro',   isa => LoadableClass,
    coerce          => LoadableClass->coercion,
    default         => 'Class::Usul::Config';
 
-has 'debug'        => is => 'rw',   isa => Bool, default => FALSE,
-   trigger         => TRUE;
+has 'debug'        => is => 'ro',   isa => Bool, default => FALSE;
 
 has 'encoding'     => is => 'lazy', isa => EncodingType,
    builder         => sub { $_[ 0 ]->config->encoding };
@@ -59,15 +58,6 @@ sub dumper { # Damm handy for development
    my $self = shift; return data_dumper( @_ );
 }
 
-# Private methods
-sub _trigger_debug { # Propagate the debug state to child objects
-   my ($self, $debug) = @_;
-
-   $self->l10n->debug( $debug ); $debug and $self->lock->debug( $debug );
-
-   return;
-}
-
 1;
 
 __END__
@@ -80,7 +70,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.50.$Rev: 1 $
+Describes Class::Usul version v0.50.$Rev: 2 $
 
 =head1 Synopsis
 
