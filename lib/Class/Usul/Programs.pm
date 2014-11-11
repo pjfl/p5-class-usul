@@ -559,7 +559,7 @@ Supports this list of command line options:
 
 The method in the subclass to dispatch to
 
-=item C<D>
+=item C<D debug>
 
 Turn debugging on
 
@@ -770,7 +770,7 @@ program leader and prints the result to I<STDOUT>
 
 =head1 Diagnostics
 
-Turning debug on produces some more output
+Turning debug on produces log output at the debug level
 
 =head1 Dependencies
 

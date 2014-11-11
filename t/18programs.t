@@ -59,11 +59,6 @@ unlink $logfile;
 is   $prog->debug, 0, 'Debug false';
 is   $prog->debug_flag, '-n', 'Debug flag - false';
 
-$prog->debug( 1 );
-
-is   $prog->debug, 1, 'Debug true';
-is   $prog->debug_flag, '-D', 'Debug flag - true';
-
 my ($out, $err) = capture { $prog->run };
 
 like $err, qr{ Class::Usul::Programs }mx, 'Runs dump self';
@@ -75,6 +70,7 @@ my $path = find_source 'Class::Usul::Functions';
 $prog = Class::Usul::Programs->new
    (  appclass => 'Class::Usul',
       config   => { logsdir => 't', tempdir => 't', },
+      debug    => 1,
       method   => 'list_methods',
       noask    => 1,
       quiet    => 1, );
@@ -83,6 +79,8 @@ $prog = Class::Usul::Programs->new
 like $out, qr{ available \s command \s line }mx, 'Runs list methods';
 ($out, $err) = capture { $prog->error };
 like $err, qr{ no \s message }mx, 'Default error';
+is $prog->debug, 1, 'Debug true';
+is $prog->debug_flag, '-D', 'Debug flag - true';
 
 done_testing;
 
