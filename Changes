@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+0.51.1    2014-11-11 14:44:49
           [ Changes ]
           - Made ::Programs::debug rwp
           - Made Usul::debug ro. Removed trigger
