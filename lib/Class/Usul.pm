@@ -3,7 +3,7 @@ package Class::Usul;
 use 5.010001;
 use feature 'state';
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.51.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.51.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants  qw( EXCEPTION_CLASS FALSE TRUE );
@@ -70,20 +70,28 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.51.$Rev: 1 $
+Describes Class::Usul version v0.51.$Rev: 2 $
 
 =head1 Synopsis
 
-   use Moo;
+   use Class::Usul;
+   use Class::Usul::Constants qw( FALSE );
+   use Class::Usul::Functions qw( find_apphome get_cfgfiles );
 
-   extends q(Class::Usul);
+   my $attr = { config => {}, debug => $ENV{DEBUG} // FALSE };
+   my $conf = $attr->{config};
 
-   $self = Class::Usul->new( $attr );
+   $conf->{appclass    } or  die "Application class not specified";
+   $attr->{config_class} //= $conf->{appclass}.'::Config';
+   $conf->{home        }   = find_apphome $conf->{appclass};
+   $conf->{cfgfiles    }   = get_cfgfiles $conf->{appclass}, $conf->{home};
+
+   return Class::Usul->new( $attr );
 
 =head1 Description
 
-These modules provide a set of base classes for Perl packages and
-applications that provide configuration file loading
+These modules provide a set of base classes for Perl modules and
+applications. It provides configuration file loading
 L<Class::Usul::Config>, locking to single thread processes
 L<IPC::SRLock>, logging L<Class::Usul::Log> and localisation
 L<Class::Usul::L10N>
@@ -94,9 +102,6 @@ Interprocess communication is handled by L<Class::Usul::IPC>
 
 L<Class::Usul::File> makes the functionality of L<File::DataClass> available
 
-The L<Module::Build> subclass L<Class::Usul::Build> adds methods for the
-management and deployment of applications
-
 =head1 Configuration and Environment
 
 Defines the following attributes;
@@ -105,16 +110,16 @@ Defines the following attributes;
 
 =item config
 
-The C<config> attribute should be a hash ref that may define key/value pairs
-that provide filesystem paths for the temporary directory etc.
+The C<config> attribute should be a hash reference that may define key / value
+pairs that provide filesystem paths for the temporary directory etc.
 
 =item config_class
 
 Defaults to L<Class::Usul::Config> and is of type C<LoadableClass>. An
-instance of this class is loaded and instantiated using the hash ref
+instance of this class is loaded and instantiated using the hash reference
 in the C<config> attribute. It provides accessor methods with symbol
 inflation and smart defaults. Add configuration attributes by
-subclassing the default
+subclassing this class
 
 =item debug
 
@@ -122,13 +127,22 @@ Defaults to false
 
 =item encoding
 
-Decode input and encode output. Defaults to C<UTF-8>
+Decode input and encode output. Defaults to C<< $self->config->encoding >>
+which defaults to to C<UTF-8>
+
+=item l10n
+
+An instance of L<Class::Usul::L10N>
+
+=item lock
+
+An instance of L<IPC::SRLock>
+
+=item log
+
+An instance of L<Class::Usul::Log>
 
 =back
-
-Defines an instance of L<IPC::SRLock>
-
-Defines the application context log. Defaults to a L<Log::Handler> object
 
 =head1 Subroutines/Methods
 
@@ -137,32 +151,6 @@ Defines the application context log. Defaults to a L<Log::Handler> object
    $self->dumper( $some_var );
 
 Use L<Data::Printer> to dump arguments for development purposes
-
-=head2 _build__lock
-
-Defines the lock object. This instantiates on first use
-
-An L<IPC::SRLock> object which is used to single thread the
-application where required. This is a singleton object.  Provides
-defaults for and returns a new L<IPC::SRLock> object. The keys of the
-C<< $self->config->lock_attributes >> hash are:
-
-=over 3
-
-=item debug
-
-Debug status. Defaults to C<< $self->debug >>
-
-=item log
-
-Logging object. Defaults to C<< $self->log >>
-
-=item tempdir
-
-Directory used to store the lock file and lock table if the C<fcntl> backend
-is used. Defaults to C<< $self->config->tempdir >>
-
-=back
 
 =head1 Diagnostics
 
