@@ -7,9 +7,9 @@ use Class::Usul::Constants   qw( CONFIG_EXTN DEFAULT_CONFHOME
                                  DEFAULT_ENCODING DEFAULT_L10N_DOMAIN
                                  FALSE LANG NUL PERL_EXTNS PHASE TRUE );
 use Class::Usul::File;
-use Class::Usul::Functions   qw( app_prefix class2appdir home2appldir
-                                 is_arrayref split_on__ split_on_dash
-                                 untaint_path );
+use Class::Usul::Functions   qw( app_prefix canonicalise class2appdir
+                                 home2appldir is_arrayref split_on__
+                                 split_on_dash untaint_path );
 use Class::Usul::Types       qw( ArrayRef EncodingType HashRef NonEmptySimpleStr
                                  NonZeroPositiveInt PositiveInt Str );
 use Config;
@@ -72,8 +72,7 @@ has 'root'      => is => 'lazy', isa => Path, coerce => Path->coercion;
 
 has 'rundir'    => is => 'lazy', isa => Path, coerce => Path->coercion;
 
-has 'salt'      => is => 'lazy', isa => NonEmptySimpleStr,
-   builder      => sub { $_[ 0 ]->_inflate_symbol( $_[ 1 ], 'prefix' ) };
+has 'salt'      => is => 'lazy', isa => NonEmptySimpleStr;
 
 has 'sessdir'   => is => 'lazy', isa => Path, coerce => Path->coercion;
 
@@ -96,9 +95,25 @@ has 'lock_attributes' => is => 'ro',   isa => HashRef, builder => sub { {} };
 
 has 'log_attributes'  => is => 'ro',   isa => HashRef, builder => sub { {} };
 
+# Private functions
+my $_is_inflated = sub {
+   my ($attr, $attr_name) = @_;
+
+   return exists $attr->{ $attr_name } && defined $attr->{ $attr_name }
+       && $attr->{ $attr_name } !~ m{ \A __ }mx ? TRUE : FALSE;
+};
+
+my $_unpack = sub {
+   my ($self, $attr) = @_; $attr ||= {};
+
+   blessed $self and return ($self, $self->{appclass}, $self->{home});
+
+   return ($self, $attr->{appclass}, $attr->{home});
+};
+
 # Construction
 around 'BUILDARGS' => sub {
-   my ($orig, $class, @args) = @_; my $attr = $orig->( $class, @args );
+   my ($orig, $self, @args) = @_; my $attr = $orig->( $self, @args );
 
    my $paths; if ($paths = $attr->{cfgfiles} and $paths->[ 0 ]) {
       my $loaded = Class::Usul::File->data_load( paths => $paths ) || {};
@@ -109,73 +124,47 @@ around 'BUILDARGS' => sub {
    for my $name (keys %{ $attr }) {
       defined $attr->{ $name }
           and $attr->{ $name } =~ m{ \A __([^\(]+?)__ \z }mx
-          and $attr->{ $name } = $class->_inflate_symbol( $attr, $1 );
+          and $attr->{ $name } = $self->inflate_symbol( $attr, $1 );
    }
 
-   $class->inflate_paths( $attr );
+   $self->inflate_paths( $attr );
 
    return $attr;
 };
 
-# Public methods
-sub canonicalise {
-   my ($self, $base, $relpath) = @_;
-
-   my @base = ((is_arrayref $base) ? @{ $base } : $base);
-   my @rest = split m{ / }mx, $relpath;
-   my $path = canonpath( untaint_path catdir( @base, @rest ) );
-
-   -d $path and return $path;
-
-   return canonpath( untaint_path catfile( @base, @rest ) );
-}
-
-sub inflate_paths {
-   my ($class, $attr) = @_;
-
-   for my $name (keys %{ $attr }) {
-      defined $attr->{ $name }
-          and $attr->{ $name } =~ m{ \A __(.+?)\((.+?)\)__ \z }mx
-          and $attr->{ $name } = $class->_inflate_path( $attr, $1, $2 );
-   }
-
-   return;
-}
-
-# Private methods
 sub _build_appldir {
-   my ($self, $appclass, $home) = __unpack( @_ ); my $dir;
+   my ($self, $appclass, $home) = $_unpack->( @_ ); my $dir;
 
    if ($dir = home2appldir $home) {
-      $dir = rel2abs( untaint_path( $dir ) );
+      $dir = rel2abs( untaint_path $dir );
       -d catdir( $dir, 'lib' ) and return $dir;
    }
 
    $dir = catdir ( NUL, 'var', class2appdir $appclass );
-   $dir = rel2abs( untaint_path( $dir    ) ); -d $dir and return $dir;
-   $dir = rel2abs( untaint_path( $home   ) ); -d $dir and return $dir;
-   return rel2abs( untaint_path( rootdir ) );
+   $dir = rel2abs( untaint_path $dir    ); -d $dir and return $dir;
+   $dir = rel2abs( untaint_path $home   ); -d $dir and return $dir;
+   return rel2abs( untaint_path rootdir );
 }
 
 sub _build_binsdir {
-   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( appldir bin ) );
+   my $dir = $_[ 0 ]->inflate_path( $_[ 1 ], 'appldir', 'bin' );
 
    return -d $dir ? $dir : untaint_path $Config{installsitescript};
 }
 
 sub _build_ctlfile {
-   my $name      = $_[ 0 ]->_inflate_symbol( $_[ 1 ], 'name'      );
-   my $extension = $_[ 0 ]->_inflate_symbol( $_[ 1 ], 'extension' );
+   my $name      = $_[ 0 ]->inflate_symbol( $_[ 1 ], 'name'      );
+   my $extension = $_[ 0 ]->inflate_symbol( $_[ 1 ], 'extension' );
 
-   return $_[ 0 ]->_inflate_path( $_[ 1 ], 'ctrldir', $name.$extension );
+   return $_[ 0 ]->inflate_path( $_[ 1 ], 'ctrldir', $name.$extension );
 }
 
 sub _build_ctrldir {
-   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir etc ) );
+   my $dir = $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir', 'etc' );
 
    -d $dir and return $dir;
 
-   $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( appldir etc ) );
+   $dir = $_[ 0 ]->inflate_path( $_[ 1 ], 'appldir', 'etc' );
 
    -d $dir and return $dir;
 
@@ -183,30 +172,30 @@ sub _build_ctrldir {
 }
 
 sub _build_localedir {
-   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir locale ) );
+   my $dir = $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir', 'locale' );
 
    -d $dir and return $dir;
 
    for (map { catdir( @{ $_ } ) } @{ LOCALE_DIRS() } ) { -d $_ and return $_ }
 
-   return $_[ 0 ]->_inflate_path( $_[ 1 ], 'tempdir' );
+   return $_[ 0 ]->inflate_path( $_[ 1 ], 'tempdir' );
 }
 
 sub _build_logfile {
-   my $name = $_[ 0 ]->_inflate_symbol( $_[ 1 ], 'name' );
+   my $name = $_[ 0 ]->inflate_symbol( $_[ 1 ], 'name' );
 
-   return $_[ 0 ]->_inflate_path( $_[ 1 ], 'logsdir', "${name}.log" );
+   return $_[ 0 ]->inflate_path( $_[ 1 ], 'logsdir', "${name}.log" );
 }
 
 sub _build_logsdir {
-   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir logs ) );
+   my $dir = $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir', 'logs' );
 
-   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], 'tempdir' );
+   return -d $dir ? $dir : $_[ 0 ]->inflate_path( $_[ 1 ], 'tempdir' );
 }
 
 sub _build_name {
-   my $name = basename(   $_[ 0 ]->_inflate_path
-                        ( $_[ 1 ], 'pathname' ), PERL_EXTNS );
+   my $name = basename
+      ( $_[ 0 ]->inflate_path( $_[ 1 ], 'pathname' ), PERL_EXTNS );
 
    return (split_on__ $name, 1) || (split_on_dash $name, 1) || $name;
 }
@@ -219,101 +208,96 @@ sub _build_pathname {
 }
 
 sub _build_phase {
-   my $verdir  = basename( $_[ 0 ]->_inflate_path( $_[ 1 ], 'appldir' ) );
+   my $verdir  = basename( $_[ 0 ]->inflate_path( $_[ 1 ], 'appldir' ) );
    my ($phase) = $verdir =~ m{ \A v \d+ \. \d+ p (\d+) \z }msx;
 
    return defined $phase ? $phase : PHASE;
 }
 
 sub _build_prefix {
-   my $appclass = $_[ 0 ]->_inflate_symbol( $_[ 1 ], 'appclass' );
+   my $appclass = $_[ 0 ]->inflate_symbol( $_[ 1 ], 'appclass' );
 
    return (split m{ :: }mx, lc $appclass)[ -1 ];
 }
 
 sub _build_root {
-   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir root ) );
+   my $dir = $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir', 'root' );
 
-   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], 'vardir' );
+   return -d $dir ? $dir : $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir' );
 }
 
 sub _build_rundir {
-   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir run ) );
+   my $dir = $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir', 'run' );
 
-   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], 'vardir' );
+   return -d $dir ? $dir : $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir' );
 }
 
 sub _build_sessdir {
-   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir hist ) );
+   my $dir = $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir', 'hist' );
 
-   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], 'vardir' );
+   return -d $dir ? $dir : $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir' );
 }
 
 sub _build_sharedir {
-   my $dir =  $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir share ) );
+   my $dir =  $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir', 'share' );
 
-   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], 'vardir' );
+   return -d $dir ? $dir : $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir' );
 }
 
 sub _build_shell {
-   my $file = $ENV{SHELL};                    -e $file and return $file;
-      $file = catfile( NUL, qw( bin ksh ) );  -e $file and return $file;
-      $file = catfile( NUL, qw( bin bash ) ); -e $file and return $file;
-   return     catfile( NUL, qw( bin sh ) );
+   my $file = $ENV{SHELL};                   -e $file and return $file;
+      $file = catfile( NUL, 'bin', 'ksh'  ); -e $file and return $file;
+      $file = catfile( NUL, 'bin', 'bash' ); -e $file and return $file;
+   return     catfile( NUL, 'bin', 'sh'   );
+}
+
+sub _build_salt {
+   return $_[ 0 ]->inflate_symbol( $_[ 1 ], 'prefix' );
 }
 
 sub _build_suid {
-   my $prefix = $_[ 0 ]->_inflate_symbol( $_[ 1 ], 'prefix' );
+   my $prefix = $_[ 0 ]->inflate_symbol( $_[ 1 ], 'prefix' );
 
-   return $_[ 0 ]->_inflate_path( $_[ 1 ], 'binsdir', "${prefix}_admin" );
+   return $_[ 0 ]->inflate_path( $_[ 1 ], 'binsdir', "${prefix}_admin" );
 }
 
 sub _build_tempdir {
-   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( vardir tmp ) );
+   my $dir = $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir', 'tmp' );
 
    return -d $dir ? $dir : untaint_path tmpdir;
 }
 
 sub _build_vardir {
-   my $dir = $_[ 0 ]->_inflate_path( $_[ 1 ], qw( appldir var ) );
+   my $dir = $_[ 0 ]->inflate_path( $_[ 1 ], 'appldir', 'var' );
 
-   return -d $dir ? $dir : $_[ 0 ]->_inflate_path( $_[ 1 ], 'appldir' );
+   return -d $dir ? $dir : $_[ 0 ]->inflate_path( $_[ 1 ], 'appldir' );
 }
 
-sub _inflate_path {
-   my ($self, $attr, $symbol, $relpath) = @_; $attr ||= {};
-
-   my $inflated = $self->_inflate_symbol( $attr, $symbol );
-
-   $relpath or return canonpath( untaint_path $inflated );
-
-   return $self->canonicalise( $inflated, $relpath );
+# Public methods
+sub inflate_path {
+   return canonicalise $_[ 0 ]->inflate_symbol( $_[ 1 ], $_[ 2 ] ), $_[ 3 ];
 }
 
-sub _inflate_symbol {
+sub inflate_paths {
+   my ($self, $attr) = @_;
+
+   for my $name (keys %{ $attr }) {
+      defined $attr->{ $name }
+          and $attr->{ $name } =~ m{ \A __(.+?)\((.+?)\)__ \z }mx
+          and $attr->{ $name } = $self->inflate_path( $attr, $1, $2 );
+   }
+
+   return;
+}
+
+sub inflate_symbol {
    my ($self, $attr, $symbol) = @_; $attr ||= {};
 
    my $attr_name = lc $symbol; my $method = "_build_${attr_name}";
 
-   return blessed $self                      ? $self->$attr_name()
-        : __is_inflated( $attr, $attr_name ) ? $attr->{ $attr_name }
-                                             : $self->$method( $attr );
-}
-
-# Private functions
-sub __is_inflated {
-   my ($attr, $attr_name) = @_;
-
-   return exists $attr->{ $attr_name } && defined $attr->{ $attr_name }
-       && $attr->{ $attr_name } !~ m{ \A __ }mx ? TRUE : FALSE;
-}
-
-sub __unpack {
-   my ($self, $attr) = @_; $attr ||= {};
-
-   blessed $self and return ($self, $self->{appclass}, $self->{home});
-
-   return ($self, $attr->{appclass}, $attr->{home});
+   return blessed $self                        ? $self->$attr_name()
+        : $_is_inflated->( $attr, $attr_name ) ? $attr->{ $attr_name }
+                                               : $self->$method( $attr );
 }
 
 1;
@@ -484,25 +468,17 @@ Directory. Contains all of the non program code directories
 Loads the configuration files if specified. Calls L</inflate_symbol>
 and L</inflate_path>
 
-=head2 canonicalise
-
-   $untainted_canonpath = $self->canonicalise( $base, $relpath );
-
-Appends C<$relpath> to C<$base> using L<File::Spec::Functions>. The C<$base>
-argument can be an array ref or a scalar. The C<$relpath> argument must be
-separated by slashes. The return path is untainted and canonicalised
-
-=head2 inflate_paths
-
-Calls L</_inflate_path> for each of the matching values in the hash that
-was passed as argument
-
-=head2 _inflate_path
+=head2 inflate_path
 
 Inflates the I<__symbol( relative_path )__> values to their actual runtime
 values
 
-=head2 _inflate_symbol
+=head2 inflate_paths
+
+Calls L</inflate_path> for each of the matching values in the hash that
+was passed as argument
+
+=head2 inflate_symbol
 
 Inflates the I<__SYMBOL__> values to their actual runtime values
 

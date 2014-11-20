@@ -23,7 +23,7 @@ use File::Basename             qw( basename dirname );
 use File::DataClass::Functions qw( supported_extensions );
 use File::DataClass::IO        qw( );
 use File::HomeDir              qw( );
-use File::Spec::Functions      qw( catdir catfile curdir );
+use File::Spec::Functions      qw( canonpath catdir catfile curdir );
 use List::Util                 qw( first );
 use Module::Runtime            qw( is_module_name require_module );
 use Scalar::Util               qw( blessed openhandle );
@@ -36,7 +36,7 @@ our @EXPORT      = qw( is_member );
 our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
                        assert_directory base64_decode_ns
                        base64_encode_ns bsonid bsonid_time bson64id
-                       bson64id_time build class2appdir classdir
+                       bson64id_time build canonicalise class2appdir classdir
                        classfile create_token curry data_dumper distname
                        elapsed emit emit_err emit_to
                        ensure_class_loaded env_prefix escape_TT
@@ -63,8 +63,7 @@ sub _exporter_fail {
     exists $EXPORT_REFS{ $name }
        and return ( $name => $EXPORT_REFS{ $name }->() );
 
-    throw( 'Subroutine [_1] not found in package [_2]',
-           args => [ $name, $class ] );
+    throw( 'Subroutine [_1] not found in package [_2]', [ $name, $class ] );
 }
 
 # Public functions
@@ -179,6 +178,20 @@ sub bson64id_time ($) {
 
 sub build (&;$) {
    my $blck = shift; my $f = shift || sub {}; return sub { $blck->( $f->() ) };
+}
+
+sub canonicalise ($;$) {
+   my ($base, $relpath) = @_;
+
+   $base = is_arrayref( $base ) ? catdir( @{ $base } ) : $base;
+   $relpath or return canonpath( untaint_path( $base ) );
+
+   my @relpath = is_arrayref( $relpath ) ? @{ $relpath } : $relpath;
+   my $path    = canonpath( untaint_path( catdir( $base, @relpath ) ) );
+
+   -d $path and return $path;
+
+   return canonpath( untaint_path( catfile( $base, @relpath ) ) );
 }
 
 sub class2appdir ($) {
@@ -835,6 +848,14 @@ Returns the time the C<BSON64> id was generated as Unix time
 Returns a code ref which when called returns the result of calling the block
 passing in the result of calling the optional code ref. Delays the calling
 of the input code ref until the output code ref is called
+
+=head2 canonicalise
+
+   $untainted_canonpath = canonicalise $base, $relpath;
+
+Appends C<$relpath> to C<$base> using L<File::Spec::Functions>. The C<$base>
+and C<$relpath> arguments can be an array reference or a scalar. The return
+path is untainted and canonicalised
 
 =head2 class2appdir
 

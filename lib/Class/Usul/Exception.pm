@@ -23,7 +23,7 @@ has_exception 'Tainted' => parents => [ $class ],
    error   => 'String [_1] contains possible taint';
 
 has_exception 'TimeOut' => parents => [ $class ],
-   error   => 'Command [_1] aborted by alarm after [_2] seconds';
+   error   => 'Command [_1] timed out after [_2] seconds';
 
 has '+class' => default => $class;
 

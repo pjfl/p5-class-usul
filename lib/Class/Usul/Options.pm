@@ -10,93 +10,15 @@ use Sub::Install           qw( install_sub );
 my @OPTIONS_ATTRIBUTES
    = qw( autosplit doc format json negateable order repeatable short );
 
-# Public methods
-sub import {
-   my ($class, @args) = @_; my $target = caller;
-
-   my $options_config = { protect_argv       => TRUE,
-                          flavour            => [],
-                          skip_options       => [],
-                          prefer_commandline => TRUE,
-                          @args, };
-
-   for my $want (grep { not $target->can( $_ ) } qw( around has with )) {
-      throw 'Method [_1] not found in class [_2]', args => [ $want, $target ];
-   }
-
-   my $around = $target->can( 'around' );
-   my $has    = $target->can( 'has'    );
-   my $with   = $target->can( 'with'   );
-
-   my @target_isa; { no strict 'refs'; @target_isa = @{ "${target}::ISA" } };
-
-   if (@target_isa) {
-      # Don't add this to a role. The ISA of a role is always empty!
-      install_sub { as => '_options_config', into => $target, code => sub {
-         return shift->maybe::next::method( @_ );
-      }, };
-
-      install_sub { as => '_options_data', into => $target, code => sub {
-         return shift->maybe::next::method( @_ );
-      }, };
-
-      $around->( '_options_config' => sub {
-         my ($orig, $self, @args) = @_;
-
-         return $self->$orig( @args ), %{ $options_config };
-      } );
-   }
-
-   my $options_data    = {};
-   my $apply_modifiers = sub {
-      $target->can( 'new_with_options' ) and return;
-
-      $with->( 'Class::Usul::TraitFor::UntaintedGetopts' );
-
-      $around->( '_options_data' => sub {
-         my ($orig, $self, @args) = @_;
-
-         return $self->$orig( @args ), %{ $options_data };
-      } );
-   };
-   my $option = sub {
-      my ($name, %attributes) = @_;
-
-      my @banish_keywords = qw( extra_argv new_with_options next_argv option
-                                _options_data _options_config options_usage
-                                _parse_options unshift_argv );
-
-      for my $ban (grep { $_ eq $name } @banish_keywords) {
-         throw 'Method [_1] used by class [_2] as an attribute',
-               args =>[ $ban, $target ];
-      }
-
-      $has->( $name => _filter_attributes( %attributes ) );
-
-      $options_data->{ $name }
-         = { _validate_and_filter_options( %attributes ) };
-
-      $apply_modifiers->(); # TODO: I think this can go
-      return;
-   };
-   my $info; $info = $Role::Tiny::INFO{ $target }
-      and $info->{not_methods}{ $option } = $option;
-
-   install_sub { as => 'option', into => $target, code => $option, };
-
-   $apply_modifiers->();
-   return;
-}
-
-# Private methods
-sub _filter_attributes {
+# Private functions
+my $_filter_attributes = sub {
    my %attributes = @_; my %filter_key = map { $_ => 1 } @OPTIONS_ATTRIBUTES;
 
    return map { ( $_ => $attributes{ $_ } ) }
          grep { not exists $filter_key{ $_ } } keys %attributes;
-}
+};
 
-sub _validate_and_filter_options {
+my $_validate_and_filter_options = sub {
    my (%options) = @_;
 
    defined $options{doc  } or $options{doc  } = $options{documentation};
@@ -120,6 +42,84 @@ sub _validate_and_filter_options {
       throw 'Negateable parameters are not usable with a non boolean values';
 
    return %cmdline_options;
+};
+
+# Public methods
+sub import {
+   my ($class, @args) = @_; my $target = caller;
+
+   my $options_config = { protect_argv       => TRUE,
+                          flavour            => [],
+                          skip_options       => [],
+                          prefer_commandline => TRUE,
+                          @args, };
+
+   for my $want (grep { not $target->can( $_ ) } qw( around has with )) {
+      throw 'Method [_1] not found in class [_2]', [ $want, $target ];
+   }
+
+   my $around = $target->can( 'around' );
+   my $has    = $target->can( 'has'    );
+   my $with   = $target->can( 'with'   );
+
+   my @target_isa; { no strict 'refs'; @target_isa = @{ "${target}::ISA" } };
+
+   if (@target_isa) {
+      # Don't add this to a role. The ISA of a role is always empty!
+      install_sub { as => '_options_config', into => $target, code => sub {
+         return shift->maybe::next::method( @_ );
+      }, };
+
+      install_sub { as => '_options_data', into => $target, code => sub {
+         return shift->maybe::next::method( @_ );
+      }, };
+
+      $around->( '_options_config' => sub {
+         my ($orig, $self, @args) = @_;
+
+         return $orig->( $self, @args ), %{ $options_config };
+      } );
+   }
+
+   my $options_data    = {};
+   my $apply_modifiers = sub {
+      $target->can( 'new_with_options' ) and return;
+
+      $with->( 'Class::Usul::TraitFor::UntaintedGetopts' );
+
+      $around->( '_options_data' => sub {
+         my ($orig, $self, @args) = @_;
+
+         return $orig->( $self, @args ), %{ $options_data };
+      } );
+   };
+   my $option = sub {
+      my ($name, %attributes) = @_;
+
+      my @banish_keywords = qw( extra_argv new_with_options next_argv option
+                                _options_data _options_config options_usage
+                                _parse_options unshift_argv );
+
+      for my $ban (grep { $_ eq $name } @banish_keywords) {
+         throw 'Method [_1] used by class [_2] as an attribute',
+               [ $ban, $target ];
+      }
+
+      $has->( $name => $_filter_attributes->( %attributes ) );
+
+      $options_data->{ $name }
+         = { $_validate_and_filter_options->( %attributes ) };
+
+      $apply_modifiers->(); # TODO: I think this can go
+      return;
+   };
+   my $info; $info = $Role::Tiny::INFO{ $target }
+      and $info->{not_methods}{ $option } = $option;
+
+   install_sub { as => 'option', into => $target, code => $option, };
+
+   $apply_modifiers->();
+   return;
 }
 
 1;

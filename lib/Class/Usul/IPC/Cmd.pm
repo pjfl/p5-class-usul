@@ -5,8 +5,8 @@ use namespace::autoclean;
 
 use Moo;
 use Class::Null;
-use Class::Usul::Constants    qw( EXCEPTION_CLASS FALSE NUL OK SPC TRUE
-                                  UNDEFINED_RV );
+use Class::Usul::Constants    qw( EXCEPTION_CLASS FALSE NUL
+                                  OK SPC TRUE UNDEFINED_RV );
 use Class::Usul::Functions    qw( arg_list emit_to io is_arrayref
                                   is_coderef is_hashref is_member is_win32
                                   merge_attributes nonblocking_write_pipe_pair
@@ -49,8 +49,8 @@ has 'expected_rv'      => is => 'ro',   isa => PositiveInt, default => 0;
 has 'ignore_zombies'   => is => 'lazy', isa => Bool, builder => sub {
    ($_[ 0 ]->async || $_[ 0 ]->detach) ? TRUE : FALSE };
 
-has 'in'               => is => 'ro',   isa => Path | SimpleStr,
-   coerce              => sub { __arrayref2str( $_[ 0 ] ) },
+has 'in'               => is => 'ro',   isa => Path | SimpleStr, coerce => sub {
+   (is_arrayref $_[ 0 ]) ? join $RS, @{ $_[ 0 ] } : $_[ 0 ] },
    default             => NUL;
 
 has 'log'              => is => 'lazy', isa => LogType,
@@ -91,149 +91,203 @@ has 'use_system'       => is => 'ro',   isa => Bool, default => FALSE;
 has 'working_dir'      => is => 'lazy', isa => Directory | Undef,
    default             => sub { $_[ 0 ]->detach ? io rootdir : undef };
 
-# Construction
-around 'BUILDARGS' => sub {
-   my ($orig, $self, @args) = @_; my $n = 0; $n++ while (defined $args[ $n ]);
+# Private functions
+my $_child_handler; $_child_handler = sub {
+   local $OS_ERROR; # So that waitpid does not step on existing value
 
-   return (              $n == 0) ? {}
-        : (is_hashref $args[ 0 ]) ? { %{ $args[ 0 ] } }
-        : (              $n == 1) ? { cmd => $args[ 0 ] }
-        : (is_hashref $args[ 1 ]) ? { cmd => $args[ 0 ], %{ $args[ 1 ] } }
-        : (          $n % 2 == 1) ? { cmd => @args }
-                                  : { @args };
+   while ((my $child_pid = waitpid -1, WNOHANG) > 0) {
+      if (WIFEXITED( $CHILD_ERROR ) and $child_pid > ($CHILD_PID || 0)) {
+         $CHILD_PID = $child_pid; $CHILD_ENUM = $CHILD_ERROR;
+      }
+   }
+
+   $SIG{CHLD} = $_child_handler; # In case of unreliable signals
+   return;
 };
 
-sub BUILD {
-   $_[ 0 ]->pidfile->chomp->lock; return;
-}
+my $_close_child = sub { # In the child, close the parent end of the pipes
+   my $pipes = shift;
 
-sub import {
-   my $class  = shift;
-   my $params = { (is_hashref $_[ 0 ]) ? %{+ shift } : () };
-   my @wanted = @_;
-   my $target = caller;
+   close $pipes->[ 0 ]->[ 0 ]; undef $pipes->[ 0 ]->[ 0 ];
+   close $pipes->[ 1 ]->[ 1 ]; undef $pipes->[ 1 ]->[ 1 ];
+   close $pipes->[ 2 ]->[ 1 ]; undef $pipes->[ 2 ]->[ 1 ];
+   close $pipes->[ 3 ]->[ 1 ]; undef $pipes->[ 3 ]->[ 1 ];
+   return;
+};
 
-   is_member 'run_cmd', @wanted and install_sub {
-       as => 'run_cmd', into => $target, code => sub {
-          my $cmd = shift; my $attr = arg_list @_;
+my $_drain = sub { # Suck up the output from the child process
+   my ($out_fh, $out_hand, $err_fh, $err_hand) = @_; my (%hands, @ready);
 
-          $attr->{cmd} = $cmd or throw Unspecified, args => [ 'command' ];
+   my $selector = IO::Select->new(); $selector->add( $err_fh, $out_fh );
 
-          $attr->{ $_ } //= $params->{ $_ } for (keys %{ $params });
+   $hands{ fileno $err_fh } = $err_hand; $hands{ fileno $out_fh } = $out_hand;
 
-          return __PACKAGE__->new( $attr )->_run_cmd;
-       } };
+   while (@ready = $selector->can_read) {
+      for my $fh (@ready) {
+         my $buf; my $bytes_read = sysread $fh, $buf, 64 * 1024;
+
+         if ($bytes_read) { $hands{ fileno $fh }->( "${buf}" ) }
+         else { $selector->remove( $fh ); close $fh }
+      }
+   }
 
    return;
-}
+};
 
-# Public methods
-sub run_cmd {
-   return blessed $_[ 0 ] ? $_[ 0 ]->_run_cmd : __PACKAGE__->new( @_ )->_run_cmd
-}
+my $_err_handler = sub {
+   my ($err, $flt_ref, $std_ref) = @_;
+
+   return sub {
+      my $buf = shift; defined $buf or return;
+
+      $err eq 'out'    and ${ $flt_ref } .= $buf;
+      $err ne 'null'   and ${ $std_ref } .= $buf;
+      $err eq 'stderr' and emit_to \*STDERR, $buf;
+      return;
+   }
+};
+
+my $_filter_out = sub {
+   return join "\n", map    { strip_leader $_ }
+                     grep   { not m{ (?: Started | Finished ) }msx }
+                     split m{ [\n] }msx, $_[ 0 ];
+};
+
+my $_four_nonblocking_pipe_pairs = sub {
+   return [ nonblocking_write_pipe_pair, nonblocking_write_pipe_pair,
+            nonblocking_write_pipe_pair, nonblocking_write_pipe_pair ];
+};
+
+my $_has_shell_meta = sub {
+   return (     is_arrayref $_[ 0 ]) ? is_member '|',  $_[ 0 ]
+        : (     is_arrayref $_[ 0 ]) ? is_member '&&', $_[ 0 ]
+        : ($_[ 0 ] =~ m{ [|]    }mx) ? TRUE
+        : ($_[ 0 ] =~ m{ [&][&] }mx) ? TRUE
+                                     : FALSE;
+};
+
+my $_out_handler = sub {
+   my ($out, $flt_ref, $std_ref) = @_;
+
+   return sub {
+      my $buf = shift; defined $buf or return;
+
+      $out ne 'null'   and ${ $flt_ref } .= $buf;
+      $out ne 'null'   and ${ $std_ref } .= $buf;
+      $out eq 'stdout' and emit_to \*STDOUT, $buf;
+      return;
+   }
+};
+
+my $_partition_command = sub {
+   my $cmd = shift; my $aref = []; my @command = ();
+
+   for my $item (grep { defined && length } @{ $cmd }) {
+      if ($item !~ m{ [^\\][\<\>\|\&] }mx) { push @{ $aref }, $item }
+      else { push @command, $aref, $item; $aref = [] }
+   }
+
+   if ($aref->[ 0 ]) {
+      if ($command[ 0 ]) { push @command, $aref }
+      else { @command = @{ $aref } }
+   }
+
+   return \@command;
+};
+
+my $_pipe = sub {
+   socketpair( $_[ 0 ], $_[ 1 ], AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or return;
+   shutdown  ( $_[ 0 ], 1 );  # No more writing for reader
+   shutdown  ( $_[ 1 ], 0 );  # No more reading for writer
+   return TRUE;
+};
+
+my $_pipe_handler; $_pipe_handler = sub {
+   local $OS_ERROR; # So that wait does not step on existing value
+
+   $CHILD_PID = wait; $CHILD_ENUM = (255 << 8) + 13;
+   $SIG{PIPE} = $_pipe_handler;
+   return;
+};
+
+my $_quote = sub {
+   my $v = shift; return is_win32 ? '"'.$v.'"' : "'${v}'";
+};
+
+my $_recv_exec_failure = sub {
+   my $fh = shift; my $to_read = 2 * length pack 'I', 0;
+
+   read $fh, my $buf = NUL, $to_read or return FALSE;
+
+   (my $errno, $to_read) = unpack 'II', $buf; $ERRNO = $errno;
+
+   read $fh, my $error = NUL, $to_read; $error and utf8::decode $error;
+
+   return $error || "${ERRNO}";
+};
+
+my $_redirect_stderr = sub {
+   my $v  = shift; my $err = \*STDERR; close $err;
+
+   my $op = openhandle $v ? '>&' : '>'; my $sink = $op eq '>' ? $v : fileno $v;
+
+   open $err, $op, $sink
+      or throw "Could not redirect STDERR to ${sink}: ${OS_ERROR}";
+   return;
+};
+
+my $_redirect_stdin = sub {
+   my $v  = shift; my $in = \*STDIN; close $in;
+
+   my $op = openhandle $v ? '<&' : '<'; my $src = $op eq '<' ? $v : fileno $v;
+
+   open $in,  $op, $src
+      or throw "Could not redirect STDIN from ${src}: ${OS_ERROR}";
+   return;
+};
+
+my $_redirect_stdout = sub {
+   my $v  = shift; my $out = \*STDOUT; close $out;
+
+   my $op = openhandle $v ? '>&' : '>'; my $sink = $op eq '>' ? $v : fileno $v;
+
+   open $out, $op, $sink
+      or throw "Could not redirect STDOUT to ${sink}: ${OS_ERROR}";
+   return;
+};
+
+my $_send_exec_failure = sub {
+   my ($fh, $error) = @_; utf8::encode $error;
+
+   emit_to $fh, pack 'IIa*', 0+$ERRNO, length $error, $error; close $fh;
+   _exit 255;
+};
+
+my $_send_in = sub {
+   my ($fh, $in) = @_; $in or return;
+
+   if    (blessed $in)                      { emit_to $fh, $in->slurp }
+   elsif ($in ne 'null' and $in ne 'stdin') { emit_to $fh, $in }
+
+   return;
+};
+
+my $_open3 = sub {
+   local (*TO_CHLD_R,     *TO_CHLD_W);
+   local (*FR_CHLD_R,     *FR_CHLD_W);
+   local (*FR_CHLD_ERR_R, *FR_CHLD_ERR_W);
+
+   $_pipe->( *TO_CHLD_R,     *TO_CHLD_W     ) or throw $EXTENDED_OS_ERROR;
+   $_pipe->( *FR_CHLD_R,     *FR_CHLD_W     ) or throw $EXTENDED_OS_ERROR;
+   $_pipe->( *FR_CHLD_ERR_R, *FR_CHLD_ERR_W ) or throw $EXTENDED_OS_ERROR;
+
+   my $pid = open3( '>&TO_CHLD_R', '<&FR_CHLD_W', '<&FR_CHLD_ERR_W', @_ );
+
+   return ($pid, *TO_CHLD_W, *FR_CHLD_R, *FR_CHLD_ERR_R);
+};
 
 # Private methods
-sub _run_cmd {
-   my $self = shift; my $cmd = $self->cmd;
-
-   my $has_shell_meta = __has_shell_meta( $cmd );
-
-   if (is_arrayref $cmd) {
-      $cmd->[ 0 ] or throw Unspecified, args => [ 'command' ];
-
-      unless (is_win32) {
-         ($has_shell_meta or $self->use_ipc_run)
-            and can_load( modules => { 'IPC::Run' => '0.84' } )
-            and return $self->_run_cmd_using_ipc_run;
-
-         not $has_shell_meta and return $self->_run_cmd_using_fork_and_exec;
-      }
-
-      $cmd = join SPC, map { m{ [ ] }mx ? __quote( $_ ) : $_ } @{ $cmd };
-   }
-
-   not is_win32 and ($has_shell_meta or $self->async or $self->use_system)
-      and return $self->_run_cmd_using_system( $cmd );
-
-   return $self->_run_cmd_using_open3( $cmd );
-}
-
-# Fork and exec implementation
-sub _run_cmd_using_fork_and_exec {
-   my $self = shift; my $pidfile = $self->pidfile;
-
-   my $cmd = $self->cmd->[ 0 ]; my $prog = basename( $cmd );
-
-   my ($in_h, $out_h, $err_h, $stat_h) = __four_nonblocking_write_pipe_pairs();
-
-   {  local ($CHILD_ENUM, $CHILD_PID) = (0, 0);
-      local $SIG{PIPE} = \&__pipe_handler;
-      $self->ignore_zombies and local $SIG{CHLD} = 'IGNORE';
-
-      if (my $pid = fork) { # Parent
-         $in_h  = $in_h->[ 1 ];  $out_h  = $out_h->[ 0 ];
-         $err_h = $err_h->[ 0 ]; $stat_h = $stat_h->[ 0 ];
-
-         $self->detach and $pid = $self->_wait_for_and_read( $pidfile )
-            and $pidfile->close;
-
-         return ($self->async || $self->detach)
-              ?  $self->_new_async_response( $pid )
-              :  $self->_wait_for_child( $pid, $in_h, $out_h, $err_h, $stat_h );
-      }
-   }
-
-   try { # Child
-      $self->_redirect_child_io( $in_h->[ 0 ], $out_h->[ 1 ], $err_h->[ 1 ] );
-      $self->detach and $self->_detach_process and $pidfile->println( $PID );
-      $self->working_dir and chdir $self->working_dir;
-      is_coderef $cmd and _exit $self->_execute_coderef( $cmd );
-
-      exec @{ $self->cmd } or throw 'Program [_1] failed to exec: [_2]',
-                                    args => [ $prog, $OS_ERROR ];
-   }
-   catch { __send_exec_failure( $stat_h->[ 1 ], "${_}" ) };
-
-   close $stat_h->[ 1 ];
-   return OK;
-}
-
-sub _wait_for_child {
-   my ($self, $pid, $in_h, $out_h, $err_h, $stat_h) = @_;
-
-   my ($fltout, $stderr, $stdout) = (NUL, NUL, NUL);
-
-   my $outhand = __out_handler( $self->out, \$fltout, \$stdout );
-
-   my $errhand = __err_handler( $self->err, \$fltout, \$stderr );
-
-   my $cmd = $self->cmd->[ 0 ]; my $prog = basename( $cmd );
-
-   $self->log->debug( "Running ${prog}($pid)" );
-
-   try {
-      my $tmout = $self->timeout; $tmout and local $SIG{ALRM} = sub {
-         throw TimeOut, args => [ $prog, $tmout ];
-      } and alarm $tmout;
-
-      my $error = __recv_exec_failure( $stat_h ); $error and throw $error;
-
-      $self->_send_in( $in_h ); close $in_h;
-      __drain( $out_h, $outhand, $err_h, $errhand );
-      waitpid $pid, 0; alarm 0;
-   }
-   catch { throw $_ };
-
-   my $e_num = $CHILD_PID > 0 ? $CHILD_ENUM : $CHILD_ERROR;
-   my $codes = $self->_return_codes_or_throw( $cmd, $e_num, $stderr );
-
-   return $self->response_class->new
-      (  core   => $codes->{core}, out    => __filter_out( $fltout ),
-         rv     => $codes->{rv},   sig    => $codes->{sig},
-         stderr => $stderr,        stdout => $stdout );
-}
-
-sub _detach_process { # And this method came from MooseX::Daemonize
+my $_detach_process = sub { # And this method came from MooseX::Daemonize
    my $self = shift;
 
    setsid or throw 'Cannot detach from controlling process';
@@ -252,37 +306,39 @@ sub _detach_process { # And this method came from MooseX::Daemonize
       }
    }
 
-   return TRUE;
-}
+   $self->pidfile->println( $PID );
+   return;
+};
 
-sub _execute_coderef {
-   my ($self, $code) = @_; my (undef, @args) = @{ $self->cmd }; my $rv;
+my $_ipc_run_harness = sub {
+   my ($self, $cmd_ref, @cmd_args) = @_;
 
-   $SIG{INT} = sub { $self->_shutdown };
+   if ($self->async) {
+      is_coderef $cmd_ref->[ 0 ] and $cmd_ref = $cmd_ref->[ 0 ];
 
-   try {
-      $rv = $code->( $self, @args ); defined $rv and $rv = $rv << 8;
-      $self->_remove_pid;
+      my $pidfile = $self->pidfile; weaken( $pidfile );
+      my $h = IPC::Run::harness( $cmd_ref, @cmd_args, init => sub {
+         IPC::Run::close_terminal(); $pidfile->println( $PID ) }, '&' );
+
+      $h->start; return ( 0, $h );
    }
-   catch {
-      blessed $_ and $_->can( 'rv' ) and $rv = $_->rv; emit_to \*STDERR, $_;
-   };
 
-   return $rv // OK;
-}
+   my $h  = IPC::Run::harness( $cmd_ref, @cmd_args ); $h->run;
+   my $rv = $h->full_result || 0; $rv =~ m{ unknown }msx and throw $rv;
 
-sub _new_async_response {
-   my ($self, $pid) = @_;
+   return ( $rv, $h );
+};
 
-   my $cmd = $self->cmd->[ 0 ]; my $prog = basename( $cmd );
+my $_new_async_response = sub {
+   my ($self, $pid) = @_; my $prog = basename( $self->cmd->[ 0 ] );
 
    $self->log->debug( my $out = "Running ${prog}(${pid}) in the background" );
 
    return $self->response_class->new( out => $out, pid => $pid );
-}
+};
 
-sub _redirect_child_io {
-   my ($self, $in_h, $out_h, $err_h) = @_;
+my $_redirect_child_io = sub {
+   my ($self, $pipes) = @_;
 
    my $in = $self->in; my $out = $self->out; my $err = $self->err;
 
@@ -290,23 +346,19 @@ sub _redirect_child_io {
       $in ||= 'null'; $out ||= 'null'; $err ||= 'null';
    }
 
-   __redirect_stdin ( (   blessed $in) ? "${in}"
-                    : ($in  eq 'null') ? devnull
-                                       : $in_h );
-   __redirect_stdout( (  blessed $out) ? "${out}"
-                    : ($out eq 'null') ? devnull
-                                       : $out_h );
-   __redirect_stderr( (  blessed $err) ? "${err}"
-                    : ($err eq 'null') ? devnull
-                                       : $err_h );
+   $_redirect_stdin->(  (   blessed $in) ? "${in}"
+                     :  ($in  eq 'null') ? devnull
+                                         : $pipes->[ 0 ]->[ 0 ] );
+   $_redirect_stdout->( (  blessed $out) ? "${out}"
+                      : ($out eq 'null') ? devnull
+                                         : $pipes->[ 1 ]->[ 1 ] );
+   $_redirect_stderr->( (  blessed $err) ? "${err}"
+                      : ($err eq 'null') ? devnull
+                                         : $pipes->[ 2 ]->[ 1 ] );
    return;
-}
+};
 
-sub _remove_pid {
-   return $_[ 0 ]->pidfile->exists ? $_[ 0 ]->pidfile->unlink : FALSE;
-}
-
-sub _return_codes_or_throw {
+my $_return_codes_or_throw = sub {
    my ($self, $cmd, $e_num, $e_str) = @_;
 
    $e_str ||= 'Unknown error'; chomp $e_str;
@@ -315,7 +367,7 @@ sub _return_codes_or_throw {
       my $error = 'Program [_1] failed to start: [_2]';
       my $prog  = basename( (split SPC, $cmd)[ 0 ] );
 
-      throw $error, args => [ $prog, $e_str ], level => 3, rv => UNDEFINED_RV;
+      throw $error, [ $prog, $e_str ], level => 3, rv => UNDEFINED_RV;
    }
 
    my $rv = $e_num >> 8; my $core = $e_num & 128; my $sig = $e_num & 127;
@@ -326,42 +378,119 @@ sub _return_codes_or_throw {
    }
 
    return { core => $core, rv => $rv, sig => $sig, };
-}
+};
 
-sub _send_in {
-   my ($self, $fh) = @_; my $in = $self->in or return;
-
-   if    (blessed $in)                      { emit_to $fh, $in->slurp }
-   elsif ($in ne 'null' and $in ne 'stdin') { emit_to $fh, $in }
-
-   return;
-}
-
-sub _shutdown {
+my $_shutdown = sub {
    my $self = shift; my $pidfile = $self->pidfile;
 
-   $pidfile->exists and $pidfile->getline == $PID and $self->_remove_pid;
+   $pidfile->exists and $pidfile->getline == $PID and $self->pidfile->unlink;
 
    _exit OK;
-}
+};
 
-sub _wait_for_and_read {
-   my ($self, $pidfile) = @_; my $waited = 0;
+my $_wait_for_pidfile_and_read = sub {
+   my $self = shift; my $pidfile = $self->pidfile; my $waited = 0;
 
    while (not $pidfile->exists or $pidfile->is_empty) {
       nap $self->nap_time; $waited += $self->nap_time;
       $waited > $self->max_pidfile_wait
-         and throw 'File [_1] contains no process id', args => [ $pidfile ];
+         and throw 'File [_1] contains no process id', [ $pidfile ];
    }
 
-   return $pidfile->chomp->getline || UNDEFINED_RV;
-}
+   my $pid = $pidfile->chomp->getline || UNDEFINED_RV; $pidfile->close;
 
-# IPC::Run implementation
-sub _run_cmd_using_ipc_run {
+   return $pid;
+};
+
+my $_execute_coderef = sub {
+   my $self = shift; my ($code, @args) = @{ $self->cmd }; my $rv;
+
+   try {
+      local $SIG{INT} = sub { $self->$_shutdown };
+
+      $rv = $code->( $self, @args ); defined $rv and $rv = $rv << 8;
+
+      $self->pidfile->exists and $self->pidfile->unlink;
+   }
+   catch {
+      blessed $_ and $_->can( 'rv' ) and $rv = $_->rv; emit_to \*STDERR, $_;
+   };
+
+   _exit $rv // OK;
+};
+
+my $_wait_for_child = sub {
+   my ($self, $pid, $pipes) = @_;
+
+   my ($fltout, $stderr, $stdout) = (NUL, NUL, NUL);
+
+   my $in_fh    = $pipes->[ 0 ]->[ 1 ]; my $out_fh  = $pipes->[ 1 ]->[ 0 ];
+   my $err_fh   = $pipes->[ 2 ]->[ 0 ]; my $stat_fh = $pipes->[ 3 ]->[ 0 ];
+   my $err_hand = $_err_handler->( $self->err, \$fltout, \$stderr );
+   my $out_hand = $_out_handler->( $self->out, \$fltout, \$stdout );
+   my $prog     = basename( my $cmd = $self->cmd->[ 0 ] );
+
+   $self->log->debug( "Running ${prog}($pid)" );
+
+   try {
+      my $tmout = $self->timeout; $tmout and local $SIG{ALRM} = sub {
+         throw TimeOut, [ $prog, $tmout ];
+      } and alarm $tmout;
+
+      my $error = $_recv_exec_failure->( $stat_fh ); $error and throw $error;
+
+      $_send_in->( $in_fh, $self->in ); close $in_fh;
+      $_drain->( $out_fh, $out_hand, $err_fh, $err_hand );
+      waitpid $pid, 0; alarm 0;
+   }
+   catch { throw $_ };
+
+   my $e_num = $CHILD_PID > 0 ? $CHILD_ENUM : $CHILD_ERROR;
+   my $codes = $self->$_return_codes_or_throw( $cmd, $e_num, $stderr );
+
+   return $self->response_class->new
+      (  core   => $codes->{core}, out    => $_filter_out->( $fltout ),
+         rv     => $codes->{rv},   sig    => $codes->{sig},
+         stderr => $stderr,        stdout => $stdout );
+};
+
+my $_run_cmd_using_fork_and_exec = sub {
+   my $self = shift; my $pipes = $_four_nonblocking_pipe_pairs->();
+
+   {  local ($CHILD_ENUM, $CHILD_PID) = (0, 0);
+      $self->ignore_zombies and local $SIG{CHLD} = 'IGNORE';
+
+      if (my $pid = fork) { # Parent
+         $_close_child->( $pipes );
+         $self->detach and $pid = $self->$_wait_for_pidfile_and_read;
+
+         return ($self->async || $self->detach)
+              ?  $self->$_new_async_response( $pid )
+              :  $self->$_wait_for_child( $pid, $pipes );
+      }
+   }
+
+   try { # Child
+      my $prog = basename( my $cmd = $self->cmd->[ 0 ] );
+
+      $self->$_redirect_child_io( $pipes );
+      $self->detach and $self->$_detach_process;
+      $self->working_dir and chdir $self->working_dir;
+      is_coderef $cmd and $self->$_execute_coderef; # Never returns
+
+      exec @{ $self->cmd }
+         or throw 'Program [_1] failed to exec: [_2]', [ $prog, $OS_ERROR ];
+   }
+   catch { $_send_exec_failure->( $pipes->[ 3 ]->[ 1 ], "${_}" ) };
+
+   close $pipes->[ 3 ]->[ 1 ];
+   return OK;
+};
+
+my $_run_cmd_using_ipc_run = sub {
    my $self = shift; my ($buf_err, $buf_out, $error, $h, $rv);
 
-   my $cmd_ref  = __partition_command( my $cmd = $self->cmd );
+   my $cmd_ref  = $_partition_command->( my $cmd = $self->cmd );
    my $cmd_str  = join SPC, @{ $cmd }; $self->async and $cmd_str .= ' &';
    my $prog     = basename( $cmd->[ 0 ] );
    my $null     = devnull;
@@ -387,19 +516,19 @@ sub _run_cmd_using_ipc_run {
 
    try {
       my $tmout = $self->timeout; $tmout and local $SIG{ALRM} = sub {
-         throw TimeOut, args => [ $cmd_str, $tmout ];
+         throw TimeOut, [ $cmd_str, $tmout ];
       } and alarm $tmout;
 
-      ($rv, $h) = $self->_ipc_run_harness( $cmd_ref, @cmd_args ); alarm 0;
+      ($rv, $h) = $_ipc_run_harness->( $self, $cmd_ref, @cmd_args ); alarm 0;
    }
    catch { throw $_ };
 
    my $sig = $rv & 127; my $core = $rv & 128; $rv = $rv >> 8;
 
    if ($self->async) {
-      my $pid = $self->_wait_for_and_read( $self->pidfile );
+      my $pid = $self->$_wait_for_pidfile_and_read;
 
-      $self->pidfile->close; $out = "Started ${prog}(${pid}) in the background";
+      $out = "Started ${prog}(${pid}) in the background";
 
       return $self->response_class->new
          ( core => $core, harness => $h,  out => $out,
@@ -409,7 +538,7 @@ sub _run_cmd_using_ipc_run {
    my ($stderr, $stdout) = (NUL, NUL);
 
    if ($out ne 'null' and $out ne 'stdout') {
-       not blessed $out and $out = __filter_out( $stdout = $buf_out );
+       not blessed $out and $out = $_filter_out->( $stdout = $buf_out );
    }
    else { $out = $stdout = NUL }
 
@@ -429,71 +558,30 @@ sub _run_cmd_using_ipc_run {
    return $self->response_class->new
       (  core => $core, out    => "${out}", rv     => $rv,
          sig  => $sig,  stderr => $stderr,  stdout => $stdout );
-}
+};
 
-sub _ipc_run_harness {
-   my ($self, $cmd_ref, @cmd_args) = @_;
-
-   if ($self->async) {
-      is_coderef $cmd_ref->[ 0 ] and $cmd_ref = $cmd_ref->[ 0 ];
-
-      my $pidfile = $self->pidfile; weaken( $pidfile );
-      my $h       = IPC::Run::harness( $cmd_ref, @cmd_args, init => sub {
-         IPC::Run::close_terminal(); $pidfile->println( $PID ) }, '&' );
-
-      $h->start; return ( 0, $h );
-   }
-
-   my $h  = IPC::Run::harness( $cmd_ref, @cmd_args ); $h->run;
-   my $rv = $h->full_result || 0; $rv =~ m{ unknown }msx and throw $rv;
-
-   return ( $rv, $h );
-}
-
-# IPC::Open3 implementation
-sub _run_cmd_using_open3 { # Robbed in part from IPC::Cmd
+my $_run_cmd_using_open3 = sub { # Robbed in part from IPC::Cmd
    my ($self, $cmd) = @_; my ($fltout, $stderr, $stdout) = (NUL, NUL, NUL);
 
-   my $errhand = __err_handler( $self->err, \$fltout, \$stderr );
+   my $err_hand = $_err_handler->( $self->err, \$fltout, \$stderr );
 
-   my $outhand = __out_handler( $self->out, \$fltout, \$stdout );
-
-   my $pipe = sub {
-      socketpair( $_[ 0 ], $_[ 1 ], AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or return;
-      shutdown  ( $_[ 0 ], 1 );  # No more writing for reader
-      shutdown  ( $_[ 1 ], 0 );  # No more reading for writer
-      return TRUE;
-   };
-
-   my $open3 = sub {
-      local (*TO_CHLD_R,     *TO_CHLD_W);
-      local (*FR_CHLD_R,     *FR_CHLD_W);
-      local (*FR_CHLD_ERR_R, *FR_CHLD_ERR_W);
-
-      $pipe->( *TO_CHLD_R,     *TO_CHLD_W     ) or throw $EXTENDED_OS_ERROR;
-      $pipe->( *FR_CHLD_R,     *FR_CHLD_W     ) or throw $EXTENDED_OS_ERROR;
-      $pipe->( *FR_CHLD_ERR_R, *FR_CHLD_ERR_W ) or throw $EXTENDED_OS_ERROR;
-
-      my $pid = open3( '>&TO_CHLD_R', '<&FR_CHLD_W', '<&FR_CHLD_ERR_W', @_ );
-
-      return ($pid, *TO_CHLD_W, *FR_CHLD_R, *FR_CHLD_ERR_R);
-   };
+   my $out_hand = $_out_handler->( $self->out, \$fltout, \$stdout );
 
    $self->log->debug( "Running ${cmd}" ); my $e_num;
 
    {  local ($CHILD_ENUM, $CHILD_PID) = (0, 0);
 
       try {
-         local $SIG{PIPE} = \&__pipe_handler;
+         local $SIG{PIPE} = $_pipe_handler;
 
          my $tmout = $self->timeout; $tmout and local $SIG{ALRM} = sub {
-            throw TimeOut, args => [ $cmd, $tmout ];
+            throw TimeOut, [ $cmd, $tmout ];
          } and alarm $tmout;
 
-         my ($pid, $in_h, $out_h, $err_h) = $open3->( $cmd );
+         my ($pid, $in_fh, $out_fh, $err_fh) = $_open3->( $cmd );
 
-         $self->_send_in( $in_h ); close $in_h;
-         __drain( $out_h, $outhand, $err_h, $errhand );
+         $_send_in->( $in_fh, $self->in ); close $in_fh;
+         $_drain->( $out_fh, $out_hand, $err_fh, $err_hand );
          $pid and waitpid $pid, 0; alarm 0;
       }
       catch { throw $_ };
@@ -501,16 +589,15 @@ sub _run_cmd_using_open3 { # Robbed in part from IPC::Cmd
       $e_num = $CHILD_PID > 0 ? $CHILD_ENUM : $CHILD_ERROR;
    }
 
-   my $codes = $self->_return_codes_or_throw( $cmd, $e_num, $stderr );
+   my $codes = $self->$_return_codes_or_throw( $cmd, $e_num, $stderr );
 
    return $self->response_class->new
-      (  core   => $codes->{core}, out    => __filter_out( $fltout ),
+      (  core   => $codes->{core}, out    => $_filter_out->( $fltout ),
          rv     => $codes->{rv},   sig    => $codes->{sig},
          stderr => $stderr,        stdout => $stdout );
-}
+};
 
-# System implmentation
-sub _run_cmd_using_system {
+my $_run_cmd_using_system = sub {
    my ($self, $cmd) = @_; my ($error, $rv);
 
    my $prog = basename( (split SPC, $cmd)[ 0 ] ); my $null = devnull;
@@ -539,10 +626,10 @@ sub _run_cmd_using_system {
    {  local ($CHILD_ENUM, $CHILD_PID) = (0, 0);
 
       try {
-         local $SIG{CHLD} = \&__child_handler;
+         local $SIG{CHLD} = $_child_handler;
 
          my $tmout = $self->timeout; $tmout and local $SIG{ALRM} = sub {
-            throw TimeOut, args => [ $cmd, $tmout ];
+            throw TimeOut, [ $cmd, $tmout ];
          } and alarm $tmout;
 
          $rv = system $cmd; alarm 0;
@@ -558,7 +645,7 @@ sub _run_cmd_using_system {
       # and the child handler code fix the problem
       $rv == UNDEFINED_RV and $CHILD_PID > 0 and $rv = $CHILD_ENUM;
       $rv == UNDEFINED_RV and throw 'Program [_1] failed to start: [_2]',
-                                    args => [ $prog, $os_error ], rv => $rv;
+                                    [ $prog, $os_error ], rv => $rv;
    }
 
    my $sig = $rv & 127; my $core = $rv & 128; $rv = $rv >> 8;
@@ -566,19 +653,18 @@ sub _run_cmd_using_system {
    my ($stderr, $stdout) = (NUL, NUL);
 
    if ($self->async) {
-      $rv != 0 and throw 'Program [_1] failed to start',
-                         args => [ $prog ], rv => $rv;
+      $rv != 0 and throw 'Program [_1] failed to start', [ $prog ], rv => $rv;
 
-      my $pid = $self->_wait_for_and_read( $self->pidfile );
+      my $pid = $self->$_wait_for_pidfile_and_read;
 
-      $self->pidfile->close; $out = "Started ${prog}(${pid}) in the background";
+      $out = "Started ${prog}(${pid}) in the background";
 
       return $self->response_class->new
          (  core => $core, out => $out, pid => $pid, rv => $rv, sig => $sig );
    }
 
    if ($out ne 'stdout' and $out ne 'null' and -f $out) {
-      $out = __filter_out( $stdout = io( $out )->slurp );
+      $out = $_filter_out->( $stdout = io( $out )->slurp );
    }
    else { $out = $stdout = NUL }
 
@@ -597,167 +683,70 @@ sub _run_cmd_using_system {
    return $self->response_class->new
       (  core => $core, out    => "${out}", rv     => $rv,
          sig  => $sig,  stderr => $stderr,  stdout => $stdout );
-}
+};
 
-# Private functions
-sub __arrayref2str {
-   return (is_arrayref $_[ 0 ]) ? join $RS, @{ $_[ 0 ] } : $_[ 0 ];
-}
+my $_run_cmd = sub {
+   my $self = shift; my $has_meta = $_has_shell_meta->( my $cmd = $self->cmd );
 
-sub __child_handler {
-   local $OS_ERROR; # So that waitpid does not step on existing value
+   if (is_arrayref $cmd) {
+      $cmd->[ 0 ] or throw Unspecified, [ 'command' ];
 
-   while ((my $child_pid = waitpid -1, WNOHANG) > 0) {
-      if (WIFEXITED( $CHILD_ERROR ) and $child_pid > ($CHILD_PID || 0)) {
-         $CHILD_PID = $child_pid; $CHILD_ENUM = $CHILD_ERROR;
+      unless (is_win32) {
+         ($has_meta or $self->use_ipc_run)
+            and can_load( modules => { 'IPC::Run' => '0.84' } )
+            and return $self->$_run_cmd_using_ipc_run;
+
+         $has_meta or return $self->$_run_cmd_using_fork_and_exec;
       }
+
+      $cmd = join SPC, map { m{ [ ] }mx ? $_quote->( $_ ) : $_ } @{ $cmd };
    }
 
-   $SIG{CHLD} = \&__child_handler; # In case of unreliable signals
+   not is_win32 and ($has_meta or $self->async or $self->use_system)
+      and return $self->$_run_cmd_using_system( $cmd );
+
+   return $self->$_run_cmd_using_open3( $cmd );
+};
+
+# Construction
+around 'BUILDARGS' => sub { # Differentiate constructor method signatures
+   my ($orig, $self, @args) = @_; my $n = 0; $n++ while (defined $args[ $n ]);
+
+   return (              $n == 0) ? {}
+        : (is_hashref $args[ 0 ]) ? { %{ $args[ 0 ] } }
+        : (              $n == 1) ? { cmd => $args[ 0 ] }
+        : (is_hashref $args[ 1 ]) ? { cmd => $args[ 0 ], %{ $args[ 1 ] } }
+        : (          $n % 2 == 1) ? { cmd => @args }
+                                  : { @args };
+};
+
+sub BUILD {
+   $_[ 0 ]->pidfile->chomp->lock; return;
+}
+
+sub import { # Export run_cmd as a function on demand
+   my $class  = shift;
+   my $params = { (is_hashref $_[ 0 ]) ? %{+ shift } : () };
+   my @wanted = @_;
+   my $target = caller;
+
+   is_member 'run_cmd', @wanted and install_sub {
+       as => 'run_cmd', into => $target, code => sub {
+          my $cmd = shift; my $attr = arg_list @_;
+
+          $attr->{cmd} = $cmd or throw Unspecified, [ 'command' ];
+
+          $attr->{ $_ } //= $params->{ $_ } for (keys %{ $params });
+
+          return $_run_cmd->( __PACKAGE__->new( $attr ) );
+       } };
+
    return;
 }
 
-sub __drain {
-   my ($out_h, $outhand, $err_h, $errhand) = @_; my (%hands, @ready);
-
-   my $selector = IO::Select->new(); $selector->add( $err_h, $out_h );
-
-   $hands{ fileno $err_h } = $errhand; $hands{ fileno $out_h } = $outhand;
-
-   while (@ready = $selector->can_read) {
-      for my $fh (@ready) {
-         my $buf; my $bytes_read = sysread $fh, $buf, 64 * 1024;
-
-         if ($bytes_read) { $hands{ fileno $fh }->( "${buf}" ) }
-         else { $selector->remove( $fh ); close $fh }
-      }
-   }
-
-   return;
-}
-
-sub __err_handler {
-   my ($err, $flt_ref, $std_ref) = @_;
-
-   return sub {
-      my $buf = shift; defined $buf or return;
-
-      $err eq 'out'    and ${ $flt_ref } .= $buf;
-      $err ne 'null'   and ${ $std_ref } .= $buf;
-      $err eq 'stderr' and emit_to \*STDERR, $buf;
-      return;
-   }
-}
-
-sub __filter_out {
-   return join "\n", map    { strip_leader $_ }
-                     grep   { not m{ (?: Started | Finished ) }msx }
-                     split m{ [\n] }msx, $_[ 0 ];
-}
-
-sub __four_nonblocking_write_pipe_pairs {
-   return nonblocking_write_pipe_pair,
-          nonblocking_write_pipe_pair,
-          nonblocking_write_pipe_pair,
-          nonblocking_write_pipe_pair;
-}
-
-sub __has_shell_meta {
-   return (     is_arrayref $_[ 0 ]) ? is_member '|',  $_[ 0 ]
-        : (     is_arrayref $_[ 0 ]) ? is_member '&&', $_[ 0 ]
-        : ($_[ 0 ] =~ m{ [|]    }mx) ? TRUE
-        : ($_[ 0 ] =~ m{ [&][&] }mx) ? TRUE
-                                     : FALSE;
-}
-
-sub __out_handler {
-   my ($out, $flt_ref, $std_ref) = @_;
-
-   return sub {
-      my $buf = shift; defined $buf or return;
-
-      $out ne 'null'   and ${ $flt_ref } .= $buf;
-      $out ne 'null'   and ${ $std_ref } .= $buf;
-      $out eq 'stdout' and emit_to \*STDOUT, $buf;
-      return;
-   }
-}
-
-sub __partition_command {
-   my $cmd = shift; my $aref = []; my @command = ();
-
-   for my $item (grep { defined && length } @{ $cmd }) {
-      if ($item !~ m{ [^\\][\<\>\|\&] }mx) { push @{ $aref }, $item }
-      else { push @command, $aref, $item; $aref = [] }
-   }
-
-   if ($aref->[ 0 ]) {
-      if ($command[ 0 ]) { push @command, $aref }
-      else { @command = @{ $aref } }
-   }
-
-   return \@command;
-}
-
-sub __pipe_handler {
-   local $OS_ERROR; # So that wait does not step on existing value
-
-   $CHILD_PID = wait; $CHILD_ENUM = (255 << 8) + 13;
-   $SIG{PIPE} = \&__pipe_handler;
-   return;
-}
-
-sub __quote {
-   my $v = shift; return is_win32 ? '"'.$v.'"' : "'${v}'";
-}
-
-sub __recv_exec_failure {
-   my $fh = shift; my $to_read = 2 * length pack 'I', 0;
-
-   read $fh, my $buf = NUL, $to_read or return FALSE;
-
-   (my $errno, $to_read) = unpack 'II', $buf; $ERRNO = $errno;
-
-   read $fh, my $error = NUL, $to_read; $error and utf8::decode $error;
-
-   return $error || "${ERRNO}";
-}
-
-sub __redirect_stderr {
-   my $v  = shift; my $err = \*STDERR; close $err;
-
-   my $op = openhandle $v ? '>&' : '>'; my $sink = $op eq '>' ? $v : fileno $v;
-
-   open $err, $op, $sink
-      or throw "Could not redirect STDERR to ${sink}: ${OS_ERROR}";
-   return;
-}
-
-sub __redirect_stdin {
-   my $v  = shift; my $in = \*STDIN; close $in;
-
-   my $op = openhandle $v ? '<&' : '<'; my $src = $op eq '<' ? $v : fileno $v;
-
-   open $in,  $op, $src
-      or throw "Could not redirect STDIN from ${src}: ${OS_ERROR}";
-   return;
-}
-
-sub __redirect_stdout {
-   my $v  = shift; my $out = \*STDOUT; close $out;
-
-   my $op = openhandle $v ? '>&' : '>'; my $sink = $op eq '>' ? $v : fileno $v;
-
-   open $out, $op, $sink
-      or throw "Could not redirect STDOUT to ${sink}: ${OS_ERROR}";
-   return;
-}
-
-sub __send_exec_failure {
-   my ($fh, $error) = @_; utf8::encode $error;
-
-   emit_to $fh, pack 'IIa*', 0+$ERRNO, length $error, $error; close $fh;
-   _exit 255;
+# Public methods
+sub run_cmd { # Either class or object method
+   return $_run_cmd->( (blessed $_[ 0 ]) ? $_[ 0 ] : __PACKAGE__->new( @_ ) );
 }
 
 1;

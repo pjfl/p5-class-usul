@@ -59,6 +59,115 @@ has 'connect_info'      => is => 'lazy', isa => ArrayRef, builder => sub {
    $_[ 0 ]->get_connect_info( $_[ 0 ], { database => $_[ 0 ]->database } ) },
    init_arg             => undef;
 
+# Private methods
+my $_db_attr = sub {
+   my  $self = shift; my $attr = $self->connect_info->[ 3 ];
+
+   $attr->{ $_ } = $self->db_attr->{ $_ } for (keys %{ $self->db_attr });
+
+   return $attr;
+};
+
+my $_execute_ddl = sub {
+   my ($self, $admin_creds, $ddl, $opts) = @_; $admin_creds ||= {};
+
+   my $drvr = lc $self->driver;
+   my $host = $self->host || 'localhost';
+   my $user = $admin_creds->{user} || $self->db_admin_ids->{ $drvr };
+   my $pass = $admin_creds->{password}
+      or $self->fatal( 'No database admin password' );
+   my $cmd  = "echo \"${ddl}\" | ";
+
+   if ($drvr eq 'mysql' ) {
+      $cmd .= "mysql -A -h ${host} -u ${user} -p${pass} mysql";
+   }
+   elsif ($drvr eq 'pg') {
+      $cmd .= "PGPASSWORD=${pass} psql -q -w -h ${host} -U ${user}";
+   }
+
+   return $self->run_cmd( $cmd, { out => 'stdout', %{ $opts || {} } } );
+};
+
+my $_get_db_admin_creds = sub {
+   my ($self, $reason) = @_;
+
+   my $attrs  = { password => NUL, user => NUL, };
+   my $text   = 'Need the database administrators id and password to perform '.
+                "a ${reason} operation";
+
+   $self->output( $text, AS_PARA );
+
+   my $prompt = 'Database administrator id';
+   my $user   = $self->db_admin_ids->{ lc $self->driver } || NUL;
+
+   $attrs->{user    } = $self->get_line( $prompt, $user, TRUE, 0 );
+   $prompt    = 'Database administrator password';
+   $attrs->{password} = $self->get_line( $prompt, AS_PASSWORD );
+   return $attrs;
+};
+
+my $_create_ddl = sub {
+   my ($self, $schema_class, $dir) = @_;
+
+   my $schema  = $schema_class->connect
+      ( $self->dsn, $self->user, $self->password, $self->$_db_attr );
+   my $version = $self->schema_version;
+
+   if ($self->unlink) {
+      for my $rdb (@{ $self->rdbms }) {
+         my $path = io( $schema->ddl_filename( $rdb, $version, $dir ) );
+
+         $path->is_file and $path->unlink;
+      }
+   }
+
+   $schema->create_ddl_dir
+      ( $self->rdbms, $version, $dir, $self->preversion, $self->$_db_attr );
+   return;
+};
+
+my $_deploy_and_populate = sub {
+   my ($self, $schema_class, $dir) = @_; my $res;
+
+   my $schema = $schema_class->connect
+      ( $self->dsn, $self->user, $self->password, $self->$_db_attr );
+
+   $self->info( "Deploying schema ${schema_class} and populating" );
+   $schema->storage->ensure_connected;
+   $schema->deploy( $self->$_db_attr, $dir );
+
+   my $dist = distname $schema_class;
+   my $extn = $self->config->extension;
+   my $re   = qr{ \A $dist [-] \d+ [-] (.*) \Q$extn\E \z }mx;
+   my $io   = io( $dir )->filter( sub { $_->filename =~ $re } );
+
+   for my $path ($io->all_files) {
+      my ($class) = $path->filename =~ $re;
+
+      if ($class) { $self->output( "Populating ${class}" ) }
+      else        { $self->fatal ( 'No class in [_1]', $path->filename ) }
+
+      my $hash = $self->file->dataclass_schema->load( $path );
+      my $flds = [ split SPC, $hash->{fields} ];
+      # TODO: Use Data::Record
+      my @rows = map { [ map    { s{ \A [\'\"] }{}mx; s{ [\'\"] \z }{}mx; $_ }
+                         split m{ , \s* }mx, $_ ] } @{ $hash->{rows} };
+
+      try {
+         @{ $res->{ $class } } = $schema->populate( $class, [ $flds, @rows ] );
+      }
+      catch {
+         if ($_->can( 'class' ) and $_->class eq 'ValidationErrors') {
+            $self->warning( "${_}" ) for (@{ $_->args });
+         }
+
+         throw $_;
+      };
+   }
+
+   return;
+};
+
 # Public methods
 sub create_database : method {
    my $self = shift; my $ddl;
@@ -66,28 +175,28 @@ sub create_database : method {
    my $host = $self->host; my $database = $self->database;
    my $user = $self->user; my $password = $self->password;
 
-   my $admin_creds = $self->_get_db_admin_creds( 'create database' );
+   my $admin_creds = $self->$_get_db_admin_creds( 'create database' );
 
    if (lc $self->driver eq 'mysql') {
       $self->info( "Creating MySQL database ${database}" );
       $ddl  = "create user '${user}'".'@'.
               "'${host}' identified by '${password}';";
-      $self->_execute_ddl( $admin_creds, $ddl );
+      $self->$_execute_ddl( $admin_creds, $ddl );
       $ddl  = "create database if not exists ${database} default character ".
               "set utf8 collate utf8_unicode_ci;";
-      $self->_execute_ddl( $admin_creds, $ddl );
+      $self->$_execute_ddl( $admin_creds, $ddl );
       $ddl  = "grant all privileges on ${database}.* to '${user}'".'@'.
               "'${host}' with grant option;";
-      $self->_execute_ddl( $admin_creds, $ddl );
+      $self->$_execute_ddl( $admin_creds, $ddl );
       return OK;
    }
 
    if (lc $self->driver eq 'pg') {
       $self->info( "Creating PostgreSQL database ${database}" );
       $ddl  = "create role ${user} login password '${password}';";
-      $self->_execute_ddl( $admin_creds, $ddl );
+      $self->$_execute_ddl( $admin_creds, $ddl );
       $ddl  = "create database ${database} owner ${user} encoding 'UTF8';";
-      $self->_execute_ddl( $admin_creds, $ddl );
+      $self->$_execute_ddl( $admin_creds, $ddl );
       return OK;
    }
 
@@ -100,7 +209,7 @@ sub create_ddl : method {
 
    for my $schema_class (values %{ $self->schema_classes }) {
       ensure_class_loaded( $schema_class );
-      $self->_create_ddl( $schema_class, $self->config->sharedir );
+      $self->$_create_ddl( $schema_class, $self->config->sharedir );
    }
 
    return OK;
@@ -128,7 +237,7 @@ sub deploy_and_populate : method {
 
    for my $schema_class (values %{ $self->schema_classes }) {
       ensure_class_loaded( $schema_class );
-      $self->_deploy_and_populate( $schema_class, $self->config->sharedir );
+      $self->$_deploy_and_populate( $schema_class, $self->config->sharedir );
    }
 
    return OK;
@@ -143,21 +252,21 @@ sub drop_database : method {
 
    my $host = $self->host; my $user = $self->user;
 
-   my $admin_creds = $self->_get_db_admin_creds( 'drop database' );
+   my $admin_creds = $self->$_get_db_admin_creds( 'drop database' );
 
    $self->info( "Droping database ${database}" );
 
    if (lc $self->driver eq 'mysql') {
       $ddl = "drop database if exists ${database};";
-      $self->_execute_ddl( $admin_creds, $ddl );
+      $self->$_execute_ddl( $admin_creds, $ddl );
       $ddl = "drop user '${user}'".'@'."'${host}';";
-      $self->_execute_ddl( $admin_creds, $ddl, { expected_rv => 1 } );
+      $self->$_execute_ddl( $admin_creds, $ddl, { expected_rv => 1 } );
       return OK;
    }
 
    if (lc $self->driver eq 'pg') {
-      $self->_execute_ddl( $admin_creds, "drop database ${database};" );
-      $self->_execute_ddl( $admin_creds, "drop user ${user};" );
+      $self->$_execute_ddl( $admin_creds, "drop database ${database};" );
+      $self->$_execute_ddl( $admin_creds, "drop user ${user};" );
       return OK;
    }
 
@@ -198,7 +307,7 @@ sub edit_credentials : method {
                                 $field eq 'password' ? TRUE : FALSE );
 
       $field eq 'password' and $value
-         = encrypt_for_config( $self_cfg, $value, $creds->{password} );
+         = encrypt_for_config $self_cfg, $value, $creds->{password};
 
       $creds->{ $field } = $value || NUL;
    }
@@ -218,114 +327,6 @@ sub password {
 
 sub user {
    return $_[ 0 ]->connect_info->[ 1 ];
-}
-
-# Private methods
-sub _create_ddl {
-   my ($self, $schema_class, $dir) = @_;
-
-   my $schema  = $schema_class->connect( $self->dsn, $self->user,
-                                         $self->password, $self->_db_attr );
-   my $version = $self->schema_version;
-
-   if ($self->unlink) {
-      for my $rdb (@{ $self->rdbms }) {
-         my $path = io( $schema->ddl_filename( $rdb, $version, $dir ) );
-
-         $path->is_file and $path->unlink;
-      }
-   }
-
-   $schema->create_ddl_dir( $self->rdbms, $version, $dir,
-                            $self->preversion, $self->_db_attr );
-   return;
-}
-
-sub _db_attr {
-   my $self = shift; my $attr = $self->connect_info->[ 3 ];
-
-   $attr->{ $_ } = $self->db_attr->{ $_ } for (keys %{ $self->db_attr });
-
-   return $attr;
-}
-
-sub _deploy_and_populate {
-   my ($self, $schema_class, $dir) = @_; my $res;
-
-   my $schema = $schema_class->connect( $self->dsn, $self->user,
-                                        $self->password, $self->_db_attr );
-
-   $self->info( "Deploying schema ${schema_class} and populating" );
-   $schema->storage->ensure_connected; $schema->deploy( $self->_db_attr, $dir );
-
-   my $dist = distname $schema_class;
-   my $extn = $self->config->extension;
-   my $re   = qr{ \A $dist [-] \d+ [-] (.*) \Q$extn\E \z }mx;
-   my $io   = io( $dir )->filter( sub { $_->filename =~ $re } );
-
-   for my $path ($io->all_files) {
-      my ($class) = $path->filename =~ $re;
-
-      if ($class) { $self->output( "Populating ${class}" ) }
-      else        { $self->fatal ( 'No class in [_1]', $path->filename ) }
-
-      my $hash = $self->file->dataclass_schema->load( $path );
-      my $flds = [ split SPC, $hash->{fields} ];
-      # TODO: Use Data::Record
-      my @rows = map { [ map    { s{ \A [\'\"] }{}mx; s{ [\'\"] \z }{}mx; $_ }
-                         split m{ , \s* }mx, $_ ] } @{ $hash->{rows} };
-
-      try {
-         @{ $res->{ $class } } = $schema->populate( $class, [ $flds, @rows ] );
-      }
-      catch {
-         if ($_->can( 'class' ) and $_->class eq 'ValidationErrors') {
-            $self->warning( "${_}" ) for (@{ $_->args });
-         }
-
-         throw $_;
-      };
-   }
-
-   return;
-}
-
-sub _execute_ddl {
-   my ($self, $admin_creds, $ddl, $opts) = @_; $admin_creds ||= {};
-
-   my $drvr = lc $self->driver;
-   my $host = $self->host || 'localhost';
-   my $user = $admin_creds->{user} || $self->db_admin_ids->{ $drvr };
-   my $pass = $admin_creds->{password}
-      or $self->fatal( 'No database admin password' );
-   my $cmd  = "echo \"${ddl}\" | ";
-
-   if ($drvr eq 'mysql' ) {
-      $cmd .= "mysql -A -h ${host} -u ${user} -p${pass} mysql";
-   }
-   elsif ($drvr eq 'pg') {
-      $cmd .= "PGPASSWORD=${pass} psql -q -w -h ${host} -U ${user}";
-   }
-
-   return $self->run_cmd( $cmd, { out => 'stdout', %{ $opts || {} } } );
-}
-
-sub _get_db_admin_creds {
-   my ($self, $reason) = @_;
-
-   my $attrs  = { password => NUL, user => NUL, };
-   my $text   = 'Need the database administrators id and password to perform '.
-                "a ${reason} operation";
-
-   $self->output( $text, AS_PARA );
-
-   my $prompt = 'Database administrator id';
-   my $user   = $self->db_admin_ids->{ lc $self->driver } || NUL;
-
-   $attrs->{user    } = $self->get_line( $prompt, $user, TRUE, 0 );
-   $prompt    = 'Database administrator password';
-   $attrs->{password} = $self->get_line( $prompt, AS_PASSWORD );
-   return $attrs;
 }
 
 1;
@@ -485,14 +486,6 @@ The unencrypted password used to connect to the database
    $self->user;
 
 The user id used to connect to the database
-
-=head2 _db_attr
-
-   $hash_ref = $self->_db_attr;
-
-Merges the C<db_attr> attribute with the database attributes returned by the
-L<get_connect_info|Class::Usul::TraitFor::ConnectInfo/get_connect_info>
-method
 
 =head1 Diagnostics
 

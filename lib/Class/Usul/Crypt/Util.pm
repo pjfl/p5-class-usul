@@ -15,41 +15,15 @@ use Try::Tiny;
 our @EXPORT_OK = qw( decrypt_from_config encrypt_for_config
                      get_cipher is_encrypted );
 
-# Public functions
-sub decrypt_from_config ($$) {
-   my ($config, $encrypted) = @_;
-   my ($cipher, $password)  = __extract_crypt_params( $encrypted );
-   my $args                 = __get_crypt_args( $config, $cipher );
-
-   return $password ? decrypt $args, $password : $encrypted;
-}
-
-sub encrypt_for_config ($$;$) {
-   my ($config, $password, $encrypted) = @_;
-
-   my ($cipher) = __extract_crypt_params( $encrypted );
-   my $args     = __get_crypt_args( $config, $cipher );
-
-   return $password ? "{${cipher}}".(encrypt $args, $password) : $password;
-}
-
-sub get_cipher ($) {
-   my ($cipher) = __extract_crypt_params( $_[ 0 ] ); return $cipher;
-}
-
-sub is_encrypted ($) {
-   return $_[ 0 ] =~ m{ \A [{] .+ [}] .* \z }mx ? TRUE : FALSE;
-}
-
 # Private functions
-sub __extract_crypt_params { # Returns cipher and encrypted text
+my $_extract_crypt_params = sub { # Returns cipher and encrypted text
    # A single scalar arg not matching the pattern is just a cipher
    # It really is better this way round. Leave it alone
    return $_[ 0 ] && $_[ 0 ] =~ m{ \A [{] (.+) [}] (.*) \z }mx
         ? ($1, $2) : $_[ 0 ] ? ($_[ 0 ]) : (default_cipher, $_[ 0 ]);
-}
+};
 
-sub __get_crypt_args { # Sets cipher, salt, and seed keys in args hash
+my $_get_crypt_args = sub { # Sets cipher, salt, and seed keys in args hash
    my ($config, $cipher) = @_; my $params = {}; state $cache //= {};
 
    # Works if config is an object or a hash
@@ -80,6 +54,32 @@ sub __get_crypt_args { # Sets cipher, salt, and seed keys in args hash
    }
 
    return $args;
+};
+
+# Public functions
+sub decrypt_from_config ($$) {
+   my ($config, $encrypted) = @_;
+   my ($cipher, $password)  = $_extract_crypt_params->( $encrypted );
+   my $args                 = $_get_crypt_args->( $config, $cipher );
+
+   return $password ? decrypt $args, $password : $encrypted;
+}
+
+sub encrypt_for_config ($$;$) {
+   my ($config, $password, $encrypted) = @_;
+
+   my ($cipher) = $_extract_crypt_params->( $encrypted );
+   my $args     = $_get_crypt_args->( $config, $cipher );
+
+   return $password ? "{${cipher}}".(encrypt $args, $password) : $password;
+}
+
+sub get_cipher ($) {
+   my ($cipher) = $_extract_crypt_params->( $_[ 0 ] ); return $cipher;
+}
+
+sub is_encrypted ($) {
+   return $_[ 0 ] =~ m{ \A [{] .+ [}] .* \z }mx ? TRUE : FALSE;
 }
 
 1;

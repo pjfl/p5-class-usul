@@ -26,162 +26,26 @@ has '_usul'       => is => 'ro', isa => BaseType,
    handles        => [ 'config', 'log' ], init_arg => 'builder',
    required       => TRUE, weak_ref => TRUE;
 
-# Public methods
-sub child_list {
-   my ($self, $pid, $procs) = @_; my ($child, $ppt); my @pids = ();
+# Private functions
+my $_cmd_matches = sub {
+   my ($cmd, $pattern) = @_;
 
-   unless (defined $procs) {
-      $ppt   = $self->_new_proc_process_table;
-      $procs = { map { $_->pid => $_->ppid } @{ $ppt->table } };
-   }
+   return !$pattern || $cmd =~ m{ $pattern }msx ? TRUE : FALSE;
+};
 
-   if (exists $procs->{ $pid }) {
-      for $child (grep { $procs->{ $_ } == $pid } keys %{ $procs }) {
-         push @pids, $self->child_list( $child, $procs ); # Recurse
-      }
-
-      push @pids, $pid;
-   }
-
-   return sort { $a <=> $b } @pids;
-}
-
-sub popen {
-   return shift->run_cmd( @_ );
-}
-
-sub process_exists {
-   my ($self, @args) = @_; my $args = arg_list @args;
-
-   my $pid = $args->{pid}; my ($io, $file);
-
-   $file = $args->{file} and $io = io( $file ) and $io->is_file
-      and $pid = $io->chomp->lock->getline;
-
-   (not $pid or $pid !~ m{ \d+ }mx) and return FALSE;
-
-   return (CORE::kill 0, $pid) ? TRUE : FALSE;
-}
-
-sub process_table {
-   my ($self, @args) = @_; my $args = arg_list @args;
-
-   my $pat   = $args->{pattern};
-   my $ptype = $args->{type   } // 1;
-   my $user  = $args->{user   } // get_user->name;
-   my $ppt   = $self->_new_proc_process_table;
-   my $has   = { map { $_ => TRUE } $ppt->fields };
-   my @rows  = ();
-   my $count = 0;
-
-   if ($ptype == 3) {
-      my %procs = map { $_->pid => $_ } @{ $ppt->table };
-      my @pids  = $self->_list_pids_by_file_system( $args->{fsystem} );
-
-      for my $p (grep { defined } map { $procs{ $_ } } @pids) {
-         push @rows, $self->_set_fields( $has, $p );
-         $count++;
-      }
-   }
-   else {
-      for my $p (@{ $ppt->table }) {
-         if (   ($ptype == 1 and __proc_belongs_to_user( $p->uid, $user ))
-             or ($ptype == 2 and __cmd_matches_pattern( $p->cmndline, $pat ))) {
-            push @rows, $self->_set_fields( $has, $p );
-            $count++;
-         }
-      }
-   }
-
-   return $self->_new_process_table( [ sort { __pscomp( $a, $b ) } @rows ],
-                                     $count );
-}
-
-sub run_cmd {
-   my ($self, $cmd, @args) = @_; my $attr = arg_list @args;
-
-   $attr->{cmd    } = $cmd or throw Unspecified, args => [ 'command' ];
-   $attr->{log    } = $self->log;
-   $attr->{rundir } = $self->config->rundir;
-   $attr->{tempdir} = $self->config->tempdir;
-
-   return Class::Usul::IPC::Cmd->new( $attr )->run_cmd;
-}
-
-sub signal_process {
-   my ($self, $flag, $sig, $pids) = @_; my $opts = [];
-
-   $sig  and push @{ $opts }, '-o', "sig=${sig}";
-   $flag and push @{ $opts }, '-o', 'flag=one';
-
-   my $cmd = [ $self->config->suid, qw( -nc signal_process ),
-               @{ $opts }, '--', @{ $pids || [] } ];
-
-   return $self->run_cmd( $cmd );
-}
-
-sub signal_process_as_root {
-   my ($self, @args) = @_; my ($file, $io);
-
-   my $args = arg_list @args;
-   my $sig  = $args->{sig } || 'TERM';
-   my $pids = $args->{pids} || [];
-
-   $args->{pid} and push @{ $pids }, $args->{pid};
-
-   if ($file = $args->{file} and $io = io( $file ) and $io->is_file) {
-      push @{ $pids }, $io->chomp->lock->getlines;
-      $sig eq 'TERM' and unlink $file;
-   }
-
-   (defined $pids->[0] and $pids->[0] =~ m{ \d+ }mx) or throw 'Process id bad';
-
-   for my $mpid (@{ $pids }) {
-      if (exists $args->{flag} and $args->{flag} =~ m{ one }imx) {
-         CORE::kill $sig, $mpid;
-         next;
-      }
-
-      my @pids = reverse $self->child_list( $mpid );
-
-      CORE::kill $sig, $_ for (@pids);
-
-      $args->{force} or next;
-
-      sleep 3; @pids = reverse $self->child_list( $mpid );
-
-      CORE::kill 'KILL', $_ for (@pids);
-   }
-
-   return OK;
-}
-
-# Private methods
-sub _list_pids_by_file_system {
-   my ($self, $fsystem) = @_; $fsystem or return ();
-
-   my $opts = { err => 'null', expected_rv => 1 };
-   # TODO: Make fuser OS dependent
-   my $data = $self->run_cmd( "fuser ${fsystem}", $opts )->out || NUL;
-
-   $data =~ s{ [^0-9\s] }{}gmx; $data =~ s{ \s+ }{ }gmx;
-
-   return sort { $a <=> $b } grep { defined && length } split SPC, $data;
-}
-
-sub _new_proc_process_table {
-   my $self = shift;
+my $_new_proc_process_table = sub {
+   my $cache_ttys = shift;
 
    can_load( modules => { 'Proc::ProcessTable' => '0' } )
-      and return Proc::ProcessTable->new( cache_ttys => $self->cache_ttys );
+      and return Proc::ProcessTable->new( cache_ttys => $cache_ttys );
 
    return Class::Null->new;
-}
+};
 
-sub _new_process_table {
-   my ($self, $rows, $count) = @_;
+my $_new_process_table = sub {
+   my ($class, $rows, $count) = @_;
 
-   return $self->table_class->new
+   return $class->new
       ( count    => $count,
         fields   => [ qw( uid pid ppid start time size state tty cmd ) ],
         labels   => { uid   => 'User',   pid   => 'PID',
@@ -194,10 +58,25 @@ sub _new_process_table {
                       time  => 'numeric' },
         values   => $rows,
         wrap     => { cmd => 1 }, );
-}
+};
 
-sub _set_fields {
-   my ($self, $has, $p) = @_; my $flds = {};
+my $_proc_belongs_to_user = sub {
+   my ($puid, $user) = @_;
+
+   return (!$user || $user eq 'All' || $user eq loginid $puid) ? TRUE : FALSE;
+};
+
+my $_pscomp = sub {
+   my ($arg1, $arg2) = @_; my $result;
+
+   $result = $arg1->{uid} cmp $arg2->{uid};
+   $result = $arg1->{pid} <=> $arg2->{pid} if ($result == 0);
+
+   return $result;
+};
+
+my $_set_fields = sub {
+   my ($has, $p) = @_; my $flds = {};
 
    $flds->{id   } = $has->{pid   } ? $p->pid                  : NUL;
    $flds->{pid  } = $has->{pid   } ? $p->pid                  : NUL;
@@ -236,28 +115,151 @@ sub _set_fields {
    else { $flds->{cmd} = NUL }
 
    return $flds;
+};
+
+my $_signal_cmd = sub {
+   my ($cmd, $flag, $sig, $pids) = @_; my $opts = [];
+
+   $sig  and push @{ $opts }, '-o', "sig=${sig}";
+   $flag and push @{ $opts }, '-o', 'flag=one';
+
+   return [ $cmd, '-nc', 'signal_process', @{ $opts }, '--', @{ $pids || [] } ];
+};
+
+# Public methods
+sub child_list {
+   my ($self, $pid, $procs) = @_; my ($child, $ppt); my @pids = ();
+
+   unless (defined $procs) {
+      $ppt   = $_new_proc_process_table->( $self->cache_ttys );
+      $procs = { map { $_->pid => $_->ppid } @{ $ppt->table } };
+   }
+
+   if (exists $procs->{ $pid }) {
+      for $child (grep { $procs->{ $_ } == $pid } keys %{ $procs }) {
+         push @pids, $self->child_list( $child, $procs ); # Recurse
+      }
+
+      push @pids, $pid;
+   }
+
+   return sort { $a <=> $b } @pids;
 }
 
-# Private functions
-sub __cmd_matches_pattern {
-   my ($cmd, $pattern) = @_;
+sub list_pids_by_file_system {
+   my ($self, $fsystem) = @_; $fsystem or return ();
 
-   return !$pattern || $cmd =~ m{ $pattern }msx ? TRUE : FALSE;
+   my $opts = { err => 'null', expected_rv => 1 };
+   # TODO: Make fuser OS dependent
+   my $data = $self->run_cmd( "fuser ${fsystem}", $opts )->out || NUL;
+
+   $data =~ s{ [^0-9\s] }{}gmx; $data =~ s{ \s+ }{ }gmx;
+
+   return sort { $a <=> $b } grep { defined && length } split SPC, $data;
 }
 
-sub __proc_belongs_to_user {
-   my ($puid, $user) = @_;
-
-   return (!$user || $user eq 'All' || $user eq loginid $puid) ? TRUE : FALSE;
+sub popen {
+   return shift->run_cmd( @_ );
 }
 
-sub __pscomp {
-   my ($arg1, $arg2) = @_; my $result;
+sub process_exists {
+   my ($self, @args) = @_; my $args = arg_list @args;
 
-   $result = $arg1->{uid} cmp $arg2->{uid};
-   $result = $arg1->{pid} <=> $arg2->{pid} if ($result == 0);
+   my $pid = $args->{pid}; my ($io, $file);
 
-   return $result;
+   $file = $args->{file} and $io = io( $file ) and $io->is_file
+      and $pid = $io->chomp->lock->getline;
+
+   (not $pid or $pid !~ m{ \d+ }mx) and return FALSE;
+
+   return (CORE::kill 0, $pid) ? TRUE : FALSE;
+}
+
+sub process_table {
+   my ($self, @args) = @_; my $args = arg_list @args;
+
+   my $pat   = $args->{pattern};
+   my $ptype = $args->{type   } // 1;
+   my $user  = $args->{user   } // get_user->name;
+   my $ppt   = $_new_proc_process_table->( $self->cache_ttys );
+   my $has   = { map { $_ => TRUE } $ppt->fields };
+   my @rows  = ();
+   my $count = 0;
+
+   if ($ptype == 3) {
+      my %procs = map { $_->pid => $_ } @{ $ppt->table };
+      my @pids  = $self->list_pids_by_file_system( $args->{fsystem} );
+
+      for my $p (grep { defined } map { $procs{ $_ } } @pids) {
+         push @rows, $_set_fields->( $has, $p );
+         $count++;
+      }
+   }
+   else {
+      for my $p (@{ $ppt->table }) {
+         if (   ($ptype == 1 and $_proc_belongs_to_user->( $p->uid, $user ))
+             or ($ptype == 2 and $_cmd_matches->( $p->cmndline, $pat ))) {
+            push @rows, $_set_fields->( $has, $p );
+            $count++;
+         }
+      }
+   }
+
+   return $_new_process_table->
+      ( $self->table_class, [ sort { $_pscomp->( $a, $b ) } @rows ], $count );
+}
+
+sub run_cmd {
+   my ($self, $cmd, @args) = @_; my $attr = arg_list @args;
+
+   $attr->{cmd    } = $cmd or throw Unspecified, [ 'command' ];
+   $attr->{log    } = $self->log;
+   $attr->{rundir } = $self->config->rundir;
+   $attr->{tempdir} = $self->config->tempdir;
+
+   return Class::Usul::IPC::Cmd->new( $attr )->run_cmd;
+}
+
+sub signal_process {
+   my ($self, @args) = @_;
+
+   is_hashref $args[ 0 ]
+      or return $self->run_cmd( $_signal_cmd->( $self->config->suid, @args ) );
+
+   my ($file, $io); my $args = $args[ 0 ];
+
+   my $sig = $args->{sig} || 'TERM'; my $pids = $args->{pids} || [];
+
+   $args->{pid} and push @{ $pids }, $args->{pid};
+
+   if ($file = $args->{file} and $io = io( $file ) and $io->is_file) {
+      push @{ $pids }, $io->chomp->lock->getlines;
+      $sig eq 'TERM' and unlink $file;
+   }
+
+   (defined $pids->[0] and $pids->[0] =~ m{ \d+ }mx) or throw 'Process id bad';
+
+   for my $mpid (@{ $pids }) {
+      if (exists $args->{flag} and $args->{flag} =~ m{ one }imx) {
+         CORE::kill $sig, $mpid; next;
+      }
+
+      my @pids = reverse $self->child_list( $mpid );
+
+      CORE::kill $sig, $_ for (@pids);
+
+      $args->{force} or next;
+
+      sleep 3; @pids = reverse $self->child_list( $mpid );
+
+      CORE::kill 'KILL', $_ for (@pids);
+   }
+
+   return OK;
+}
+
+sub signal_process_as_root {
+   my ($self, @args) = @_; return $self->signal_process( arg_list @args );
 }
 
 1;
@@ -304,6 +306,12 @@ Boolean that defaults to true. Passed to L<Proc::ProcessTable>
 
 Called with a process id for an argument this method returns a list of child
 process ids
+
+=head2 list_pids_by_file_system
+
+   @pids = $self->list_pids_by_file_system( $file_system );
+
+Returns the list of process ids produced by the C<fuser> command
 
 =head2 popen
 

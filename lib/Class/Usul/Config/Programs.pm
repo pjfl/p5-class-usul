@@ -31,11 +31,11 @@ has 'script'       => is => 'lazy', isa => NonEmptySimpleStr;
 
 # Private methods
 sub _build_owner {
-   return $_[ 0 ]->_inflate_symbol( $_[ 1 ], 'prefix' ) || 'root';
+   return $_[ 0 ]->inflate_symbol( $_[ 1 ], 'prefix' ) || 'root';
 }
 
 sub _build_script {
-   return basename( $_[ 0 ]->_inflate_path( $_[ 1 ], qw( pathname ) ) );
+   return basename( $_[ 0 ]->inflate_path( $_[ 1 ], 'pathname' ) );
 }
 
 1;

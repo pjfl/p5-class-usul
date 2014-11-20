@@ -15,96 +15,17 @@ use Moo::Role;
 
 my $Extra_Argv = []; my $Usage = "Did we forget new_with_options?\n";
 
-# Construction
-sub new_with_options {
-   my $self = shift; return $self->new( $self->_parse_options( @_ ) );
-}
-
-# Public methods
-sub extra_argv {
-   return defined $_[ 1 ] ? __extra_argv( $_[ 0 ] )->[ $_[ 1 ] ]
-                          : __extra_argv( $_[ 0 ] );
-}
-
-sub next_argv {
-   return shift @{ __extra_argv( $_[ 0 ] ) };
-}
-
-sub options_usage {
-   return ucfirst $Usage;
-}
-
-sub unshift_argv {
-   return unshift @{ __extra_argv( $_[ 0 ] ) }, $_[ 1 ];
-}
-
-# Private methods
-sub _parse_options {
-   my ($self, %args) = @_; my $opt;
-
-   my $class  = blessed $self || $self;
-   my %data   = $class->_options_data;
-   my %config = $class->_options_config;
-   my $enc    = $config{encoding} // 'UTF-8';
-
-   my @skip_options; defined $config{skip_options}
-      and @skip_options = @{ $config{skip_options} };
-
-   @skip_options and delete @data{ @skip_options };
-
-   my ($splitters, @options) = __build_options( \%data );
-
-   my @flavour; defined $config{flavour}
-      and push @flavour, { getopt_conf => $config{flavour} };
-
-   $config{protect_argv} and local @ARGV = @ARGV;
-   $enc and @ARGV = map { decode( $enc, $_ ) } @ARGV;
-   $config{no_untaint} or @ARGV = map { untaint_cmdline $_ } @ARGV;
-   keys %{ $splitters } and @ARGV = __split_args( $splitters );
-   ($opt, $Usage) = describe_options( ('Usage: %c %o'), @options, @flavour );
-   $Extra_Argv = [ @ARGV ];
-
-   my ($params, @missing) = __extract_params( \%args, \%config, \%data, $opt );
-
-   if ($config{missing_fatal} and @missing) {
-      print join( "\n", (map { "${_} is missing" } @missing), NUL );
-      print $Usage, "\n";
-      exit FAILED;
-   }
-
-   return %{ $params };
-}
-
 # Private functions
-sub __build_options {
-   my $options_data = shift; my $splitters = {}; my @options = ();
-
-   for my $name (sort  { __sort_options( $options_data, $a, $b ) }
-                 keys %{ $options_data }) {
-      my $option = $options_data->{ $name }; my $doc = $option->{doc};
-
-      defined $doc or $doc = "No help for ${name}";
-      push @options, [ __option_specification( $name, $option ), $doc ];
-      defined $option->{autosplit} or next;
-      $splitters->{ $name } = Data::Record->new( {
-         split => $option->{autosplit}, unless => $RE{quoted} } );
-      $option->{short}
-         and $splitters->{ $option->{short} } = $splitters->{ $name };
-   }
-
-   return ($splitters, @options);
-}
-
-sub __extra_argv {
+my $_extra_argv = sub {
    return $_[ 0 ]->{_extra_argv} //= [ @{ $Extra_Argv } ];
-}
+};
 
-sub __extract_params {
+my $_extract_params = sub {
    my ($args, $config, $options_data, $cmdline_opt) = @_;
 
-   my $params = { %{ $args } }; my $prefer = $config->{prefer_commandline};
+   my @missing_required; my $params = { %{ $args } };
 
-   my @missing_required;
+   my $prefer = $config->{prefer_commandline};
 
    for my $name (keys %{ $options_data }) {
       my $option = $options_data->{ $name };
@@ -119,9 +40,9 @@ sub __extract_params {
    }
 
    return ($params, @missing_required);
-}
+};
 
-sub __option_specification {
+my $_option_specification = sub {
    my ($name, $opt) = @_;
 
    my $dash_name   = $name; $dash_name =~ tr/_/-/; # Dash name support
@@ -132,9 +53,9 @@ sub __option_specification {
    $opt->{negateable} and $option_spec .= '!';
    defined $opt->{format} and $option_spec .= '='.$opt->{format};
    return $option_spec;
-}
+};
 
-sub __split_args {
+my $_split_args = sub {
    my $splitters = shift; my @new_argv;
 
    for (my $i = 0, my $nargvs = @ARGV; $i < $nargvs; $i++) { # Parse all argv
@@ -154,14 +75,94 @@ sub __split_args {
    }
 
    return @new_argv;
-}
+};
 
-sub __sort_options {
+my $_sort_options = sub {
    my ($opts, $a, $b) = @_; my $max = 999;
 
    my $oa = $opts->{ $a }{order} || $max; my $ob = $opts->{ $b }{order} || $max;
 
    return ($oa == $max) && ($ob == $max) ? $a cmp $b : $oa <=> $ob;
+};
+
+my $_build_options = sub {
+   my $options_data = shift; my $splitters = {}; my @options = ();
+
+   for my $name (sort  { $_sort_options->( $options_data, $a, $b ) }
+                 keys %{ $options_data }) {
+      my $option = $options_data->{ $name }; my $doc = $option->{doc};
+
+      defined $doc or $doc = "No help for ${name}";
+      push @options, [ $_option_specification->( $name, $option ), $doc ];
+      defined $option->{autosplit} or next;
+      $splitters->{ $name } = Data::Record->new( {
+         split => $option->{autosplit}, unless => $RE{quoted} } );
+      $option->{short}
+         and $splitters->{ $option->{short} } = $splitters->{ $name };
+   }
+
+   return ($splitters, @options);
+};
+
+# Private methods
+my $_parse_options = sub {
+   my ($self, %args) = @_; my $opt;
+
+   my $class  = blessed $self || $self;
+   my %data   = $class->_options_data;
+   my %config = $class->_options_config;
+   my $enc    = $config{encoding} // 'UTF-8';
+
+   my @skip_options; defined $config{skip_options}
+      and @skip_options = @{ $config{skip_options} };
+
+   @skip_options and delete @data{ @skip_options };
+
+   my ($splitters, @options) = $_build_options->( \%data );
+
+   my @flavour; defined $config{flavour}
+      and push @flavour, { getopt_conf => $config{flavour} };
+
+   $config{protect_argv} and local @ARGV = @ARGV;
+   $enc and @ARGV = map { decode( $enc, $_ ) } @ARGV;
+   $config{no_untaint} or @ARGV = map { untaint_cmdline $_ } @ARGV;
+   keys %{ $splitters } and @ARGV = $_split_args->( $splitters );
+   ($opt, $Usage) = describe_options( ('Usage: %c %o'), @options, @flavour );
+   $Extra_Argv = [ @ARGV ];
+
+   my ($params, @missing)
+      = $_extract_params->( \%args, \%config, \%data, $opt );
+
+   if ($config{missing_fatal} and @missing) {
+      print join( "\n", (map { "${_} is missing" } @missing), NUL );
+      print $Usage, "\n";
+      exit FAILED;
+   }
+
+   return %{ $params };
+};
+
+# Construction
+sub new_with_options {
+   my $self = shift; return $self->new( $self->$_parse_options( @_ ) );
+}
+
+# Public methods
+sub extra_argv {
+   return defined $_[ 1 ] ? $_extra_argv->( $_[ 0 ] )->[ $_[ 1 ] ]
+                          : $_extra_argv->( $_[ 0 ] );
+}
+
+sub next_argv {
+   return shift @{ $_extra_argv->( $_[ 0 ] ) };
+}
+
+sub options_usage {
+   return ucfirst $Usage;
+}
+
+sub unshift_argv {
+   return unshift @{ $_extra_argv->( $_[ 0 ] ) }, $_[ 1 ];
 }
 
 1;

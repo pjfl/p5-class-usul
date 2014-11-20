@@ -15,38 +15,119 @@ use Moo::Role;
 
 requires qw( config ); # As a class method
 
+# Private functions
+my $_connect_attr = sub {
+   return [ qw( class ctlfile ctrldir database dataclass_attr extension
+                prefix read_secure salt seed seed_file subspace tempdir ) ];
+};
+
+my $_get_cache_key = sub {
+   my $param = shift;
+   my $db    = $param->{database}
+      or throw 'Class [_1] has no database name', [ $param->{class} ];
+
+   return $param->{subspace} ? "${db}.".$param->{subspace} : $db;
+};
+
+my $_get_credentials_file = sub {
+   my $param = shift; my $ctlfile = $param->{ctlfile};
+
+   defined $ctlfile and -f $ctlfile and return $ctlfile;
+
+   my $dir = $param->{ctrldir}; my $db = $param->{database};
+
+      $dir or throw Unspecified, [ 'ctrldir' ];
+   -d $dir or throw 'Directory [_1] not found', [ $dir ];
+       $db or throw 'Class [_1] has no database name', [ $param->{class} ];
+
+   return catfile( $dir, $db.($param->{extension} || CONFIG_EXTN) );
+};
+
+my $_get_dataclass_schema = sub {
+   return Class::Usul::File->dataclass_schema( @_ );
+};
+
+my $_unicode_options = sub {
+   return { mysql  => { mysql_enable_utf8 => TRUE },
+            pg     => { pg_enable_utf8    => TRUE },
+            sqlite => { sqlite_unicode    => TRUE }, };
+};
+
+my $_dump_config_data = sub {
+   my ($param, $cfg_data) = @_;
+
+   my $ctlfile = $_get_credentials_file->( $param );
+   my $schema  = $_get_dataclass_schema->( $param->{dataclass_attr} );
+
+   return $schema->dump( { data => $cfg_data, path => $ctlfile } );
+};
+
+my $_extract_creds_from = sub {
+   my ($param, $cfg_data) = @_; my $key = $_get_cache_key->( $param );
+
+   ($cfg_data->{credentials} and defined $cfg_data->{credentials}->{ $key })
+      or throw 'Path [_1] database [_2] no credentials',
+               [ $_get_credentials_file->( $param ), $key ];
+
+   return $cfg_data->{credentials}->{ $key };
+};
+
+my $_get_connect_options = sub {
+   my $creds = shift;
+   my $uopt  = $creds->{unicode_option}
+            || $_unicode_options->()->{ lc $creds->{driver} } || {};
+
+   return { AutoCommit =>  $creds->{auto_commit  } // TRUE,
+            PrintError =>  $creds->{print_error  } // FALSE,
+            RaiseError =>  $creds->{raise_error  } // TRUE,
+            %{ $uopt }, %{ $creds->{database_attr} || {} }, };
+};
+
+my $_load_config_data = sub {
+   my $schema = $_get_dataclass_schema->( $_[ 0 ]->{dataclass_attr} );
+
+   return $schema->load( $_get_credentials_file->( $_[ 0 ] ) );
+};
+
+# Private methods
+my $_merge_attributes = sub {
+   return merge_attributes { class => blessed $_[ 0 ] || $_[ 0 ] },
+                  $_[ 1 ], ($_[ 2 ] || {}), $_connect_attr->();
+};
+
+# Public methods
 sub dump_config_data {
    my ($self, $config, $db, $cfg_data) = @_;
 
-   my $params = $self->_merge_attributes( $config, { database => $db } );
+   my $param = $self->$_merge_attributes( $config, { database => $db } );
 
-   return __dump_config_data( $params, $cfg_data );
+   return $_dump_config_data->( $param, $cfg_data );
 }
 
 sub extract_creds_from {
    my ($self, $config, $db, $cfg_data) = @_;
 
-   my $params = $self->_merge_attributes( $config, { database => $db } );
+   my $param = $self->$_merge_attributes( $config, { database => $db } );
 
-   return __extract_creds_from( $params, $cfg_data );
+   return $_extract_creds_from->( $param, $cfg_data );
 }
 
 sub get_connect_info {
-   my ($self, $app, $params) = @_; $app //= $self; $params //= {};
+   my ($self, $app, $param) = @_; $app //= $self; $param //= {};
 
-   merge_attributes $params, $app->config, $self->config, __connect_info_attr();
+   merge_attributes $param, $app->config, $self->config, $_connect_attr->();
 
-   my $class    = $params->{class} = blessed $self || $self;
-   my $key      = __get_connect_info_cache_key( $params );
+   my $class    = $param->{class} = blessed $self || $self;
+   my $key      = $_get_cache_key->( $param );
 
    state $cache //= {}; defined $cache->{ $key } and return $cache->{ $key };
 
-   my $cfg_data = __load_config_data( $params );
-   my $creds    = __extract_creds_from( $params, $cfg_data );
-   my $dsn      = 'dbi:'.$creds->{driver}.':database='.$params->{database}
+   my $cfg_data = $_load_config_data->( $param );
+   my $creds    = $_extract_creds_from->( $param, $cfg_data );
+   my $dsn      = 'dbi:'.$creds->{driver}.':database='.$param->{database}
                   .';host='.$creds->{host}.';port='.$creds->{port};
-   my $password = decrypt_from_config( $params, $creds->{password} );
-   my $opts     = __get_connect_options( $creds );
+   my $password = decrypt_from_config $param, $creds->{password};
+   my $opts     = $_get_connect_options->( $creds );
 
    return $cache->{ $key } = [ $dsn, $creds->{user}, $password, $opts ];
 }
@@ -54,92 +135,9 @@ sub get_connect_info {
 sub load_config_data {
    my ($self, $config, $db) = @_;
 
-   my $params = $self->_merge_attributes( $config, { database => $db } );
+   my $param = $self->$_merge_attributes( $config, { database => $db } );
 
-   return __load_config_data( $params );
-}
-
-# Private methods
-sub _merge_attributes {
-   return merge_attributes { class => blessed $_[ 0 ] || $_[ 0 ] },
-                  $_[ 1 ], ($_[ 2 ] || {}), __connect_info_attr();
-}
-
-# Private functions
-sub __connect_info_attr {
-   return [ qw( class ctlfile ctrldir database dataclass_attr extension
-                prefix read_secure salt seed seed_file subspace tempdir ) ];
-}
-
-sub __dump_config_data {
-   my ($params, $cfg_data) = @_;
-
-   my $ctlfile = __get_credentials_file( $params );
-   my $schema  = __get_dataclass_schema( $params->{dataclass_attr} );
-
-   return $schema->dump( { data => $cfg_data, path => $ctlfile } );
-}
-
-sub __extract_creds_from {
-   my ($params, $cfg_data) = @_;
-
-   my $key = __get_connect_info_cache_key( $params );
-
-   ($cfg_data->{credentials} and defined $cfg_data->{credentials}->{ $key })
-      or throw 'Path [_1] database [_2] no credentials',
-               args  => [ __get_credentials_file( $params ), $key ];
-
-   return $cfg_data->{credentials}->{ $key };
-}
-
-sub __get_connect_info_cache_key {
-   my $params = shift;
-   my $db     = $params->{database}
-      or throw 'Class [_1] has no database name', args => [ $params->{class} ];
-
-   return $params->{subspace} ? "${db}.".$params->{subspace} : $db;
-}
-
-sub __get_connect_options {
-   my $creds = shift;
-   my $uopt  = $creds->{unicode_option}
-            || __unicode_options()->{ lc $creds->{driver} } || {};
-
-   return { AutoCommit =>  $creds->{auto_commit  } // TRUE,
-            PrintError =>  $creds->{print_error  } // FALSE,
-            RaiseError =>  $creds->{raise_error  } // TRUE,
-            %{ $uopt }, %{ $creds->{database_attr} || {} }, };
-}
-
-sub __get_credentials_file {
-   my $params = shift; my $ctlfile = $params->{ctlfile};
-
-   defined $ctlfile and -f $ctlfile and return $ctlfile;
-
-   my $dir = $params->{ctrldir}; my $db = $params->{database};
-
-      $dir or throw Unspecified, args => [ 'ctrldir' ];
-   -d $dir or throw 'Directory [_1] not found', args => [ $dir ];
-       $db or throw 'Class [_1] has no database name',
-                    args  => [ $params->{class} ];
-
-   return catfile( $dir, $db.($params->{extension} || CONFIG_EXTN) );
-}
-
-sub __get_dataclass_schema {
-   return Class::Usul::File->dataclass_schema( @_ );
-}
-
-sub __load_config_data {
-   my $schema = __get_dataclass_schema( $_[ 0 ]->{dataclass_attr} );
-
-   return $schema->load( __get_credentials_file( $_[ 0 ] ) );
-}
-
-sub __unicode_options {
-   return { mysql  => { mysql_enable_utf8 => TRUE },
-            pg     => { pg_enable_utf8    => TRUE },
-            sqlite => { sqlite_unicode    => TRUE }, };
+   return $_load_config_data->( $param );
 }
 
 1;

@@ -1,6 +1,7 @@
 package Class::Usul::Programs;
 
 use attributes ();
+use feature 'state';
 use namespace::autoclean;
 
 use Moo;
@@ -118,6 +119,154 @@ has '_quiet_flag' => is => 'rw',   isa => Bool,
 has '_run_method' => is => 'lazy', isa => SimpleStr, init_arg => undef,
    reader         => 'run_method';
 
+# Private functions
+my $_dash2underscore = sub {
+   (my $x = $_[ 0 ]) =~ s{ [\-] }{_}gmx; return $x;
+};
+
+my $_get_pod_header_for_method = sub {
+   my ($class, $method) = @_;
+
+   my $pod = Pod::Eventual::Simple->read_file( find_source $class );
+   my $out = [ grep { $_->{content} =~ m{ (?: ^|[< ]) $method (?: [ >]|$ ) }msx}
+               grep { $_->{type} eq 'command' } @{ $pod } ]->[ 0 ]->{content};
+
+   $out and chomp $out;
+   return $out;
+};
+
+my $_list_methods_of = sub {
+   return map  { s{ \A .+ :: }{}msx; $_ }
+          grep { my $subr = $_;
+                 grep { $_ eq 'method' } attributes::get( \&{ $subr } ) }
+              @{ Class::Inspector->methods
+                    ( blessed $_[ 0 ] || $_[ 0 ], 'full', 'public' ) };
+};
+
+my $_output_stacktrace = sub {
+   my ($e, $verbose) = @_; ($e and blessed $e) or return; $verbose //= 0;
+
+   $verbose > 0 and $e->can( 'trace' )
+      and return emit_to \*STDERR, NUL.$e->trace;
+
+   $e->can( 'stacktrace' ) and emit_to \*STDERR, NUL.$e->stacktrace;
+
+   return;
+};
+
+# Private methods
+my $_apply_stdio_encoding = sub {
+   my $self = shift; my $enc = $self->encoding;
+
+   for (*STDIN, *STDOUT, *STDERR) {
+      $_->opened or next; binmode $_, ":encoding(${enc})";
+   }
+
+   autoflush STDOUT TRUE; autoflush STDERR TRUE;
+   return;
+};
+
+my $_catch_run_exception = sub {
+   my ($self, $method, $error) = @_; my $e;
+
+   unless ($e = exception $error) {
+      $self->error( 'Method [_1] exception without error',
+                    { args => [ $method ] } );
+      return UNDEFINED_RV;
+   }
+
+   $e->out and $self->output( $e->out );
+   $self->error( $e->error, { args => $e->args } );
+
+   return $e->rv || (defined $e->rv ? FAILED : UNDEFINED_RV);
+};
+
+my $_dont_ask = sub {
+   return $_[ 0 ]->debug || $_[ 0 ]->help_usage || $_[ 0 ]->help_options
+       || $_[ 0 ]->help_manual || ! $_[ 0 ]->is_interactive();
+};
+
+my $_exit_version = sub {
+   $_[ 0 ]->output( 'Version '.$_[ 0 ]->VERSION ); exit OK;
+};
+
+my $_get_classes_and_roles = sub {
+   my $self = shift; my %uniq = (); require mro;
+
+   my @classes = @{ mro::get_linear_isa( blessed $self ) };
+
+   while (my $class = shift @classes) {
+      $uniq{ $class } and next; $uniq{ $class }++;
+
+      exists $Role::Tiny::APPLIED_TO{ $class }
+         and push @classes, keys %{ $Role::Tiny::APPLIED_TO{ $class } };
+   }
+
+   return [ sort keys %uniq ];
+};
+
+my $_get_debug_option = sub {
+   my $self = shift;
+
+   ($self->noask or $self->$_dont_ask) and return $self->debug;
+
+   return $self->yorn( 'Do you want debugging turned on', FALSE, TRUE );
+};
+
+my $_man_page_from = sub {
+   my ($self, $src) = @_; my $cfg = $self->config;
+
+   my $parser   = Pod::Man->new( center  => $cfg->doc_title || NUL,
+                                 name    => $cfg->script,
+                                 release => 'Version '.$self->VERSION,
+                                 section => '3m' );
+   my $tempfile = $self->file->tempfile;
+   my $cmd      = $cfg->man_page_cmd || [];
+
+   $parser->parse_from_file( NUL.$src->pathname, $tempfile->pathname );
+   emit $self->run_cmd( [ @{ $cmd }, $tempfile->pathname ] )->out;
+   return OK;
+};
+
+my $_usage_for = sub {
+   my ($self, $method) = @_;
+
+   for my $class (@{ $self->$_get_classes_and_roles }) {
+      is_member( $method, Class::Inspector->methods( $class, 'public' ) )
+         or next;
+
+      my $selector = Pod::Select->new(); my $tfile = $self->file->tempfile;
+
+      $selector->select( "/${method}.*" );
+      $selector->parse_from_file( find_source $class, $tfile->pathname );
+      $tfile->stat->{size} > 0 and return $self->$_man_page_from( $tfile );
+   }
+
+   return FAILED;
+};
+
+my $_output_usage = sub {
+   my ($self, $verbose) = @_; my $method = $self->next_argv;
+
+   defined $method and $method = untaint_identifier $method;
+
+   $self->can_call( $method ) and return $self->$_usage_for( $method );
+
+   $verbose > 1 and return $self->$_man_page_from( $self->config );
+
+   $verbose > 0 and pod2usage( { -exitval => OK,
+                                 -input   => NUL.$self->config->pathname,
+                                 -message => SPC,
+                                 -verbose => $verbose } ); # Never returns
+
+   emit_to \*STDERR, $self->options_usage;
+   return FAILED;
+};
+
+my $_exit_usage = sub {
+   $_[ 0 ]->quiet( TRUE ); exit $_[ 0 ]->$_output_usage( $_[ 1 ] );
+};
+
 # Construction
 around 'BUILDARGS' => sub {
    my ($orig, $self, @args) = @_; my $attr = $orig->( $self, @args );
@@ -132,14 +281,14 @@ around 'BUILDARGS' => sub {
 };
 
 sub BUILD {
-   my $self = shift; $self->_apply_stdio_encoding;
+   my $self = shift; $self->$_apply_stdio_encoding;
 
-   $self->help_usage   and $self->_exit_usage( 0 );
-   $self->help_options and $self->_exit_usage( 1 );
-   $self->help_manual  and $self->_exit_usage( 2 );
-   $self->version      and $self->_exit_version;
+   $self->help_usage   and $self->$_exit_usage( 0 );
+   $self->help_options and $self->$_exit_usage( 1 );
+   $self->help_manual  and $self->$_exit_usage( 2 );
+   $self->version      and $self->$_exit_version;
 
-   $self->_set_debug( $self->_get_debug_option );
+   $self->_set_debug( $self->$_get_debug_option );
    return;
 }
 
@@ -156,12 +305,12 @@ sub _build__os {
 }
 
 sub _build__run_method {
-   my $self = shift; my $method = __dash2underscore( $self->method );
+   my $self = shift; my $method = $_dash2underscore->( $self->method );
 
    unless ($self->can_call( $method )) {
-      $method = __dash2underscore( $self->extra_argv( 0 ) );
+      $method = $_dash2underscore->( $self->extra_argv( 0 ) );
       $method = $self->can_call( $method )
-              ? __dash2underscore( $self->next_argv ) : NUL;
+              ? $_dash2underscore->( $self->next_argv ) : NUL;
    }
 
    $method ||= 'run_chain';
@@ -187,8 +336,12 @@ sub add_leader {
 }
 
 sub can_call {
-   return ($_[ 1 ] && $_[ 0 ]->can( $_[ 1 ] )
-           && (is_member $_[ 1 ], __list_methods_of( $_[ 0 ] ))) ? TRUE : FALSE;
+   my ($self, $method) = @_; state $cache = {}; $method or return FALSE;
+
+   exists $cache->{ $method } and return $cache->{ $method };
+
+   return $cache->{ $method }
+      = (is_member $method, $_list_methods_of->( $self )) ? TRUE : FALSE;
 }
 
 sub debug_flag {
@@ -210,8 +363,8 @@ sub error {
    $self->log->error( $_ ) for (split m{ \n }mx, "${text}");
 
    emit_to *STDERR, $self->add_leader( $text, $args )."\n";
-   $self->debug and __output_stacktrace( $err, $self->verbose );
-   return;
+   $self->debug and $_output_stacktrace->( $err, $self->verbose );
+   return TRUE;
 }
 
 sub fatal {
@@ -224,12 +377,12 @@ sub fatal {
    $self->log->alert( $_ ) for (split m{ \n }mx, $text.$posn);
 
    emit_to *STDERR, $self->add_leader( $text, $args ).$posn."\n";
-   __output_stacktrace( $err, $self->verbose );
+   $_output_stacktrace->( $err, $self->verbose );
    exit FAILED;
 }
 
 sub help : method {
-   my $self = shift; $self->_output_usage( 0 ); return OK;
+   my $self = shift; $self->$_output_usage( 0 ); return OK;
 }
 
 sub info {
@@ -242,7 +395,7 @@ sub info {
    $self->log->info( $_ ) for (split m{ [\n] }mx, $text);
 
    $self->quiet or emit $self->add_leader( $text, $args );
-   return;
+   return TRUE;
 }
 
 sub interpolate_cmd {
@@ -256,16 +409,16 @@ sub interpolate_cmd {
 sub list_methods : method {
    my $self = shift; my $abstract = {}; my $max = 0;
 
-   my $classes = $self->_get_classes_and_roles;
+   my $classes = $self->$_get_classes_and_roles;
 
-   for my $method (__list_methods_of( $self )) {
+   for my $method ($_list_methods_of->( $self )) {
       my $mlen = length $method; $mlen > $max and $max = $mlen;
 
       for my $class (@{ $classes }) {
          is_member( $method, Class::Inspector->methods( $class, 'public' ))
             or next;
 
-         my $pod = __get_pod_header_for_method( $class, $method ) or next;
+         my $pod = $_get_pod_header_for_method->( $class, $method ) or next;
 
          (not exists $abstract->{ $method }
            or length $pod > length $abstract->{ $method })
@@ -306,7 +459,7 @@ sub output {
    $code->() if $args->{cl};
    $code->( $self->add_leader( $text, $args ) );
    $code->() if $args->{nl};
-   return;
+   return TRUE;
 }
 
 sub quiet {
@@ -334,7 +487,7 @@ sub run {
             or throw 'Method [_1] return value undefined',
                      args  => [ $method ], rv => UNDEFINED_RV;
       }
-      catch { $rv = $self->_catch_run_exception( $method, $_ ) };
+      catch { $rv = $self->$_catch_run_exception( $method, $_ ) };
    }
    else {
       $self->error( 'Class '.(blessed $self)." method ${method} not found" );
@@ -357,10 +510,11 @@ sub run {
 }
 
 sub run_chain {
-   my ($self, $method) = @_; $method or $self->_exit_usage( 0 );
+   my $self = shift;
 
-   $self->fatal( exception "Method ${method} unknown" );
-   return FAILED;
+   $self->error( 'Method unknown' ); $self->$_exit_usage( 0 );
+
+   return; # Not reached
 }
 
 sub warning {
@@ -371,155 +525,7 @@ sub warning {
    $self->log->warn( $_ ) for (split m{ \n }mx, $text);
 
    $self->quiet or emit $self->add_leader( $text, $args );
-   return;
-}
-
-# Private methods
-sub _apply_stdio_encoding {
-   my $self = shift; my $enc = $self->encoding;
-
-   for (*STDIN, *STDOUT, *STDERR) {
-      $_->opened or next; binmode $_, ":encoding(${enc})";
-   }
-
-   autoflush STDOUT TRUE; autoflush STDERR TRUE;
-   return;
-}
-
-sub _catch_run_exception {
-   my ($self, $method, $error) = @_; my $e;
-
-   unless ($e = exception $error) {
-      $self->error( 'Method [_1] exception without error',
-                    { args => [ $method ] } );
-      return UNDEFINED_RV;
-   }
-
-   $e->out and $self->output( $e->out );
-   $self->error( $e->error, { args => $e->args } );
-
-   return $e->rv || (defined $e->rv ? FAILED : UNDEFINED_RV);
-}
-
-sub _dont_ask {
-   return $_[ 0 ]->debug || $_[ 0 ]->help_usage || $_[ 0 ]->help_options
-       || $_[ 0 ]->help_manual || ! $_[ 0 ]->is_interactive();
-}
-
-sub _exit_usage {
-   $_[ 0 ]->quiet( TRUE ); exit $_[ 0 ]->_output_usage( $_[ 1 ] );
-}
-
-sub _exit_version {
-   $_[ 0 ]->output( 'Version '.$_[ 0 ]->VERSION ); exit OK;
-}
-
-sub _get_classes_and_roles {
-   my $self = shift; my %uniq = (); require mro;
-
-   my @classes = @{ mro::get_linear_isa( blessed $self ) };
-
-   while (my $class = shift @classes) {
-      $uniq{ $class } and next; $uniq{ $class }++;
-
-      exists $Role::Tiny::APPLIED_TO{ $class }
-         and push @classes, keys %{ $Role::Tiny::APPLIED_TO{ $class } };
-   }
-
-   return [ sort keys %uniq ];
-}
-
-sub _get_debug_option {
-   my $self = shift;
-
-   ($self->noask or $self->_dont_ask) and return $self->debug;
-
-   return $self->yorn( 'Do you want debugging turned on', FALSE, TRUE );
-}
-
-sub _man_page_from {
-   my ($self, $src) = @_; my $cfg = $self->config;
-
-   my $parser   = Pod::Man->new( center  => $cfg->doc_title || NUL,
-                                 name    => $cfg->script,
-                                 release => 'Version '.$self->VERSION,
-                                 section => '3m' );
-   my $tempfile = $self->file->tempfile;
-   my $cmd      = $cfg->man_page_cmd || [];
-
-   $parser->parse_from_file( NUL.$src->pathname, $tempfile->pathname );
-   emit $self->run_cmd( [ @{ $cmd }, $tempfile->pathname ] )->out;
-   return OK;
-}
-
-sub _output_usage {
-   my ($self, $verbose) = @_; my $method = $self->next_argv;
-
-   defined $method and $method = untaint_identifier $method;
-
-   $self->can_call( $method ) and return $self->_usage_for( $method );
-
-   $verbose > 1 and return $self->_man_page_from( $self->config );
-
-   $verbose > 0 and pod2usage( { -exitval => OK,
-                                 -input   => NUL.$self->config->pathname,
-                                 -message => SPC,
-                                 -verbose => $verbose } ); # Never returns
-
-   emit_to \*STDERR, $self->options_usage;
-   return FAILED;
-}
-
-sub _usage_for {
-   my ($self, $method) = @_;
-
-   for my $class (@{ $self->_get_classes_and_roles }) {
-      is_member( $method, Class::Inspector->methods( $class, 'public' ) )
-         or next;
-
-      my $selector = Pod::Select->new(); my $tfile = $self->file->tempfile;
-
-      $selector->select( "/${method}.*" );
-      $selector->parse_from_file( find_source $class, $tfile->pathname );
-      $tfile->stat->{size} > 0 and return $self->_man_page_from( $tfile );
-   }
-
-   return FAILED;
-}
-
-# Private functions
-sub __dash2underscore {
-   (my $x = $_[ 0 ]) =~ s{ [\-] }{_}gmx; return $x;
-}
-
-sub __get_pod_header_for_method {
-   my ($class, $method) = @_;
-
-   my $pod = Pod::Eventual::Simple->read_file( find_source $class );
-   my $out = [ grep { $_->{content} =~ m{ (?: ^|[< ]) $method (?: [ >]|$ ) }msx}
-               grep { $_->{type} eq 'command' } @{ $pod } ]->[ 0 ]->{content};
-
-   $out and chomp $out;
-   return $out;
-}
-
-sub __list_methods_of {
-   return map  { s{ \A .+ :: }{}msx; $_ }
-          grep { my $subr = $_;
-                 grep { $_ eq 'method' } attributes::get( \&{ $subr } ) }
-              @{ Class::Inspector->methods
-                    ( blessed $_[ 0 ] || $_[ 0 ], 'full', 'public' ) };
-}
-
-sub __output_stacktrace {
-   my ($e, $verbose) = @_; ($e and blessed $e) or return; $verbose //= 0;
-
-   $verbose > 0 and $e->can( 'trace' )
-      and return emit_to \*STDERR, NUL.$e->trace;
-
-   $e->can( 'stacktrace' ) and emit_to \*STDERR, NUL.$e->stacktrace;
-
-   return;
+   return TRUE;
 }
 
 1;

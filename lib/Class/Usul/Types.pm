@@ -20,126 +20,127 @@ use namespace::clean -except => 'meta';
 
 BEGIN { extends q(Unexpected::Types) };
 
+# Private functions
+my $_exception_message_for_object_reference = sub {
+   return inflate_message 'String [_1] is not an object reference', $_[ 0 ];
+};
+
+my $_exception_message_for_configtype = sub {
+   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
+      'Object [_1] is missing some config attributes', blessed $_[ 0 ];
+
+   return $_exception_message_for_object_reference->( $_[ 0 ] );
+};
+
+my $_exception_message_for_datetime = sub {
+   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
+      'Object [_1] is not of class DateTime', blessed $_[ 0 ];
+
+   return $_exception_message_for_object_reference->( $_[ 0 ] );
+};
+
+my $_exception_message_for_l10ntype = sub {
+   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
+      'Object [_1] is missing the localize method', blessed $_[ 0 ];
+
+   return $_exception_message_for_object_reference->( $_[ 0 ] );
+};
+
+my $_exception_message_for_locktype = sub {
+   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
+      'Object [_1] is missing set / reset methods', blessed $_[ 0 ];
+
+   return $_exception_message_for_object_reference->( $_[ 0 ] );
+};
+
+my $_exception_message_for_logtype = sub {
+   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
+      'Object [_1] is missing a log level method', blessed $_[ 0 ];
+
+   return $_exception_message_for_object_reference->( $_[ 0 ] );
+};
+
+my $_exception_message_for_requesttype = sub {
+   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
+      'Object [_1] is missing a params method', blessed $_[ 0 ];
+
+   return $_exception_message_for_object_reference->( $_[ 0 ] );
+};
+
+my $_has_log_level_methods = sub {
+   my $obj = shift;
+
+   $obj->can( $_ ) or return FALSE for (LOG_LEVELS);
+
+   return TRUE;
+};
+
+my $_has_min_config_attributes = sub {
+   my $obj = shift; my @config_attr = ( qw(appldir home root tempdir vardir) );
+
+   $obj->can( $_ ) or return FALSE for (@config_attr);
+
+   return TRUE;
+};
+
+my $_load_if_exists = sub {
+   if (my $class = shift) {
+      eval { ensure_class_loaded( $class ) }; exception or return $class;
+   }
+
+   ensure_class_loaded( 'Class::Null' ); return 'Class::Null';
+};
+
+my $_str2date_time = sub {
+   my $str = shift; ensure_class_loaded 'Class::Usul::Time';
+
+   return Class::Usul::Time::str2date_time( $str );
+};
+
+# Type definitions
 class_type BaseType,   { class => 'Class::Usul'         };
 class_type FileType,   { class => 'Class::Usul::File'   };
 class_type IPCType,    { class => 'Class::Usul::IPC'    };
 class_type PromptType, { class => 'Class::Usul::Prompt' };
 
 subtype ConfigType, as Object,
-   where   { __has_min_config_attributes( $_ ) },
-   message { __exception_message_for_configtype( $_ ) };
+   where   { $_has_min_config_attributes->( $_ ) },
+   message { $_exception_message_for_configtype->( $_ ) };
 
 subtype DateTimeType, as Object,
    where   { blessed $_ && $_->isa( 'DateTime' ) },
-   message { __exception_message_for_datetime( $_ ) };
+   message { $_exception_message_for_datetime->( $_ ) };
 
-coerce DateTimeType, from Str, via {  __str2date_time( $_ ) };
+coerce DateTimeType, from Str, via { $_str2date_time->( $_ ) };
 
 subtype EncodingType, as Str,
    where   { find_encoding( $_ ) },
-   message { inflate_message( 'String [_1] is not a valid encoding', $_ ) };
+   message { inflate_message 'String [_1] is not a valid encoding', $_ };
 
 coerce EncodingType, from Undef, via { DEFAULT_ENCODING };
 
 subtype L10NType, as Object,
    where   { $_->can( 'localize' ) },
-   message { __exception_message_for_l10ntype( $_ ) };
+   message { $_exception_message_for_l10ntype->( $_ ) };
 
 subtype LockType, as Object,
    where   { $_->can( 'set' ) and $_->can( 'reset' ) },
-   message { __exception_message_for_locktype( $_ ) };
+   message { $_exception_message_for_locktype->( $_ ) };
 
 subtype LogType, as Object,
-   where   { $_->isa( 'Class::Null' ) or __has_log_level_methods( $_ ) },
-   message { __exception_message_for_logtype( $_ ) };
+   where   { $_->isa( 'Class::Null' ) or $_has_log_level_methods->( $_ ) },
+   message { $_exception_message_for_logtype->( $_ ) };
 
 subtype NullLoadingClass, as ClassName,
    where   { is_class_loaded( $_ ) };
 
 coerce NullLoadingClass,
-   from Str,   via { __load_if_exists( $_  ) },
-   from Undef, via { __load_if_exists( NUL ) };
+   from Str,   via { $_load_if_exists->( $_  ) },
+   from Undef, via { $_load_if_exists->( NUL ) };
 
 subtype RequestType, as Object,
    where   { $_->can( 'params' ) },
-   message { __exception_message_for_requesttype( $_ ) };
-
-# Private functions
-sub __exception_message_for_configtype {
-   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
-      ( 'Object [_1] is missing some config attributes', blessed $_[ 0 ] );
-
-   return __exception_message_for_object_reference( $_[ 0 ] );
-}
-
-sub __exception_message_for_datetime {
-   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
-      ( 'Object [_1] is not of class DateTime', blessed $_[ 0 ] );
-
-   return __exception_message_for_object_reference( $_[ 0 ] );
-}
-
-sub __exception_message_for_l10ntype {
-   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
-      ( 'Object [_1] is missing the localize method', blessed $_[ 0 ] );
-
-   return __exception_message_for_object_reference( $_[ 0 ] );
-}
-
-sub __exception_message_for_locktype {
-   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
-      ( 'Object [_1] is missing set / reset methods', blessed $_[ 0 ] );
-
-   return __exception_message_for_object_reference( $_[ 0 ] );
-}
-
-sub __exception_message_for_logtype {
-   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
-      ( 'Object [_1] is missing a log level method', blessed $_[ 0 ] );
-
-   return __exception_message_for_object_reference( $_[ 0 ] );
-}
-
-sub __exception_message_for_object_reference {
-   return inflate_message( 'String [_1] is not an object reference', $_[ 0 ] );
-}
-
-sub __exception_message_for_requesttype {
-   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
-      ( 'Object [_1] is missing a params method', blessed $_[ 0 ] );
-
-   return __exception_message_for_object_reference( $_[ 0 ] );
-}
-
-sub __has_log_level_methods {
-   my $obj = shift;
-
-   $obj->can( $_ ) or return FALSE for (LOG_LEVELS);
-
-   return TRUE;
-}
-
-sub __has_min_config_attributes {
-   my $obj = shift; my @config_attr = ( qw(appldir home root tempdir vardir) );
-
-   $obj->can( $_ ) or return FALSE for (@config_attr);
-
-   return TRUE;
-}
-
-sub __load_if_exists {
-   if (my $class = shift) {
-      eval { ensure_class_loaded( $class ) }; exception or return $class;
-   }
-
-   ensure_class_loaded( 'Class::Null' ); return 'Class::Null';
-}
-
-sub __str2date_time {
-   my $str = shift; ensure_class_loaded 'Class::Usul::Time';
-
-   return Class::Usul::Time::str2date_time( $str );
-}
+   message { $_exception_message_for_requesttype->( $_ ) };
 
 1;
 

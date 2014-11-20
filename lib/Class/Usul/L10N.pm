@@ -1,7 +1,6 @@
 package Class::Usul::L10N;
 
 use 5.010001;
-use feature 'state';
 use namespace::autoclean;
 
 use Moo;
@@ -16,6 +15,8 @@ use File::Gettext::Constants qw( CONTEXT_SEP );
 use File::Gettext;
 use File::Spec;
 use Try::Tiny;
+
+my $Domain_Cache = {}; my $Locale_Cache = {};
 
 # Public attributes
 has 'l10n_attributes' => is => 'ro',   isa => HashRef, default => sub { {} };
@@ -42,6 +43,72 @@ has '_use_country'    => is => 'lazy', isa => Bool, builder => sub {
    $_[ 0 ]->l10n_attributes->{use_country} // FALSE },
    reader             => 'use_country';
 
+# Private methods
+my $_extract_lang_from = sub {
+   my ($self, $locale) = @_;
+
+   exists $Locale_Cache->{ $locale } and return $Locale_Cache->{ $locale };
+
+   my $sep  = $self->use_country ? '.' : '_';
+   my $lang = (split m{ \Q$sep\E }msx, $locale.$sep )[ 0 ];
+
+   return $Locale_Cache->{ $locale } = $lang;
+};
+
+my $_load_domains = sub {
+   my ($self, $args) = @_; my $charset;
+
+   assert $self, sub { $args->{locale} }, 'No locale id';
+
+   my $locale = $args->{locale} or return;
+   my $lang   = $self->$_extract_lang_from( $locale );
+   my $names  = $args->{domains} // $args->{domain_names} // $self->domains;
+   my @names  = grep { defined and length } @{ $names };
+   my $key    = $lang.SEP.(join '+', @names );
+
+   defined $Domain_Cache->{ $key } and return $Domain_Cache->{ $key };
+
+   my $attrs  = { %{ $self->l10n_attributes }, builder => $self,
+                  source_name => $self->source_name, };
+
+   defined $self->localedir and $attrs->{localedir} = $self->localedir;
+
+   $locale    =~ m{ \A (?: [a-z][a-z] )
+                       (?: (?:_[A-Z][A-Z] )? \. ( [-_A-Za-z0-9]+ )? )?
+                       (?: \@[-_A-Za-z0-9=;]+ )? \z }msx and $charset = $1;
+   $charset and $attrs->{charset} = $charset;
+
+   my $domain = try   { File::Gettext->new( $attrs )->load( $lang, @names ) }
+                catch { $self->log->error( $_ ); return };
+
+   return $domain ? $Domain_Cache->{ $key } = $domain : undef;
+};
+
+my $_gettext = sub {
+   my ($self, $key, $args) = @_;
+
+   my $count   = $args->{count} || 1;
+   my $default = $args->{no_default} ? NUL : $key;
+   my $domain  = $self->$_load_domains( $args )
+      or return ($default, $args->{plural_key})[ $count > 1 ] || $default;
+   # Select either singular or plural translation
+   my ($nplurals, $plural) = (1, 0);
+
+   if ($count > 1) { # Some languages have more than one plural form
+      ($nplurals, $plural) = $domain->{plural_func}->( $count );
+      defined   $nplurals  or $nplurals = 0;
+      defined    $plural   or  $plural  = 0;
+      $plural > $nplurals and  $plural  = $nplurals;
+   }
+
+   my $id   = defined $args->{context}
+            ? $args->{context}.CONTEXT_SEP.$key : $key;
+   my $msgs = $domain->{ $self->source_name } || {};
+   my $msg  = $msgs->{ $id } || {};
+
+   return @{ $msg->{msgstr} || [] }[ $plural ] || $default;
+};
+
 # Construction
 around 'BUILDARGS' => sub {
    my ($orig, $class, @args) = @_; my $attr = $orig->( $class, @args );
@@ -64,14 +131,14 @@ around 'BUILDARGS' => sub {
 sub get_po_header {
    my ($self, $args) = @_;
 
-   my $domain = $self->_load_domains( $args // {} ) or return {};
+   my $domain = $self->$_load_domains( $args // {} ) or return {};
    my $header = $domain->{po_header} or return {};
 
    return $header->{msgstr} || {};
 }
 
 sub invalidate_cache {
-   $_[ 0 ]->_invalidate_cache; return;
+   $Domain_Cache = {}; return;
 }
 
 sub localize {
@@ -80,7 +147,7 @@ sub localize {
    $key or return; $key = "${key}"; chomp $key; $args //= {};
 
    # Lookup the message using the supplied key from the po file
-   my $text = $self->_gettext( $key, $args );
+   my $text = $self->$_gettext( $key, $args );
 
    if (is_arrayref $args->{params}) {
       0 > index $text, LOCALIZE and return $text;
@@ -112,79 +179,6 @@ sub localizer {
    $args->{locale} //= $locale;
 
    return $self->localize( $key, $args );
-}
-
-# Private methods
-sub _extract_lang_from {
-   my ($self, $locale) = @_; state $cache ||= {};
-
-   defined $cache->{ $locale } and return $cache->{ $locale };
-
-   my $sep  = $self->use_country ? '.' : '_';
-   my $lang = (split m{ \Q$sep\E }msx, $locale.$sep )[ 0 ];
-
-   return $cache->{ $locale } = $lang;
-}
-
-sub _gettext {
-   my ($self, $key, $args) = @_;
-
-   my $count   = $args->{count} || 1;
-   my $default = $args->{no_default} ? NUL : $key;
-   my $domain  = $self->_load_domains( $args )
-      or return ($default, $args->{plural_key})[ $count > 1 ] || $default;
-   # Select either singular or plural translation
-   my ($nplurals, $plural) = (1, 0);
-
-   if ($count > 1) { # Some languages have more than one plural form
-      ($nplurals, $plural) = $domain->{plural_func}->( $count );
-      defined   $nplurals  or $nplurals = 0;
-      defined    $plural   or  $plural  = 0;
-      $plural > $nplurals and  $plural  = $nplurals;
-   }
-
-   my $id   = defined $args->{context}
-            ? $args->{context}.CONTEXT_SEP.$key : $key;
-   my $msgs = $domain->{ $self->source_name } || {};
-   my $msg  = $msgs->{ $id } || {};
-
-   return @{ $msg->{msgstr} || [] }[ $plural ] || $default;
-}
-
-{  my $cache = {};
-
-   sub _invalidate_cache {
-      $cache = {};
-   }
-
-   sub _load_domains {
-      my ($self, $args) = @_; my $charset;
-
-      assert $self, sub { $args->{locale} }, 'No locale id';
-
-      my $locale = $args->{locale} or return;
-      my $lang   = $self->_extract_lang_from( $locale );
-      my $names  = $args->{domains} // $args->{domain_names} // $self->domains;
-      my @names  = grep { defined and length } @{ $names };
-      my $key    = $lang.SEP.(join '+', @names );
-
-      defined $cache->{ $key } and return $cache->{ $key };
-
-      my $attrs  = { %{ $self->l10n_attributes }, builder => $self,
-                     source_name => $self->source_name, };
-
-      defined $self->localedir and $attrs->{localedir} = $self->localedir;
-
-      $locale    =~ m{ \A (?: [a-z][a-z] )
-                          (?: (?:_[A-Z][A-Z] )? \. ( [-_A-Za-z0-9]+ )? )?
-                          (?: \@[-_A-Za-z0-9=;]+ )? \z }msx and $charset = $1;
-      $charset and $attrs->{charset} = $charset;
-
-      my $domain = try   { File::Gettext->new( $attrs )->load( $lang, @names ) }
-                   catch { $self->log->error( $_ ); return };
-
-      return $domain ? $cache->{ $key } = $domain : undef;
-   }
 }
 
 1;
