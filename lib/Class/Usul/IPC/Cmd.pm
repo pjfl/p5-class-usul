@@ -135,13 +135,13 @@ my $_drain = sub { # Suck up the output from the child process
 };
 
 my $_err_handler = sub {
-   my ($err, $flt_ref, $std_ref) = @_;
+   my ($err, $filtered, $standard) = @_;
 
    return sub {
       my $buf = shift; defined $buf or return;
 
-      $err eq 'out'    and ${ $flt_ref } .= $buf;
-      $err ne 'null'   and ${ $std_ref } .= $buf;
+      $err eq 'out'    and ${ $filtered } .= $buf;
+      $err ne 'null'   and ${ $standard } .= $buf;
       $err eq 'stderr' and emit_to \*STDERR, $buf;
       return;
    }
@@ -167,13 +167,13 @@ my $_has_shell_meta = sub {
 };
 
 my $_out_handler = sub {
-   my ($out, $flt_ref, $std_ref) = @_;
+   my ($out, $filtered, $standard) = @_;
 
    return sub {
       my $buf = shift; defined $buf or return;
 
-      $out ne 'null'   and ${ $flt_ref } .= $buf;
-      $out ne 'null'   and ${ $std_ref } .= $buf;
+      $out ne 'null'   and ${ $filtered } .= $buf;
+      $out ne 'null'   and ${ $standard } .= $buf;
       $out eq 'stdout' and emit_to \*STDOUT, $buf;
       return;
    }
@@ -342,9 +342,9 @@ my $_redirect_child_io = sub {
 
    my $in = $self->in; my $out = $self->out; my $err = $self->err;
 
-   if ($self->async or $self->detach) {
-      $in ||= 'null'; $out ||= 'null'; $err ||= 'null';
-   }
+   $in ||= 'null';
+
+   if ($self->async or $self->detach) { $out ||= 'null'; $err ||= 'null' }
 
    $_redirect_stdin->(  (   blessed $in) ? "${in}"
                      :  ($in  eq 'null') ? devnull
@@ -422,15 +422,13 @@ my $_execute_coderef = sub {
 my $_wait_for_child = sub {
    my ($self, $pid, $pipes) = @_;
 
-   my ($fltout, $stderr, $stdout) = (NUL, NUL, NUL);
+   my ($filtered, $stderr, $stdout) = (NUL, NUL, NUL);
 
    my $in_fh    = $pipes->[ 0 ]->[ 1 ]; my $out_fh  = $pipes->[ 1 ]->[ 0 ];
    my $err_fh   = $pipes->[ 2 ]->[ 0 ]; my $stat_fh = $pipes->[ 3 ]->[ 0 ];
-   my $err_hand = $_err_handler->( $self->err, \$fltout, \$stderr );
-   my $out_hand = $_out_handler->( $self->out, \$fltout, \$stdout );
+   my $err_hand = $_err_handler->( $self->err, \$filtered, \$stderr );
+   my $out_hand = $_out_handler->( $self->out, \$filtered, \$stdout );
    my $prog     = basename( my $cmd = $self->cmd->[ 0 ] );
-
-   $self->log->debug( "Running ${prog}($pid) using fork and exec" );
 
    try {
       my $tmout = $self->timeout; $tmout and local $SIG{ALRM} = sub {
@@ -449,13 +447,18 @@ my $_wait_for_child = sub {
    my $codes = $self->$_return_codes_or_throw( $cmd, $e_num, $stderr );
 
    return $self->response_class->new
-      (  core   => $codes->{core}, out    => $_filter_out->( $fltout ),
+      (  core   => $codes->{core}, out    => $_filter_out->( $filtered ),
          rv     => $codes->{rv},   sig    => $codes->{sig},
          stderr => $stderr,        stdout => $stdout );
 };
 
 my $_run_cmd_using_fork_and_exec = sub {
-   my $self = shift; my $pipes = $_four_nonblocking_pipe_pairs->();
+   my $self    = shift;
+   my $pipes   = $_four_nonblocking_pipe_pairs->();
+   my $cmd_str = join SPC, map { m{ [ ] }mx ? $_quote->( $_ ) : $_ }
+                              @{ $self->cmd };
+
+   $self->log->debug( "Running ${cmd_str} using fork and exec" );
 
    {  local ($CHILD_ENUM, $CHILD_PID) = (0, 0);
       $self->ignore_zombies and local $SIG{CHLD} = 'IGNORE';
@@ -491,10 +494,9 @@ my $_run_cmd_using_ipc_run = sub {
    my $self = shift; my ($buf_err, $buf_out, $error, $h, $rv) = (NUL, NUL);
 
    my $cmd_ref  = $_partition_command->( my $cmd = $self->cmd );
-   my $cmd_str  = join SPC, @{ $cmd }; $self->async and $cmd_str .= ' &';
    my $prog     = basename( $cmd->[ 0 ] );
    my $null     = devnull;
-   my $in       = $self->in;
+   my $in       = $self->in || 'null';
    my $out      = $self->out;
    my $err      = $self->err;
    my @cmd_args = ();
@@ -512,6 +514,10 @@ my $_run_cmd_using_ipc_run = sub {
    elsif ($err eq 'null')   { push @cmd_args, "2>${null}"     }
    elsif ($err ne 'stderr') { push @cmd_args, '2>', \$buf_err }
 
+   my $cmd_str = join SPC, map { m{ [ ] }mx ? $_quote->( $_ ) : $_ }
+                              @{ $self->cmd }, @cmd_args;
+
+   $self->async and $cmd_str .= ' &';
    $self->log->debug( "Running ${cmd_str} using ipc run" );
 
    try {
@@ -561,11 +567,11 @@ my $_run_cmd_using_ipc_run = sub {
 };
 
 my $_run_cmd_using_open3 = sub { # Robbed in part from IPC::Cmd
-   my ($self, $cmd) = @_; my ($fltout, $stderr, $stdout) = (NUL, NUL, NUL);
+   my ($self, $cmd) = @_; my ($filtered, $stderr, $stdout) = (NUL, NUL, NUL);
 
-   my $err_hand = $_err_handler->( $self->err, \$fltout, \$stderr );
+   my $err_hand = $_err_handler->( $self->err, \$filtered, \$stderr );
 
-   my $out_hand = $_out_handler->( $self->out, \$fltout, \$stdout );
+   my $out_hand = $_out_handler->( $self->out, \$filtered, \$stdout );
 
    $self->log->debug( "Running ${cmd} using open3" ); my $e_num;
 
@@ -592,7 +598,7 @@ my $_run_cmd_using_open3 = sub { # Robbed in part from IPC::Cmd
    my $codes = $self->$_return_codes_or_throw( $cmd, $e_num, $stderr );
 
    return $self->response_class->new
-      (  core   => $codes->{core}, out    => $_filter_out->( $fltout ),
+      (  core   => $codes->{core}, out    => $_filter_out->( $filtered ),
          rv     => $codes->{rv},   sig    => $codes->{sig},
          stderr => $stderr,        stdout => $stdout );
 };
@@ -685,7 +691,7 @@ my $_run_cmd_using_system = sub {
          sig  => $sig,  stderr => $stderr,  stdout => $stdout );
 };
 
-my $_run_cmd = sub {
+my $_run_cmd = sub { # Select one of the implementations
    my $self = shift; my $has_meta = $_has_shell_meta->( my $cmd = $self->cmd );
 
    if (is_arrayref $cmd) {
