@@ -155,10 +155,6 @@ is prefix2class( q(test-application) ), qw(Test::Application), 'prefix2class';
 
 is product( 1, 2, 3, 4 ), 24, 'product';
 
-$path = &Class::Usul::Functions::_read_variable( 't', 'test.sh', 'APPLDIR' );
-
-is $path, '/opt/appname', 'reads variables from shell files';
-
 is split_on__( q(a_b_c), 1 ), q(b), 'split_on__';
 
 is split_on_dash( 'a-b-c', 1 ), 'b', 'split_on_dash';
@@ -194,7 +190,9 @@ SKIP: {
    # TODO: Test with an absolute path for base
 }
 
-eval { throw( error => q(eNoMessage) ) }; my $e = exception;
+eval { throw( error => q(eNoMessage) ) };
+
+my $e = exception; $EVAL_ERROR = undef;
 
 like $e->as_string, qr{ eNoMessage }msx, 'try/throw/catch';
 
@@ -202,17 +200,21 @@ is trim( q(  test string  ) ), q(test string), 'trim - spaces';
 
 is trim( q(/test string/), q(/) ), q(test string), 'trim - other chars';
 
-eval { untaint_cmdline( '&&&' ) }; $e = exception;
+eval { untaint_cmdline( '&&&' ) }; $e = exception; $EVAL_ERROR = undef;
 
 is $e->class, q(Tainted), 'untaint_cmdline';
 
-eval { untaint_identifier( 'no-chance' ) }; $e = exception;
+eval { untaint_identifier( 'no-chance' ) }; $e = exception; $EVAL_ERROR = undef;
 
 is $e->class, q(Tainted), 'untaint_identifier';
 
-eval { untaint_path( '$$$' ) }; $e = exception;
+eval { untaint_path( '$$$' ) }; $e = exception; $EVAL_ERROR = undef;
 
 is $e->class, q(Tainted), 'untaint_path';
+
+eval { untaint_path( 'x$x' ) }; $e = exception; $EVAL_ERROR = undef;
+
+is $e->class, q(Tainted), 'untaint_path - 2';
 
 SKIP: {
    $ENV{AUTHOR_TESTING} or skip 'UUID test only for developers', 1;

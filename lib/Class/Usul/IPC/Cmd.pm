@@ -105,7 +105,7 @@ my $_child_handler; $_child_handler = sub {
    return;
 };
 
-my $_close_child = sub { # In the child, close the parent end of the pipes
+my $_close_child = sub { # In the parent, close the child end of the pipes
    my $pipes = shift;
 
    close $pipes->[ 0 ]->[ 0 ]; undef $pipes->[ 0 ]->[ 0 ];
@@ -430,7 +430,7 @@ my $_wait_for_child = sub {
    my $out_hand = $_out_handler->( $self->out, \$fltout, \$stdout );
    my $prog     = basename( my $cmd = $self->cmd->[ 0 ] );
 
-   $self->log->debug( "Running ${prog}($pid)" );
+   $self->log->debug( "Running ${prog}($pid) using fork and exec" );
 
    try {
       my $tmout = $self->timeout; $tmout and local $SIG{ALRM} = sub {
@@ -488,7 +488,7 @@ my $_run_cmd_using_fork_and_exec = sub {
 };
 
 my $_run_cmd_using_ipc_run = sub {
-   my $self = shift; my ($buf_err, $buf_out, $error, $h, $rv);
+   my $self = shift; my ($buf_err, $buf_out, $error, $h, $rv) = (NUL, NUL);
 
    my $cmd_ref  = $_partition_command->( my $cmd = $self->cmd );
    my $cmd_str  = join SPC, @{ $cmd }; $self->async and $cmd_str .= ' &';
@@ -512,7 +512,7 @@ my $_run_cmd_using_ipc_run = sub {
    elsif ($err eq 'null')   { push @cmd_args, "2>${null}"     }
    elsif ($err ne 'stderr') { push @cmd_args, '2>', \$buf_err }
 
-   $self->log->debug( "Running ${cmd_str}" );
+   $self->log->debug( "Running ${cmd_str} using ipc run" );
 
    try {
       my $tmout = $self->timeout; $tmout and local $SIG{ALRM} = sub {
@@ -567,7 +567,7 @@ my $_run_cmd_using_open3 = sub { # Robbed in part from IPC::Cmd
 
    my $out_hand = $_out_handler->( $self->out, \$fltout, \$stdout );
 
-   $self->log->debug( "Running ${cmd}" ); my $e_num;
+   $self->log->debug( "Running ${cmd} using open3" ); my $e_num;
 
    {  local ($CHILD_ENUM, $CHILD_PID) = (0, 0);
 
@@ -621,7 +621,7 @@ my $_run_cmd_using_system = sub {
                                   : $err ne 'out'  ? " 2>${err}"  : ' 2>&1';
 
    $self->async and $cmd .= ' & echo $! 1>'.$self->pidfile->pathname;
-   $self->log->debug( "Running ${cmd}" );
+   $self->log->debug( "Running ${cmd} using system" );
 
    {  local ($CHILD_ENUM, $CHILD_PID) = (0, 0);
 
@@ -696,7 +696,8 @@ my $_run_cmd = sub {
             and can_load( modules => { 'IPC::Run' => '0.84' } )
             and return $self->$_run_cmd_using_ipc_run;
 
-         $has_meta or return $self->$_run_cmd_using_fork_and_exec;
+         $has_meta or $self->use_system
+            or return $self->$_run_cmd_using_fork_and_exec;
       }
 
       $cmd = join SPC, map { m{ [ ] }mx ? $_quote->( $_ ) : $_ } @{ $cmd };

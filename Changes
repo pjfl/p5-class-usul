@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - More ::Cmd debug output
           - Switched to lexical subroutines for private methods and functions
           - POD Updates
 

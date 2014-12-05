@@ -56,6 +56,126 @@ our %EXPORT_TAGS =   ( all => [ @EXPORT, @EXPORT_OK ], );
 
 my $BSON_Id_Inc : shared = 0;
 
+# Private functions
+my $_base64_char_set = sub {
+   return [ 0 .. 9, 'A' .. 'Z', '_', 'a' .. 'z', '~', '+' ];
+};
+
+my $_bsonid_inc = sub {
+   my ($now, $version) = @_; state $id_inc //= 0; state $prev_time //= 0;
+
+   $version or return substr pack( 'N', $BSON_Id_Inc++ % 0xFFFFFF ), 1, 3;
+
+   $id_inc++; $now > $prev_time and $id_inc = 0; $prev_time = $now;
+
+   $version < 2 and return (substr pack( 'n', thread_id() % 0xFF ), 1, 1)
+                          .(pack 'n', $id_inc % 0xFFFF);
+
+   $version < 3 and return (pack 'n', thread_id() % 0xFFFF )
+                          .(pack 'n', $id_inc % 0xFFFF);
+
+   return (pack 'n', thread_id() % 0xFFFF )
+         .(substr pack( 'N', $id_inc % 0xFFFFFF ), 1, 3);
+};
+
+my $_bsonid_time = sub {
+   my ($now, $version) = @_;
+
+   (not $version or $version < 2) and return pack 'N', $now;
+
+   $version < 3 and return (substr pack( 'N', $now >> 32 ), 2, 2)
+                          .(pack 'N', $now % 0xFFFFFFFF);
+
+   return (pack 'N', $now >> 32).(pack 'N', $now % 0xFFFFFFFF);
+};
+
+my $_catpath = sub {
+   return untaint_path( catfile( @_ ) );
+};
+
+my $_get_env_var_for_conf = sub {
+   my $file = $ENV{ ($_[ 0 ] || return) };
+   my $path = $file ? dirname( $file ) : q();
+
+   return $path = assert_directory( $path ) ? $path : undef;
+};
+
+my $_index64 = sub {
+   return [ qw(XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
+               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
+               XX XX XX XX  XX XX XX XX  XX XX XX 64  XX XX XX XX
+                0  1  2  3   4  5  6  7   8  9 XX XX  XX XX XX XX
+               XX 10 11 12  13 14 15 16  17 18 19 20  21 22 23 24
+               25 26 27 28  29 30 31 32  33 34 35 XX  XX XX XX 36
+               XX 37 38 39  40 41 42 43  44 45 46 47  48 49 50 51
+               52 53 54 55  56 57 58 59  60 61 62 XX  XX XX 63 XX
+
+               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
+               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
+               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
+               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
+               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
+               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
+               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
+               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX) ];
+};
+
+my $_bsonid = sub {
+   my $version = shift;
+   my $now     = time;
+   my $time    = $_bsonid_time->( $now, $version );
+   my $host    = substr md5( hostname ), 0, 3;
+   my $pid     = pack 'n', $$ % 0xFFFF;
+
+   return $time.$host.$pid.$_bsonid_inc->( $now, $version );
+};
+
+my $_find_cfg_in_inc = sub {
+   my ($classdir, $file, $extns) = @_;
+
+   for my $dir (map { catdir( abs_path( $_ ), $classdir ) } @INC) {
+      for my $extn (@{ $extns || [ supported_extensions() ] }) {
+         my $path = $_catpath->( $dir, $file.$extn );
+
+         -f $path and return dirname( $path );
+      }
+   }
+
+   return;
+};
+
+my $_read_variable = sub {
+   my ($dir, $file, $variable) = @_; my $path;
+
+  ($dir and $file and $variable) or return;
+   is_arrayref( $dir ) and $dir = catdir( @{ $dir } );
+   $path = io( $_catpath->( $dir, $file ) )->chomp;
+  ($path->exists and $path->is_file) or return;
+
+   return first   { length }
+          map     { trim( (split '=', $_)[ 1 ] ) }
+          grep    { m{ \A \s* $variable \s* [=] }mx }
+          reverse $path->getlines;
+};
+
+my $_get_file_var = sub {
+   my ($dir, $file, $classdir) = @_;
+
+   my $path; $path = $_read_variable->( $dir, ".${file}", 'APPLDIR' )
+         and $path = catdir( $path, 'lib', $classdir );
+
+   return $path = assert_directory( $path ) ? $path : undef;
+};
+
+my $_get_known_file_var = sub {
+   my ($appname, $classdir) = @_; $appname || return;
+
+   my $path; $path = $_read_variable->( DEFAULT_ENVDIR(), $appname, 'APPLDIR' )
+         and $path = catdir( $path, 'lib', $classdir );
+
+   return $path = assert_directory( $path ) ? $path : undef;
+};
+
 # Construction
 sub _exporter_fail {
     my ($class, $name, $value, $globals) = @_;
@@ -98,7 +218,7 @@ sub assert_directory ($) {
 sub base64_decode_ns ($) {
    my $x = shift; defined $x or return; my @x = split q(), $x;
 
-   my $index = _index64(); my $j = 0; my $k = 0;
+   my $index = $_index64->(); my $j = 0; my $k = 0;
 
    my $len = length $x; my $pad = 64; my @y = ();
 
@@ -133,7 +253,7 @@ sub base64_decode_ns ($) {
 sub base64_encode_ns (;$) {
    my $x = shift; defined $x or return; my @x = split q(), $x;
 
-   my $basis = _base64_char_set(); my $len = length $x; my @y = ();
+   my $basis = $_base64_char_set->(); my $len = length $x; my @y = ();
 
    for (my $i = 0, my $j = 0; $len > 0; $len -= 3, $i += 3) {
       my $c1 = ord $x[ $i ]; my $c2 = $len > 1 ? ord $x[ $i + 1 ] : 0;
@@ -161,7 +281,7 @@ sub base64_encode_ns (;$) {
 }
 
 sub bsonid (;$) {
-   return unpack 'H*', _bsonid( $_[ 0 ] );
+   return unpack 'H*', $_bsonid->( $_[ 0 ] );
 }
 
 sub bsonid_time ($) {
@@ -169,7 +289,7 @@ sub bsonid_time ($) {
 }
 
 sub bson64id (;$) {
-   return base64_encode_ns( _bsonid( 2 ) );
+   return base64_encode_ns( $_bsonid->( 2 ) );
 }
 
 sub bson64id_time ($) {
@@ -269,17 +389,16 @@ sub emit_err (;@) {
 sub emit_to ($;@) {
    my ($handle, @args) = @_; local $OS_ERROR;
 
-   return (print {$handle} @args
-           or throw( 'IO error: [_1]', args =>[ $OS_ERROR ] ));
+   return (print {$handle} @args or throw( 'IO error: [_1]', [ $OS_ERROR ] ));
 }
 
 sub ensure_class_loaded ($;$) {
    my ($class, $opts) = @_; $opts //= {};
 
-   $class or throw( Unspecified, args => [ 'class name' ], level => 2 );
+   $class or throw( Unspecified, [ 'class name' ], level => 2 );
 
-   is_module_name( $class ) or throw( 'String [_1] invalid classname',
-                                      args => [ $class ], level => 2 );
+   is_module_name( $class )
+      or throw( 'String [_1] invalid classname', [ $class ], level => 2 );
 
    not $opts->{ignore_loaded} and is_class_loaded( $class ) and return 1;
 
@@ -287,7 +406,7 @@ sub ensure_class_loaded ($;$) {
 
    is_class_loaded( $class )
       or throw( 'Class [_1] loaded but package undefined',
-                args => [ $class ], level => 2 );
+                [ $class ], level => 2 );
 
    return 1;
 }
@@ -325,24 +444,24 @@ sub find_apphome ($;$$) {
    # 1a.   Environment variable - for application directory
    $path = assert_directory $ENV{ "${env_pref}_HOME" } and return $path;
    # 1b.   Environment variable - for config file
-   $path = _get_env_var_for_conf( "${env_pref}_CONFIG" ) and return $path;
+   $path = $_get_env_var_for_conf->( "${env_pref}_CONFIG" ) and return $path;
    # 2a.   Users XDG_DATA_HOME env variable or XDG default share directory
    $path = $ENV{ 'XDG_DATA_HOME' } || catdir( $my_home, '.local', 'share' );
    $path = assert_directory catdir( $path, $appdir ) and return $path;
    # 2b.   Users home directory - dot file containing shell env variable
-   $path = _get_dot_file_var( $my_home, $app_pref, $classdir ) and return $path;
+   $path = $_get_file_var->( $my_home, $app_pref, $classdir ) and return $path;
    # 2c.   Users home directory - dot directory is apphome
    $path = catdir( $my_home, ".${app_pref}" );
    $path = assert_directory $path and return $path;
    # 3.    Well known path containing shell env file
-   $path = _get_known_file_var( $appdir, $classdir ) and return $path;
+   $path = $_get_known_file_var->( $appdir, $classdir ) and return $path;
    # 4.    Default install prefix
    $path = catdir( @{ PREFIX() }, $appdir, qw( default lib ), $classdir );
    $path = assert_directory $path and return $path;
    # 5a.   Config file found in @INC - underscore as separator
-   $path = _find_conf_in_inc( $classdir, $app_pref, $extns ) and return $path;
+   $path = $_find_cfg_in_inc->( $classdir, $app_pref, $extns ) and return $path;
    # 5b.   Config file found in @INC - dash as separator
-   $path = _find_conf_in_inc( $classdir, $appdir, $extns ) and return $path;
+   $path = $_find_cfg_in_inc->( $classdir, $appdir, $extns ) and return $path;
    # 6.    Pass the default in
    $path = assert_directory $default and return $path;
    # 7.    Default to /tmp
@@ -390,8 +509,7 @@ sub fullname () {
 sub get_cfgfiles ($;$$) {
    my ($appclass, $dirs, $extns) = @_;
 
-   $appclass // throw( Unspecified, args => [ 'application class' ],
-                       level => 2 );
+   $appclass // throw( Unspecified, [ 'application class' ], level => 2 );
    is_arrayref( $dirs ) or $dirs = [ $dirs // curdir ];
 
    my $app_pref = app_prefix   $appclass;
@@ -402,7 +520,7 @@ sub get_cfgfiles ($;$$) {
 
    for my $dir (@{ $dirs }) {
       for my $extn (@{ $extns || [ supported_extensions() ] }) {
-         for my $path (map { _catpath( $dir, $_ ) } "${app_pref}${extn}",
+         for my $path (map { $_catpath->( $dir, $_ ) } "${app_pref}${extn}",
                        "${appdir}${extn}", "${app_pref}${suffix}${extn}",
                        "${appdir}${suffix}${extn}") {
             -f $path and push @paths, $path;
@@ -548,19 +666,19 @@ sub symlink (;$$$) {
    my ($from, $to, $base) = @_;
 
    defined $base and not CORE::length $base and $base = File::Spec->rootdir;
-   $from or throw( Unspecified, args => [ 'path from' ] );
+   $from or throw( Unspecified, [ 'path from' ] );
    $from = io( $from )->absolute( $base );
-   $from->exists or throw( PathNotFound, args => [ "${from}" ] );
-   $to   or throw( Unspecified, args => [ 'path to' ] );
+   $from->exists or throw( PathNotFound, [ "${from}" ] );
+   $to   or throw( Unspecified, [ 'path to' ] );
    $to   = io( $to   )->absolute( $base ); $to->is_link and $to->unlink;
-   $to->exists  and throw( PathAlreadyExists, args => [ "${to}" ] );
+   $to->exists  and throw( PathAlreadyExists, [ "${to}" ] );
    CORE::symlink "${from}", "${to}"
       or throw( 'Symlink from [_1] to [_2] failed: [_3]',
-                args  => [ "${from}", "${to}", $OS_ERROR ] );
+                [ "${from}", "${to}", $OS_ERROR ] );
    return "Symlinked ${from} to ${to}";
 }
 
-sub thread_id {
+sub thread_id () {
    return exists $INC{ 'threads.pm' } ? threads->tid() : 0;
 }
 
@@ -608,7 +726,7 @@ sub untaint_string ($;$) {
    my ($untainted) = $string =~ $regex;
 
    (defined $untainted and $untainted eq $string)
-      or throw( Tainted, args => [ $string ], level => 3 );
+      or throw( Tainted, [ $string ], level => 3 );
 
    return $untainted;
 }
@@ -619,126 +737,6 @@ sub uuid {
 
 sub zip (@) {
    my $p = @_ / 2; return @_[ map { $_, $_ + $p } 0 .. $p - 1 ];
-}
-
-# Private functions
-sub _base64_char_set () {
-   return [ 0 .. 9, 'A' .. 'Z', '_', 'a' .. 'z', '~', '+' ];
-}
-
-sub _bsonid (;$) {
-   my $version = shift;
-   my $now     = time;
-   my $time    = _bsonid_time( $now, $version );
-   my $host    = substr md5( hostname ), 0, 3;
-   my $pid     = pack 'n', $$ % 0xFFFF;
-
-   return $time.$host.$pid._bsonid_inc( $now, $version );
-}
-
-sub _bsonid_inc ($;$) {
-   my ($now, $version) = @_; state $id_inc //= 0; state $prev_time //= 0;
-
-   $version or return substr pack( 'N', $BSON_Id_Inc++ % 0xFFFFFF ), 1, 3;
-
-   $id_inc++; $now > $prev_time and $id_inc = 0; $prev_time = $now;
-
-   $version < 2 and return (substr pack( 'n', thread_id() % 0xFF ), 1, 1)
-                          .(pack 'n', $id_inc % 0xFFFF);
-
-   $version < 3 and return (pack 'n', thread_id() % 0xFFFF )
-                          .(pack 'n', $id_inc % 0xFFFF);
-
-   return (pack 'n', thread_id() % 0xFFFF )
-         .(substr pack( 'N', $id_inc % 0xFFFFFF ), 1, 3);
-}
-
-sub _bsonid_time ($;$) {
-   my ($now, $version) = @_;
-
-   (not $version or $version < 2) and return pack 'N', $now;
-
-   $version < 3 and return (substr pack( 'N', $now >> 32 ), 2, 2)
-                          .(pack 'N', $now % 0xFFFFFFFF);
-
-   return (pack 'N', $now >> 32).(pack 'N', $now % 0xFFFFFFFF);
-}
-
-sub _catpath {
-   return untaint_path( catfile( @_ ) );
-}
-
-sub _find_conf_in_inc {
-   my ($classdir, $file, $extns) = @_;
-
-   for my $dir (map { catdir( abs_path( $_ ), $classdir ) } @INC) {
-      for my $extn (@{ $extns || [ supported_extensions() ] }) {
-         my $path = _catpath( $dir, $file.$extn );
-
-         -f $path and return dirname( $path );
-      }
-   }
-
-   return;
-}
-
-sub _get_dot_file_var {
-   my ($dir, $file, $classdir) = @_;
-
-   my $path; $path = _read_variable( $dir, ".${file}", 'APPLDIR' )
-         and $path = catdir( $path, 'lib', $classdir );
-
-   return $path = assert_directory $path ? $path : undef;
-}
-
-sub _get_env_var_for_conf {
-   my $file = $ENV{ ($_[ 0 ] || return) };
-   my $path = $file ? dirname( $file ) : q();
-
-   return $path = assert_directory $path ? $path : undef;
-}
-
-sub _get_known_file_var {
-   my ($appname, $classdir) = @_; my $path; $appname || return;
-
-   $path = _read_variable( DEFAULT_ENVDIR(), $appname, 'APPLDIR' );
-   $path and $path = catdir( $path, 'lib', $classdir );
-
-   return $path = assert_directory $path ? $path : undef;
-}
-
-sub _index64 () {
-   return [ qw(XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
-               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
-               XX XX XX XX  XX XX XX XX  XX XX XX 64  XX XX XX XX
-                0  1  2  3   4  5  6  7   8  9 XX XX  XX XX XX XX
-               XX 10 11 12  13 14 15 16  17 18 19 20  21 22 23 24
-               25 26 27 28  29 30 31 32  33 34 35 XX  XX XX XX 36
-               XX 37 38 39  40 41 42 43  44 45 46 47  48 49 50 51
-               52 53 54 55  56 57 58 59  60 61 62 XX  XX XX 63 XX
-
-               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
-               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
-               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
-               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
-               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
-               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
-               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
-               XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX) ];
-}
-
-sub _read_variable {
-   my ($dir, $file, $variable) = @_; my $path;
-
-  ($dir and $file and $variable) or return;
-   is_arrayref( $dir ) and $dir = catdir( @{ $dir } );
-   $path = io( _catpath( $dir, $file ) )->chomp;
-  ($path->exists and $path->is_file) or return;
-
-   return first   { length }
-          map     { trim( (split '=', $_)[ 1 ] ) }
-          grep    { m{ \A \s* $variable \s* [=] }mx }
-          reverse $path->getlines;
 }
 
 1;

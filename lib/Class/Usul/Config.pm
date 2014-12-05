@@ -279,7 +279,7 @@ sub inflate_path {
 }
 
 sub inflate_paths {
-   my ($self, $attr) = @_;
+   my ($self, $attr) = @_; $attr or return;
 
    for my $name (keys %{ $attr }) {
       defined $attr->{ $name }
@@ -291,7 +291,7 @@ sub inflate_paths {
 }
 
 sub inflate_symbol {
-   my ($self, $attr, $symbol) = @_; $attr ||= {};
+   my ($self, $attr, $symbol) = @_; $attr ||= {}; $symbol or return;
 
    my $attr_name = lc $symbol; my $method = "_build_${attr_name}";
 
