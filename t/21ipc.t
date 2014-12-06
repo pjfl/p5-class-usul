@@ -91,14 +91,6 @@ $cmd = "${perl} -e \"die q(In a pit of fire)\"";
 like popen_test( 'out', $cmd ), qr{ pit \s+ of \s+ fire }msx,
    'popen - expected error string';
 
-SKIP: {
-   $osname eq 'mswin32' and skip 'popen capture stdin - not on MSWin32', 1;
-   $cmd = "${perl} -e 'print <>'";
-
-   is popen_test( 'out', $cmd, { in => [ 'some text' ] } ), 'some text',
-      'popen - captures stdin and stdout';
-}
-
 $cmd = "${perl} -e\"warn 'danger'\"";
 
 like popen_test( 'err', $cmd ), qr{ \A danger }mx, 'popen - captures stderr';
@@ -107,6 +99,14 @@ $cmd = "${perl} -e\"sleep 5\"";
 
 is popen_test( q(), $cmd, { timeout => 1 } )->class, 'TimeOut',
    'popen - timeout';
+
+SKIP: {
+   $osname eq 'mswin32' and skip 'popen capture stdin - not on MSWin32', 1;
+   $cmd = "${perl} -e 'print <>'";
+
+   is popen_test( 'out', $cmd, { in => [ 'some text' ] } ), 'some text',
+      'popen - captures stdin';
+}
 
 sub run_cmd_test {
    my $want = shift; my $r = eval { $prog->run_cmd( @_ ) };
@@ -144,6 +144,12 @@ SKIP: {
    is run_cmd_test( q(), $cmd, { timeout => 1, use_system => 1 } )->class,
       'TimeOut', 'system - timeout';
    wait;
+
+   $cmd = "${perl} -e \"print <>\"";
+
+   my $args = { in => 'test', use_system => 1 };
+
+   is run_cmd_test( 'out', $cmd, $args ), 'test', 'system - captures stdin';
 }
 
 SKIP: {
@@ -181,6 +187,12 @@ SKIP: {
    is run_cmd_test( q(), $cmd, { timeout => 1, use_ipc_run => 1 } )->class,
       'TimeOut', 'IPC::Run - timeout';
    wait;
+
+   $cmd = [ $perl, '-e', 'print <>' ];
+
+   my $args = { in => 'test', partition_cmd => 0, use_ipc_run => 1 };
+
+   is run_cmd_test( 'out', $cmd, $args ), 'test', 'IPC::Run - captures stdin';
 }
 
 SKIP: {
@@ -250,6 +262,9 @@ SKIP: {
 
    $r = run_cmd_test( q(), [ '/bin/not_found' ], { expected_rv => 255 } );
    like "${r}", qr{ Can.t \s+ exec }imx, 'fork and exec - traps exec failure';
+
+   is run_cmd_test( 'out', [ $perl, '-e', 'print <>' ], { in => 'test' } ),
+      'test', 'fork and exec - captures stdin';
 }
 
 # This fails on some platforms. The stderr is not redirected as expected

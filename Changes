@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Added the partition_cmd attr to ::Cmd
           - Fixed default closing of stdin in ::Cmd
           - More ::Cmd debug output
           - Switched to lexical subroutines for private methods and functions

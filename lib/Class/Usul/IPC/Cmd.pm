@@ -66,6 +66,8 @@ has 'nap_time'         => is => 'ro',   isa => Num, default => 0.3;
 
 has 'out'              => is => 'ro',   isa => Path | SimpleStr, default => NUL;
 
+has 'partition_cmd'    => is => 'ro',   isa => Bool, default => TRUE;
+
 has 'pidfile'          => is => 'lazy', isa => Path,
    builder             => sub { $_[ 0 ]->rundir->tempfile },
    coerce              => Path->coercion;
@@ -340,21 +342,21 @@ my $_new_async_response = sub {
 my $_redirect_child_io = sub {
    my ($self, $pipes) = @_;
 
-   my $in = $self->in; my $out = $self->out; my $err = $self->err;
-
-   $in ||= 'null';
+   my $in = $self->in || 'null'; my $out = $self->out; my $err = $self->err;
 
    if ($self->async or $self->detach) { $out ||= 'null'; $err ||= 'null' }
 
-   $_redirect_stdin->(  (   blessed $in) ? "${in}"
-                     :  ($in  eq 'null') ? devnull
-                                         : $pipes->[ 0 ]->[ 0 ] );
-   $_redirect_stdout->( (  blessed $out) ? "${out}"
-                      : ($out eq 'null') ? devnull
-                                         : $pipes->[ 1 ]->[ 1 ] );
-   $_redirect_stderr->( (  blessed $err) ? "${err}"
-                      : ($err eq 'null') ? devnull
-                                         : $pipes->[ 2 ]->[ 1 ] );
+   $in  eq 'stdin'
+      or $_redirect_stdin-> ( ($in  eq 'null') ? devnull
+                                               : $pipes->[ 0 ]->[ 0 ] );
+   $out eq 'stdout'
+      or $_redirect_stdout->( (  blessed $out) ? "${out}"
+                            : ($out eq 'null') ? devnull
+                                               : $pipes->[ 1 ]->[ 1 ] );
+   $err eq 'stderr'
+      or $_redirect_stderr->( (  blessed $err) ? "${err}"
+                            : ($err eq 'null') ? devnull
+                                               : $pipes->[ 2 ]->[ 1 ] );
    return;
 };
 
@@ -493,7 +495,8 @@ my $_run_cmd_using_fork_and_exec = sub {
 my $_run_cmd_using_ipc_run = sub {
    my $self = shift; my ($buf_err, $buf_out, $error, $h, $rv) = (NUL, NUL);
 
-   my $cmd_ref  = $_partition_command->( my $cmd = $self->cmd );
+   my $cmd      = $self->cmd;
+   my $cmd_ref  = $self->partition_cmd ? $_partition_command->( $cmd ) : $cmd;
    my $prog     = basename( $cmd->[ 0 ] );
    my $null     = devnull;
    my $in       = $self->in || 'null';
@@ -698,7 +701,7 @@ my $_run_cmd = sub { # Select one of the implementations
       $cmd->[ 0 ] or throw Unspecified, [ 'command' ];
 
       unless (is_win32) {
-         ($has_meta or $self->use_ipc_run)
+        ($has_meta or $self->use_ipc_run)
             and can_load( modules => { 'IPC::Run' => '0.84' } )
             and return $self->$_run_cmd_using_ipc_run;
 
@@ -895,6 +898,12 @@ The object reference should stringify to the name of a file to which standard
 output will be redirected
 
 =back
+
+=item C<partition_cmd>
+
+Boolean default to true. If the L<IPC::Run> implementation is selected the
+command array reference will be partitioned on meta character boundaries
+unless this attribute is set to false
 
 =item C<pidfile>
 
