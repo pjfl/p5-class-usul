@@ -27,6 +27,8 @@ use File::Spec::Functions      qw( canonpath catdir catfile curdir );
 use List::Util                 qw( first );
 use Module::Runtime            qw( is_module_name require_module );
 use Scalar::Util               qw( blessed openhandle );
+use Socket                     qw( AF_UNIX SOCK_STREAM PF_UNSPEC );
+use Symbol;
 use Sys::Hostname              qw( hostname );
 use Unexpected::Functions      qw( is_class_loaded PathAlreadyExists
                                    PathNotFound Tainted Unspecified );
@@ -46,7 +48,7 @@ our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
                        is_hashref is_win32 loginid
                        logname merge_attributes my_prefix
                        nonblocking_write_pipe_pair pad
-                       prefix2class product split_on__ split_on_dash
+                       prefix2class product socket_pair split_on__ split_on_dash
                        squeeze strip_leader sub_name sum symlink thread_id
                        throw throw_on_error trim unescape_TT
                        untaint_cmdline untaint_identifier untaint_path
@@ -636,6 +638,17 @@ sub product (;@) {
    return ((fold { $_[ 0 ] * $_[ 1 ] })->( 1 ))->( @_ );
 }
 
+sub socket_pair () {
+   my $rdr = gensym; my $wtr = gensym;
+
+   socketpair( $rdr, $wtr, AF_UNIX, SOCK_STREAM, PF_UNSPEC )
+     or throw( $EXTENDED_OS_ERROR );
+   shutdown  ( $rdr, 1 );  # No more writing for reader
+   shutdown  ( $wtr, 0 );  # No more reading for writer
+
+   return [ $rdr, $wtr ];
+}
+
 sub split_on__ (;$$) {
    return (split m{ _ }mx, $_[ 0 ] || q())[ $_[ 1 ] || 0 ];
 }
@@ -1135,6 +1148,13 @@ C<ucfirst>s the list and then C<join>s that with I<::>
    $product = product 1, 2, 3, 4;
 
 Returns the product of the list of numbers
+
+=head2 socket_pair
+
+   ($reader, $writer) = @{ socket_pair };
+
+Return a C<socketpair> reader then writer. The writer has been closed on the
+reader and the reader has been closed on the writer
 
 =head2 split_on__
 

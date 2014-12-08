@@ -1,10 +1,14 @@
 Revision history for Class::Usul
 
-          - Added the partition_cmd attr to ::Cmd
+          [ Bug Fixes ]
           - Fixed default closing of stdin in ::Cmd
+
+          [ Enhancements ]
+          - Added socket_pair to ::Functions
+          - Try IPC::Run in ::Cmd on mswin32 if requested and available
+          - Added the partition_cmd attr to ::Cmd
           - More ::Cmd debug output
           - Switched to lexical subroutines for private methods and functions
-          - POD Updates
 
 0.51.1    2014-11-11 14:44:49
           [ Changes ]

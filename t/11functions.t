@@ -155,6 +155,10 @@ is prefix2class( q(test-application) ), qw(Test::Application), 'prefix2class';
 
 is product( 1, 2, 3, 4 ), 24, 'product';
 
+my $pair = socket_pair;
+
+ok defined $pair->[ 0 ] && defined $pair->[ 1 ], 'socket_pair';
+
 is split_on__( q(a_b_c), 1 ), q(b), 'split_on__';
 
 is split_on_dash( 'a-b-c', 1 ), 'b', 'split_on_dash';

@@ -700,14 +700,12 @@ my $_run_cmd = sub { # Select one of the implementations
    if (is_arrayref $cmd) {
       $cmd->[ 0 ] or throw Unspecified, [ 'command' ];
 
-      unless (is_win32) {
-        ($has_meta or $self->use_ipc_run)
-            and can_load( modules => { 'IPC::Run' => '0.84' } )
-            and return $self->$_run_cmd_using_ipc_run;
+     ($has_meta or $self->use_ipc_run)
+        and can_load( modules => { 'IPC::Run' => '0.84' } )
+        and return $self->$_run_cmd_using_ipc_run;
 
-         $has_meta or $self->use_system
-            or return $self->$_run_cmd_using_fork_and_exec;
-      }
+      is_win32 or $has_meta or $self->use_system
+         or return $self->$_run_cmd_using_fork_and_exec;
 
       $cmd = join SPC, map { m{ [ ] }mx ? $_quote->( $_ ) : $_ } @{ $cmd };
    }
