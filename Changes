@@ -1,7 +1,12 @@
 Revision history for Class::Usul
 
+
           [ Bug Fixes ]
+          - Fixed error for no method in ::Programs
           - Fixed default closing of stdin in ::Cmd
+
+          [ Changes ]
+          - Will try IPC::Run in ::Cmd on mswin32
 
           [ Enhancements ]
           - Added socket_pair to ::Functions

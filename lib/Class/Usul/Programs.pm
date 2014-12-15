@@ -121,7 +121,7 @@ has '_run_method' => is => 'lazy', isa => SimpleStr, init_arg => undef,
 
 # Private functions
 my $_dash2underscore = sub {
-   (my $x = $_[ 0 ]) =~ s{ [\-] }{_}gmx; return $x;
+   (my $x = $_[ 0 ] || NUL) =~ s{ [\-] }{_}gmx; return $x;
 };
 
 my $_get_pod_header_for_method = sub {
