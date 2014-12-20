@@ -415,7 +415,7 @@ sub list_methods : method {
       my $mlen = length $method; $mlen > $max and $max = $mlen;
 
       for my $class (@{ $classes }) {
-         is_member( $method, Class::Inspector->methods( $class, 'public' ))
+         is_member( $method, Class::Inspector->methods( $class, 'public' ) )
             or next;
 
          my $pod = $_get_pod_header_for_method->( $class, $method ) or next;

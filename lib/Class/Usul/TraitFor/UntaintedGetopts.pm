@@ -23,7 +23,7 @@ my $_extra_argv = sub {
 my $_extract_params = sub {
    my ($args, $config, $options_data, $cmdline_opt) = @_;
 
-   my @missing_required; my $params = { %{ $args } };
+   my $params = { %{ $args } }; my @missing_required;
 
    my $prefer = $config->{prefer_commandline};
 
