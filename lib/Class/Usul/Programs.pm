@@ -127,7 +127,9 @@ my $_dash2underscore = sub {
 my $_get_pod_header_for_method = sub {
    my ($class, $method) = @_;
 
-   my $pod = Pod::Eventual::Simple->read_file( find_source $class );
+   my $src = find_source $class
+      or throw 'Class [_1] cannot find source', [ $class ];
+   my $pod = Pod::Eventual::Simple->read_file( $src );
    my $out = [ grep { $_->{content} =~ m{ (?: ^|[< ]) $method (?: [ >]|$ ) }msx}
                grep { $_->{type} eq 'command' } @{ $pod } ]->[ 0 ]->{content};
 
@@ -196,6 +198,9 @@ my $_get_classes_and_roles = sub {
    my @classes = @{ mro::get_linear_isa( blessed $self ) };
 
    while (my $class = shift @classes) {
+      $class = (split m{ __WITH__ }mx, $class)[ 0 ];
+      $class =~ m{ ::_BASE \z }mx and next;
+      $class =~ s{ \A Role::Tiny::_COMPOSABLE:: }{}mx;
       $uniq{ $class } and next; $uniq{ $class }++;
 
       exists $Role::Tiny::APPLIED_TO{ $class }
