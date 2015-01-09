@@ -1,7 +1,9 @@
 Revision history for Class::Usul
 
+0.52.1    2015-01-09 23:12:20
 
           [ Bug Fixes ]
+          - Better parsing of @INC in Functions
           - Fixed method listing for composable roles
           - Fixed error for no method in ::Programs
           - Fixed default closing of stdin in ::Cmd
@@ -10,6 +12,7 @@ Revision history for Class::Usul
           - Will try IPC::Run in ::Cmd on mswin32
 
           [ Enhancements ]
+          - Cmd out and err handlers redirect to blessed objects
           - Added socket_pair to ::Functions
           - Try IPC::Run in ::Cmd on mswin32 if requested and available
           - Added the partition_cmd attr to ::Cmd

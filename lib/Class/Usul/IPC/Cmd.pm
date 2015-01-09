@@ -142,6 +142,7 @@ my $_err_handler = sub {
    return sub {
       my $buf = shift; defined $buf or return;
 
+      blessed $err     and $err->append( $buf );
       $err eq 'out'    and ${ $filtered } .= $buf;
       $err ne 'null'   and ${ $standard } .= $buf;
       $err eq 'stderr' and emit_to \*STDERR, $buf;
@@ -174,6 +175,7 @@ my $_out_handler = sub {
    return sub {
       my $buf = shift; defined $buf or return;
 
+      blessed $out     and $out->append( $buf );
       $out ne 'null'   and ${ $filtered } .= $buf;
       $out ne 'null'   and ${ $standard } .= $buf;
       $out eq 'stdout' and emit_to \*STDOUT, $buf;
@@ -1017,7 +1019,7 @@ Peter Flanigan, C<< <pjfl@cpan.org> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2014 Peter Flanigan. All rights reserved
+Copyright (c) 2015 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

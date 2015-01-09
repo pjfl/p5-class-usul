@@ -135,7 +135,8 @@ my $_bsonid = sub {
 my $_find_cfg_in_inc = sub {
    my ($classdir, $file, $extns) = @_;
 
-   for my $dir (map { catdir( abs_path( $_ ), $classdir ) } @INC) {
+   for my $dir (grep { defined and -d $_ }
+                map  { abs_path( catdir( $_, $classdir ) ) } @INC) {
       for my $extn (@{ $extns || [ supported_extensions() ] }) {
          my $path = $_catpath->( $dir, $file.$extn );
 
@@ -1320,7 +1321,7 @@ Peter Flanigan, C<< <pjfl@cpan.org> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2014 Peter Flanigan. All rights reserved
+Copyright (c) 2015 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>
