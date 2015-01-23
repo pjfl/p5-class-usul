@@ -1,7 +1,8 @@
 Revision history for Class::Usul
 
-0.52.1    2015-01-09 23:12:20
+          - Removed CatalystX references from POD
 
+0.52.1    2015-01-09 23:12:20
           [ Bug Fixes ]
           - Better parsing of @INC in Functions
           - Fixed method listing for composable roles

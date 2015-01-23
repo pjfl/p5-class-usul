@@ -761,13 +761,13 @@ __END__
 
 =head1 Name
 
-CatalystX::Usul::Functions - Globally accessible functions
+Class::Usul::Functions - Globally accessible functions
 
 =head1 Synopsis
 
    package MyBaseClass;
 
-   use CatalystX::Usul::Functions;
+   use Class::Usul::Functions qw( functions to import );
 
 =head1 Description
 
@@ -974,7 +974,7 @@ sequences too, so unescaping isn't absolutely necessary
    $e = exception $error;
 
 Expose the C<catch> method in the exception
-class L<CatalystX::Usul::Exception>. Returns a new error object
+class L<Class::Usul::Exception>. Returns a new error object
 
 =head2 find_apphome
 
@@ -1244,21 +1244,21 @@ Do the reverse of C<escape_TT>
    $untainted_cmdline = untaint_cmdline $maybe_tainted_cmdline;
 
 Returns an untainted command line string. Calls L</untaint_string> with the
-matching regex from L<CatalystX::Usul::Constants>
+matching regex from L<Class::Usul::Constants>
 
 =head2 untaint_identifier
 
    $untainted_identifier = untaint_identifier $maybe_tainted_identifier;
 
 Returns an untainted identifier string. Calls L</untaint_string> with the
-matching regex from L<CatalystX::Usul::Constants>
+matching regex from L<Class::Usul::Constants>
 
 =head2 untaint_path
 
    $untainted_path = untaint_path $maybe_tainted_path;
 
 Returns an untainted file path. Calls L</untaint_string> with the
-matching regex from L<CatalystX::Usul::Constants>
+matching regex from L<Class::Usul::Constants>
 
 =head2 untaint_string
 
@@ -1290,7 +1290,7 @@ None
 
 =over 3
 
-=item L<CatalystX::Usul::Constants>
+=item L<Class::Usul::Constants>
 
 =item L<Data::Printer>
 
