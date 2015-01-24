@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Refactored tests. Added t::boilerplate
           - Removed CatalystX references from POD
 
 0.52.1    2015-01-09 23:12:20
