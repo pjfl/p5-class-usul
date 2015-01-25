@@ -3,11 +3,11 @@ package Class::Usul::Config::Programs;
 use namespace::autoclean;
 
 use Moo;
-use Class::Usul::Constants qw( MODE );
+use Class::Usul::Constants qw( MODE TRUE );
 use Class::Usul::Types     qw( ArrayRef Bool NonEmptySimpleStr
                                NonZeroPositiveInt PositiveInt );
 use File::Basename         qw( basename );
-use File::DataClass::Types qw( Path );
+use File::DataClass::Types qw( Path OctalNum );
 use File::HomeDir;
 
 extends q(Class::Usul::Config);
@@ -18,7 +18,8 @@ has 'doc_title'    => is => 'ro',   isa => NonEmptySimpleStr,
 has 'man_page_cmd' => is => 'ro',   isa => ArrayRef,
    default         => sub { [ 'nroff', '-man' ] };
 
-has 'mode'         => is => 'ro',   isa => PositiveInt, default => MODE;
+has 'mode'         => is => 'ro',   isa => OctalNum, coerce => TRUE,
+   default         => MODE;
 
 has 'my_home'      => is => 'lazy', isa => Path, coerce => Path->coercion,
    default         => sub { File::HomeDir->my_home };

@@ -35,7 +35,7 @@ sub HASH     () { q(HASH)    }
 sub LANG     () { q(en)      }
 sub LBRACE   () { q({)       }
 sub LOCALIZE () { q([_)      }
-sub MODE     () { oct q(027) }
+sub MODE     () { q(027)     }
 sub NO       () { q(n)       }
 sub NUL      () { q()        }
 sub OK       () { 0          }

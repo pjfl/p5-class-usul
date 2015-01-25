@@ -21,7 +21,7 @@ use Class::Usul::Types     qw( ArrayRef Bool EncodingType FileType HashRef
 use Config;
 use English                qw( -no_match_vars );
 use File::Basename         qw( dirname );
-use File::DataClass::Types qw( Directory );
+use File::DataClass::Types qw( Directory OctalNum );
 use List::Util             qw( first );
 use Pod::Eventual::Simple;
 use Pod::Man;
@@ -95,7 +95,7 @@ has 'meta_class'  => is => 'lazy', isa => LoadableClass,
    default        => 'Class::Usul::Response::Meta',
    coerce         => LoadableClass->coercion;
 
-has 'mode'        => is => 'rw',   isa => PositiveInt,
+has 'mode'        => is => 'rw',   isa => OctalNum, coerce => TRUE,
    default        => sub { $_[ 0 ]->config->mode }, lazy => TRUE;
 
 has 'params'      => is => 'ro',   isa => HashRef, default => sub { {} };

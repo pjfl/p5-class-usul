@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Made Config::mode type OctalNum and Constant::mode a string
           - Refactored tests. Added t::boilerplate
           - Removed CatalystX references from POD
 
