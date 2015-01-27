@@ -23,9 +23,6 @@ use English                qw( -no_match_vars );
 use File::Basename         qw( dirname );
 use File::DataClass::Types qw( Directory OctalNum );
 use List::Util             qw( first );
-use Pod::Eventual::Simple;
-use Pod::Man;
-use Pod::Usage;
 use Scalar::Util           qw( blessed );
 use Text::Autoformat;
 use Try::Tiny;
@@ -83,13 +80,13 @@ option 'quiet'        => is => 'ro',   isa => Bool, default => FALSE,
    documentation      => 'Quiet the display of information messages',
    reader             => 'quiet_flag', short => 'q';
 
+option 'show_version' => is => 'ro',   isa => Bool, default => FALSE,
+   documentation      => 'Displays the version number of the program class',
+   short              => 'V';
+
 option 'verbose'      => is => 'ro',   isa => Int,  default => 0,
    documentation      => 'Increase the verbosity of the output',
    repeatable         => TRUE, short => 'v';
-
-option 'version'      => is => 'ro',   isa => Bool, default => FALSE,
-   documentation      => 'Displays the version number of the program class',
-   short              => 'V';
 
 has 'meta_class'  => is => 'lazy', isa => LoadableClass,
    default        => 'Class::Usul::Response::Meta',
@@ -188,10 +185,6 @@ my $_dont_ask = sub {
        || $_[ 0 ]->help_manual || ! $_[ 0 ]->is_interactive();
 };
 
-my $_exit_version = sub {
-   $_[ 0 ]->output( 'Version '.$_[ 0 ]->VERSION ); exit OK;
-};
-
 my $_get_classes_and_roles = sub {
    my $self = shift; my %uniq = (); require mro;
 
@@ -218,12 +211,20 @@ my $_get_debug_option = sub {
    return $self->yorn( 'Do you want debugging turned on', FALSE, TRUE );
 };
 
+my $_version = sub {
+   my $self = shift; return $self->VERSION // '?';
+};
+
+my $_exit_version = sub {
+   $_[ 0 ]->output( 'Version '.$_[ 0 ]->$_version ); exit OK;
+};
+
 my $_man_page_from = sub {
-   my ($self, $src) = @_; my $cfg = $self->config;
+   my ($self, $src) = @_; my $cfg = $self->config; require Pod::Man;
 
    my $parser   = Pod::Man->new( center  => $cfg->doc_title || NUL,
                                  name    => $cfg->script,
-                                 release => 'Version '.$self->VERSION,
+                                 release => 'Version '.$self->$_version,
                                  section => '3m' );
    my $tempfile = $self->file->tempfile;
    my $cmd      = $cfg->man_page_cmd || [];
@@ -240,9 +241,11 @@ my $_usage_for = sub {
       is_member( $method, Class::Inspector->methods( $class, 'public' ) )
          or next;
 
+      require Pod::Select;
+
       my $selector = Pod::Select->new(); my $tfile = $self->file->tempfile;
 
-      $selector->select( "/${method}.*" );
+      $selector->select( "/(?:[A-Z][\<])?${method}.*" );
       $selector->parse_from_file( find_source $class, $tfile->pathname );
       $tfile->stat->{size} > 0 and return $self->$_man_page_from( $tfile );
    }
@@ -259,10 +262,11 @@ my $_output_usage = sub {
 
    $verbose > 1 and return $self->$_man_page_from( $self->config );
 
-   $verbose > 0 and pod2usage( { -exitval => OK,
-                                 -input   => NUL.$self->config->pathname,
-                                 -message => SPC,
-                                 -verbose => $verbose } ); # Never returns
+   require Pod::Usage; $verbose > 0 and Pod::Usage::pod2usage
+      ( { -exitval => OK,
+          -input   => NUL.$self->config->pathname,
+          -message => SPC,
+          -verbose => $verbose } ); # Never returns
 
    emit_to \*STDERR, $self->options_usage;
    return FAILED;
@@ -291,7 +295,7 @@ sub BUILD {
    $self->help_usage   and $self->$_exit_usage( 0 );
    $self->help_options and $self->$_exit_usage( 1 );
    $self->help_manual  and $self->$_exit_usage( 2 );
-   $self->version      and $self->$_exit_version;
+   $self->show_version and $self->$_exit_version;
 
    $self->_set_debug( $self->$_get_debug_option );
    return;
@@ -412,9 +416,9 @@ sub interpolate_cmd {
 }
 
 sub list_methods : method {
-   my $self = shift; my $abstract = {}; my $max = 0;
+   my $self = shift; require Pod::Eventual::Simple;
 
-   my $classes = $self->$_get_classes_and_roles;
+   my $abstract = {}; my $max = 0; my $classes = $self->$_get_classes_and_roles;
 
    for my $method ($_list_methods_of->( $self )) {
       my $mlen = length $method; $mlen > $max and $max = $mlen;
@@ -478,7 +482,7 @@ sub quiet {
 sub run {
    my $self  = shift; my $method = $self->run_method; my $rv;
 
-   my $text  = 'Started by '.logname.' Version '.($self->VERSION || '?').SPC;
+   my $text  = 'Started by '.logname.' Version '.$self->$_version.SPC;
       $text .= 'Pid '.(abs $PID);
 
    $self->quiet or $self->output( $text ); umask $self->mode;
@@ -603,7 +607,7 @@ from the C<< $self->options >> hash ref
 
 Quietens the usual started/finished information messages
 
-=item C<version>
+=item C<show_version>
 
 Prints the programs version number and exits
 
