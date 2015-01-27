@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Fixed method name in ::Progams::usage
           - Fixed Pod::* usage in ::Programs
           - Renamed version attr to show_version in ::Programs
           - Made Config::mode type OctalNum and Constant::mode a string

@@ -12,7 +12,7 @@ use Class::Usul::File;
 use Class::Usul::Functions qw( abs_path elapsed emit emit_err emit_to
                                exception find_apphome find_source
                                get_cfgfiles is_arrayref is_hashref is_member
-                               logname pad throw untaint_identifier );
+                               logname pad throw untaint_cmdline );
 use Class::Usul::IPC;
 use Class::Usul::Options;
 use Class::Usul::Types     qw( ArrayRef Bool EncodingType FileType HashRef
@@ -256,7 +256,7 @@ my $_usage_for = sub {
 my $_output_usage = sub {
    my ($self, $verbose) = @_; my $method = $self->next_argv;
 
-   defined $method and $method = untaint_identifier $method;
+   defined $method and $method = $_dash2underscore->( untaint_cmdline $method );
 
    $self->can_call( $method ) and return $self->$_usage_for( $method );
 
