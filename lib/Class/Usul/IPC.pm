@@ -17,9 +17,8 @@ use Unexpected::Functions     qw( Unspecified );
 # Public attributes
 has 'cache_ttys'  => is => 'ro',   isa => Bool, default => TRUE;
 
-has 'table_class' => is => 'lazy', isa => LoadableClass,
-   default        => 'Class::Usul::Response::Table',
-   coerce         => LoadableClass->coercion;
+has 'table_class' => is => 'lazy', isa => LoadableClass, coerce => TRUE,
+   default        => 'Class::Usul::Response::Table';
 
 # Private attributes
 has '_usul'       => is => 'ro', isa => BaseType,

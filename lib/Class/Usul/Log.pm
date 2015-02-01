@@ -26,12 +26,11 @@ has '_log'            => is => 'lazy', isa => LogType, init_arg => 'log';
 has '_log_attributes' => is => 'ro',   isa => HashRef, default => sub { {} },
    init_arg           => 'log_attributes';
 
-has '_log_class'      => is => 'lazy', isa => LoadableClass,
-   coerce             => LoadableClass->coercion, default => 'Log::Handler',
-   init_arg           => 'log_class';
+has '_log_class'      => is => 'lazy', isa => LoadableClass, coerce => TRUE,
+   default            => 'Log::Handler', init_arg => 'log_class';
 
-has '_logfile'        => is => 'ro',   isa => Path | Undef,
-   coerce             => Path->coercion, init_arg => 'logfile';
+has '_logfile'        => is => 'ro',   isa => Path | Undef, coerce => TRUE,
+   init_arg           => 'logfile';
 
 around 'BUILDARGS' => sub {
    my ($orig, $class, @args) = @_; my $attr = $orig->( $class, @args );

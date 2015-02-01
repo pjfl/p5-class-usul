@@ -6,8 +6,8 @@ use namespace::autoclean;
 
 use Moo;
 use Class::Inspector;
-use Class::Usul::Constants qw( BRK FAILED FALSE NUL OK SPC
-                               TRUE UNDEFINED_RV WIDTH );
+use Class::Usul::Constants qw( BRK FAILED FALSE NUL OK
+                               SPC TRUE UNDEFINED_RV WIDTH );
 use Class::Usul::File;
 use Class::Usul::Functions qw( abs_path elapsed emit emit_err emit_to
                                exception find_apphome find_source
@@ -56,8 +56,7 @@ option 'help_usage'   => is => 'ro',   isa => Bool, default => FALSE,
 
 option 'home'         => is => 'lazy', isa => Directory, format => 's',
    documentation      => 'Directory containing the configuration file',
-   default            => sub { $_[ 0 ]->config->home },
-   coerce             => Directory->coercion;
+   default            => sub { $_[ 0 ]->config->home }, coerce  => TRUE;
 
 option 'locale'       => is => 'ro',   isa => SimpleStr, format => 's',
    documentation      => 'Loads the specified language message catalogue',
@@ -88,9 +87,8 @@ option 'verbose'      => is => 'ro',   isa => Int,  default => 0,
    documentation      => 'Increase the verbosity of the output',
    repeatable         => TRUE, short => 'v';
 
-has 'meta_class'  => is => 'lazy', isa => LoadableClass,
-   default        => 'Class::Usul::Response::Meta',
-   coerce         => LoadableClass->coercion;
+has 'meta_class'  => is => 'lazy', isa => LoadableClass, coerce => TRUE,
+   default        => 'Class::Usul::Response::Meta';
 
 has 'mode'        => is => 'rw',   isa => OctalNum, coerce => TRUE,
    default        => sub { $_[ 0 ]->config->mode }, lazy => TRUE;

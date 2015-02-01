@@ -24,39 +24,36 @@ use Scalar::Util             qw( blessed );
 # Public attributes
 has 'appclass'  => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;
 
-has 'appldir'   => is => 'lazy', isa => Directory,
-   coerce       => Directory->coercion;
+has 'appldir'   => is => 'lazy', isa => Directory, coerce => TRUE;
 
-has 'binsdir'   => is => 'lazy', isa => Path, coerce => Path->coercion;
+has 'binsdir'   => is => 'lazy', isa => Path, coerce => TRUE;
 
 has 'cfgfiles'  => is => 'lazy', isa => ArrayRef[NonEmptySimpleStr],
    builder      => sub { [] };
 
-has 'ctlfile'   => is => 'lazy', isa => Path, coerce => Path->coercion;
+has 'ctlfile'   => is => 'lazy', isa => Path, coerce => TRUE;
 
-has 'ctrldir'   => is => 'lazy', isa => Path, coerce => Path->coercion;
+has 'ctrldir'   => is => 'lazy', isa => Path, coerce => TRUE;
 
-has 'encoding'  => is => 'ro',   isa => EncodingType,
-   coerce       => EncodingType->coercion, default => DEFAULT_ENCODING;
+has 'encoding'  => is => 'ro',   isa => EncodingType, coerce => TRUE,
+   default      => DEFAULT_ENCODING;
 
 has 'extension' => is => 'lazy', isa => NonEmptySimpleStr,
    default      => CONFIG_EXTN;
 
-has 'home'      => is => 'lazy', isa => Directory,
-   coerce       => Directory->coercion, default => DEFAULT_CONFHOME;
+has 'home'      => is => 'lazy', isa => Directory, coerce => TRUE,
+   default      => DEFAULT_CONFHOME;
 
 has 'locale'    => is => 'ro',   isa => NonEmptySimpleStr, default => LANG;
 
-has 'localedir' => is => 'lazy', isa => Directory,
-   coerce       => Directory->coercion;
+has 'localedir' => is => 'lazy', isa => Directory, coerce => TRUE;
 
 has 'locales'   => is => 'ro',   isa => ArrayRef[NonEmptySimpleStr],
    builder      => sub { [ LANG ] };
 
-has 'logfile'   => is => 'lazy', isa => Path, coerce => Path->coercion;
+has 'logfile'   => is => 'lazy', isa => Path, coerce => TRUE;
 
-has 'logsdir'   => is => 'lazy', isa => Directory,
-   coerce       => Directory->coercion;
+has 'logsdir'   => is => 'lazy', isa => Directory, coerce => TRUE;
 
 has 'name'      => is => 'lazy', isa => NonEmptySimpleStr;
 
@@ -66,26 +63,25 @@ has 'phase'     => is => 'lazy', isa => PositiveInt;
 
 has 'prefix'    => is => 'lazy', isa => NonEmptySimpleStr;
 
-has 'pathname'  => is => 'lazy', isa => File, coerce => File->coercion;
+has 'pathname'  => is => 'lazy', isa => File, coerce => TRUE;
 
-has 'root'      => is => 'lazy', isa => Path, coerce => Path->coercion;
+has 'root'      => is => 'lazy', isa => Path, coerce => TRUE;
 
-has 'rundir'    => is => 'lazy', isa => Path, coerce => Path->coercion;
+has 'rundir'    => is => 'lazy', isa => Path, coerce => TRUE;
 
 has 'salt'      => is => 'lazy', isa => NonEmptySimpleStr;
 
-has 'sessdir'   => is => 'lazy', isa => Path, coerce => Path->coercion;
+has 'sessdir'   => is => 'lazy', isa => Path, coerce => TRUE;
 
-has 'sharedir'  => is => 'lazy', isa => Path, coerce => Path->coercion;
+has 'sharedir'  => is => 'lazy', isa => Path, coerce => TRUE;
 
-has 'shell'     => is => 'lazy', isa => File, coerce => File->coercion;
+has 'shell'     => is => 'lazy', isa => File, coerce => TRUE;
 
-has 'suid'      => is => 'lazy', isa => Path, coerce => Path->coercion;
+has 'suid'      => is => 'lazy', isa => Path, coerce => TRUE;
 
-has 'tempdir'   => is => 'lazy', isa => Directory,
-   coerce       => Directory->coercion;
+has 'tempdir'   => is => 'lazy', isa => Directory, coerce => TRUE;
 
-has 'vardir'    => is => 'lazy', isa => Path, coerce => Path->coercion;
+has 'vardir'    => is => 'lazy', isa => Path, coerce => TRUE;
 
 has 'l10n_attributes' => is => 'lazy', isa => HashRef,
    builder            => sub { {

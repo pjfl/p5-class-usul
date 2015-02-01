@@ -21,7 +21,7 @@ has 'man_page_cmd' => is => 'ro',   isa => ArrayRef,
 has 'mode'         => is => 'ro',   isa => OctalNum, coerce => TRUE,
    default         => MODE;
 
-has 'my_home'      => is => 'lazy', isa => Path, coerce => Path->coercion,
+has 'my_home'      => is => 'lazy', isa => Path, coerce => TRUE,
    default         => sub { File::HomeDir->my_home };
 
 has 'owner'        => is => 'lazy', isa => NonEmptySimpleStr;

@@ -5,7 +5,7 @@ use namespace::autoclean;
 
 use Moo;
 use Class::Null;
-use Class::Usul::Constants   qw( FALSE LBRACE LOCALIZE NUL SEP );
+use Class::Usul::Constants   qw( FALSE LBRACE LOCALIZE NUL SEP TRUE );
 use Class::Usul::Functions   qw( assert is_arrayref
                                  is_hashref merge_attributes );
 use Class::Usul::Types       qw( ArrayRef Bool HashRef LogType
@@ -21,14 +21,13 @@ my $Domain_Cache = {}; my $Locale_Cache = {};
 # Public attributes
 has 'l10n_attributes' => is => 'ro',   isa => HashRef, default => sub { {} };
 
-has 'localedir'       => is => 'ro',   isa => Path | Undef,
-   coerce             => Path->coercion;
+has 'localedir'       => is => 'ro',   isa => Path | Undef, coerce => TRUE;
 
 has 'log'             => is => 'ro',   isa => LogType,
    default            => sub { Class::Null->new };
 
-has 'tempdir'         => is => 'ro',   isa => Directory,
-   coerce             => Directory->coercion, default => File::Spec->tmpdir;
+has 'tempdir'         => is => 'ro',   isa => Directory, coerce => TRUE,
+   default            => File::Spec->tmpdir;
 
 # Private attributes
 has '_domains'        => is => 'lazy', isa => ArrayRef[Str], builder => sub {

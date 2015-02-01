@@ -3,7 +3,7 @@ package Class::Usul;
 use 5.010001;
 use feature 'state';
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.52.%d', q$Rev: 6 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.53.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants  qw( EXCEPTION_CLASS FALSE TRUE );
@@ -22,8 +22,7 @@ has 'config'       => is => 'lazy', isa => ConfigType, builder => sub {
 has '_config_attr' => is => 'ro',   isa => HashRef, builder => sub { {} },
    init_arg        => 'config';
 
-has 'config_class' => is => 'ro',   isa => LoadableClass,
-   coerce          => LoadableClass->coercion,
+has 'config_class' => is => 'ro',   isa => LoadableClass, coerce => TRUE,
    default         => 'Class::Usul::Config';
 
 has 'debug'        => is => 'lazy', isa => Bool, default => FALSE;
@@ -70,7 +69,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.52.$Rev: 6 $
+Describes Class::Usul version v0.53.$Rev: 1 $
 
 =head1 Synopsis
 

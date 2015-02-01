@@ -68,20 +68,17 @@ has 'out'              => is => 'ro',   isa => Path | SimpleStr, default => NUL;
 
 has 'partition_cmd'    => is => 'ro',   isa => Bool, default => TRUE;
 
-has 'pidfile'          => is => 'lazy', isa => Path,
-   builder             => sub { $_[ 0 ]->rundir->tempfile },
-   coerce              => Path->coercion;
+has 'pidfile'          => is => 'lazy', isa => Path, coerce => TRUE,
+   builder             => sub { $_[ 0 ]->rundir->tempfile };
 
-has 'response_class'   => is => 'lazy', isa => LoadableClass,
-   default             => 'Class::Usul::Response::IPC',
-   coerce              => LoadableClass->coercion;
+has 'response_class'   => is => 'lazy', isa => LoadableClass, coerce => TRUE,
+   default             => 'Class::Usul::Response::IPC';
 
-has 'rundir'           => is => 'lazy', isa => Directory,
-   builder             => sub { $_[ 0 ]->tempdir },
-   coerce              => Directory->coercion;
+has 'rundir'           => is => 'lazy', isa => Directory, coerce => TRUE,
+   builder             => sub { $_[ 0 ]->tempdir };
 
 has 'tempdir'          => is => 'lazy', isa => Directory,
-   builder             => sub { tmpdir }, coerce => Directory->coercion,
+   builder             => sub { tmpdir }, coerce => TRUE,
    handles             => { _tempfile => 'tempfile' };
 
 has 'timeout'          => is => 'ro',   isa => PositiveInt, default => 0;
@@ -91,7 +88,8 @@ has 'use_ipc_run'      => is => 'ro',   isa => Bool, default => FALSE;
 has 'use_system'       => is => 'ro',   isa => Bool, default => FALSE;
 
 has 'working_dir'      => is => 'lazy', isa => Directory | Undef,
-   default             => sub { $_[ 0 ]->detach ? io rootdir : undef };
+   default             => sub { $_[ 0 ]->detach ? io rootdir : undef },
+   coerce              => TRUE;
 
 # Private functions
 my $_child_handler; $_child_handler = sub {
