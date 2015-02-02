@@ -210,7 +210,9 @@ my $_get_debug_option = sub {
 };
 
 my $_version = sub {
-   my $self = shift; return $self->VERSION // '?';
+   my $self = shift; no strict 'refs';
+
+   return ${ $self->config->appclass.'::VERSION' } // '?';
 };
 
 my $_exit_version = sub {

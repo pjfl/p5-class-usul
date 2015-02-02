@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - Fixed VERSION divation in Programs
+
 0.53.1    2015-02-01 15:10:41
           [ Bug Fixes ]
           - Fixed method name in ::Progams::usage
