@@ -3,7 +3,8 @@ package Class::Usul::IPC::Cmd;
 use 5.01;
 use namespace::autoclean;
 
-use Moo;
+use Moo; use warnings NONFATAL => 'all';
+
 use Class::Null;
 use Class::Usul::Constants    qw( EXCEPTION_CLASS FALSE NUL
                                   OK SPC TRUE UNDEFINED_RV );

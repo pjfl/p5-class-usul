@@ -1,6 +1,9 @@
 Revision history for Class::Usul
 
-          - Fixed VERSION divation in Programs
+0.54.1    2015-02-04 15:52:16
+          [ Bug Fixes ]
+          - Fixed exec failure traping in Cmd. Closes RT#101921 haarg++
+          - Fixed VERSION derivation in Programs
 
 0.53.1    2015-02-01 15:10:41
           [ Bug Fixes ]

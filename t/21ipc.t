@@ -246,7 +246,8 @@ SKIP: {
    $path->exists and $path->unlink;
 
    $r = run_cmd_test( q(), [ '/bin/not_found' ], { expected_rv => 255 } );
-   like "${r}", qr{ Can.t \s+ exec }imx, 'fork and exec - traps exec failure';
+   like "${r}", qr{ \Qfailed to exec\E }imx,
+      'fork and exec - traps exec failure';
 
    is run_cmd_test( 'out', [ $perl, '-e', 'print <>' ], { in => 'test' } ),
       'test', 'fork and exec - captures stdin';
