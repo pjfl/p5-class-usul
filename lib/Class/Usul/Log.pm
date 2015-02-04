@@ -1,5 +1,8 @@
 package Class::Usul::Log;
 
+use namespace::autoclean;
+
+use Moo;
 use Class::Null;
 use Class::Usul::Constants qw( FALSE LOG_LEVELS NUL TRUE );
 use Class::Usul::Functions qw( merge_attributes );
@@ -9,11 +12,7 @@ use Encode;
 use File::Basename         qw( dirname );
 use File::DataClass::Types qw( Path );
 use Scalar::Util           qw( blessed );
-
-use namespace::clean -except => [ qw( class_stash meta ) ];
-
-use Moo;
-use MooX::ClassStash;
+use Sub::Install           qw( install_sub );
 
 has '_debug_flag'     => is => 'ro',   isa => Bool, default => FALSE,
    init_arg           => 'debug';
@@ -32,6 +31,41 @@ has '_log_class'      => is => 'lazy', isa => LoadableClass, coerce => TRUE,
 has '_logfile'        => is => 'ro',   isa => Path | Undef, coerce => TRUE,
    init_arg           => 'logfile';
 
+my $_add_methods = sub {
+   my ($class, @methods) = @_;
+
+   for my $method (@methods) {
+      $class->can( $method )
+         or install_sub { into => $class, as => $method, code => sub {
+            my ($self, $text) = @_; $text or return FALSE;
+
+            $text = "${text}"; chomp $text; $text .= "\n";
+            $self->_encoding and $text = encode( $self->_encoding, $text );
+            $self->_log->$method( $text );
+            return TRUE;
+         } };
+
+      my $meth_msg = "${method}_message";
+
+      $class->can( $meth_msg )
+         or install_sub { into => $class, as => $meth_msg, code => sub {
+            my ($self, $opts, $msg) = @_; my $text;
+
+            my $user = $opts->{user} ? $opts->{user}->username : 'unknown';
+
+            $msg ||= NUL; $msg = "${msg}"; chomp $msg;
+            $text  = (ucfirst $opts->{leader} || NUL)."[${user}] ".
+                     (ucfirst $msg || 'no message');
+            $self->$method( $text );
+            return TRUE;
+         } };
+   }
+
+   return;
+};
+
+$_add_methods->( __PACKAGE__, LOG_LEVELS );
+
 around 'BUILDARGS' => sub {
    my ($orig, $class, @args) = @_; my $attr = $orig->( $class, @args );
 
@@ -44,37 +78,6 @@ around 'BUILDARGS' => sub {
 
    return $attr;
 };
-
-sub BUILD {
-   my $self = shift; my $class = blessed $self; my $meta = $class->class_stash;
-
-   for my $method (LOG_LEVELS) {
-      $meta->has_method( $method ) or $meta->add_method( $method => sub {
-         my ($self, $text) = @_; $text or return FALSE;
-
-         $text = "${text}"; chomp $text; $text .= "\n";
-         $self->_encoding and $text = encode( $self->_encoding, $text );
-         $self->_log->$method( $text );
-         return TRUE;
-      } );
-
-      my $meth_msg = "${method}_message";
-
-      $meta->has_method( $meth_msg ) or $meta->add_method( $meth_msg => sub {
-         my ($self, $opts, $msg) = @_; my $text;
-
-         my $user = $opts->{user} ? $opts->{user}->username : 'unknown';
-
-         $msg ||= NUL; $msg = "${msg}"; chomp $msg;
-         $text  = (ucfirst $opts->{leader} || NUL)."[${user}] ".
-                  (ucfirst $msg || 'no message');
-         $self->$method( $text );
-         return TRUE;
-      } );
-   }
-
-   return;
-}
 
 sub filehandle {
    return $_[ 0 ]->_log->output( 'file-out' )->{fh};
