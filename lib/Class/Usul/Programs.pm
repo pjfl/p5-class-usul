@@ -10,9 +10,9 @@ use Class::Usul::Constants qw( BRK FAILED FALSE NUL OK
                                SPC TRUE UNDEFINED_RV WIDTH );
 use Class::Usul::File;
 use Class::Usul::Functions qw( abs_path elapsed emit emit_err emit_to
-                               exception find_apphome find_source
-                               get_cfgfiles is_arrayref is_hashref is_member
-                               logname pad throw untaint_cmdline );
+                               ensure_class_loaded exception find_apphome
+                               find_source get_cfgfiles is_arrayref is_hashref
+                               is_member logname pad throw untaint_cmdline );
 use Class::Usul::IPC;
 use Class::Usul::Options;
 use Class::Usul::Types     qw( ArrayRef Bool EncodingType FileType HashRef
@@ -184,7 +184,7 @@ my $_dont_ask = sub {
 };
 
 my $_get_classes_and_roles = sub {
-   my $self = shift; my %uniq = (); require mro;
+   my $self = shift; my %uniq = (); ensure_class_loaded 'mro';
 
    my @classes = @{ mro::get_linear_isa( blessed $self ) };
 
@@ -220,7 +220,9 @@ my $_exit_version = sub {
 };
 
 my $_man_page_from = sub {
-   my ($self, $src) = @_; my $cfg = $self->config; require Pod::Man;
+   my ($self, $src) = @_; my $cfg = $self->config;
+
+   ensure_class_loaded 'Pod::Man';
 
    my $parser   = Pod::Man->new( center  => $cfg->doc_title || NUL,
                                  name    => $cfg->script,
@@ -235,13 +237,11 @@ my $_man_page_from = sub {
 };
 
 my $_usage_for = sub {
-   my ($self, $method) = @_;
+   my ($self, $method) = @_; ensure_class_loaded 'Pod::Select';
 
    for my $class (@{ $self->$_get_classes_and_roles }) {
       is_member( $method, Class::Inspector->methods( $class, 'public' ) )
          or next;
-
-      require Pod::Select;
 
       my $selector = Pod::Select->new(); my $tfile = $self->file->tempfile;
 
@@ -262,7 +262,7 @@ my $_output_usage = sub {
 
    $verbose > 1 and return $self->$_man_page_from( $self->config );
 
-   require Pod::Usage; $verbose > 0 and Pod::Usage::pod2usage
+   ensure_class_loaded 'Pod::Usage'; $verbose > 0 and Pod::Usage::pod2usage
       ( { -exitval => OK,
           -input   => NUL.$self->config->pathname,
           -message => SPC,
@@ -416,7 +416,7 @@ sub interpolate_cmd {
 }
 
 sub list_methods : method {
-   my $self = shift; require Pod::Eventual::Simple;
+   my $self = shift; ensure_class_loaded 'Pod::Eventual::Simple';
 
    my $abstract = {}; my $max = 0; my $classes = $self->$_get_classes_and_roles;
 

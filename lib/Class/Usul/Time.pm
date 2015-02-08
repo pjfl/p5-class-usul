@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use Class::Usul::Constants qw( EXCEPTION_CLASS );
-use Class::Usul::Functions qw( throw );
+use Class::Usul::Functions qw( ensure_class_loaded throw );
 use Date::Format             ( );
 use Exporter 5.57          qw( import );
 use Time::HiRes            qw( usleep );
@@ -25,9 +25,7 @@ sub nap ($) {
 }
 
 sub str2date_time ($;$) {
-   my ($dstr, $zone) = @_;
-
-   require DateTime::Format::Epoch;
+   my ($dstr, $zone) = @_; ensure_class_loaded 'DateTime::Format::Epoch';
 
    my $dt        = DateTime->new( year => 1970, month => 1, day => 1, );
    my $formatter = DateTime::Format::Epoch->new

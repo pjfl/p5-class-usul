@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - Use ensure_class_loaded not require at runtime
+
 0.56.1    2015-02-05 19:42:30
           [ Bug Fixes ]
           - Bumped version dependencies
