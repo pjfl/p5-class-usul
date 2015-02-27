@@ -12,32 +12,35 @@ use File::HomeDir;
 
 extends q(Class::Usul::Config);
 
+# Construction
+my $_build_owner = sub {
+   return $_[ 0 ]->inflate_symbol( $_[ 1 ], 'prefix' ) || 'root';
+};
+
+my $_build_script = sub {
+   return basename( $_[ 0 ]->inflate_path( $_[ 1 ], 'pathname' ) );
+};
+
+# Public attributes
 has 'doc_title'    => is => 'ro',   isa => NonEmptySimpleStr,
    default         => 'User Contributed Documentation';
 
 has 'man_page_cmd' => is => 'ro',   isa => ArrayRef,
-   default         => sub { [ 'nroff', '-man' ] };
+   builder         => sub { [ 'nroff', '-man' ] };
 
 has 'mode'         => is => 'ro',   isa => OctalNum, coerce => TRUE,
    default         => MODE;
 
 has 'my_home'      => is => 'lazy', isa => Path, coerce => TRUE,
-   default         => sub { File::HomeDir->my_home };
+   builder         => sub { File::HomeDir->my_home };
 
-has 'owner'        => is => 'lazy', isa => NonEmptySimpleStr;
+has 'owner'        => is => 'lazy', isa => NonEmptySimpleStr,
+   builder         => $_build_owner;
 
 has 'pwidth'       => is => 'ro',   isa => NonZeroPositiveInt, default => 60;
 
-has 'script'       => is => 'lazy', isa => NonEmptySimpleStr;
-
-# Private methods
-sub _build_owner {
-   return $_[ 0 ]->inflate_symbol( $_[ 1 ], 'prefix' ) || 'root';
-}
-
-sub _build_script {
-   return basename( $_[ 0 ]->inflate_path( $_[ 1 ], 'pathname' ) );
-}
+has 'script'       => is => 'lazy', isa => NonEmptySimpleStr,
+   builder         => $_build_script;
 
 1;
 

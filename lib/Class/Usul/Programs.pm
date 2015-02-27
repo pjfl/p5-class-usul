@@ -30,6 +30,71 @@ use Try::Tiny;
 extends q(Class::Usul);
 with    q(Class::Usul::TraitFor::Prompting);
 
+# Private functions
+my $_dash2underscore = sub {
+   (my $x = $_[ 0 ] || NUL) =~ s{ [\-] }{_}gmx; return $x;
+};
+
+my $_get_pod_header_for_method = sub {
+   my ($class, $method) = @_;
+
+   my $src = find_source $class
+      or throw 'Class [_1] cannot find source', [ $class ];
+   my $pod = Pod::Eventual::Simple->read_file( $src );
+   my $out = [ grep { $_->{content} =~ m{ (?: ^|[< ]) $method (?: [ >]|$ ) }msx}
+               grep { $_->{type} eq 'command' } @{ $pod } ]->[ 0 ]->{content};
+
+   $out and chomp $out;
+   return $out;
+};
+
+my $_list_methods_of = sub {
+   return map  { s{ \A .+ :: }{}msx; $_ }
+          grep { my $subr = $_;
+                 grep { $_ eq 'method' } attributes::get( \&{ $subr } ) }
+              @{ Class::Inspector->methods
+                    ( blessed $_[ 0 ] || $_[ 0 ], 'full', 'public' ) };
+};
+
+my $_output_stacktrace = sub {
+   my ($e, $verbose) = @_; ($e and blessed $e) or return; $verbose //= 0;
+
+   $verbose > 0 and $e->can( 'trace' )
+      and return emit_to \*STDERR, NUL.$e->trace;
+
+   $e->can( 'stacktrace' ) and emit_to \*STDERR, NUL.$e->stacktrace;
+
+   return;
+};
+
+# Construction methods
+my $_build_os = sub {
+   my $self = shift;
+   my $file = 'os_'.$Config{osname}.$self->config->extension;
+   my $path = $self->config->ctrldir->catfile( $file );
+
+   $path->exists or return {};
+
+   my $cfg  = $self->file->data_load( paths => [ $path ] );
+
+   return $cfg->{os} || {};
+};
+
+my $_build_run_method = sub {
+   my $self = shift; my $method = $_dash2underscore->( $self->method );
+
+   unless ($self->can_call( $method )) {
+      $method = $_dash2underscore->( $self->extra_argv( 0 ) );
+      $method = $self->can_call( $method )
+              ? $_dash2underscore->( $self->next_argv ) : NUL;
+   }
+
+   $method ||= 'run_chain';
+  ($method eq 'help' or $method eq 'run_chain') and $self->quiet( TRUE );
+
+   return $self->_set_method( $method );
+};
+
 # Override attributes in base class
 has '+config_class'   => default => sub { 'Class::Usul::Config::Programs' };
 
@@ -104,52 +169,16 @@ has '_ipc'        => is => 'lazy', isa => IPCType,
    builder        => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) },
    handles        => [ qw( run_cmd ) ], init_arg => undef, reader => 'ipc';
 
-has '_os'         => is => 'lazy', isa => HashRef, init_arg => undef,
-   reader         => 'os';
+has '_os'         => is => 'lazy', isa => HashRef,
+   builder        => $_build_os, init_arg => undef, reader => 'os';
 
 has '_quiet_flag' => is => 'rw',   isa => Bool,
    default        => sub { $_[ 0 ]->quiet_flag },
    init_arg       => 'quiet', lazy => TRUE, writer => '_set__quiet_flag';
 
-has '_run_method' => is => 'lazy', isa => SimpleStr, init_arg => undef,
+has '_run_method' => is => 'lazy', isa => SimpleStr,
+   builder        => $_build_run_method, init_arg => undef,
    reader         => 'run_method';
-
-# Private functions
-my $_dash2underscore = sub {
-   (my $x = $_[ 0 ] || NUL) =~ s{ [\-] }{_}gmx; return $x;
-};
-
-my $_get_pod_header_for_method = sub {
-   my ($class, $method) = @_;
-
-   my $src = find_source $class
-      or throw 'Class [_1] cannot find source', [ $class ];
-   my $pod = Pod::Eventual::Simple->read_file( $src );
-   my $out = [ grep { $_->{content} =~ m{ (?: ^|[< ]) $method (?: [ >]|$ ) }msx}
-               grep { $_->{type} eq 'command' } @{ $pod } ]->[ 0 ]->{content};
-
-   $out and chomp $out;
-   return $out;
-};
-
-my $_list_methods_of = sub {
-   return map  { s{ \A .+ :: }{}msx; $_ }
-          grep { my $subr = $_;
-                 grep { $_ eq 'method' } attributes::get( \&{ $subr } ) }
-              @{ Class::Inspector->methods
-                    ( blessed $_[ 0 ] || $_[ 0 ], 'full', 'public' ) };
-};
-
-my $_output_stacktrace = sub {
-   my ($e, $verbose) = @_; ($e and blessed $e) or return; $verbose //= 0;
-
-   $verbose > 0 and $e->can( 'trace' )
-      and return emit_to \*STDERR, NUL.$e->trace;
-
-   $e->can( 'stacktrace' ) and emit_to \*STDERR, NUL.$e->stacktrace;
-
-   return;
-};
 
 # Private methods
 my $_apply_stdio_encoding = sub {
@@ -299,33 +328,6 @@ sub BUILD {
 
    $self->_set_debug( $self->$_get_debug_option );
    return;
-}
-
-sub _build__os {
-   my $self = shift;
-   my $file = 'os_'.$Config{osname}.$self->config->extension;
-   my $path = $self->config->ctrldir->catfile( $file );
-
-   $path->exists or return {};
-
-   my $cfg  = $self->file->data_load( paths => [ $path ] );
-
-   return $cfg->{os} || {};
-}
-
-sub _build__run_method {
-   my $self = shift; my $method = $_dash2underscore->( $self->method );
-
-   unless ($self->can_call( $method )) {
-      $method = $_dash2underscore->( $self->extra_argv( 0 ) );
-      $method = $self->can_call( $method )
-              ? $_dash2underscore->( $self->next_argv ) : NUL;
-   }
-
-   $method ||= 'run_chain';
-  ($method eq 'help' or $method eq 'run_chain') and $self->quiet( TRUE );
-
-   return $self->_set_method( $method );
 }
 
 # Public methods

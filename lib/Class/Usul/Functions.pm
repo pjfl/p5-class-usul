@@ -300,7 +300,7 @@ sub bson64id_time ($) {
 }
 
 sub build (&;$) {
-   my $blck = shift; my $f = shift || sub {}; return sub { $blck->( $f->() ) };
+   my $code = shift; my $f = shift || sub {}; return sub { $code->( $f->() ) };
 }
 
 sub canonicalise ($;$) {

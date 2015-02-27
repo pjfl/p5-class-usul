@@ -14,13 +14,22 @@ use File::DataClass::Types qw( Path );
 use Scalar::Util           qw( blessed );
 use Sub::Install           qw( install_sub );
 
+# Construction
+my $_build_log = sub {
+   my $self = shift; my $attr = $self->get_log_attributes;
+
+   return $attr ? $self->_log_class->new( %{ $attr } ) : Class::Null->new;
+};
+
+# Private attributes
 has '_debug_flag'     => is => 'ro',   isa => Bool, default => FALSE,
    init_arg           => 'debug';
 
 has '_encoding'       => is => 'ro',   isa => EncodingType | Undef,
    init_arg           => 'encoding';
 
-has '_log'            => is => 'lazy', isa => LogType, init_arg => 'log';
+has '_log'            => is => 'lazy', isa => LogType, builder => $_build_log,
+   init_arg           => 'log';
 
 has '_log_attributes' => is => 'ro',   isa => HashRef, default => sub { {} },
    init_arg           => 'log_attributes';
@@ -30,6 +39,20 @@ has '_log_class'      => is => 'lazy', isa => LoadableClass, coerce => TRUE,
 
 has '_logfile'        => is => 'ro',   isa => Path | Undef, coerce => TRUE,
    init_arg           => 'logfile';
+
+# Construction
+around 'BUILDARGS' => sub {
+   my ($orig, $class, @args) = @_; my $attr = $orig->( $class, @args );
+
+   my $builder = delete $attr->{builder} or return $attr;
+   my $config  = $builder->can( 'config' ) ? $builder->config : {};
+
+   merge_attributes $attr, $builder, {}, [ 'debug', 'encoding' ];
+   merge_attributes $attr, $config,  {},
+      [ qw( encoding log_attributes log_class logfile ) ];
+
+   return $attr;
+};
 
 my $_add_methods = sub {
    my ($class, @methods) = @_;
@@ -66,19 +89,7 @@ my $_add_methods = sub {
 
 $_add_methods->( __PACKAGE__, LOG_LEVELS );
 
-around 'BUILDARGS' => sub {
-   my ($orig, $class, @args) = @_; my $attr = $orig->( $class, @args );
-
-   my $builder = delete $attr->{builder} or return $attr;
-   my $config  = $builder->can( 'config' ) ? $builder->config : {};
-
-   merge_attributes $attr, $builder, {}, [ 'debug', 'encoding' ];
-   merge_attributes $attr, $config,  {},
-      [ qw( encoding log_attributes log_class logfile ) ];
-
-   return $attr;
-};
-
+# Public methods
 sub filehandle {
    return $_[ 0 ]->_log->output( 'file-out' )->{fh};
 }
@@ -99,13 +110,6 @@ sub get_log_attributes {
                         ? 'debug' : $fattr->{maxlevel} || 'info';
    $fattr->{mode    } ||= 'append';
    return $attr;
-}
-
-# Private methods
-sub _build__log {
-   my $self = shift; my $attr = $self->get_log_attributes;
-
-   return $attr ? $self->_log_class->new( %{ $attr } ) : Class::Null->new;
 }
 
 1;

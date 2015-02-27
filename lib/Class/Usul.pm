@@ -3,7 +3,7 @@ package Class::Usul;
 use 5.010001;
 use feature 'state';
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.56.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.56.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants  qw( EXCEPTION_CLASS FALSE TRUE );
@@ -13,6 +13,19 @@ use Class::Usul::Log;
 use Class::Usul::Types      qw( Bool ConfigType EncodingType HashRef
                                 L10NType LoadableClass LockType LogType );
 use IPC::SRLock;
+
+# Construction
+my $_build_lock = sub { # Only one lock object. Instantiate on first use
+   my $self = shift; state $cache; $cache and return $cache;
+
+   my $config = $self->config; my $attr = { %{ $config->lock_attributes } };
+
+   merge_attributes $attr, $self,   {}, [ 'debug', 'log' ];
+   merge_attributes $attr, $config, { 'exception_class' => EXCEPTION_CLASS },
+                                    [ 'exception_class', 'tempdir' ];
+
+   return $cache = IPC::SRLock->new( $attr );
+};
 
 # Public attributes
 has 'config'       => is => 'lazy', isa => ConfigType, builder => sub {
@@ -34,23 +47,10 @@ has 'l10n'         => is => 'lazy', isa => L10NType,
    builder         => sub { Class::Usul::L10N->new( builder => $_[ 0 ] ) },
    handles         => [ 'localize' ];
 
-has 'lock'         => is => 'lazy', isa => LockType;
+has 'lock'         => is => 'lazy', isa => LockType, builder => $_build_lock;
 
 has 'log'          => is => 'lazy', isa => LogType,
    builder         => sub { Class::Usul::Log->new( builder => $_[ 0 ] ) };
-
-# Construction
-sub _build_lock { # There is only one lock object. Instantiate on first use
-   my $self = shift; state $cache; $cache and return $cache;
-
-   my $config = $self->config; my $attr = { %{ $config->lock_attributes } };
-
-   merge_attributes $attr, $self,   {}, [ 'debug', 'log' ];
-   merge_attributes $attr, $config, { 'exception_class' => EXCEPTION_CLASS },
-                                    [ 'exception_class', 'tempdir' ];
-
-   return $cache = IPC::SRLock->new( $attr );
-}
 
 # Public methods
 sub dumper { # Damm handy for development
@@ -69,7 +69,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.56.$Rev: 3 $
+Describes Class::Usul version v0.56.$Rev: 4 $
 
 =head1 Synopsis
 
