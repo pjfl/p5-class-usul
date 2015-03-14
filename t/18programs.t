@@ -66,6 +66,16 @@ like $err, qr{ no \s message }mx, 'Default error';
 is $prog->debug, 1, 'Debug true';
 is $prog->debug_flag, '-D', 'Debug flag - true';
 
+$ENV{CLASS_USUL_DEBUG} = 1;
+$prog = Class::Usul::Programs->new
+   (  appclass => 'Class::Usul',
+      config   => { logsdir => 't', tempdir => 't', },
+      method   => 'list_methods',
+      noask    => 1,
+      quiet    => 1, );
+
+is $prog->debug, 1, 'Debug true - from env';
+
 done_testing;
 
 unlink $logfile;

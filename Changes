@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Default debug attr to env var in Programs
           - Made more private subs lexical
           - Removed ::TraitFor::MetaData in favour of CPAN::Meta
           - Use ensure_class_loaded not require at runtime

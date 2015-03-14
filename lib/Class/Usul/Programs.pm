@@ -10,9 +10,10 @@ use Class::Usul::Constants qw( BRK FAILED FALSE NUL OK
                                SPC TRUE UNDEFINED_RV WIDTH );
 use Class::Usul::File;
 use Class::Usul::Functions qw( abs_path elapsed emit emit_err emit_to
-                               ensure_class_loaded exception find_apphome
-                               find_source get_cfgfiles is_arrayref is_hashref
-                               is_member logname pad throw untaint_cmdline );
+                               ensure_class_loaded env_prefix exception
+                               find_apphome find_source get_cfgfiles
+                               is_arrayref is_hashref is_member logname pad
+                               throw untaint_cmdline );
 use Class::Usul::IPC;
 use Class::Usul::Options;
 use Class::Usul::Types     qw( ArrayRef Bool EncodingType FileType HashRef
@@ -68,6 +69,12 @@ my $_output_stacktrace = sub {
 };
 
 # Construction methods
+my $_build_debug = sub {
+   my $self = shift; my $k = (env_prefix $self->config->appclass).'_DEBUG';
+
+   return !!$ENV{ $k } ? TRUE : FALSE;
+};
+
 my $_build_os = sub {
    my $self = shift;
    my $file = 'os_'.$Config{osname}.$self->config->extension;
@@ -96,12 +103,12 @@ my $_build_run_method = sub {
 };
 
 # Override attributes in base class
-has '+config_class'   => default => sub { 'Class::Usul::Config::Programs' };
+has '+config_class'   => default => 'Class::Usul::Config::Programs';
 
 # Public attributes
-option 'debug'        => is => 'rwp',  isa => Bool, default => FALSE,
+option 'debug'        => is => 'rwp',  isa => Bool, builder => $_build_debug,
    documentation      => 'Turn debugging on. Prompts if interactive',
-   short              => 'D';
+   short              => 'D', lazy => TRUE;
 
 option 'encoding'     => is => 'lazy', isa => EncodingType, format => 's',
    documentation      => 'Decode/encode input/output using this encoding',
@@ -173,7 +180,7 @@ has '_os'         => is => 'lazy', isa => HashRef,
    builder        => $_build_os, init_arg => undef, reader => 'os';
 
 has '_quiet_flag' => is => 'rw',   isa => Bool,
-   default        => sub { $_[ 0 ]->quiet_flag },
+   builder        => sub { $_[ 0 ]->quiet_flag },
    init_arg       => 'quiet', lazy => TRUE, writer => '_set__quiet_flag';
 
 has '_run_method' => is => 'lazy', isa => SimpleStr,

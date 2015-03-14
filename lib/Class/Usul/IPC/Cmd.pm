@@ -198,11 +198,12 @@ my $_partition_command = sub {
    return \@command;
 };
 
-my $_pipe = sub {
-   socketpair( $_[ 0 ], $_[ 1 ], AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or return;
+my $_make_socket_pipe = sub {
+   socketpair( $_[ 0 ], $_[ 1 ], AF_UNIX, SOCK_STREAM, PF_UNSPEC )
+      or throw $EXTENDED_OS_ERROR;
    shutdown  ( $_[ 0 ], 1 );  # No more writing for reader
    shutdown  ( $_[ 1 ], 0 );  # No more reading for writer
-   return TRUE;
+   return;
 };
 
 my $_pipe_handler; $_pipe_handler = sub {
@@ -280,9 +281,9 @@ my $_open3 = sub {
    local (*FR_CHLD_R,     *FR_CHLD_W);
    local (*FR_CHLD_ERR_R, *FR_CHLD_ERR_W);
 
-   $_pipe->( *TO_CHLD_R,     *TO_CHLD_W     ) or throw $EXTENDED_OS_ERROR;
-   $_pipe->( *FR_CHLD_R,     *FR_CHLD_W     ) or throw $EXTENDED_OS_ERROR;
-   $_pipe->( *FR_CHLD_ERR_R, *FR_CHLD_ERR_W ) or throw $EXTENDED_OS_ERROR;
+   $_make_socket_pipe->( *TO_CHLD_R,     *TO_CHLD_W     );
+   $_make_socket_pipe->( *FR_CHLD_R,     *FR_CHLD_W     );
+   $_make_socket_pipe->( *FR_CHLD_ERR_R, *FR_CHLD_ERR_W );
 
    my $pid = open3( '>&TO_CHLD_R', '<&FR_CHLD_W', '<&FR_CHLD_ERR_W', @_ );
 
