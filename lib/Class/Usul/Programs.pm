@@ -36,6 +36,28 @@ my $_dash2underscore = sub {
    (my $x = $_[ 0 ] || NUL) =~ s{ [\-] }{_}gmx; return $x;
 };
 
+my $_get_pod_content_for_attr = sub {
+   my ($class, $attr) = @_; my $pod;
+
+   my $src    = find_source $class
+      or throw 'Class [_1] cannot find source', [ $class ];
+   my $events = Pod::Eventual::Simple->read_file( $src );
+
+   for (my $ev_no = 0, my $max = @{ $events }; $ev_no < $max; $ev_no++) {
+      my $ev = $events->[ $ev_no ]; $ev->{type} eq 'command' or next;
+
+      $ev->{content} =~ m{ (?: ^|[< ]) $attr (?: [ >]|$ ) }msx or next;
+
+      $ev_no++ while ($ev = $events->[ $ev_no + 1 ] and $ev->{type} eq 'blank');
+
+      $ev and $ev->{type} eq 'text' and $pod = $ev->{content} and last;
+   }
+
+   $pod //= 'Undocumented'; $pod and chomp $pod; $pod =~ s{ [\n] }{ }gmx;
+
+   return $pod;
+};
+
 my $_get_pod_header_for_method = sub {
    my ($class, $method) = @_;
 
@@ -47,6 +69,18 @@ my $_get_pod_header_for_method = sub {
 
    $out and chomp $out;
    return $out;
+};
+
+my $_list_attr_of = sub {
+   my ($obj, @except) = @_; my $class = blessed $obj;
+
+   ensure_class_loaded 'Pod::Eventual::Simple';
+
+   return map  { my $attr = $_->[0]; [ @{ $_ }, $obj->$attr ] }
+          map  { [ $_->[1], $_->[0], $_get_pod_content_for_attr->( @{ $_ } ) ] }
+          grep { $_->[0] ne 'Moo::Object' and not is_member $_->[1], @except }
+          map  { m{ \A (.+) \:\: ([^:]+) \z }mx; [ $1, $2 ] }
+              @{ Class::Inspector->methods( $class, 'full', 'public' ) };
 };
 
 my $_list_methods_of = sub {
@@ -215,8 +249,7 @@ my $_catch_run_exception = sub {
 };
 
 my $_dont_ask = sub {
-   return $_[ 0 ]->debug || $_[ 0 ]->help_usage || $_[ 0 ]->help_options
-       || $_[ 0 ]->help_manual || ! $_[ 0 ]->is_interactive();
+   return $_[ 0 ]->debug || ! $_[ 0 ]->is_interactive();
 };
 
 my $_get_classes_and_roles = sub {
@@ -364,6 +397,15 @@ sub can_call {
 
 sub debug_flag {
    return $_[ 0 ]->debug ? '-D' : '-n';
+}
+
+sub dump_config_attr : method {
+   my $self = shift; my @except =
+      qw( BUILDARGS BUILD inflate_path inflate_paths inflate_symbol new secret);
+
+   $self->dumper( [ $_list_attr_of->( $self->config, @except ) ] );
+
+   return OK;
 }
 
 sub dump_self : method {
@@ -673,6 +715,13 @@ the I<method> method attribute
    $cmd_line_option = $self->debug_flag
 
 Returns the command line debug flag to match the current debug state
+
+=head2 dump_config_attr - Dumps the configuration attributes and values
+
+   $self->dump_config_attr;
+
+Visits the configuration object, forcing evaluation of the lazy, and printing
+out the attributes and values
 
 =head2 dump_self - Dumps the program object
 

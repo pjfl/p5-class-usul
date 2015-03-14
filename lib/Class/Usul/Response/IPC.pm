@@ -2,8 +2,8 @@ package Class::Usul::Response::IPC;
 
 use namespace::autoclean;
 
-use Class::Usul::Types qw( Int Object Str Undef );
 use Moo;
+use Class::Usul::Types qw( Int Object Str Undef );
 
 has 'core'    => is => 'ro', isa => Int, default => 0;
 has 'harness' => is => 'ro', isa => Object | Undef;

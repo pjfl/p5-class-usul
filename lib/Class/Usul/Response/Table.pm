@@ -2,8 +2,8 @@ package Class::Usul::Response::Table;
 
 use namespace::autoclean;
 
-use Class::Usul::Types qw( ArrayRef HashRef Int Str );
 use Moo;
+use Class::Usul::Types qw( ArrayRef HashRef Int Str );
 
 has 'caption'  => is => 'ro', isa => Str,           default => q();
 has 'class'    => is => 'ro', isa => HashRef | Str, default => q();
