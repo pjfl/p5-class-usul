@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - Deleted unused meta_class attr from Programs
+
 0.57.1    2015-03-14 20:07:54
           [ Additions ]
           - Added dump_config_attr method to Programs

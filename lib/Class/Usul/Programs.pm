@@ -63,12 +63,12 @@ my $_get_pod_header_for_method = sub {
 
    my $src = find_source $class
       or throw 'Class [_1] cannot find source', [ $class ];
-   my $pod = Pod::Eventual::Simple->read_file( $src );
-   my $out = [ grep { $_->{content} =~ m{ (?: ^|[< ]) $method (?: [ >]|$ ) }msx}
-               grep { $_->{type} eq 'command' } @{ $pod } ]->[ 0 ]->{content};
+   my $ev  = [ grep { $_->{content} =~ m{ (?: ^|[< ]) $method (?: [ >]|$ ) }msx}
+               grep { $_->{type} eq 'command' }
+                   @{ Pod::Eventual::Simple->read_file( $src ) } ]->[ 0 ];
+   my $pod = $ev ? $ev->{content} : undef; $pod and chomp $pod;
 
-   $out and chomp $out;
-   return $out;
+   return $pod;
 };
 
 my $_list_attr_of = sub {
@@ -160,17 +160,17 @@ option 'help_usage'   => is => 'ro',   isa => Bool, default => FALSE,
    documentation      => 'Displays this command line usage',
    short              => '?';
 
-option 'home'         => is => 'lazy', isa => Directory, format => 's',
+option 'home'         => is => 'lazy', isa => Directory, coerce => TRUE,
    documentation      => 'Directory containing the configuration file',
-   default            => sub { $_[ 0 ]->config->home }, coerce  => TRUE;
+   default            => sub { $_[ 0 ]->config->home },  format => 's';
 
 option 'locale'       => is => 'ro',   isa => SimpleStr, format => 's',
    documentation      => 'Loads the specified language message catalogue',
    default            => sub { $_[ 0 ]->config->locale }, short => 'L';
 
-option 'method'       => is => 'rwp',  isa => SimpleStr, format => 's',
+option 'method'       => is => 'rwp',  isa => SimpleStr, default => NUL,
    documentation      => 'Name of the method to call',
-   default            => NUL, order => 1, short => 'c';
+   format             => 's', order => 1, short => 'c';
 
 option 'noask'        => is => 'ro',   isa => Bool, default => FALSE,
    documentation      => 'Do not prompt for debugging',
@@ -192,9 +192,6 @@ option 'show_version' => is => 'ro',   isa => Bool, default => FALSE,
 option 'verbose'      => is => 'ro',   isa => Int,  default => 0,
    documentation      => 'Increase the verbosity of the output',
    repeatable         => TRUE, short => 'v';
-
-has 'meta_class'  => is => 'lazy', isa => LoadableClass, coerce => TRUE,
-   default        => 'Class::Usul::Response::Meta';
 
 has 'mode'        => is => 'rw',   isa => OctalNum, coerce => TRUE,
    default        => sub { $_[ 0 ]->config->mode }, lazy => TRUE;
@@ -244,6 +241,7 @@ my $_catch_run_exception = sub {
 
    $e->out and $self->output( $e->out );
    $self->error( $e->error, { args => $e->args } );
+   $self->debug and $_output_stacktrace->( $error, $self->verbose );
 
    return $e->rv || (defined $e->rv ? FAILED : UNDEFINED_RV);
 };
@@ -423,7 +421,6 @@ sub error {
    $self->log->error( $_ ) for (split m{ \n }mx, "${text}");
 
    emit_to *STDERR, $self->add_leader( $text, $args )."\n";
-   $self->debug and $_output_stacktrace->( $err, $self->verbose );
    return TRUE;
 }
 
@@ -436,8 +433,7 @@ sub fatal {
 
    $self->log->alert( $_ ) for (split m{ \n }mx, $text.$posn);
 
-   emit_to *STDERR, $self->add_leader( $text, $args ).$posn."\n";
-   $_output_stacktrace->( $err, $self->verbose );
+   emit_to *STDERR, $self->add_leader( $text, $args )."${posn}\n";
    exit FAILED;
 }
 
@@ -658,9 +654,13 @@ from the C<< $self->options >> hash ref
 
 Quietens the usual started/finished information messages
 
-=item C<show_version>
+=item C<V show_version>
 
 Prints the programs version number and exits
+
+=item C<v verbose>
+
+Repeatable boolean that increases the verbosity of the output
 
 =back
 
@@ -677,13 +677,28 @@ C<Class::Usul::Config::Programs>
 
 List of value that are passed to the method called by L</run>
 
-=item C<v verbose>
-
-Repeatable boolean that increases the verbosity of the output
-
 =back
 
 =head1 Subroutines/Methods
+
+=head2 dump_config_attr - Dumps the configuration attributes and values
+
+Visits the configuration object, forcing evaluation of the lazy, and printing
+out the attributes and values
+
+=head2 dump_self - Dumps the program object
+
+Dumps out the self referential object using L<Data::Printer>
+
+=head2 help - Display help text about a method
+
+Searches the programs classes and roles to find the method implementation.
+Displays help text from the POD that describes the method
+
+=head2 list_methods - Lists available command line methods
+
+Lists the methods (marked by the I<method> subroutine attribute) that can
+be called via the L<run method|/run>
 
 =head2 BUILDARGS
 
@@ -715,19 +730,6 @@ the I<method> method attribute
    $cmd_line_option = $self->debug_flag
 
 Returns the command line debug flag to match the current debug state
-
-=head2 dump_config_attr - Dumps the configuration attributes and values
-
-   $self->dump_config_attr;
-
-Visits the configuration object, forcing evaluation of the lazy, and printing
-out the attributes and values
-
-=head2 dump_self - Dumps the program object
-
-   $self->dump_self;
-
-Dumps out the self referential object using L<Data::Printer>
 
 =head2 error
 
@@ -765,13 +767,6 @@ code of one
 If it is an interactive session prompts the user to turn debugging
 on. Returns true if debug is on. Also offers the option to quit
 
-=head2 help - Display help text about a method
-
-   $exit_code = $self->help;
-
-Searches the programs classes and roles to find the method implementation.
-Displays help text from the POD that describes the method
-
 =head2 info
 
    $self->info( $text, $args );
@@ -786,13 +781,6 @@ program leader and prints the result to I<STDOUT>
 
 Calls C<_interpolate_${cmd}_cmd> to apply the arguments to the command in a
 command specific way
-
-=head2 list_methods - Lists available command line methods
-
-   $self->list_methods;
-
-Lists the methods (marked by the I<method> subroutine attribute) that can
-be called via the L<run method|/run>
 
 =head2 loc
 
