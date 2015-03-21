@@ -241,8 +241,18 @@ SKIP: {
 
    like $r->out, qr{ background }imsx, 'fork and exec - detaches';
    waitpid $r->pid, 0;
-   like $path->slurp, qr{ larry \s+ wall }imsx,
-      'fork and exec - detaches and writes file';
+
+   if ($osname ne 'solaris') {
+      like $path->slurp, qr{ larry \s+ wall }imsx,
+         'fork and exec - detaches and writes file';
+   }
+   else {
+      my $stat = $path->stat;
+
+      diag sprintf 'File %s size %d mode %o',
+         $path, $stat->{size}, $stat->{mode} & 0777;
+   }
+
    $path->exists and $path->unlink;
 
    $r = run_cmd_test( q(), [ '/bin/not_found' ], { expected_rv => 255 } );

@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Added diag output to tests for solaris
           - Deleted unused meta_class attr from Programs
 
 0.57.1    2015-03-14 20:07:54
