@@ -8,7 +8,7 @@ use parent  'Exporter::Tiny';
 
 use Class::Null;
 use Class::Usul::Constants     qw( ASSERT DEFAULT_CONFHOME DEFAULT_ENVDIR
-                                   DIGEST_ALGORITHMS EVIL EXCEPTION_CLASS
+                                   DIGEST_ALGORITHMS EXCEPTION_CLASS
                                    PERL_EXTNS PREFIX UNTAINT_CMDLINE
                                    UNTAINT_IDENTIFIER UNTAINT_PATH UUID_PATH );
 use Cwd                        qw( );
@@ -20,6 +20,7 @@ use Digest::MD5                qw( md5 );
 use English                    qw( -no_match_vars );
 use Fcntl                      qw( F_SETFL O_NONBLOCK );
 use File::Basename             qw( basename dirname );
+use File::DataClass::Constants qw( CYGWIN MSOFT );
 use File::DataClass::Functions qw( supported_extensions );
 use File::DataClass::IO        qw( );
 use File::HomeDir              qw( );
@@ -34,7 +35,6 @@ use Unexpected::Functions      qw( is_class_loaded PathAlreadyExists
                                    PathNotFound Tainted Unspecified );
 use User::pwent;
 
-our @EXPORT      = qw( is_member );
 our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
                        assert_directory base64_decode_ns
                        base64_encode_ns bsonid bsonid_time bson64id
@@ -45,7 +45,7 @@ our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
                        exception find_apphome find_source first_char fold fqdn
                        fullname get_cfgfiles get_user hex2str
                        home2appldir io is_arrayref is_coderef
-                       is_hashref is_win32 loginid
+                       is_hashref is_member is_win32 loginid
                        logname merge_attributes my_prefix
                        nonblocking_write_pipe_pair pad
                        prefix2class product socket_pair split_on__ split_on_dash
@@ -53,8 +53,8 @@ our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
                        throw throw_on_error trim unescape_TT
                        untaint_cmdline untaint_identifier untaint_path
                        untaint_string uuid zip );
-our %EXPORT_REFS =   ( assert => sub { ASSERT } );
-our %EXPORT_TAGS =   ( all => [ @EXPORT, @EXPORT_OK ], );
+our %EXPORT_REFS =   ( assert => sub { ASSERT }, );
+our %EXPORT_TAGS =   ( all    => [ @EXPORT_OK ], );
 
 my $BSON_Id_Inc : shared = 0;
 
@@ -191,19 +191,18 @@ sub _exporter_fail {
 
 # Public functions
 sub abs_path ($) {
-   my $y = shift; (defined $y and length $y) or return $y;
+   my $v = shift; (defined $v and length $v) or return $v;
 
-   (is_win32() or lc $OSNAME eq 'cygwin')
-      and not -e $y and return untaint_path( $y ); # Hate
+   is_ntfs() and not -e $v and return untaint_path( $v ); # Hate
 
-   $y = Cwd::abs_path( untaint_path( $y ) );
+   $v = Cwd::abs_path( untaint_path( $v ) );
 
-   is_win32() and defined $y and $y =~ s{ / }{\\}gmx; # More hate
-   return $y;
+   is_win32() and defined $v and $v =~ s{ / }{\\}gmx; # More hate
+   return $v;
 }
 
 sub app_prefix ($) {
-   (my $y = lc ($_[ 0 ] || q())) =~ s{ :: }{_}gmx; return $y;
+   (my $v = lc ($_[ 0 ] || q())) =~ s{ :: }{_}gmx; return $v;
 }
 
 sub arg_list (;@) {
@@ -213,9 +212,9 @@ sub arg_list (;@) {
 }
 
 sub assert_directory ($) {
-   my $y = abs_path( $_[ 0 ] ); (defined $y and length $y) or return $y;
+   my $v = abs_path( $_[ 0 ] ); (defined $v and length $v) or return $v;
 
-   return -d "${y}" ? $y : undef;
+   return -d "${v}" ? $v : undef;
 }
 
 sub base64_decode_ns ($) {
@@ -355,7 +354,7 @@ sub data_dumper (;@) {
 }
 
 sub distname ($) {
-   (my $y = $_[ 0 ] || q()) =~ s{ :: }{-}gmx; return $y;
+   (my $v = $_[ 0 ] || q()) =~ s{ :: }{-}gmx; return $v;
 }
 
 #head2 downgrade
@@ -419,13 +418,13 @@ sub env_prefix ($) {
 }
 
 sub escape_TT (;$$) {
-   my $y  = defined $_[ 0 ] ? $_[ 0 ] : q();
+   my $v  = defined $_[ 0 ] ? $_[ 0 ] : q();
    my $fl = ($_[ 1 ] && $_[ 1 ]->[ 0 ]) || '<';
    my $fr = ($_[ 1 ] && $_[ 1 ]->[ 1 ]) || '>';
 
-   $y =~ s{ \[\% }{${fl}%}gmx; $y =~ s{ \%\] }{%${fr}}gmx;
+   $v =~ s{ \[\% }{${fl}%}gmx; $v =~ s{ \%\] }{%${fr}}gmx;
 
-   return $y;
+   return $v;
 }
 
 sub exception (;@) {
@@ -502,11 +501,11 @@ sub fqdn (;$) {
 }
 
 sub fullname () {
-   my $y = (split m{ \s* , \s * }msx, (get_user()->gecos || q()))[ 0 ];
+   my $v = (split m{ \s* , \s * }msx, (get_user()->gecos || q()))[ 0 ];
 
-   $y ||= q(); $y =~ s{ [\&] }{}gmx; # Coz af25e158-d0c7-11e3-bdcb-31d9eda79835
+   $v ||= q(); $v =~ s{ [\&] }{}gmx; # Coz af25e158-d0c7-11e3-bdcb-31d9eda79835
 
-   return untaint_cmdline( $y );
+   return untaint_cmdline( $v );
 }
 
 sub get_cfgfiles ($;$$) {
@@ -578,8 +577,12 @@ sub is_member (;@) {
    return (first { $_ eq $candidate } @args) ? 1 : 0;
 }
 
+sub is_ntfs  () {
+   return is_win32() || lc $OSNAME eq CYGWIN ? 1 : 0;
+}
+
 sub is_win32 () {
-   return lc $OSNAME eq EVIL ? 1 : 0;
+   return lc $OSNAME eq MSOFT ? 1 : 0;
 }
 
 sub loginid (;$) {
@@ -618,16 +621,16 @@ sub nonblocking_write_pipe_pair () {
 }
 
 sub pad ($$;$$) {
-   my ($x, $length, $str, $direction) = @_;
+   my ($v, $wanted, $str, $direction) = @_; my $len = $wanted - length $v;
 
-   my $x_len = length $x; $x_len >= $length and return $x;
-   my $pad   = substr( ((defined $str && length $str ? $str : q( ))
-                        x ($length - $x_len)), 0, $length - $x_len );
+   $len > 0 or return $v; (defined $str and length $str) or $str = q( );
 
-   (not $direction or $direction eq 'right') and return $x.$pad;
-   $direction eq 'left' and return $pad.$x;
+   my $pad = substr( $str x $len, 0, $len );
 
-   return (substr $pad, 0, int( (length $pad) / 2 )).$x
+   (not $direction or $direction eq 'right') and return $v.$pad;
+   $direction eq 'left' and return $pad.$v;
+
+   return (substr $pad, 0, int( (length $pad) / 2 )).$v
          .(substr $pad, 0, int( 0.99999999 + (length $pad) / 2 ));
 }
 
@@ -659,17 +662,17 @@ sub split_on_dash (;$$) {
 }
 
 sub squeeze (;$) {
-   (my $y = $_[ 0 ] || q()) =~ s{ \s+ }{ }gmx; return $y;
+   (my $v = $_[ 0 ] || q()) =~ s{ \s+ }{ }gmx; return $v;
 }
 
 sub strip_leader (;$) {
-   (my $y = $_[ 0 ] || q()) =~ s{ \A [^:]+ [:] \s+ }{}msx; return $y;
+   (my $v = $_[ 0 ] || q()) =~ s{ \A [^:]+ [:] \s+ }{}msx; return $v;
 }
 
 sub sub_name (;$) {
-   my $x = $_[ 0 ] || 0;
+   my $frame = 1 + ($_[ 0 ] || 0);
 
-   return (split m{ :: }mx, ((caller ++$x)[ 3 ]) || 'main')[ -1 ];
+   return (split m{ :: }mx, ((caller $frame)[ 3 ]) || 'main')[ -1 ];
 }
 
 sub sum (;@) {
@@ -705,19 +708,19 @@ sub throw_on_error (;@) {
 }
 
 sub trim (;$$) {
-   my $c = $_[ 1 ] || " \t"; (my $y = $_[ 0 ] || q()) =~ s{ \A [$c]+ }{}mx;
+   my $chs = $_[ 1 ] || " \t"; (my $v = $_[ 0 ] || q()) =~ s{ \A [$chs]+ }{}mx;
 
-   chomp $y; $y =~ s{ [$c]+ \z }{}mx; return $y;
+   chomp $v; $v =~ s{ [$chs]+ \z }{}mx; return $v;
 }
 
 sub unescape_TT (;$$) {
-   my $y  = defined $_[ 0 ] ? $_[ 0 ] : q();
+   my $v  = defined $_[ 0 ] ? $_[ 0 ] : q();
    my $fl = ($_[ 1 ] && $_[ 1 ]->[ 0 ]) || '<';
    my $fr = ($_[ 1 ] && $_[ 1 ]->[ 1 ]) || '>';
 
-   $y =~ s{ ${fl}\% }{[%}gmx; $y =~ s{ \%${fr} }{%]}gmx;
+   $v =~ s{ ${fl}\% }{[%}gmx; $v =~ s{ \%${fr} }{%]}gmx;
 
-   return $y;
+   return $v;
 }
 
 sub untaint_cmdline (;$) {
@@ -1084,11 +1087,18 @@ Tests to see if the scalar variable is a hash ref
 Tests to see if the first parameter is present in the list of
 remaining parameters
 
+=head2 is_ntfs
+
+   $bool = is_ntfs;
+
+Returns true if L</is_win32> is true or the C<$OSNAME> is
+L<cygwin|File::DataClass::Constants/CYGWIN>
+
 =head2 is_win32
 
    $bool = is_win32;
 
-Returns true if the C<$OSNAME> is L<evil|Class::Usul::Constants/EVIL>
+Returns true if the C<$OSNAME> is L<evil|File::DataClass::Constants/MSOFT>
 
 =head2 loginid
 

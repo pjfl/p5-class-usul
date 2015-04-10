@@ -195,10 +195,10 @@ sub str2time ($;$) {
       elsif ($merid == $PM) { $hh += 12 }
    }
 
-   $year -= 1900   if    (defined $year && $year > 1900);
-   $zone += 3600   if    (defined $zone && $dst);
-   $month = $lt[4] unless(defined $month);
-   $day   = $lt[3] unless(defined $day);
+   $year -= 1900   if     (defined $year && $year > 1900);
+   $zone += 3600   if     (defined $zone && $dst);
+   $month = $lt[4] unless (defined $month);
+   $day   = $lt[3] unless (defined $day);
 
    unless (defined $year) {
       $year = $month > $lt[4] ? $lt[5] - 1 : $lt[5];
@@ -228,7 +228,7 @@ sub str2time ($;$) {
    else {
       $result = eval {
          local $SIG{__DIE__} = sub {}; # Ick!
-         timelocal($ss, $mm, $hh, $day, $month, $year);
+         timelocal( $ss, $mm, $hh, $day, $month, $year );
       };
 
       return if (! defined $result ||

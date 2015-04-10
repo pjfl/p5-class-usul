@@ -133,7 +133,9 @@ is $dest->{key2}, q(value2), 'merge_attributes - source';
 
 is my_prefix( catfile( 'dir', 'prefix_name' ) ), 'prefix', 'my_prefix';
 
-is pad( 'x', 7, 'X', 'both' ), 'XXXxXXX', 'pad';
+is pad( 'x', 7, q( ), 'both'  ), '   x   ', 'pad - both';
+is pad( 'x', 7, q( ), 'left'  ), '      x', 'pad - left';
+is pad( 'x', 7, q( ), 'right' ), 'x      ', 'pad - right';
 
 is prefix2class( q(test-application) ), qw(Test::Application), 'prefix2class';
 

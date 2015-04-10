@@ -17,7 +17,7 @@ File::DataClass::Constants->Exception_Class( __PACKAGE__->Exception_Class );
 
 our @EXPORT = qw( ARRAY AS_PARA AS_PASSWORD ASSERT BRK CODE COMMA CONFIG_EXTN
                   DEFAULT_CONFHOME DEFAULT_ENVDIR DEFAULT_ENCODING
-                  DEFAULT_L10N_DOMAIN DIGEST_ALGORITHMS ENCODINGS EVIL
+                  DEFAULT_L10N_DOMAIN DIGEST_ALGORITHMS ENCODINGS
                   EXCEPTION_CLASS FAILED FALSE HASH LANG LBRACE
                   LOCALIZE LOG_LEVELS MODE NO NUL OK PERL_EXTNS PHASE
                   PREFIX QUIT SEP SPC TRUE UNDEFINED_RV
@@ -28,7 +28,6 @@ sub ARRAY    () { q(ARRAY)   }
 sub BRK      () { q(: )      }
 sub CODE     () { q(CODE)    }
 sub COMMA    () { q(,)       }
-sub EVIL     () { q(mswin32) }
 sub FAILED   () { 1          }
 sub FALSE    () { 0          }
 sub HASH     () { q(HASH)    }
@@ -201,11 +200,6 @@ List of algorithms to try as args to L<Digest>
 =head2 ENCODINGS
 
 List of supported IO encodings
-
-=head2 EVIL
-
-The L<Config> operating system name of the one whose name cannot be spoken
-out loud
 
 =head2 EXCEPTION_CLASS
 

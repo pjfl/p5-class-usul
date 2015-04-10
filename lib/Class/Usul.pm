@@ -1,9 +1,8 @@
 package Class::Usul;
 
 use 5.010001;
-use feature 'state';
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.57.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.57.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants  qw( EXCEPTION_CLASS FALSE TRUE );
@@ -15,16 +14,16 @@ use Class::Usul::Types      qw( Bool ConfigType EncodingType HashRef
 use IPC::SRLock;
 
 # Construction
-my $_build_lock = sub { # Only one lock object. Instantiate on first use
-   my $self = shift; state $cache; $cache and return $cache;
-
-   my $config = $self->config; my $attr = { %{ $config->lock_attributes } };
+my $_build_lock = sub {
+   my $self   = shift;
+   my $config = $self->config;
+   my $attr   = { %{ $config->lock_attributes } };
 
    merge_attributes $attr, $self,   {}, [ 'debug', 'log' ];
    merge_attributes $attr, $config, { 'exception_class' => EXCEPTION_CLASS },
                                     [ 'exception_class', 'tempdir' ];
 
-   return $cache = IPC::SRLock->new( $attr );
+   return IPC::SRLock->new( $attr );
 };
 
 # Public attributes
@@ -69,7 +68,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.57.$Rev: 4 $
+Describes Class::Usul version v0.57.$Rev: 5 $
 
 =head1 Synopsis
 
