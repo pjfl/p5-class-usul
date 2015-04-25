@@ -90,6 +90,10 @@ to C<man -nroff>
 
 Integer defaults to the constant C<MODE>. The default file creation mask
 
+=item C<my_home>
+
+A directory object reference which defaults to the users home
+
 =item C<owner>
 
 String. Name of the application file owner

@@ -59,6 +59,24 @@ has 'connect_info'      => is => 'lazy', isa => ArrayRef, builder => sub {
    $_[ 0 ]->get_connect_info( $_[ 0 ], { database => $_[ 0 ]->database } ) },
    init_arg             => undef;
 
+has 'ddl_commands'      => is => 'ro', isa => HashRef, builder => sub { {
+   'mysql'              => {
+      'create_db'       => 'create database if not exists [_3] default '.
+                           'character set utf8 collate utf8_unicode_ci;',
+      'create_user'     => "create user '[_2]'\@'[_1]' identified by '[_3]';",
+      'drop_db'         => 'drop database if exists [_3];',
+      'drop_user'       => "drop user '[_2]'\@'[_1]';",
+      'execute_ddl'     => 'mysql -A -h [_1] -u [_2] -p[_3] mysql',
+      'grant_all'       => "grant all privileges on [_3].* to '[_2]'\@'[_1]' ".
+                           'with grant option;', },
+   'pg'                 => {
+      'create_db'       => "create database [_3] owner [_2] encoding 'UTF8';",
+      'create_user'     => "create role [_2] login password '[_3]';",
+      'drop_db'         => 'drop database [_3];',
+      'drop_user'       => 'drop user [_2];',
+      'execute_ddl'     => 'PGPASSWORD=[_3] psql -q -w -h [_1] -U [_2]', },
+} };
+
 # Private methods
 my $_db_attr = sub {
    my  $self = shift; my $attr = $self->connect_info->[ 3 ];
@@ -76,14 +94,11 @@ my $_execute_ddl = sub {
    my $user = $admin_creds->{user} || $self->db_admin_ids->{ $drvr };
    my $pass = $admin_creds->{password}
       or $self->fatal( 'No database admin password' );
-   my $cmd  = "echo \"${ddl}\" | ";
-
-   if ($drvr eq 'mysql' ) {
-      $cmd .= "mysql -A -h ${host} -u ${user} -p${pass} mysql";
-   }
-   elsif ($drvr eq 'pg') {
-      $cmd .= "PGPASSWORD=${pass} psql -q -w -h ${host} -U ${user}";
-   }
+   my $cmds = $self->ddl_commands->{ $drvr }
+      or $self->fatal( 'Driver [_1] unknown', { args => [ $drvr ] } );
+   my $args = { params => [ $host, $user, $pass ], quote_bind_values => FALSE };
+   my $cmd  = $cmds->{ 'execute_ddl' };
+      $cmd  = "echo \"${ddl}\" | ".$self->loc( $cmd, $args );
 
    return $self->run_cmd( $cmd, { out => 'stdout', %{ $opts || {} } } );
 };
@@ -97,11 +112,11 @@ my $_get_db_admin_creds = sub {
 
    $self->output( $text, AS_PARA );
 
-   my $prompt = 'Database administrator id';
+   my $prompt = '+Database administrator id';
    my $user   = $self->db_admin_ids->{ lc $self->driver } || NUL;
 
    $attrs->{user    } = $self->get_line( $prompt, $user, TRUE, 0 );
-   $prompt    = 'Database administrator password';
+   $prompt    = '+Database administrator password';
    $attrs->{password} = $self->get_line( $prompt, AS_PASSWORD );
    return $attrs;
 };
@@ -172,43 +187,33 @@ my $_deploy_and_populate = sub {
 sub create_database : method {
    my $self = shift; my $ddl;
 
-   my $host = $self->host; my $database = $self->database;
-   my $user = $self->user; my $password = $self->password;
+   my $host     = $self->host;
+   my $user     = $self->user;
+   my $database = $self->database;
+   my $driver   = $self->driver;
+   my $creds    = $self->$_get_db_admin_creds( 'create database' );
+   my $cmds     = $self->ddl_commands->{ $driver };
+   my $args     = { params => [ $host, $user, $self->password ],
+                    quote_bind_values => FALSE };
 
-   my $admin_creds = $self->$_get_db_admin_creds( 'create database' );
+   $self->info( "Creating ${driver} database ${database}" );
 
-   if (lc $self->driver eq 'mysql') {
-      $self->info( "Creating MySQL database ${database}" );
-      $ddl  = "create user '${user}'".'@'.
-              "'${host}' identified by '${password}';";
-      $self->$_execute_ddl( $admin_creds, $ddl );
-      $ddl  = "create database if not exists ${database} default character ".
-              "set utf8 collate utf8_unicode_ci;";
-      $self->$_execute_ddl( $admin_creds, $ddl );
-      $ddl  = "grant all privileges on ${database}.* to '${user}'".'@'.
-              "'${host}' with grant option;";
-      $self->$_execute_ddl( $admin_creds, $ddl );
-      return OK;
-   }
-
-   if (lc $self->driver eq 'pg') {
-      $self->info( "Creating PostgreSQL database ${database}" );
-      $ddl  = "create role ${user} login password '${password}';";
-      $self->$_execute_ddl( $admin_creds, $ddl );
-      $ddl  = "create database ${database} owner ${user} encoding 'UTF8';";
-      $self->$_execute_ddl( $admin_creds, $ddl );
-      return OK;
-   }
-
-   $self->warning( 'Create database failed: Unknown driver '.$self->driver );
-   return FAILED;
+   $ddl  = $cmds->{ 'create_user' }
+      and  $self->$_execute_ddl( $creds, $self->loc( $ddl, $args ) );
+   $args = { params => [ $host, $user, $database ],
+             quote_bind_values => FALSE };
+   $ddl  = $cmds->{ 'create_db' }
+      and  $self->$_execute_ddl( $creds, $self->loc( $ddl, $args ) );
+   $ddl  = $cmds->{ 'grant_all' }
+      and  $self->$_execute_ddl( $creds, $self->loc( $ddl, $args ) );
+   return OK;
 }
 
 sub create_ddl : method {
    my $self = shift; $self->output( 'Creating DDL for '.$self->dsn );
 
    for my $schema_class (values %{ $self->schema_classes }) {
-      ensure_class_loaded( $schema_class );
+      ensure_class_loaded  $schema_class;
       $self->$_create_ddl( $schema_class, $self->config->sharedir );
    }
 
@@ -236,7 +241,7 @@ sub deploy_and_populate : method {
    my $self = shift; $self->output( 'Deploy and populate for '.$self->dsn );
 
    for my $schema_class (values %{ $self->schema_classes }) {
-      ensure_class_loaded( $schema_class );
+      ensure_class_loaded $schema_class;
       $self->$_deploy_and_populate( $schema_class, $self->config->sharedir );
    }
 
@@ -248,30 +253,21 @@ sub driver {
 }
 
 sub drop_database : method {
-   my $self = shift; my $database = $self->database; my $ddl;
+   my $self     = shift;
+   my $database = $self->database;
+   my $creds    = $self->$_get_db_admin_creds( 'drop database' );
+   my $cmds     = $self->ddl_commands->{ $self->driver };
+   my $args     = { params => [ $self->host, $self->user, $database ],
+                    quote_bind_values => FALSE };
 
-   my $host = $self->host; my $user = $self->user;
+   $self->info( "Droping database ${database}" ); my $ddl;
 
-   my $admin_creds = $self->$_get_db_admin_creds( 'drop database' );
-
-   $self->info( "Droping database ${database}" );
-
-   if (lc $self->driver eq 'mysql') {
-      $ddl = "drop database if exists ${database};";
-      $self->$_execute_ddl( $admin_creds, $ddl );
-      $ddl = "drop user '${user}'".'@'."'${host}';";
-      $self->$_execute_ddl( $admin_creds, $ddl, { expected_rv => 1 } );
-      return OK;
-   }
-
-   if (lc $self->driver eq 'pg') {
-      $self->$_execute_ddl( $admin_creds, "drop database ${database};" );
-      $self->$_execute_ddl( $admin_creds, "drop user ${user};" );
-      return OK;
-   }
-
-   $self->error( "Failed to drop database ${database}" );
-   return FAILED;
+   $ddl  = $cmds->{ 'drop_db' }
+      and  $self->$_execute_ddl( $creds, $self->loc( $ddl, $args ) );
+   $ddl  = $cmds->{ 'drop_user' }
+      and  $self->$_execute_ddl( $creds, $self->loc( $ddl, $args ),
+                                 { expected_rv => 1 } );
+   return OK;
 }
 
 sub dsn {
@@ -286,6 +282,7 @@ sub edit_credentials : method {
    my $cfg_data  = $bootstrap ? {} : $self->load_config_data( $self_cfg, $db );
    my $creds     = $bootstrap ? {}
                  : $self->extract_creds_from( $self_cfg, $db, $cfg_data );
+   my $stored_pw = $creds->{password};
    my $prompts   = { name     => 'Enter db name',
                      driver   => 'Enter DBD driver',
                      host     => 'Enter db host',
@@ -300,15 +297,13 @@ sub edit_credentials : method {
                      password => NUL };
 
    for my $field (qw( name driver host port user password )) {
-      my $value = $defaults->{ $field } ne '_field' ? $defaults->{ $field }
-                :                                        $creds->{ $field };
+      my $prompt = '+'.$prompts->{ $field };
+      my $is_pw  = $field eq 'password' ? TRUE : FALSE;
+      my $value  = $defaults->{ $field } ne '_field' ? $defaults->{ $field }
+                 :                                        $creds->{ $field };
 
-      $value = $self->get_line( $prompts->{ $field }, $value, TRUE, 0, FALSE,
-                                $field eq 'password' ? TRUE : FALSE );
-
-      $field eq 'password' and $value
-         = encrypt_for_config $self_cfg, $value, $creds->{password};
-
+      $value = $self->get_line( $prompt, $value, TRUE, 0, FALSE, $is_pw );
+      $is_pw and $value = encrypt_for_config $self_cfg, $value, $stored_pw;
       $creds->{ $field } = $value || NUL;
    }
 
@@ -375,40 +370,46 @@ Defines the following attributes
 
 =item C<database>
 
-String which is required
+String which is required. The name of the database to connect to
 
 =item C<db_admin_ids>
 
-Hash ref which defaults to C<< { mysql => 'root', pg => 'postgres', } >>
+Hash reference which defaults to C<< { mysql => 'root', pg => 'postgres', } >>
+The default administration identity for each supported RDBMS
 
 =item C<db_attr>
 
-Hash ref which defaults to
+Hash reference which defaults to
 C<< { add_drop_table => TRUE, no_comments => TRUE, } >>
 
-=item C<paragraph>
+=item C<ddl_commands>
 
-Hash ref which defaults to C<< { cl => TRUE, fill => TRUE, nl => TRUE } >>
+A hash reference keyed by database driver. The DDL commands used to create
+users and databases
 
 =item C<preversion>
 
-String which defaults to null
+String which defaults to null. The previous schema version number
 
 =item C<rdbms>
 
-Array ref which defaults  to C<< [ qw(MySQL PostgreSQL) ] >>
+Array reference which defaults  to C<< [ qw(MySQL PostgreSQL) ] >>. List
+of supported RDBMS
 
 =item C<schema_classes>
 
-Hash ref which defaults to C<< {} >>
+Hash reference which defaults to C<< {} >>. Keyed by model name, the DBIC
+class names for each model
 
 =item C<schema_version>
 
-String which defaults to C<0.1>
+String which defaults to C<0.1>. The schema version number is used in the
+DDL filenames
 
 =item C<unlink>
 
-Boolean which defaults to false
+Boolean which defaults to false. Unlink DDL files if they exist before
+creating new ones
 
 =item C<yes>
 

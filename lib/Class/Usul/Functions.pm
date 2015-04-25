@@ -6,6 +6,7 @@ use warnings;
 use feature 'state';
 use parent  'Exporter::Tiny';
 
+use Class::Inspector;
 use Class::Null;
 use Class::Usul::Constants     qw( ASSERT DEFAULT_CONFHOME DEFAULT_ENVDIR
                                    DIGEST_ALGORITHMS EXCEPTION_CLASS
@@ -45,7 +46,7 @@ our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
                        exception find_apphome find_source first_char fold fqdn
                        fullname get_cfgfiles get_user hex2str
                        home2appldir io is_arrayref is_coderef
-                       is_hashref is_member is_win32 loginid
+                       is_hashref is_member is_win32 list_attr_of loginid
                        logname merge_attributes my_prefix
                        nonblocking_write_pipe_pair pad
                        prefix2class product socket_pair split_on__ split_on_dash
@@ -100,6 +101,28 @@ my $_get_env_var_for_conf = sub {
    my $path = $file ? dirname( $file ) : q();
 
    return $path = assert_directory( $path ) ? $path : undef;
+};
+
+my $_get_pod_content_for_attr = sub {
+   my ($class, $attr) = @_; my $pod;
+
+   my $src    = find_source( $class )
+      or throw( 'Class [_1] cannot find source', [ $class ] );
+   my $events = Pod::Eventual::Simple->read_file( $src );
+
+   for (my $ev_no = 0, my $max = @{ $events }; $ev_no < $max; $ev_no++) {
+      my $ev = $events->[ $ev_no ]; $ev->{type} eq 'command' or next;
+
+      $ev->{content} =~ m{ (?: ^|[< ]) $attr (?: [ >]|$ ) }msx or next;
+
+      $ev_no++ while ($ev = $events->[ $ev_no + 1 ] and $ev->{type} eq 'blank');
+
+      $ev and $ev->{type} eq 'text' and $pod = $ev->{content} and last;
+   }
+
+   $pod //= 'Undocumented'; $pod and chomp $pod; $pod =~ s{ [\n] }{ }gmx;
+
+   return $pod;
 };
 
 my $_index64 = sub {
@@ -583,6 +606,18 @@ sub is_ntfs  () {
 
 sub is_win32 () {
    return lc $OSNAME eq MSOFT ? 1 : 0;
+}
+
+sub list_attr_of ($;@) {
+   my ($obj, @except) = @_; my $class = blessed $obj;
+
+   ensure_class_loaded( 'Pod::Eventual::Simple' );
+
+   return map  { my $attr = $_->[0]; [ @{ $_ }, $obj->$attr ] }
+          map  { [ $_->[1], $_->[0], $_get_pod_content_for_attr->( @{ $_ } ) ] }
+          grep { $_->[0] ne 'Moo::Object' and not is_member $_->[1], @except }
+          map  { m{ \A (.+) \:\: ([^:]+) \z }mx; [ $1, $2 ] }
+              @{ Class::Inspector->methods( $class, 'full', 'public' ) };
 }
 
 sub loginid (;$) {
@@ -1099,6 +1134,13 @@ L<cygwin|File::DataClass::Constants/CYGWIN>
    $bool = is_win32;
 
 Returns true if the C<$OSNAME> is L<evil|File::DataClass::Constants/MSOFT>
+
+=head2 list_attr_of
+
+   $attribute_list = list_attr_of $object_ref, @exception_list;
+
+Lists the attributes of the object reference, including defining class name,
+documentation, and current value
 
 =head2 loginid
 

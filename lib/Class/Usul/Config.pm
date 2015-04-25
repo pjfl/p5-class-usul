@@ -356,7 +356,7 @@ Directory containing the config file. Required
 
 =item C<l10n_attributes>
 
-Hash ref of attributes used to construct a L<Class::Usul::L10N>
+Hash reference of attributes used to construct a L<Class::Usul::L10N>
 object. By default contains one key, C<domains>, an array reference
 which defaults to the constant C<DEFAULT_L10N_DOMAIN> and the
 applications configuration name. The filename(s) used to translate
@@ -379,11 +379,11 @@ contains only the constant C<LANG>
 
 =item C<lock_attributes>
 
-Hash ref of attributes used to construct an L<IPC::SRLock> object
+Hash reference of attributes used to construct an L<IPC::SRLock> object
 
 =item C<log_attributes>
 
-Hash ref of attributes used to construct a L<Class::Usul::Log> object
+Hash reference of attributes used to construct a L<Class::Usul::Log> object
 
 =item C<logfile>
 

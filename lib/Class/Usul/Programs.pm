@@ -12,8 +12,8 @@ use Class::Usul::File;
 use Class::Usul::Functions qw( abs_path elapsed emit emit_err emit_to
                                ensure_class_loaded env_prefix exception
                                find_apphome find_source get_cfgfiles
-                               is_arrayref is_hashref is_member logname pad
-                               throw untaint_cmdline );
+                               is_arrayref is_hashref is_member list_attr_of
+                               logname pad throw untaint_cmdline );
 use Class::Usul::IPC;
 use Class::Usul::Options;
 use Class::Usul::Types     qw( ArrayRef Bool EncodingType FileType HashRef
@@ -36,28 +36,6 @@ my $_dash2underscore = sub {
    (my $x = $_[ 0 ] || NUL) =~ s{ [\-] }{_}gmx; return $x;
 };
 
-my $_get_pod_content_for_attr = sub {
-   my ($class, $attr) = @_; my $pod;
-
-   my $src    = find_source $class
-      or throw 'Class [_1] cannot find source', [ $class ];
-   my $events = Pod::Eventual::Simple->read_file( $src );
-
-   for (my $ev_no = 0, my $max = @{ $events }; $ev_no < $max; $ev_no++) {
-      my $ev = $events->[ $ev_no ]; $ev->{type} eq 'command' or next;
-
-      $ev->{content} =~ m{ (?: ^|[< ]) $attr (?: [ >]|$ ) }msx or next;
-
-      $ev_no++ while ($ev = $events->[ $ev_no + 1 ] and $ev->{type} eq 'blank');
-
-      $ev and $ev->{type} eq 'text' and $pod = $ev->{content} and last;
-   }
-
-   $pod //= 'Undocumented'; $pod and chomp $pod; $pod =~ s{ [\n] }{ }gmx;
-
-   return $pod;
-};
-
 my $_get_pod_header_for_method = sub {
    my ($class, $method) = @_;
 
@@ -69,18 +47,6 @@ my $_get_pod_header_for_method = sub {
    my $pod = $ev ? $ev->{content} : undef; $pod and chomp $pod;
 
    return $pod;
-};
-
-my $_list_attr_of = sub {
-   my ($obj, @except) = @_; my $class = blessed $obj;
-
-   ensure_class_loaded 'Pod::Eventual::Simple';
-
-   return map  { my $attr = $_->[0]; [ @{ $_ }, $obj->$attr ] }
-          map  { [ $_->[1], $_->[0], $_get_pod_content_for_attr->( @{ $_ } ) ] }
-          grep { $_->[0] ne 'Moo::Object' and not is_member $_->[1], @except }
-          map  { m{ \A (.+) \:\: ([^:]+) \z }mx; [ $1, $2 ] }
-              @{ Class::Inspector->methods( $class, 'full', 'public' ) };
 };
 
 my $_list_methods_of = sub {
@@ -401,7 +367,7 @@ sub dump_config_attr : method {
    my $self = shift; my @except =
       qw( BUILDARGS BUILD inflate_path inflate_paths inflate_symbol new secret);
 
-   $self->dumper( [ $_list_attr_of->( $self->config, @except ) ] );
+   $self->dumper( [ list_attr_of $self->config, @except ] );
 
    return OK;
 }
