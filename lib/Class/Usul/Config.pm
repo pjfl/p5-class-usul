@@ -35,6 +35,8 @@ has 'ctlfile'   => is => 'lazy', isa => Path, coerce => TRUE;
 
 has 'ctrldir'   => is => 'lazy', isa => Path, coerce => TRUE;
 
+has 'datadir'   => is => 'lazy', isa => Path, coerce => TRUE;
+
 has 'encoding'  => is => 'ro',   isa => EncodingType, coerce => TRUE,
    default      => DEFAULT_ENCODING;
 
@@ -165,6 +167,12 @@ sub _build_ctrldir {
    -d $dir and return $dir;
 
    return [ NUL, qw( usr local etc ) ];
+}
+
+sub _build_datadir {
+   my $dir = $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir', 'data' );
+
+   return -d $dir ? $dir : $_[ 0 ]->inflate_path( $_[ 1 ], 'tempdir' );
 }
 
 sub _build_localedir {
@@ -341,6 +349,10 @@ File in the C<ctrldir> directory that contains this programs control data
 =item C<ctrldir>
 
 Directory containing the per program configuration files
+
+=item C<datadir>
+
+Directory containing data files used by the application
 
 =item C<encoding>
 

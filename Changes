@@ -1,5 +1,9 @@
 Revision history for Class::Usul
 
+          - Added Schema dry run and SQLite support
+          - Added Config::datadir
+          - Added badges
+          - Made host and port optional in get_connect_info
           - Make list_attr_of an public exported function
           - Made ::Schema lookup DDL commands from a map
           - Use File::DataClass constants for MSOFT and CYGWIN

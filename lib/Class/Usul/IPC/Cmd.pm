@@ -106,7 +106,7 @@ my $_child_handler; $_child_handler = sub {
    return;
 };
 
-my $_close_child = sub { # In the parent, close the child end of the pipes
+my $_close_child_io = sub { # In the parent, close the child end of the pipes
    my $pipes = shift;
 
    close $pipes->[ 0 ]->[ 0 ]; undef $pipes->[ 0 ]->[ 0 ];
@@ -168,6 +168,14 @@ my $_has_shell_meta = sub {
                                      : FALSE;
 };
 
+my $_make_socket_pipe = sub {
+   socketpair( $_[ 0 ], $_[ 1 ], AF_UNIX, SOCK_STREAM, PF_UNSPEC )
+      or throw $EXTENDED_OS_ERROR;
+   shutdown  ( $_[ 0 ], 1 );  # No more writing for reader
+   shutdown  ( $_[ 1 ], 0 );  # No more reading for writer
+   return;
+};
+
 my $_out_handler = sub {
    my ($out, $filtered, $standard) = @_;
 
@@ -198,14 +206,6 @@ my $_partition_command = sub {
    return \@command;
 };
 
-my $_make_socket_pipe = sub {
-   socketpair( $_[ 0 ], $_[ 1 ], AF_UNIX, SOCK_STREAM, PF_UNSPEC )
-      or throw $EXTENDED_OS_ERROR;
-   shutdown  ( $_[ 0 ], 1 );  # No more writing for reader
-   shutdown  ( $_[ 1 ], 0 );  # No more reading for writer
-   return;
-};
-
 my $_pipe_handler; $_pipe_handler = sub {
    local $OS_ERROR; # So that wait does not step on existing value
 
@@ -216,6 +216,10 @@ my $_pipe_handler; $_pipe_handler = sub {
 
 my $_quote = sub {
    my $v = shift; return is_win32 ? '"'.$v.'"' : "'${v}'";
+};
+
+my $_quoted_join = sub {
+   return join SPC, map { m{ [ ] }mx ? $_quote->( $_ ) : $_ } @_;
 };
 
 my $_recv_exec_failure = sub {
@@ -428,8 +432,10 @@ my $_wait_for_child = sub {
 
    my ($filtered, $stderr, $stdout) = (NUL, NUL, NUL);
 
-   my $in_fh    = $pipes->[ 0 ]->[ 1 ]; my $out_fh  = $pipes->[ 1 ]->[ 0 ];
-   my $err_fh   = $pipes->[ 2 ]->[ 0 ]; my $stat_fh = $pipes->[ 3 ]->[ 0 ];
+   my $in_fh    = $pipes->[ 0 ]->[ 1 ];
+   my $out_fh   = $pipes->[ 1 ]->[ 0 ];
+   my $err_fh   = $pipes->[ 2 ]->[ 0 ];
+   my $stat_fh  = $pipes->[ 3 ]->[ 0 ];
    my $err_hand = $_err_handler->( $self->err, \$filtered, \$stderr );
    my $out_hand = $_out_handler->( $self->out, \$filtered, \$stdout );
    my $prog     = basename( my $cmd = $self->cmd->[ 0 ] );
@@ -445,7 +451,7 @@ my $_wait_for_child = sub {
       $_drain->( $out_fh, $out_hand, $err_fh, $err_hand );
       waitpid $pid, 0; alarm 0;
    }
-   catch { throw $_ };
+   catch { alarm 0; throw $_ };
 
    my $e_num = $CHILD_PID > 0 ? $CHILD_ENUM : $CHILD_ERROR;
    my $codes = $self->$_return_codes_or_throw( $cmd, $e_num, $stderr );
@@ -459,8 +465,7 @@ my $_wait_for_child = sub {
 my $_run_cmd_using_fork_and_exec = sub {
    my $self    = shift;
    my $pipes   = $_four_nonblocking_pipe_pairs->();
-   my $cmd_str = join SPC, map { m{ [ ] }mx ? $_quote->( $_ ) : $_ }
-                              @{ $self->cmd };
+   my $cmd_str = $_quoted_join->( @{ $self->cmd } );
 
    $self->log->debug( "Running ${cmd_str} using fork and exec" );
 
@@ -468,7 +473,7 @@ my $_run_cmd_using_fork_and_exec = sub {
       $self->ignore_zombies and local $SIG{CHLD} = 'IGNORE';
 
       if (my $pid = fork) { # Parent
-         $_close_child->( $pipes );
+         $_close_child_io->( $pipes );
          $self->detach and $pid = $self->$_wait_for_pidfile_and_read;
 
          return ($self->async || $self->detach)
@@ -519,8 +524,7 @@ my $_run_cmd_using_ipc_run = sub {
    elsif ($err eq 'null')   { push @cmd_args, "2>${null}"     }
    elsif ($err ne 'stderr') { push @cmd_args, '2>', \$buf_err }
 
-   my $cmd_str = join SPC, map { m{ [ ] }mx ? $_quote->( $_ ) : $_ }
-                              @{ $self->cmd }, @cmd_args;
+   my $cmd_str = $_quoted_join->( @{ $self->cmd }, @cmd_args );
 
    $self->async and $cmd_str .= ' &';
    $self->log->debug( "Running ${cmd_str} using ipc run" );
@@ -532,7 +536,7 @@ my $_run_cmd_using_ipc_run = sub {
 
       ($rv, $h) = $_ipc_run_harness->( $self, $cmd_ref, @cmd_args ); alarm 0;
    }
-   catch { throw $_ };
+   catch { alarm 0; throw $_ };
 
    my $sig = $rv & 127; my $core = $rv & 128; $rv = $rv >> 8;
 
@@ -595,7 +599,7 @@ my $_run_cmd_using_open3 = sub { # Robbed in part from IPC::Cmd
          $_drain->( $out_fh, $out_hand, $err_fh, $err_hand );
          $pid and waitpid $pid, 0; alarm 0;
       }
-      catch { throw $_ };
+      catch { alarm 0; throw $_ };
 
       $e_num = $CHILD_PID > 0 ? $CHILD_ENUM : $CHILD_ERROR;
    }
@@ -645,7 +649,7 @@ my $_run_cmd_using_system = sub {
 
          $rv = system $cmd; alarm 0;
       }
-      catch { throw $_ };
+      catch { alarm 0; throw $_ };
 
       my $os_error = $OS_ERROR;
 
@@ -709,7 +713,7 @@ my $_run_cmd = sub { # Select one of the implementations
       is_win32 or $has_meta or $self->use_system
          or return $self->$_run_cmd_using_fork_and_exec;
 
-      $cmd = join SPC, map { m{ [ ] }mx ? $_quote->( $_ ) : $_ } @{ $cmd };
+      $cmd = $_quoted_join->( @{ $cmd } );
    }
 
    not is_win32 and ($has_meta or $self->async or $self->use_system)

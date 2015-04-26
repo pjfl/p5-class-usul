@@ -13,7 +13,48 @@ use Sys::Hostname;
 
 our @EXPORT_OK = qw( cipher_list decrypt default_cipher encrypt );
 
-my $SEED = do { local $RS = undef; <DATA> };
+my $DEFAULT = 'Twofish2'; my $SEED = do { local $RS = undef; <DATA> };
+
+# Private functions
+my $_decode = sub {
+   my $v = $_[ 0 ]; $v =~ tr{ \t}{01}; pack 'b*', $v;
+};
+
+my $_prepare = sub {
+   my $v = $_[ 0 ]; my $pad = " \t" x 8; $v =~ s{^$pad|[^ \t]}{}g; $v;
+};
+
+my $_dref = sub {
+   (is_coderef $_[ 0 ]) ? ($_[ 0 ]->() // NUL) : ($_[ 0 ] // NUL);
+};
+
+my $_eval = sub {
+   my $v = $_prepare->( $_[ 0 ] ); $v ? ((eval $_decode->( $v )) || NUL) : NUL;
+};
+
+my $_cipher_name = sub {
+   (is_hashref $_[ 0 ]) ? $_[ 0 ]->{cipher} || $DEFAULT : $DEFAULT;
+};
+
+my $_compose = sub {
+   $_eval->( $_dref->( $_[ 0 ]->{seed} ) || $SEED ).$_dref->( $_[ 0 ]->{salt} );
+};
+
+my $_new_crypt_cbc = sub {
+   Crypt::CBC->new( -cipher => $_[ 0 ], -key => $_[ 1 ] );
+};
+
+my $_token = sub {
+   substr create_token( $_compose->( $_[ 0 ] || {} ) ), 0, 32;
+};
+
+my $_wards = sub {
+   (is_hashref $_[ 0 ]) || !$_[ 0 ] ? $_token->( $_[ 0 ] ) : $_[ 0 ];
+};
+
+my $_cipher = sub {
+   $_new_crypt_cbc->( $_cipher_name->( $_[ 0 ] ), $_wards->( $_[ 0 ] ) );
+};
 
 # Public functions
 sub cipher_list () {
@@ -21,52 +62,15 @@ sub cipher_list () {
 }
 
 sub decrypt (;$$) {
-   return __cipher( $_[ 0 ] )->decrypt( decode_base64( $_[ 1 ] ) );
+   return $_cipher->( $_[ 0 ] )->decrypt( decode_base64( $_[ 1 ] ) );
 }
 
 sub default_cipher () {
-   return 'Twofish2';
+   return $DEFAULT;
 }
 
 sub encrypt (;$$) {
-   return encode_base64( __cipher( $_[ 0 ] )->encrypt( $_[ 1 ] ), NUL );
-}
-
-# Private functions
-sub __cipher {
-   Crypt::CBC->new( -cipher => __cname( $_[ 0 ] ), -key => __wards( $_[ 0 ] ) );
-}
-
-sub __cname {
-   (is_hashref $_[ 0 ]) ? $_[ 0 ]->{cipher} || default_cipher : default_cipher;
-}
-
-sub __wards {
-   (is_hashref $_[ 0 ]) || !$_[ 0 ] ? __token( $_[ 0 ] ) : $_[ 0 ];
-}
-
-sub __token {
-   substr create_token( __compose( $_[ 0 ] || {} ) ), 0, 32;
-}
-
-sub __compose {
-   __evaluate( __deref( $_[ 0 ]->{seed} ) || $SEED ).__deref( $_[ 0 ]->{salt} );
-}
-
-sub __deref {
-   (is_coderef $_[ 0 ]) ? ($_[ 0 ]->() // NUL) : ($_[ 0 ] // NUL);
-}
-
-sub __evaluate {
-   my $x = __prepare( $_[ 0 ] ); $x ? ((eval __decode( $x )) || NUL) : NUL;
-}
-
-sub __prepare {
-   my $y = $_[ 0 ]; my $x = " \t" x 8; $y =~ s{^$x|[^ \t]}{}g; $y;
-}
-
-sub __decode {
-   my $y = $_[ 0 ]; $y =~ tr{ \t}{01}; pack 'b*', $y;
+   return encode_base64( $_cipher->( $_[ 0 ] )->encrypt( $_[ 1 ] ), NUL );
 }
 
 1;
@@ -75,7 +79,7 @@ sub __decode {
 
 =head1 Name
 
-Class::Usul::Crypt - Encryption/decryption functions
+Class::Usul::Crypt - Encryption / decryption functions
 
 =head1 Synopsis
 
@@ -93,14 +97,21 @@ Class::Usul::Crypt - Encryption/decryption functions
 
 =head1 Description
 
-Exports a pair of functions to encrypt/decrypt data. Obfuscates the default
+Exports a pair of functions to encrypt / decrypt data. Obfuscates the default
 encryption key
 
 =head1 Configuration and Environment
 
-The C<$key> can be a string (including the null string) or a hash ref with
-I<salt> and I<seed> keys. The I<seed> attribute can be a code ref in which
-case it will be called with no argument and the return value used
+The C<$key> can be a string (including the null string) or a hash reference
+with I<salt> and I<seed> keys. The I<seed> attribute can be a code reference in
+which case it will be called with no argument and the return value used
+
+Lifted from L<Acme::Bleach> the default seed for the key generator has been
+whitened and included in this source file
+
+The seed is C<eval>'d in string context and then the salt is concatenated onto
+it before being passed to L<create token|Class::Usul::Functions/create_token>.
+Uses this value as the key for a L<Crypt::CBC> object
 
 =head1 Subroutines/Methods
 
@@ -131,17 +142,6 @@ all be installed
    $ciper_name = default_cipher();
 
 Returns I<Twofish2>
-
-=head2 __cipher
-
-Lifted from L<Acme::Bleach> this recovers the default seed for the key
-generator
-
-Generates the key used by the C<encrypt> and C<decrypt> methods. The
-seed is C<eval>'d in string context and then the salt is concatenated
-onto it before being passed to
-C<Class::Usul::Functions/create_token>. Uses this value as the key for
-a L<Crypt::CBC> object which it creates and returns
 
 =head1 Diagnostics
 

@@ -124,10 +124,12 @@ sub get_connect_info {
 
    my $cfg_data = $_load_config_data->( $param );
    my $creds    = $_extract_creds_from->( $param, $cfg_data );
-   my $dsn      = 'dbi:'.$creds->{driver}.':database='.$param->{database}
-                  .';host='.$creds->{host}.';port='.$creds->{port};
+   my $dsn      = 'dbi:'.$creds->{driver}.':database='.$param->{database};
    my $password = decrypt_from_config $param, $creds->{password};
    my $opts     = $_get_connect_options->( $creds );
+
+   $creds->{host} and $dsn .= ';host='.$creds->{host};
+   $creds->{port} and $dsn .= ';port='.$creds->{port};
 
    return $cache->{ $key } = [ $dsn, $creds->{user}, $password, $opts ];
 }

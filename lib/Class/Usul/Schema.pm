@@ -2,26 +2,65 @@ package Class::Usul::Schema;
 
 use namespace::autoclean;
 
-use Moo;
 use Class::Usul::Constants   qw( AS_PARA AS_PASSWORD COMMA
                                  FAILED FALSE NUL OK SPC TRUE );
 use Class::Usul::Crypt::Util qw( encrypt_for_config );
 use Class::Usul::Functions   qw( distname ensure_class_loaded io throw );
-use Class::Usul::Options;
-use Class::Usul::Types       qw( ArrayRef Bool HashRef NonEmptySimpleStr Str );
+use Class::Usul::Types       qw( ArrayRef Bool HashRef NonEmptySimpleStr
+                                 PositiveInt SimpleStr Str );
 use Try::Tiny;
+use Unexpected::Functions    qw( interpolate_msg );
+use Moo;
+use Class::Usul::Options;
 
 extends q(Class::Usul::Programs);
 with    q(Class::Usul::TraitFor::ConnectInfo);
 
+# Attribute constructors
+my $_build_qdb = sub {
+   my $self = shift;
+   my $cmds = $self->ddl_commands->{ lc $self->driver };
+   my $code = $cmds ? $cmds->{ '-qualify-db' } : undef;
+
+   return $code ? $code->( $self, $self->database ).NUL : $self->database;
+};
+
+my $_extract_from_dsn = sub {
+   my ($self, $field) = @_;
+
+   return (map    { s{ \A $field [=] }{}mx; $_ }
+           grep   { m{ \A $field [=] }mx }
+           split m{ [;] }mx, $self->dsn)[ 0 ];
+};
+
+my $_qualify_database_path = sub {
+   return $_[ 0 ]->config->datadir->catfile( $_[ 1 ].'.db' );
+};
+
+my $_rebuild_dsn = sub {
+   my $self = shift;
+   my $dsn  = 'dbi:'.$self->driver.':database='.$self->_qualified_db;
+
+   $self->host and $dsn .= ';host='.$self->host;
+   $self->port and $dsn .= ';port='.$self->port;
+
+   return $self->_set_dsn( $dsn );
+};
+
+my $_rebuild_qdb = sub {
+   my $self = shift; $self->_set__qualified_db( $self->$_build_qdb ); return;
+};
+
 # Public attributes
 option 'database'       => is => 'ro',   isa => NonEmptySimpleStr,
    documentation        => 'The database to connect to',
-   format               => 's', required => TRUE;
+   format               => 's', required => TRUE, trigger => $_rebuild_qdb;
 
 option 'db_admin_ids'   => is => 'ro',   isa => HashRef,
    documentation        => 'The admin user ids for each RDBMS',
-   default              => sub { { mysql => 'root', pg => 'postgres', } },
+   default              => sub { { mysql  => 'root',
+                                   pg     => 'postgres',
+                                   sqlite => NUL, } },
    format               => 's%';
 
 option 'db_attr'        => is => 'ro',   isa => HashRef,
@@ -31,13 +70,17 @@ option 'db_attr'        => is => 'ro',   isa => HashRef,
                                    quote_identifiers => TRUE, } },
    format               => 's%';
 
+option 'dry_run'        => is => 'ro',   isa => Bool, default => FALSE,
+   documentation        => 'Prints out commands, do not execute them',
+   short                => 'd';
+
 option 'preversion'     => is => 'ro',   isa => Str, default => NUL,
    documentation        => 'Previous schema version',
    format               => 's';
 
 option 'rdbms'          => is => 'ro',   isa => ArrayRef, autosplit => COMMA,
    documentation        => 'List of RDBMSs',
-   default              => sub { [ qw( MySQL PostgreSQL ) ] },
+   default              => sub { [ qw( MySQL SQLite PostgreSQL ) ] },
    format               => 's@';
 
 option 'schema_classes' => is => 'lazy', isa => HashRef, default => sub { {} },
@@ -59,23 +102,53 @@ has 'connect_info'      => is => 'lazy', isa => ArrayRef, builder => sub {
    $_[ 0 ]->get_connect_info( $_[ 0 ], { database => $_[ 0 ]->database } ) },
    init_arg             => undef;
 
-has 'ddl_commands'      => is => 'ro', isa => HashRef, builder => sub { {
+has 'ddl_commands'      => is => 'lazy', isa => HashRef,  builder => sub { {
    'mysql'              => {
+      'create_user'     => "create user '[_2]'\@'[_1]' identified by '[_3]';",
       'create_db'       => 'create database if not exists [_3] default '.
                            'character set utf8 collate utf8_unicode_ci;',
-      'create_user'     => "create user '[_2]'\@'[_1]' identified by '[_3]';",
       'drop_db'         => 'drop database if exists [_3];',
       'drop_user'       => "drop user '[_2]'\@'[_1]';",
-      'execute_ddl'     => 'mysql -A -h [_1] -u [_2] -p[_3] mysql',
       'grant_all'       => "grant all privileges on [_3].* to '[_2]'\@'[_1]' ".
-                           'with grant option;', },
+                           'with grant option;',
+      '-execute_ddl'    => 'mysql -A -h [_1] -u [_2] -p[_3] mysql', },
    'pg'                 => {
-      'create_db'       => "create database [_3] owner [_2] encoding 'UTF8';",
       'create_user'     => "create role [_2] login password '[_3]';",
+      'create_db'       => "create database [_3] owner [_2] encoding 'UTF8';",
       'drop_db'         => 'drop database [_3];',
       'drop_user'       => 'drop user [_2];',
-      'execute_ddl'     => 'PGPASSWORD=[_3] psql -q -w -h [_1] -U [_2]', },
-} };
+      '-execute_ddl'    => 'PGPASSWORD=[_3] psql -q -w -h [_1] -U [_2]', },
+   'sqlite'             => {
+      '-execute_ddl'    => "sqlite3 [_5] '[_4]'",
+      '-no-pipe'        => TRUE,
+      '-qualify-db'     => $_qualify_database_path, }, } };
+
+has 'driver'            => is => 'rwp',  isa => NonEmptySimpleStr,
+   builder              => sub { (split m{ [:] }mx, $_[ 0 ]->dsn)[ 1 ] },
+   lazy                 => TRUE, trigger => $_rebuild_dsn;
+
+has 'dsn'               => is => 'rwp',  isa => NonEmptySimpleStr,
+   builder              => sub { $_[ 0 ]->connect_info->[ 0 ] },
+   lazy                 => TRUE;
+
+has 'host'              => is => 'rwp',  isa => SimpleStr,
+   builder              => sub { $_[ 0 ]->$_extract_from_dsn( 'host' ) },
+   lazy                 => TRUE, trigger => $_rebuild_dsn;
+
+has 'password'          => is => 'rwp',  isa => SimpleStr,
+   builder              => sub { $_[ 0 ]->connect_info->[ 2 ] },
+   lazy                 => TRUE;
+
+has 'port'              => is => 'rwp',  isa => PositiveInt,
+   builder              => sub { $_[ 0 ]->$_extract_from_dsn( 'port' ) },
+   lazy                 => TRUE, trigger => $_rebuild_dsn;
+
+has 'user'              => is => 'rwp',  isa => SimpleStr,
+   builder              => sub { $_[ 0 ]->connect_info->[ 1 ] },
+   lazy                 => TRUE;
+
+has '_qualified_db'     => is => 'rwp',  isa => NonEmptySimpleStr,
+   builder              => $_build_qdb, lazy => TRUE, trigger => $_rebuild_dsn;
 
 # Private methods
 my $_db_attr = sub {
@@ -84,23 +157,6 @@ my $_db_attr = sub {
    $attr->{ $_ } = $self->db_attr->{ $_ } for (keys %{ $self->db_attr });
 
    return $attr;
-};
-
-my $_execute_ddl = sub {
-   my ($self, $admin_creds, $ddl, $opts) = @_; $admin_creds ||= {};
-
-   my $drvr = lc $self->driver;
-   my $host = $self->host || 'localhost';
-   my $user = $admin_creds->{user} || $self->db_admin_ids->{ $drvr };
-   my $pass = $admin_creds->{password}
-      or $self->fatal( 'No database admin password' );
-   my $cmds = $self->ddl_commands->{ $drvr }
-      or $self->fatal( 'Driver [_1] unknown', { args => [ $drvr ] } );
-   my $args = { params => [ $host, $user, $pass ], quote_bind_values => FALSE };
-   my $cmd  = $cmds->{ 'execute_ddl' };
-      $cmd  = "echo \"${ddl}\" | ".$self->loc( $cmd, $args );
-
-   return $self->run_cmd( $cmd, { out => 'stdout', %{ $opts || {} } } );
 };
 
 my $_get_db_admin_creds = sub {
@@ -121,12 +177,16 @@ my $_get_db_admin_creds = sub {
    return $attrs;
 };
 
+my $_inflate = sub {
+   return interpolate_msg( { defaults => [ 'undef', 'null', TRUE ] }, @_ );
+};
+
 my $_create_ddl = sub {
    my ($self, $schema_class, $dir) = @_;
 
+   my $version = $self->schema_version;
    my $schema  = $schema_class->connect
       ( $self->dsn, $self->user, $self->password, $self->$_db_attr );
-   my $version = $self->schema_version;
 
    if ($self->unlink) {
       for my $rdb (@{ $self->rdbms }) {
@@ -183,29 +243,42 @@ my $_deploy_and_populate = sub {
    return;
 };
 
+my $_execute_ddl = sub {
+   my ($self, $admin_creds, $ddl, $opts) = @_; $admin_creds ||= {};
+
+   my $drvr = lc $self->driver;
+   my $host = $self->host || 'localhost';
+   my $user = $admin_creds->{user} // $self->db_admin_ids->{ $drvr };
+   my $pass = $admin_creds->{password};
+   my $cmds = $self->ddl_commands->{ $drvr }
+      or $self->fatal( 'Driver [_1] unknown', { args => [ $drvr ] } );
+   my $cmd  = $cmds->{ '-execute_ddl'  };
+
+   $cmd = $_inflate->( $cmd, $host, $user, $pass, $ddl, $self->_qualified_db );
+   $cmds->{ '-no-pipe' } or $cmd = "echo \"${ddl}\" | ${cmd}";
+   $self->dry_run and $self->output( $cmd ) and return;
+
+   return $self->run_cmd( $cmd, { out => 'stdout', %{ $opts // {} } } );
+};
+
 # Public methods
 sub create_database : method {
-   my $self = shift; my $ddl;
-
+   my $self     = shift;
    my $host     = $self->host;
    my $user     = $self->user;
-   my $database = $self->database;
    my $driver   = $self->driver;
+   my $database = $self->database;
+   my $cmds     = $self->ddl_commands->{ lc $driver };
    my $creds    = $self->$_get_db_admin_creds( 'create database' );
-   my $cmds     = $self->ddl_commands->{ $driver };
-   my $args     = { params => [ $host, $user, $self->password ],
-                    quote_bind_values => FALSE };
 
-   $self->info( "Creating ${driver} database ${database}" );
+   $self->info( "Creating ${driver} database ${database}" ); my $ddl;
 
-   $ddl  = $cmds->{ 'create_user' }
-      and  $self->$_execute_ddl( $creds, $self->loc( $ddl, $args ) );
-   $args = { params => [ $host, $user, $database ],
-             quote_bind_values => FALSE };
-   $ddl  = $cmds->{ 'create_db' }
-      and  $self->$_execute_ddl( $creds, $self->loc( $ddl, $args ) );
-   $ddl  = $cmds->{ 'grant_all' }
-      and  $self->$_execute_ddl( $creds, $self->loc( $ddl, $args ) );
+   $ddl  = $cmds->{ 'create_user' } and $self->$_execute_ddl
+      ( $creds, $_inflate->( $ddl, $host, $user, $self->password ) );
+   $ddl  = $cmds->{ 'create_db'   } and $self->$_execute_ddl
+      ( $creds, $_inflate->( $ddl, $host, $user, $database ) );
+   $ddl  = $cmds->{ 'grant_all'   } and $self->$_execute_ddl
+      ( $creds, $_inflate->( $ddl, $host, $user, $database ) );
    return OK;
 }
 
@@ -214,6 +287,7 @@ sub create_ddl : method {
 
    for my $schema_class (values %{ $self->schema_classes }) {
       ensure_class_loaded  $schema_class;
+      $self->dry_run and $self->output( "Would load ${schema_class}" ) and next;
       $self->$_create_ddl( $schema_class, $self->config->sharedir );
    }
 
@@ -223,11 +297,12 @@ sub create_ddl : method {
 sub create_schema : method { # Create databases and edit credentials
    my $self    = shift;
    my $text    = 'Schema creation requires a database, id and password. '.
-                 'For Postgres the driver is Pg and the port 5432';
+                 'For Postgres the driver is Pg and the port 5432. For '.
+                 'MySQL the driver is mysql and the port 3306';
    my $default = $self->yes;
 
    $self->output( $text, AS_PARA );
-   $self->yorn( 'Create database schema', $default, TRUE, 0 ) or return OK;
+   $self->yorn( '+Create database schema', $default, TRUE, 0 ) or return OK;
    # Edit the config file that contains the database connection info
    $self->edit_credentials;
    # Create the database
@@ -242,36 +317,27 @@ sub deploy_and_populate : method {
 
    for my $schema_class (values %{ $self->schema_classes }) {
       ensure_class_loaded $schema_class;
+      $self->dry_run and $self->output( "Would load ${schema_class}" ) and next;
       $self->$_deploy_and_populate( $schema_class, $self->config->sharedir );
    }
 
    return OK;
 }
 
-sub driver {
-   return (split m{ [:] }mx, $_[ 0 ]->dsn)[ 1 ];
-}
-
 sub drop_database : method {
    my $self     = shift;
    my $database = $self->database;
+   my $cmds     = $self->ddl_commands->{ lc $self->driver };
    my $creds    = $self->$_get_db_admin_creds( 'drop database' );
-   my $cmds     = $self->ddl_commands->{ $self->driver };
-   my $args     = { params => [ $self->host, $self->user, $database ],
-                    quote_bind_values => FALSE };
 
    $self->info( "Droping database ${database}" ); my $ddl;
 
-   $ddl  = $cmds->{ 'drop_db' }
-      and  $self->$_execute_ddl( $creds, $self->loc( $ddl, $args ) );
-   $ddl  = $cmds->{ 'drop_user' }
-      and  $self->$_execute_ddl( $creds, $self->loc( $ddl, $args ),
-                                 { expected_rv => 1 } );
+   $ddl = $cmds->{ 'drop_db'   } and $self->$_execute_ddl
+      ( $creds, $_inflate->( $ddl, $self->host, $self->user, $database ) );
+   $ddl = $cmds->{ 'drop_user' } and $self->$_execute_ddl
+      ( $creds, $_inflate->( $ddl, $self->host, $self->user, $database ),
+        { expected_rv => 1 } );
    return OK;
-}
-
-sub dsn {
-   return $_[ 0 ]->connect_info->[ 0 ];
 }
 
 sub edit_credentials : method {
@@ -297,31 +363,22 @@ sub edit_credentials : method {
                      password => NUL };
 
    for my $field (qw( name driver host port user password )) {
+      my $setter = "_set_${field}";
       my $prompt = '+'.$prompts->{ $field };
       my $is_pw  = $field eq 'password' ? TRUE : FALSE;
       my $value  = $defaults->{ $field } ne '_field' ? $defaults->{ $field }
                  :                                        $creds->{ $field };
 
       $value = $self->get_line( $prompt, $value, TRUE, 0, FALSE, $is_pw );
+      $field ne 'name' and $self->$setter( $value // NUL );
       $is_pw and $value = encrypt_for_config $self_cfg, $value, $stored_pw;
-      $creds->{ $field } = $value || NUL;
+      $creds->{ $field } = $value // NUL;
    }
 
    $cfg_data->{credentials}->{ $creds->{name} } = $creds;
+   $self->dry_run and $self->dumper( $cfg_data ) and return OK;
    $self->dump_config_data( $self_cfg, $creds->{name}, $cfg_data );
    return OK;
-}
-
-sub host {
-   return (split m{ [=] }mx, (split m{ [;] }mx, $_[ 0 ]->dsn)[ 1 ])[ 1 ];
-}
-
-sub password {
-   return $_[ 0 ]->connect_info->[ 2 ];
-}
-
-sub user {
-   return $_[ 0 ]->connect_info->[ 1 ];
 }
 
 1;
@@ -386,6 +443,11 @@ C<< { add_drop_table => TRUE, no_comments => TRUE, } >>
 
 A hash reference keyed by database driver. The DDL commands used to create
 users and databases
+
+=item C<dry_run>
+
+A boolean that defaults for false. Can be set from the command line with
+the C<-d> option. Prints out commands, do not execute them
 
 =item C<preversion>
 
