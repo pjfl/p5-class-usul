@@ -15,6 +15,7 @@ use File::Gettext::Constants qw( CONTEXT_SEP );
 use File::Gettext;
 use File::Spec;
 use Try::Tiny;
+use Unexpected::Functions    qw( inflate_placeholders );
 
 my $Domain_Cache = {}; my $Locale_Cache = {};
 
@@ -152,12 +153,8 @@ sub localize {
       0 > index $text, LOCALIZE and return $text;
 
       # Expand positional parameters of the form [_<n>]
-      my @args = map { $args->{quote_bind_values} ? "'${_}'" : $_ }
-                 map { (length) ? $_  : '[]'  }
-                 map {            $_ // '[?]' } @{ $args->{params} },
-                 map {                  '[?]' } 0 .. 9;
-
-      $text =~ s{ \[ _ (\d+) \] }{$args[ $1 - 1 ]}gmx; return $text;
+      return inflate_placeholders [ '[?]', '[]', !$args->{quote_bind_values} ],
+                                  $text, @{ $args->{params} };
    }
 
    0 > index $text, LBRACE and return $text;

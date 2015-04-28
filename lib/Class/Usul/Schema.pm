@@ -5,11 +5,13 @@ use namespace::autoclean;
 use Class::Usul::Constants   qw( AS_PARA AS_PASSWORD COMMA
                                  FAILED FALSE NUL OK SPC TRUE );
 use Class::Usul::Crypt::Util qw( encrypt_for_config );
-use Class::Usul::Functions   qw( distname ensure_class_loaded io throw );
+use Class::Usul::Functions   qw( distname ensure_class_loaded io throw trim );
 use Class::Usul::Types       qw( ArrayRef Bool HashRef NonEmptySimpleStr
                                  PositiveInt SimpleStr Str );
+use Data::Record;
+use Regexp::Common;
 use Try::Tiny;
-use Unexpected::Functions    qw( interpolate_msg );
+use Unexpected::Functions    qw( inflate_placeholders );
 use Moo;
 use Class::Usul::Options;
 
@@ -22,7 +24,7 @@ my $_build_qdb = sub {
    my $cmds = $self->ddl_commands->{ lc $self->driver };
    my $code = $cmds ? $cmds->{ '-qualify-db' } : undef;
 
-   return $code ? $code->( $self, $self->database ).NUL : $self->database;
+   return $code ? $code->( $self, $self->database ) : $self->database;
 };
 
 my $_extract_from_dsn = sub {
@@ -34,7 +36,7 @@ my $_extract_from_dsn = sub {
 };
 
 my $_qualify_database_path = sub {
-   return $_[ 0 ]->config->datadir->catfile( $_[ 1 ].'.db' );
+   return $_[ 0 ]->config->datadir->catfile( $_[ 1 ].'.db' )->pathname;
 };
 
 my $_rebuild_dsn = sub {
@@ -150,6 +152,11 @@ has 'user'              => is => 'rwp',  isa => SimpleStr,
 has '_qualified_db'     => is => 'rwp',  isa => NonEmptySimpleStr,
    builder              => $_build_qdb, lazy => TRUE, trigger => $_rebuild_dsn;
 
+# Private functions
+my $_unquote = sub {
+   local $_ = $_[ 0 ]; s{ \A [\'\"] }{}mx; s{ [\'\"] \z }{}mx; return $_;
+};
+
 # Private methods
 my $_db_attr = sub {
    my  $self = shift; my $attr = $self->connect_info->[ 3 ];
@@ -178,7 +185,7 @@ my $_get_db_admin_creds = sub {
 };
 
 my $_inflate = sub {
-   return interpolate_msg( { defaults => [ 'undef', 'null', TRUE ] }, @_ );
+   return inflate_placeholders [ 'undef', 'null', TRUE ], @_;
 };
 
 my $_create_ddl = sub {
@@ -201,46 +208,61 @@ my $_create_ddl = sub {
    return;
 };
 
+my $_deploy_file = sub {
+   my ($self, $schema, $split, $class, $path) = @_; my $res;
+
+   if ($class) { $self->output( "Populating ${class}" ) }
+   else        { $self->fatal ( 'No class in [_1]', $path->filename ) }
+
+   my $data = $self->file->dataclass_schema->load( $path );
+   my $flds = [ split SPC, $data->{fields} ];
+   my @rows = map { [ map { $_unquote->( trim $_ ) } $split->records( $_ ) ] }
+                 @{ $data->{rows} };
+
+   try {
+      if ($self->dry_run) { $self->dumper( $flds, \@rows ) }
+      else { $res = $schema->populate( $class, [ $flds, @rows ] ) }
+   }
+   catch {
+      if ($_->can( 'class' ) and $_->class eq 'ValidationErrors') {
+         $self->warning( "${_}" ) for (@{ $_->args });
+      }
+
+      throw $_;
+   };
+
+   return $res;
+};
+
 my $_deploy_and_populate = sub {
-   my ($self, $schema_class, $dir) = @_; my $res;
+   my ($self, $schema_class, $dir) = @_; my $res; my $schema;
 
-   my $schema = $schema_class->connect
-      ( $self->dsn, $self->user, $self->password, $self->$_db_attr );
+   if ($self->dry_run) {
+      $self->output( "Would deploy schema ${schema_class} from ${dir}" );
+      $self->dumper( map { $_->basename }
+                     $dir->filter( sub { m{ \.sql \z }mx } )->all_files );
+   }
+   else {
+      $self->info( "Deploying schema ${schema_class} and populating" );
+      $schema = $schema_class->connect
+         ( $self->dsn, $self->user, $self->password, $self->$_db_attr );
+      $schema->storage->ensure_connected;
+      $schema->deploy( $self->$_db_attr, $dir );
+   }
 
-   $self->info( "Deploying schema ${schema_class} and populating" );
-   $schema->storage->ensure_connected;
-   $schema->deploy( $self->$_db_attr, $dir );
-
-   my $dist = distname $schema_class;
-   my $extn = $self->config->extension;
-   my $re   = qr{ \A $dist [-] \d+ [-] (.*) \Q$extn\E \z }mx;
-   my $io   = io( $dir )->filter( sub { $_->filename =~ $re } );
+   my $dist  = distname $schema_class;
+   my $extn  = $self->config->extension;
+   my $re    = qr{ \A $dist [-] \d+ [-] (.*) \Q$extn\E \z }mx;
+   my $io    = io( $dir )->filter( sub { $_->filename =~ $re } );
+   my $split = Data::Record->new( { split => COMMA, unless => $RE{quoted}, } );
 
    for my $path ($io->all_files) {
       my ($class) = $path->filename =~ $re;
 
-      if ($class) { $self->output( "Populating ${class}" ) }
-      else        { $self->fatal ( 'No class in [_1]', $path->filename ) }
-
-      my $hash = $self->file->dataclass_schema->load( $path );
-      my $flds = [ split SPC, $hash->{fields} ];
-      # TODO: Use Data::Record
-      my @rows = map { [ map    { s{ \A [\'\"] }{}mx; s{ [\'\"] \z }{}mx; $_ }
-                         split m{ , \s* }mx, $_ ] } @{ $hash->{rows} };
-
-      try {
-         @{ $res->{ $class } } = $schema->populate( $class, [ $flds, @rows ] );
-      }
-      catch {
-         if ($_->can( 'class' ) and $_->class eq 'ValidationErrors') {
-            $self->warning( "${_}" ) for (@{ $_->args });
-         }
-
-         throw $_;
-      };
+      $res->{ $class } = $self->$_deploy_file( $schema, $split, $class, $path );
    }
 
-   return;
+   return $res;
 };
 
 my $_execute_ddl = sub {
@@ -273,11 +295,11 @@ sub create_database : method {
 
    $self->info( "Creating ${driver} database ${database}" ); my $ddl;
 
-   $ddl  = $cmds->{ 'create_user' } and $self->$_execute_ddl
+   $ddl = $cmds->{ 'create_user' } and $self->$_execute_ddl
       ( $creds, $_inflate->( $ddl, $host, $user, $self->password ) );
-   $ddl  = $cmds->{ 'create_db'   } and $self->$_execute_ddl
+   $ddl = $cmds->{ 'create_db'   } and $self->$_execute_ddl
       ( $creds, $_inflate->( $ddl, $host, $user, $database ) );
-   $ddl  = $cmds->{ 'grant_all'   } and $self->$_execute_ddl
+   $ddl = $cmds->{ 'grant_all'   } and $self->$_execute_ddl
       ( $creds, $_inflate->( $ddl, $host, $user, $database ) );
    return OK;
 }
@@ -296,10 +318,10 @@ sub create_ddl : method {
 
 sub create_schema : method { # Create databases and edit credentials
    my $self    = shift;
+   my $default = $self->yes;
    my $text    = 'Schema creation requires a database, id and password. '.
                  'For Postgres the driver is Pg and the port 5432. For '.
                  'MySQL the driver is mysql and the port 3306';
-   my $default = $self->yes;
 
    $self->output( $text, AS_PARA );
    $self->yorn( '+Create database schema', $default, TRUE, 0 ) or return OK;
@@ -317,7 +339,6 @@ sub deploy_and_populate : method {
 
    for my $schema_class (values %{ $self->schema_classes }) {
       ensure_class_loaded $schema_class;
-      $self->dry_run and $self->output( "Would load ${schema_class}" ) and next;
       $self->$_deploy_and_populate( $schema_class, $self->config->sharedir );
    }
 
@@ -329,7 +350,9 @@ sub drop_database : method {
    my $database = $self->database;
    my $cmds     = $self->ddl_commands->{ lc $self->driver };
    my $creds    = $self->$_get_db_admin_creds( 'drop database' );
+   my $default  = $self->yes;
 
+   $self->yorn( '+Really drop the database', $default, TRUE, 0 ) or return OK;
    $self->info( "Droping database ${database}" ); my $ddl;
 
    $ddl = $cmds->{ 'drop_db'   } and $self->$_execute_ddl
