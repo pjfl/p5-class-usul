@@ -3,8 +3,6 @@ package Class::Usul::IPC::Cmd;
 use 5.01;
 use namespace::autoclean;
 
-use Moo; use warnings NONFATAL => 'all';
-
 use Class::Null;
 use Class::Usul::Constants    qw( EXCEPTION_CLASS FALSE NUL
                                   OK SPC TRUE UNDEFINED_RV );
@@ -30,6 +28,8 @@ use Socket                    qw( AF_UNIX SOCK_STREAM PF_UNSPEC );
 use Sub::Install              qw( install_sub );
 use Try::Tiny;
 use Unexpected::Functions     qw( TimeOut Unspecified );
+
+use Moo; use warnings NONFATAL => 'all';
 
 our ($CHILD_ENUM, $CHILD_PID);
 
@@ -470,7 +470,7 @@ my $_run_cmd_using_fork_and_exec = sub {
    $self->log->debug( "Running ${cmd_str} using fork and exec" );
 
    {  local ($CHILD_ENUM, $CHILD_PID) = (0, 0);
-      $self->ignore_zombies and local $SIG{CHLD} = 'IGNORE';
+      local $SIG{CHLD} = $self->ignore_zombies ? 'IGNORE' : $_child_handler;
 
       if (my $pid = fork) { # Parent
          $_close_child_io->( $pipes );

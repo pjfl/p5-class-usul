@@ -75,12 +75,12 @@ my $_extract_creds_from = sub {
 my $_get_connect_options = sub {
    my $creds = shift;
    my $uopt  = $creds->{unicode_option}
-            || $_unicode_options->()->{ lc $creds->{driver} } || {};
+            // $_unicode_options->()->{ lc $creds->{driver} } // {};
 
    return { AutoCommit =>  $creds->{auto_commit  } // TRUE,
             PrintError =>  $creds->{print_error  } // FALSE,
             RaiseError =>  $creds->{raise_error  } // TRUE,
-            %{ $uopt }, %{ $creds->{database_attr} || {} }, };
+            %{ $uopt }, %{ $creds->{database_attr} // {} }, };
 };
 
 my $_load_config_data = sub {

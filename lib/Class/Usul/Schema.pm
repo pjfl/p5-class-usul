@@ -6,7 +6,7 @@ use Class::Usul::Constants   qw( AS_PARA AS_PASSWORD COMMA
                                  FAILED FALSE NUL OK SPC TRUE );
 use Class::Usul::Crypt::Util qw( encrypt_for_config );
 use Class::Usul::Functions   qw( distname ensure_class_loaded io throw trim );
-use Class::Usul::Types       qw( ArrayRef Bool HashRef NonEmptySimpleStr
+use Class::Usul::Types       qw( ArrayRef Bool HashRef Maybe NonEmptySimpleStr
                                  PositiveInt SimpleStr Str );
 use Data::Record;
 use Regexp::Common;
@@ -59,7 +59,7 @@ option 'database'       => is => 'ro',   isa => NonEmptySimpleStr,
    format               => 's', required => TRUE, trigger => $_rebuild_qdb;
 
 option 'db_admin_ids'   => is => 'ro',   isa => HashRef,
-   documentation        => 'The admin user ids for each RDBMS',
+   documentation        => 'The default admin user ids for each RDBMS',
    default              => sub { { mysql  => 'root',
                                    pg     => 'postgres',
                                    sqlite => NUL, } },
@@ -81,7 +81,7 @@ option 'preversion'     => is => 'ro',   isa => Str, default => NUL,
    format               => 's';
 
 option 'rdbms'          => is => 'ro',   isa => ArrayRef, autosplit => COMMA,
-   documentation        => 'List of RDBMSs',
+   documentation        => 'List of supported RDBMSs',
    default              => sub { [ qw( MySQL SQLite PostgreSQL ) ] },
    format               => 's@';
 
@@ -133,7 +133,7 @@ has 'dsn'               => is => 'rwp',  isa => NonEmptySimpleStr,
    builder              => sub { $_[ 0 ]->connect_info->[ 0 ] },
    lazy                 => TRUE;
 
-has 'host'              => is => 'rwp',  isa => SimpleStr,
+has 'host'              => is => 'rwp',  isa => Maybe[SimpleStr],
    builder              => sub { $_[ 0 ]->$_extract_from_dsn( 'host' ) },
    lazy                 => TRUE, trigger => $_rebuild_dsn;
 
@@ -141,7 +141,7 @@ has 'password'          => is => 'rwp',  isa => SimpleStr,
    builder              => sub { $_[ 0 ]->connect_info->[ 2 ] },
    lazy                 => TRUE;
 
-has 'port'              => is => 'rwp',  isa => PositiveInt,
+has 'port'              => is => 'rwp',  isa => Maybe[PositiveInt],
    builder              => sub { $_[ 0 ]->$_extract_from_dsn( 'port' ) },
    lazy                 => TRUE, trigger => $_rebuild_dsn;
 
@@ -153,6 +153,10 @@ has '_qualified_db'     => is => 'rwp',  isa => NonEmptySimpleStr,
    builder              => $_build_qdb, lazy => TRUE, trigger => $_rebuild_dsn;
 
 # Private functions
+my $_inflate = sub {
+   return inflate_placeholders [ 'undef', 'null', TRUE ], @_;
+};
+
 my $_unquote = sub {
    local $_ = $_[ 0 ]; s{ \A [\'\"] }{}mx; s{ [\'\"] \z }{}mx; return $_;
 };
@@ -182,10 +186,6 @@ my $_get_db_admin_creds = sub {
    $prompt    = '+Database administrator password';
    $attrs->{password} = $self->get_line( $prompt, AS_PASSWORD );
    return $attrs;
-};
-
-my $_inflate = sub {
-   return inflate_placeholders [ 'undef', 'null', TRUE ], @_;
 };
 
 my $_create_ddl = sub {

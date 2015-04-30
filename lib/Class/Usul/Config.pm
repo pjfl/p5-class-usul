@@ -2,7 +2,6 @@ package Class::Usul::Config;
 
 use namespace::autoclean;
 
-use Moo;
 use Class::Usul::Constants   qw( CONFIG_EXTN DEFAULT_CONFHOME
                                  DEFAULT_ENCODING DEFAULT_L10N_DOMAIN
                                  FALSE LANG NUL PERL_EXTNS PHASE TRUE );
@@ -20,6 +19,7 @@ use File::Gettext::Constants qw( LOCALE_DIRS );
 use File::Spec::Functions    qw( canonpath catdir catfile
                                  rel2abs rootdir tmpdir );
 use Scalar::Util             qw( blessed );
+use Moo;
 
 # Public attributes
 has 'appclass'  => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;

@@ -4,7 +4,6 @@ use attributes ();
 use feature 'state';
 use namespace::autoclean;
 
-use Moo;
 use Class::Inspector;
 use Class::Usul::Constants qw( BRK FAILED FALSE NUL OK
                                SPC TRUE UNDEFINED_RV WIDTH );
@@ -15,7 +14,6 @@ use Class::Usul::Functions qw( abs_path elapsed emit emit_err emit_to
                                is_arrayref is_hashref is_member list_attr_of
                                logname pad throw untaint_cmdline );
 use Class::Usul::IPC;
-use Class::Usul::Options;
 use Class::Usul::Types     qw( ArrayRef Bool EncodingType FileType HashRef
                                Int IPCType LoadableClass PositiveInt
                                PromptType SimpleStr );
@@ -27,6 +25,8 @@ use List::Util             qw( first );
 use Scalar::Util           qw( blessed );
 use Text::Autoformat;
 use Try::Tiny;
+use Moo;
+use Class::Usul::Options;
 
 extends q(Class::Usul);
 with    q(Class::Usul::TraitFor::Prompting);
@@ -68,7 +68,7 @@ my $_output_stacktrace = sub {
    return;
 };
 
-# Construction methods
+# Attribute constructors
 my $_build_debug = sub {
    my $self = shift; my $k = (env_prefix $self->config->appclass).'_DEBUG';
 
@@ -102,7 +102,7 @@ my $_build_run_method = sub {
    return $self->_set_method( $method );
 };
 
-# Override attributes in base class
+# Override attribute default in base class
 has '+config_class'   => default => 'Class::Usul::Config::Programs';
 
 # Public attributes
@@ -253,16 +253,15 @@ my $_exit_version = sub {
 };
 
 my $_man_page_from = sub {
-   my ($self, $src) = @_; my $cfg = $self->config;
+   my ($self, $src) = @_; ensure_class_loaded 'Pod::Man';
 
-   ensure_class_loaded 'Pod::Man';
-
-   my $parser   = Pod::Man->new( center  => $cfg->doc_title || NUL,
-                                 name    => $cfg->script,
+   my $conf     = $self->config;
+   my $parser   = Pod::Man->new( center  => $conf->doc_title || NUL,
+                                 name    => $conf->script,
                                  release => 'Version '.$self->$_version,
                                  section => '3m' );
+   my $cmd      = $conf->man_page_cmd || [];
    my $tempfile = $self->file->tempfile;
-   my $cmd      = $cfg->man_page_cmd || [];
 
    $parser->parse_from_file( NUL.$src->pathname, $tempfile->pathname );
    emit $self->run_cmd( [ @{ $cmd }, $tempfile->pathname ] )->out;
@@ -341,7 +340,7 @@ sub add_leader {
    my $leader = $args->{no_lead} ? NUL : (ucfirst $self->config->name).BRK;
 
    if ($args->{fill}) {
-      my $width = $args->{width} || WIDTH;
+      my $width = $args->{width} // WIDTH;
 
       $text = autoformat $text, { right => $width - 1 - length $leader };
    }
@@ -380,9 +379,9 @@ sub dump_self : method {
 }
 
 sub error {
-   my ($self, $err, $args) = @_;
+   my ($self, $text, $args) = @_;
 
-   my $text = $self->loc( $err || '[no message]', $args->{args} || [] );
+   $text = $self->loc( $text || '[no message]', $args->{args} // [] );
 
    $self->log->error( $_ ) for (split m{ \n }mx, "${text}");
 
@@ -391,11 +390,11 @@ sub error {
 }
 
 sub fatal {
-   my ($self, $err, $args) = @_; my (undef, $file, $line) = caller 0;
+   my ($self, $text, $args) = @_; my (undef, $file, $line) = caller 0;
 
    my $posn = ' at '.abs_path( $file )." line ${line}";
 
-   my $text = $self->loc( $err || '[no message]', $args->{args} || [] );
+   $text = $self->loc( $text || '[no message]', $args->{args} // [] );
 
    $self->log->alert( $_ ) for (split m{ \n }mx, $text.$posn);
 
@@ -410,7 +409,7 @@ sub help : method {
 sub info {
    my ($self, $text, $args) = @_;
 
-   my $opts = { params => $args->{args} || [], quote_bind_values => FALSE, };
+   my $opts = { params => $args->{args} // [], quote_bind_values => FALSE, };
 
    $text = $self->loc( $text || '[no message]', $opts );
 
@@ -472,7 +471,7 @@ sub loc {
 sub output {
    my ($self, $text, $args) = @_; $args ||= {};
 
-   $text = $self->loc( $text || '[no message]', $args->{args} || [] );
+   $text = $self->loc( $text || '[no message]', $args->{args} // [] );
 
    my $code = sub {
       $args->{to} && $args->{to} eq 'err' ? emit_err( @_ ) : emit( @_ );
@@ -542,7 +541,7 @@ sub run_chain {
 sub warning {
    my ($self, $text, $args) = @_;
 
-   $text = $self->loc( $text || '[no message]', $args->{args} || [] );
+   $text = $self->loc( $text || '[no message]', $args->{args} // [] );
 
    $self->log->warn( $_ ) for (split m{ \n }mx, $text);
 

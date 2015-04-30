@@ -2,7 +2,6 @@ package Class::Usul::Log;
 
 use namespace::autoclean;
 
-use Moo;
 use Class::Null;
 use Class::Usul::Constants qw( FALSE LOG_LEVELS NUL TRUE );
 use Class::Usul::Functions qw( merge_attributes );
@@ -13,6 +12,7 @@ use File::Basename         qw( dirname );
 use File::DataClass::Types qw( Path );
 use Scalar::Util           qw( blessed );
 use Sub::Install           qw( install_sub );
+use Moo;
 
 # Construction
 my $_build_log = sub {

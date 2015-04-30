@@ -3,7 +3,6 @@ package Class::Usul::L10N;
 use 5.010001;
 use namespace::autoclean;
 
-use Moo;
 use Class::Null;
 use Class::Usul::Constants   qw( FALSE LBRACE LOCALIZE NUL SEP TRUE );
 use Class::Usul::Functions   qw( assert is_arrayref
@@ -16,6 +15,7 @@ use File::Gettext;
 use File::Spec;
 use Try::Tiny;
 use Unexpected::Functions    qw( inflate_placeholders );
+use Moo;
 
 my $Domain_Cache = {}; my $Locale_Cache = {};
 

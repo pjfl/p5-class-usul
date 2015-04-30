@@ -3,7 +3,6 @@ package Class::Usul::IPC;
 use 5.01;
 use namespace::autoclean;
 
-use Moo;
 use Class::Null;
 use Class::Usul::Constants    qw( EXCEPTION_CLASS FALSE NUL OK SPC TRUE );
 use Class::Usul::Functions    qw( arg_list get_user io loginid throw );
@@ -13,6 +12,7 @@ use Class::Usul::Types        qw( BaseType Bool LoadableClass );
 use English                   qw( -no_match_vars );
 use Module::Load::Conditional qw( can_load );
 use Unexpected::Functions     qw( Unspecified );
+use Moo;
 
 # Public attributes
 has 'cache_ttys'  => is => 'ro',   isa => Bool, default => TRUE;

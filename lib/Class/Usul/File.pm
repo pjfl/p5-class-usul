@@ -2,7 +2,6 @@ package Class::Usul::File;
 
 use namespace::autoclean;
 
-use Moo;
 use Class::Usul::Constants qw( EXCEPTION_CLASS TRUE );
 use Class::Usul::Functions qw( arg_list create_token is_arrayref io throw );
 use Class::Usul::Types     qw( BaseType );
@@ -11,6 +10,7 @@ use File::DataClass::Schema;
 use File::Spec::Functions  qw( catfile );
 use Scalar::Util           qw( blessed );
 use Unexpected::Functions  qw( Unspecified );
+use Moo;
 
 # Private attributes
 has '_usul' => is => 'ro', isa => BaseType,

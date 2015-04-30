@@ -2,18 +2,15 @@ package Class::Usul;
 
 use 5.010001;
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.57.%d', q$Rev: 8 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.57.%d', q$Rev: 9 $ =~ /\d+/gmx );
 
-use Moo;
 use Class::Usul::Constants  qw( EXCEPTION_CLASS FALSE TRUE );
 use Class::Usul::Functions  qw( data_dumper merge_attributes );
-use Class::Usul::L10N;
-use Class::Usul::Log;
 use Class::Usul::Types      qw( Bool ConfigType EncodingType HashRef
                                 L10NType LoadableClass LockType LogType );
-use IPC::SRLock;
+use Moo;
 
-# Construction
+# Attribute constructors
 my $_build_lock = sub {
    my $self   = shift;
    my $config = $self->config;
@@ -23,7 +20,7 @@ my $_build_lock = sub {
    merge_attributes $attr, $config, { 'exception_class' => EXCEPTION_CLASS },
                                     [ 'exception_class', 'tempdir' ];
 
-   return IPC::SRLock->new( $attr );
+   return $self->lock_class->new( $attr );
 };
 
 # Public attributes
@@ -43,13 +40,22 @@ has 'encoding'     => is => 'lazy', isa => EncodingType,
    builder         => sub { $_[ 0 ]->config->encoding };
 
 has 'l10n'         => is => 'lazy', isa => L10NType,
-   builder         => sub { Class::Usul::L10N->new( builder => $_[ 0 ] ) },
+   builder         => sub { $_[ 0 ]->l10n_class->new( builder => $_[ 0 ] ) },
    handles         => [ 'localize' ];
+
+has 'l10n_class'   => is => 'lazy', isa => LoadableClass, coerce => TRUE,
+   default         => 'Class::Usul::L10N';
 
 has 'lock'         => is => 'lazy', isa => LockType, builder => $_build_lock;
 
+has 'lock_class'   => is => 'lazy', isa => LoadableClass, coerce => TRUE,
+   default         => 'IPC::SRLock';
+
 has 'log'          => is => 'lazy', isa => LogType,
-   builder         => sub { Class::Usul::Log->new( builder => $_[ 0 ] ) };
+   builder         => sub { $_[ 0 ]->log_class->new( builder => $_[ 0 ] ) };
+
+has 'log_class'    => is => 'lazy', isa => LoadableClass, coerce => TRUE,
+   default         => 'Class::Usul::Log';
 
 # Public methods
 sub dumper { # Damm handy for development
@@ -77,7 +83,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.57.$Rev: 8 $
+Describes Class::Usul version v0.57.$Rev: 9 $
 
 =head1 Synopsis
 
@@ -115,12 +121,12 @@ Defines the following attributes;
 
 =over 3
 
-=item config
+=item C<config>
 
 The C<config> attribute should be a hash reference that may define key / value
 pairs that provide filesystem paths for the temporary directory etc.
 
-=item config_class
+=item C<config_class>
 
 Defaults to L<Class::Usul::Config> and is of type C<LoadableClass>. An
 instance of this class is loaded and instantiated using the hash reference
@@ -128,32 +134,47 @@ in the C<config> attribute. It provides accessor methods with symbol
 inflation and smart defaults. Add configuration attributes by
 subclassing this class
 
-=item debug
+=item C<debug>
 
-Defaults to false
+A boolean which defaults to false. Usually an instance of this class is passed
+into the constructors of other classes which set their own debug state to this
+value
 
-=item encoding
+=item C<encoding>
 
-Decode input and encode output. Defaults to C<< $self->config->encoding >>
-which defaults to to C<UTF-8>
+Defaults to C<< $self->config->encoding >> which defaults to to C<UTF-8>.
+Used to decode input and encode output
 
-=item l10n
+=item C<l10n>
 
-An instance of L<Class::Usul::L10N>
+A lazily evaluated instance of the C<l10n_class>. This object reference handles
+the C<localize> method
 
-=item lock
+=item C<l10n_class>
 
-An instance of L<IPC::SRLock>
+A lazy loadable class which defaults to L<Class::Usul::L10N>
 
-=item log
+=item C<lock>
 
-An instance of L<Class::Usul::Log>
+A lazily evaluated instance of the C<lock_class>
+
+=item C<lock_class>
+
+A lazy loadable class which defaults to L<IPC::SRLock>
+
+=item C<log>
+
+A lazily evaluated instance of the C<log_class>
+
+=item C<log_class>
+
+A lazy loadable class which defaults to L<Class::Usul::Log>
 
 =back
 
 =head1 Subroutines/Methods
 
-=head2 dumper
+=head2 C<dumper>
 
    $self->dumper( $some_var );
 
@@ -168,6 +189,8 @@ debug level
 
 =over 3
 
+=item L<Class::Usul::Config>
+
 =item L<Class::Usul::Constants>
 
 =item L<Class::Usul::Functions>
@@ -175,6 +198,8 @@ debug level
 =item L<Class::Usul::L10N>
 
 =item L<Class::Usul::Log>
+
+=item L<Class::Usul::Types>
 
 =item L<IPC::SRLock>
 
