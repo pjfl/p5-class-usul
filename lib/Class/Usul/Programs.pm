@@ -186,7 +186,7 @@ has '_run_method' => is => 'lazy', isa => SimpleStr,
 
 # Private methods
 my $_apply_stdio_encoding = sub {
-   my $self = shift; my $enc = $self->encoding;
+   my $self = shift; my $enc = untaint_cmdline $self->encoding;
 
    for (*STDIN, *STDOUT, *STDERR) {
       $_->opened or next; binmode $_, ":encoding(${enc})";

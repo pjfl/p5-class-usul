@@ -557,7 +557,11 @@ sub get_cfgfiles ($;$$) {
 }
 
 sub get_user (;$) {
-   return is_win32() ? Class::Null->new : getpwuid( shift // $UID );
+   my $user = shift; is_win32() and return Class::Null->new;
+
+   defined $user and $user !~ m{ \A \d+ \z }mx and return getpwnam( $user );
+
+   return getpwuid( $user // $UID );
 }
 
 sub hex2str (;$) {
@@ -1073,11 +1077,13 @@ Returns an array ref of configurations file paths for the application
 
 =head2 get_user
 
-   $user_object = get_user $optional_uid;
+   $user_object = get_user $optional_uid_or_name;
 
-Returns the user object from a call to C<getpwuid> with get L<User::pwent>
-package loaded. On MSWin32 systems returns an instance of L<Class::Null>.
-Defaults to the current uid but will lookup the supplied uid if provided
+Returns the user object from a call to either C<getpwuid> or C<getpwnam>
+depending on whether an integer or a string was passed. The L<User::pwent>
+package is loaded so objects are returned. On MSWin32 systems returns an
+instance of L<Class::Null>.  Defaults to the current uid but will lookup the
+supplied uid if provided
 
 =head2 hex2str
 

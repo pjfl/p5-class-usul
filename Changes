@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - Functions get_user accepts uids or names
+          - Untainted IPC::SRLock type attr and Programs encoding attr
           - Usul now even more lazy
           - Depoy and populate now uses Data::Record
           - Added Schema dry run and SQLite support

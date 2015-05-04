@@ -2,10 +2,11 @@ package Class::Usul;
 
 use 5.010001;
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.57.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.57.%d', q$Rev: 11 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants  qw( EXCEPTION_CLASS FALSE TRUE );
-use Class::Usul::Functions  qw( data_dumper merge_attributes );
+use Class::Usul::Functions  qw( data_dumper merge_attributes
+                                untaint_identifier );
 use Class::Usul::Types      qw( Bool ConfigType EncodingType HashRef
                                 L10NType LoadableClass LockType LogType );
 use Moo;
@@ -19,6 +20,8 @@ my $_build_lock = sub {
    merge_attributes $attr, $self,   {}, [ 'debug', 'log' ];
    merge_attributes $attr, $config, { 'exception_class' => EXCEPTION_CLASS },
                                     [ 'exception_class', 'tempdir' ];
+
+   $attr->{type} = untaint_identifier $attr->{type};
 
    return $self->lock_class->new( $attr );
 };
@@ -83,7 +86,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.57.$Rev: 10 $
+Describes Class::Usul version v0.57.$Rev: 11 $
 
 =head1 Synopsis
 
