@@ -8,7 +8,8 @@ use Class::Usul::Constants   qw( CONFIG_EXTN DEFAULT_CONFHOME
 use Class::Usul::File;
 use Class::Usul::Functions   qw( app_prefix canonicalise class2appdir
                                  home2appldir is_arrayref split_on__
-                                 split_on_dash untaint_path );
+                                 split_on_dash untaint_cmdline
+                                 untaint_identifier untaint_path );
 use Class::Usul::Types       qw( ArrayRef EncodingType HashRef NonEmptySimpleStr
                                  NonZeroPositiveInt PositiveInt Str );
 use Config;
@@ -63,7 +64,8 @@ has 'no_thrash' => is => 'ro',   isa => NonZeroPositiveInt, default => 3;
 
 has 'phase'     => is => 'lazy', isa => PositiveInt;
 
-has 'prefix'    => is => 'lazy', isa => NonEmptySimpleStr;
+has 'prefix'    => is => 'lazy', isa => NonEmptySimpleStr,
+   coerce       => sub { untaint_cmdline $_[ 0 ] };
 
 has 'pathname'  => is => 'lazy', isa => File, coerce => TRUE;
 
@@ -256,7 +258,7 @@ sub _build_shell {
 }
 
 sub _build_salt {
-   return $_[ 0 ]->inflate_symbol( $_[ 1 ], 'prefix' );
+   return untaint_cmdline $_[ 0 ]->inflate_symbol( $_[ 1 ], 'prefix' );
 }
 
 sub _build_suid {

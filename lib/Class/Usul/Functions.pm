@@ -237,7 +237,7 @@ sub arg_list (;@) {
 sub assert_directory ($) {
    my $v = abs_path( $_[ 0 ] ); (defined $v and length $v) or return $v;
 
-   return -d "${v}" ? $v : undef;
+   return -d "${v}" ? untaint_path( $v ) : undef;
 }
 
 sub base64_decode_ns ($) {
@@ -628,8 +628,8 @@ sub loginid (;$) {
    return untaint_cmdline( get_user( $_[ 0 ] )->name || 'unknown' );
 }
 
-sub logname () {
-   return untaint_cmdline( $ENV{USER} || $ENV{LOGNAME} || loginid() );
+sub logname (;$) { # Deprecated
+   return untaint_cmdline( $ENV{USER} || $ENV{LOGNAME} || loginid( $_[ 0 ] ) );
 }
 
 sub merge_attributes ($$$;$) {
@@ -1159,9 +1159,9 @@ to L</get_user> or 'unknown' if the name attribute value is false
 
    $logname = logname;
 
-Returns untainted the first true value returned by; the environment
-variable C<USER>, the environment variable C<LOGNAME>, and the
-function L</loginid>
+Deprecated. Returns untainted the first true value returned by; the environment
+variable C<USER>, the environment variable C<LOGNAME>, and the function
+L</loginid>
 
 =head2 merge_attributes
 

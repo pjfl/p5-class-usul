@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Untainted more configuration attributes
           - Functions get_user accepts uids or names
           - Untainted IPC::SRLock type attr and Programs encoding attr
           - Usul now even more lazy

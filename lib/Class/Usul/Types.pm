@@ -4,9 +4,10 @@ use strict;
 use warnings;
 
 use Class::Usul::Constants qw( DEFAULT_ENCODING FALSE LOG_LEVELS NUL TRUE );
-use Class::Usul::Functions qw( ensure_class_loaded exception );
+use Class::Usul::Functions qw( ensure_class_loaded exception untaint_cmdline );
 use Encode                 qw( find_encoding );
-use Scalar::Util           qw( blessed );
+use Scalar::Util           qw( blessed tainted );
+use Try::Tiny;
 use Type::Library             -base, -declare =>
                            qw( BaseType ConfigType DateTimeType EncodingType
                                FileType IPCType L10NType LockType
@@ -83,6 +84,15 @@ my $_has_min_config_attributes = sub {
    return TRUE;
 };
 
+my $_isa_untainted_encoding = sub {
+   my $enc = shift; my $res;
+
+   try   { $res = !tainted( $enc ) && find_encoding( $enc ) ? TRUE : FALSE }
+   catch { $res = FALSE };
+
+   return $res
+};
+
 my $_load_if_exists = sub {
    if (my $class = shift) {
       eval { ensure_class_loaded( $class ) }; exception or return $class;
@@ -114,10 +124,12 @@ subtype DateTimeType, as Object,
 coerce DateTimeType, from Str, via { $_str2date_time->( $_ ) };
 
 subtype EncodingType, as Str,
-   where   { find_encoding( $_ ) },
+   where   { $_isa_untainted_encoding->( $_ ) },
    message { inflate_message 'String [_1] is not a valid encoding', $_ };
 
-coerce EncodingType, from Undef, via { DEFAULT_ENCODING };
+coerce EncodingType,
+   from Str,   via { untaint_cmdline $_ },
+   from Undef, via { DEFAULT_ENCODING };
 
 subtype L10NType, as Object,
    where   { $_->can( 'localize' ) },

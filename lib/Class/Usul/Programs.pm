@@ -243,9 +243,11 @@ my $_get_debug_option = sub {
 };
 
 my $_version = sub {
-   my $self = shift; no strict 'refs';
+   my $self = shift; my $conf = $self->config;
 
-   return ${ $self->config->appclass.'::VERSION' } // '?';
+   try { ensure_class_loaded $conf->appclass } catch {}; no strict 'refs';
+
+   return ${ $conf->appclass.'::VERSION' } // '?';
 };
 
 my $_exit_version = sub {

@@ -4,7 +4,7 @@ use namespace::autoclean;
 
 use Class::Null;
 use Class::Usul::Constants qw( FALSE LOG_LEVELS NUL TRUE );
-use Class::Usul::Functions qw( merge_attributes );
+use Class::Usul::Functions qw( merge_attributes untaint_identifier );
 use Class::Usul::Types     qw( Bool EncodingType HashRef
                                LoadableClass LogType Undef );
 use Encode;
@@ -104,11 +104,11 @@ sub get_log_attributes {
 
    ($logfile and -d dirname( "${logfile}" )) or return;
 
-   $fattr->{alias   }   = 'file-out';
-   $fattr->{filename}   = "${logfile}";
-   $fattr->{maxlevel}   = $self->_debug_flag
-                        ? 'debug' : $fattr->{maxlevel} || 'info';
-   $fattr->{mode    } ||= 'append';
+   $fattr->{alias   } = 'file-out';
+   $fattr->{filename} = "${logfile}";
+   $fattr->{maxlevel} = $self->_debug_flag ? 'debug'
+                      : untaint_identifier $fattr->{maxlevel} // 'info';
+   $fattr->{mode    } = untaint_identifier $fattr->{mode    } // 'append';
    return $attr;
 }
 
