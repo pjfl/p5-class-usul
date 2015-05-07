@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - Made trapping exec failure an authore test. Unreliable
+          - Moved Programs interpolate_cmd to CX::Usul Admin
           - Made Programs exit usage public
           - Untainted more configuration attributes
           - Functions get_user accepts uids or names

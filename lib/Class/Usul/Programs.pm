@@ -422,14 +422,6 @@ sub info {
    return TRUE;
 }
 
-sub interpolate_cmd {
-   my ($self, $cmd, @args) = @_;
-
-   my $ref = $self->can( "_interpolate_${cmd}_cmd" ) or return [ $cmd, @args ];
-
-   return $self->$ref( $cmd, @args );
-}
-
 sub list_methods : method {
    my $self = shift; ensure_class_loaded 'Pod::Eventual::Simple';
 
@@ -742,13 +734,6 @@ on. Returns true if debug is on. Also offers the option to quit
 Calls L<Class::Usul::localize|Class::Usul/localize> with
 the passed args. Logs the result at the info level, then adds the
 program leader and prints the result to I<STDOUT>
-
-=head2 interpolate_cmd
-
-   $cmd = $self->interpolate_cmd( $cmd, @args );
-
-Calls C<_interpolate_${cmd}_cmd> to apply the arguments to the command in a
-command specific way
 
 =head2 loc
 

@@ -255,12 +255,13 @@ SKIP: {
 
    $path->exists and $path->unlink;
 
-   $r = run_cmd_test( q(), [ '/bin/not_found' ], { expected_rv => 255 } );
-   like "${r}", qr{ \Qfailed to exec\E }imx,
-      'fork and exec - traps exec failure';
-
    is run_cmd_test( 'out', [ $perl, '-e', 'print <>' ], { in => 'test' } ),
       'test', 'fork and exec - captures stdin';
+
+   $r = run_cmd_test( q(), [ '/bin/not_found' ], { expected_rv => 255 } );
+
+   $ENV{AUTHOR_TESTING} and like "${r}", qr{ \Qfailed to exec\E }imx,
+      'fork and exec - traps exec failure';
 }
 
 # This fails on some platforms. The stderr is not redirected as expected
