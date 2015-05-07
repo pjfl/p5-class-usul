@@ -284,6 +284,7 @@ my $_usage_for = sub {
       $tfile->stat->{size} > 0 and return $self->$_man_page_from( $tfile );
    }
 
+   emit_to \*STDERR, "Method ${method} no documentation found\n";
    return FAILED;
 };
 
@@ -306,10 +307,6 @@ my $_output_usage = sub {
    return FAILED;
 };
 
-my $_exit_usage = sub {
-   $_[ 0 ]->quiet( TRUE ); exit $_[ 0 ]->$_output_usage( $_[ 1 ] );
-};
-
 # Construction
 around 'BUILDARGS' => sub {
    my ($orig, $self, @args) = @_; my $attr = $orig->( $self, @args );
@@ -326,9 +323,9 @@ around 'BUILDARGS' => sub {
 sub BUILD {
    my $self = shift; $self->$_apply_stdio_encoding;
 
-   $self->help_usage   and $self->$_exit_usage( 0 );
-   $self->help_options and $self->$_exit_usage( 1 );
-   $self->help_manual  and $self->$_exit_usage( 2 );
+   $self->help_usage   and $self->exit_usage( 0 );
+   $self->help_options and $self->exit_usage( 1 );
+   $self->help_manual  and $self->exit_usage( 2 );
    $self->show_version and $self->$_exit_version;
 
    $self->_set_debug( $self->$_get_debug_option );
@@ -389,6 +386,10 @@ sub error {
 
    emit_to *STDERR, $self->add_leader( $text, $args )."\n";
    return TRUE;
+}
+
+sub exit_usage {
+   $_[ 0 ]->quiet( TRUE ); exit $_[ 0 ]->$_output_usage( $_[ 1 ] );
 }
 
 sub fatal {
@@ -535,7 +536,7 @@ sub run {
 sub run_chain {
    my $self = shift;
 
-   $self->error( 'Method unknown' ); $self->$_exit_usage( 0 );
+   $self->error( 'Method unknown' ); $self->exit_usage( 0 );
 
    return; # Not reached
 }
@@ -706,9 +707,9 @@ Calls L<Class::Usul::localize|Class::Usul/localize> with
 the passed args. Logs the result at the error level, then adds the
 program leader and prints the result to I<STDERR>
 
-=head2 _exit_usage
+=head2 exit_usage
 
-   $self->_exit_usage( $verbosity );
+   $self->exit_usage( $verbosity );
 
 Print out usage information from POD. The C<$verbosity> is; 0, 1 or 2
 

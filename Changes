@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Made Programs exit usage public
           - Untainted more configuration attributes
           - Functions get_user accepts uids or names
           - Untainted IPC::SRLock type attr and Programs encoding attr
