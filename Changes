@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+0.58.1    2015-05-11 14:32:21
           - Added untainted_argv to UntaintedGetopts
           - Made trapping exec failure an authore test. Unreliable
           - Moved Programs interpolate_cmd to CX::Usul Admin

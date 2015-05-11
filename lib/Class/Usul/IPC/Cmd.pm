@@ -470,7 +470,7 @@ my $_run_cmd_using_fork_and_exec = sub {
    $self->log->debug( "Running ${cmd_str} using fork and exec" );
 
    {  local ($CHILD_ENUM, $CHILD_PID) = (0, 0);
-      local $SIG{CHLD} = $self->ignore_zombies ? 'IGNORE' : $_child_handler;
+      $self->ignore_zombies and local $SIG{CHLD} = 'IGNORE';
 
       if (my $pid = fork) { # Parent
          $_close_child_io->( $pipes );
