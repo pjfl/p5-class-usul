@@ -369,7 +369,7 @@ sub create_token (;$) {
 }
 
 sub curry (&$;@) {
-   my ($code, @args) = @_; return sub { return $code->( @args, @_ ) };
+   my ($code, @args) = @_; return sub { $code->( @args, @_ ) };
 }
 
 sub data_dumper (;@) {

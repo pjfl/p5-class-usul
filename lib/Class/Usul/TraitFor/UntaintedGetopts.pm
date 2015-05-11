@@ -13,7 +13,9 @@ use Regexp::Common;
 use Scalar::Util           qw( blessed );
 use Moo::Role;
 
-my $Extra_Argv = []; my $Usage = "Did we forget new_with_options?\n";
+my $Extra_Argv = []; my $Untainted_Argv = [];
+
+my $Usage = "Did we forget new_with_options?\n";
 
 # Private functions
 my $_extra_argv = sub {
@@ -85,6 +87,10 @@ my $_sort_options = sub {
    return ($oa == $max) && ($ob == $max) ? $a cmp $b : $oa <=> $ob;
 };
 
+my $_untainted_argv = sub {
+   return $_[ 0 ]->{_untainted_argv} //= [ @{ $Untainted_Argv } ];
+};
+
 my $_build_options = sub {
    my $options_data = shift; my $splitters = {}; my @options = ();
 
@@ -126,6 +132,7 @@ my $_parse_options = sub {
    $config{protect_argv} and local @ARGV = @ARGV;
    $enc and @ARGV = map { decode( $enc, $_ ) } @ARGV;
    $config{no_untaint} or @ARGV = map { untaint_cmdline $_ } @ARGV;
+   $Untainted_Argv = [ @ARGV ];
    keys %{ $splitters } and @ARGV = $_split_args->( $splitters );
    ($opt, $Usage) = describe_options( ('Usage: %c %o'), @options, @flavour );
    $Extra_Argv = [ @ARGV ];
@@ -163,6 +170,11 @@ sub options_usage {
 
 sub unshift_argv {
    return unshift @{ $_extra_argv->( $_[ 0 ] ) }, $_[ 1 ];
+}
+
+sub untainted_argv {
+   return defined $_[ 1 ] ? $_untainted_argv->( $_[ 0 ] )->[ $_[ 1 ] ]
+                          : $_untainted_argv->( $_[ 0 ] );
 }
 
 1;
@@ -216,6 +228,11 @@ L<Getopt::Long::Descriptive>
 =head2 unshift_argv
 
 Pushes the supplied argument back onto the C<extra_argv> list
+
+=head2 untainted_argv
+
+Returns all of the arguments passed, untainted, before L<Getopt::Long> parses
+them
 
 =head1 Diagnostics
 

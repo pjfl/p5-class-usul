@@ -314,15 +314,36 @@ __END__
 
 =head1 Name
 
-Class::Usul::Config - Inflate config values
+Class::Usul::Config - Configuration class with sensible attribute defaults
 
 =head1 Synopsis
 
-   use Class::Usul::Config;
+   use Class::Usul::Constants qw( TRUE );
+   use Class::Usul::Types     qw( ConfigType HashRef LoadableClass );
+   use Moo;
+
+   has 'config'       => is => 'lazy', isa => ConfigType, builder => sub {
+      $_[ 0 ]->config_class->new( $_[ 0 ]->_config_attr ) },
+      init_arg        => undef;
+
+   has '_config_attr' => is => 'ro',   isa => HashRef, builder => sub { {} },
+      init_arg        => 'config';
+
+   has 'config_class' => is => 'ro',   isa => LoadableClass, coerce => TRUE,
+      default         => 'Class::Usul::Config';
 
 =head1 Description
 
-Defines the following list of attributes
+Defines the configuration object. Attributes have sensible defaults that
+can be overridden by values in configuration files which are loaded on
+request
+
+Pathnames passed in the C<cfgfiles> attribute are loaded and their contents
+merged with the values passed to the configuration class constructor
+
+=head1 Configuration and Environment
+
+Defines the following list of attributes;
 
 =over 3
 
@@ -337,7 +358,7 @@ Directory. Defaults to the application's install directory
 
 =item C<binsdir>
 
-Directory. Defaults to the application's I<bin> directory
+Directory. Defaults to the application's F<bin> directory
 
 =item C<cfgfiles>
 
@@ -346,7 +367,7 @@ files to load when instantiating an instance of the configuration class
 
 =item C<ctlfile>
 
-File in the C<ctrldir> directory that contains this programs control data
+File in the F<ctrldir> directory that contains this programs control data
 
 =item C<ctrldir>
 
@@ -358,11 +379,11 @@ Directory containing data files used by the application
 
 =item C<encoding>
 
-String default to the constant I<DEFAULT_ENCODING>
+String default to the constant C<DEFAULT_ENCODING>
 
 =item C<extension>
 
-String defaults to the constant I<CONFIG_EXTN>
+String defaults to the constant C<CONFIG_EXTN>
 
 =item C<home>
 
@@ -418,7 +439,7 @@ avoid processor thrash
 
 =item C<pathname>
 
-File defaults to the absolute path to the I<PROGRAM_NAME> system constant
+File defaults to the absolute path to the C<PROGRAM_NAME> system constant
 
 =item C<phase>
 
@@ -440,7 +461,7 @@ Directory. Contains a running programs PID file
 =item C<salt>
 
 String. This applications salt for passwords as set by the administrators . It
-is used to perturb the encryption methods. Defaults to the I<prefix>
+is used to perturb the encryption methods. Defaults to the C<prefix>
 attribute value
 
 =item C<sessdir>
@@ -457,8 +478,8 @@ File. The default shell used to create new OS users
 
 =item C<suid>
 
-File. Name of the setuid root program in the I<bin> directory. Defaults to
-the I<prefix>_admin
+File. Name of the setuid root program in the F<bin> directory. Defaults to
+the C<prefix>_admin
 
 =item C<tempdir>
 
@@ -475,12 +496,12 @@ Directory. Contains all of the non program code directories
 
 =head2 BUILDARGS
 
-Loads the configuration files if specified. Calls L</inflate_symbol>
-and L</inflate_path>
+Loads the configuration files if specified in the C<cfgfiles> attribute. Calls
+L</inflate_symbol> and L</inflate_path> as required
 
 =head2 inflate_path
 
-Inflates the I<__symbol( relative_path )__> values to their actual runtime
+Inflates the C<__symbol( relative_path )__> values to their actual runtime
 values
 
 =head2 inflate_paths
@@ -490,11 +511,7 @@ was passed as argument
 
 =head2 inflate_symbol
 
-Inflates the I<__SYMBOL__> values to their actual runtime values
-
-=head1 Configuration and Environment
-
-None
+Inflates the C<__SYMBOL__> values to their actual runtime values
 
 =head1 Diagnostics
 
