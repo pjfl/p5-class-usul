@@ -418,7 +418,7 @@ sub info {
 
    $self->log->info( $_ ) for (split m{ [\n] }mx, $text);
 
-   $self->quiet or emit $self->add_leader( $text, $args );
+   $self->quiet or $args->{quiet} or emit $self->add_leader( $text, $args );
    return TRUE;
 }
 
@@ -540,7 +540,7 @@ sub warning {
 
    $self->log->warn( $_ ) for (split m{ \n }mx, $text);
 
-   $self->quiet or emit $self->add_leader( $text, $args );
+   $self->quiet or $args->{quiet} or emit $self->add_leader( $text, $args );
    return TRUE;
 }
 

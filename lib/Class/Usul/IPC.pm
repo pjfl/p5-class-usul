@@ -269,7 +269,7 @@ __END__
 
 =head1 Name
 
-Class::Usul::IPC - List/Create/Delete processes
+Class::Usul::IPC - List / create / delete processes
 
 =head1 Synopsis
 

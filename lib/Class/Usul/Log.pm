@@ -3,11 +3,11 @@ package Class::Usul::Log;
 use namespace::autoclean;
 
 use Class::Null;
-use Class::Usul::Constants qw( FALSE LOG_LEVELS NUL TRUE );
+use Class::Usul::Constants qw( FALSE LOG_LEVELS NUL SPC TRUE );
 use Class::Usul::Functions qw( merge_attributes untaint_identifier );
 use Class::Usul::Types     qw( Bool EncodingType HashRef
                                LoadableClass LogType Undef );
-use Encode;
+use Encode                 qw( encode );
 use File::Basename         qw( dirname );
 use File::DataClass::Types qw( Path );
 use Scalar::Util           qw( blessed );
@@ -60,26 +60,21 @@ my $_add_methods = sub {
    for my $method (@methods) {
       $class->can( $method )
          or install_sub { into => $class, as => $method, code => sub {
-            my ($self, $text) = @_; $text or return FALSE;
+            my ($self, $text, $opts) = @_; $text or return FALSE;
 
-            $text = "${text}"; chomp $text; $text .= "\n";
+            $text = ucfirst "${text}"; chomp $text; $text .= "\n";
+
+            if (defined $opts) {
+               my $lead = ucfirst $opts->{leader} // NUL;
+               my $user = $opts->{user} ? '['.$opts->{user}->username.'] '
+                        :         $lead ? SPC
+                                        : NUL;
+
+               $text = "${lead}${user}${text}";
+            }
+
             $self->_encoding and $text = encode( $self->_encoding, $text );
             $self->_log->$method( $text );
-            return TRUE;
-         } };
-
-      my $meth_msg = "${method}_message";
-
-      $class->can( $meth_msg )
-         or install_sub { into => $class, as => $meth_msg, code => sub {
-            my ($self, $opts, $msg) = @_; my $text;
-
-            my $user = $opts->{user} ? $opts->{user}->username : 'unknown';
-
-            $msg ||= NUL; $msg = "${msg}"; chomp $msg;
-            $text  = (ucfirst $opts->{leader} || NUL)."[${user}] ".
-                     (ucfirst $msg || 'no message');
-            $self->$method( $text );
             return TRUE;
          } };
    }
@@ -99,10 +94,10 @@ sub get_log_attributes {
 
    $self->_log_class eq 'Log::Handler' or return $attr;
 
-   my $fattr   = $attr->{file} ||= {};
-   my $logfile = $fattr->{filename} || $self->_logfile;
+   my $fattr   = $attr->{file} //= {};
+   my $logfile = $fattr->{filename} // $self->_logfile;
 
-   ($logfile and -d dirname( "${logfile}" )) or return;
+   ($logfile and -d dirname( "${logfile}" )) or return $attr;
 
    $fattr->{alias   } = 'file-out';
    $fattr->{filename} = "${logfile}";
@@ -170,6 +165,10 @@ is not provided
 =item C<log_attributes>
 
 Attributes used to create the log object
+
+=item C<log_class>
+
+The classname of the log object. This is loaded on demand
 
 =item C<logfile>
 

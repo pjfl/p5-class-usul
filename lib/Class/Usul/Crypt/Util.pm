@@ -92,7 +92,7 @@ __END__
 
 =head1 Name
 
-Class::Usul::Crypt::Util - Decrypts/Encrypts password from/to configuration files
+Class::Usul::Crypt::Util - Decrypts / encrypts passwords from / to configuration files
 
 =head1 Synopsis
 
