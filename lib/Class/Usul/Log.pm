@@ -86,7 +86,9 @@ $_add_methods->( __PACKAGE__, LOG_LEVELS );
 
 # Public methods
 sub filehandle {
-   return $_[ 0 ]->_log->output( 'file-out' )->{fh};
+   my $self = shift; $self->_log_class eq 'Log::Handler' or return;
+
+   return $self->_log->output( 'file-out' )->{fh};
 }
 
 sub get_log_attributes {
@@ -119,23 +121,20 @@ Class::Usul::Log - Create methods for each logging level that encode their outpu
 
 =head1 Synopsis
 
-   use Moo;
    use Class::Usul::Log;
+   use File::DataClass::IO;
 
-   has '_log' => is => 'ro', isa => LogType,
-      lazy    => TRUE,   builder => '_build__log',
-      reader  => 'log', init_arg => 'log';
+   my $file = io [ 't', 'test.log' ];
+   my $log  = Class::Usul::Log->new( encoding => 'UTF-8', logfile => $file );
+   my $text = 'Your error message goes here';
 
-   sub _build__log {
-      my $self = shift; return Class::Usul::Log->new( builder => $self );
-   }
-
-   # Can now call the following
-   $self->log->debug( $text );
-   $self->log->info(  $text );
-   $self->log->warn(  $text );
-   $self->log->error( $text );
-   $self->log->fatal( $text );
+   # Can now call the following. The text will be encoded UTF-8
+   $log->debug( $text ); # Does not log as debug was not true in the constructor
+   $log->info ( $text );
+   $log->warn ( $text );
+   $log->error( $text );
+   $log->alert( $text );
+   $log->fatal( $text );
 
 =head1 Description
 
@@ -151,7 +150,8 @@ Defines the following attributes
 
 =item C<debug>
 
-Debug flag defaults to FALSE
+Debug flag defaults to false. If set to true calls to log at the debug level
+will succeed rather than being ignored
 
 =item C<encoding>
 
@@ -182,22 +182,15 @@ Path to the logfile
 
 Monkey with the constructors signature
 
-=head2 C<BUILD>
-
-Creates a set of methods defined by the C<LOG_LEVELS> constant. The
-method expects C<< $self->log >> and C<< $self->encoding >> to be set.
-It encodes the output string prior calling the log method at the given
-level
-
 =head2 C<filehandle>
 
-Return the loggers file handle
+Return the loggers file handle. This was added for L<IO::Async>, so that we
+can tell it not to close the log file handle when it forks a child process
 
 =head2 get_log_attributes
 
-Returns the hash ref passed to the constructor of the log class. Returns
-undef to indicate no logging, an instance of L<Class::Null> is used
-instead
+Returns the hash reference passed to the constructor of the log class. Returns
+C<undef> to indicate no logging, an instance of L<Class::Null> is used instead
 
 =head1 Diagnostics
 
@@ -209,15 +202,11 @@ None
 
 =item L<Class::Null>
 
-=item L<Class::Usul::Constants>
-
-=item L<Class::Usul::Functions>
-
 =item L<Moo>
 
 =item L<Encode>
 
-=item L<File::DataClass::Types>
+=item L<File::DataClass>
 
 =item L<Log::Handler>
 
