@@ -4,7 +4,7 @@ use 5.010001;
 use namespace::autoclean;
 
 use Class::Null;
-use Class::Usul::Constants   qw( FALSE LBRACE LOCALIZE NUL SEP TRUE );
+use Class::Usul::Constants   qw( FALSE NUL SEP TRUE );
 use Class::Usul::Functions   qw( assert is_arrayref
                                  is_hashref merge_attributes );
 use Class::Usul::Types       qw( ArrayRef Bool HashRef LogType
@@ -149,15 +149,15 @@ sub localize {
    # Lookup the message using the supplied key from the po file
    my $text = $self->$_gettext( $key, $args );
 
-   if (is_arrayref $args->{params}) {
-      0 > index $text, LOCALIZE and return $text;
+   if (defined $args->{params} and ref $args->{params} eq 'ARRAY') {
+      0 > index $text, '[_' and return $text;
 
       # Expand positional parameters of the form [_<n>]
       return inflate_placeholders [ '[?]', '[]', !$args->{quote_bind_values} ],
                                   $text, @{ $args->{params} };
    }
 
-   0 > index $text, LBRACE and return $text;
+   0 > index $text, '{' and return $text;
 
    # Expand named parameters of the form {param_name}
    my %args = %{ $args }; my $re = join '|', map { quotemeta $_ } keys %args;

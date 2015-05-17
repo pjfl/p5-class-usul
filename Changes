@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - Added Functions urandom
+          - Logs levels settable via Constants class attr
           - Added log object tests
           - Eliminated _message methods from the log object
 

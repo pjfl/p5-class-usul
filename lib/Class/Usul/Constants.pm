@@ -12,6 +12,7 @@ use File::Spec::Functions    qw( tmpdir );
 my $Assert          = sub {};
 my $Config_Extn     = '.json';
 my $Exception_Class = 'Class::Usul::Exception';
+my $Log_Levels      = [ qw( alert debug error fatal info warn ) ];
 
 File::DataClass::Constants->Exception_Class( __PACKAGE__->Exception_Class );
 
@@ -24,42 +25,42 @@ our @EXPORT = qw( ARRAY AS_PARA AS_PASSWORD ASSERT BRK CODE COMMA CONFIG_EXTN
                   UNTAINT_CMDLINE UNTAINT_IDENTIFIER UNTAINT_PATH
                   UUID_PATH WIDTH YES );
 
-sub ARRAY    () { q(ARRAY)   }
-sub BRK      () { q(: )      }
-sub CODE     () { q(CODE)    }
-sub COMMA    () { q(,)       }
-sub FAILED   () { 1          }
-sub FALSE    () { 0          }
-sub HASH     () { q(HASH)    }
-sub LANG     () { q(en)      }
-sub LBRACE   () { q({)       }
-sub LOCALIZE () { q([_)      }
-sub MODE     () { q(027)     }
-sub NO       () { q(n)       }
-sub NUL      () { q()        }
-sub OK       () { 0          }
-sub PHASE    () { 2          }
-sub QUIT     () { q(q)       }
-sub SEP      () { q(/)       }
-sub SPC      () { q( )       }
-sub TRUE     () { 1          }
-sub WIDTH    () { 80         }
-sub YES      () { q(y)       }
+sub ARRAY    () { 'ARRAY' }
+sub BRK      () { ': '    }
+sub CODE     () { 'CODE'  }
+sub COMMA    () { ','     }
+sub FAILED   () { 1       }
+sub FALSE    () { 0       }
+sub HASH     () { 'HASH'  }
+sub LANG     () { 'en'    }
+sub LBRACE   () { '{'     }
+sub LOCALIZE () { '[_'    }
+sub MODE     () { '027'   }
+sub NO       () { 'n'     }
+sub NUL      () { q()     }
+sub OK       () { 0       }
+sub PHASE    () { 2       }
+sub QUIT     () { 'q'     }
+sub SEP      () { '/'     }
+sub SPC      () { ' '     }
+sub TRUE     () { 1       }
+sub WIDTH    () { 80      }
+sub YES      () { 'y'     }
 
 sub AS_PARA             () { { cl => 1, fill => 1, nl => 1 } }
-sub AS_PASSWORD         () { (q(), 1, 0, 0, 1) }
+sub AS_PASSWORD         () { ( q(), 1, 0, 0, 1 ) }
 sub ASSERT              () { __PACKAGE__->Assert }
 sub CONFIG_EXTN         () { __PACKAGE__->Config_Extn }
 sub DEFAULT_CONFHOME    () { tmpdir }
-sub DEFAULT_ENCODING    () { q(UTF-8) }
+sub DEFAULT_ENCODING    () { 'UTF-8' }
 sub DEFAULT_ENVDIR      () { [ q(), qw( etc default ) ] }
-sub DEFAULT_L10N_DOMAIN () { q(default) }
+sub DEFAULT_L10N_DOMAIN () { 'default' }
 sub DIGEST_ALGORITHMS   () { ( qw( SHA-512 SHA-256 SHA-1 MD5 ) ) }
 sub ENCODINGS           () { ( qw( ascii iso-8859-1 UTF-8 guess ) ) }
 sub EXCEPTION_CLASS     () { __PACKAGE__->Exception_Class }
-sub LOG_LEVELS          () { ( qw( alert debug error fatal info warn ) ) }
+sub LOG_LEVELS          () { @{ __PACKAGE__->Log_Levels } }
 sub PERL_EXTNS          () { ( qw( .pl .pm .t ) ) }
-sub PREFIX              () { [ q(), q(opt) ] }
+sub PREFIX              () { [ q(), 'opt' ] }
 sub UNDEFINED_RV        () { -1 }
 sub UNTAINT_CMDLINE     () { qr{ \A ([^\$&;<>|]+)      \z }mx }
 sub UNTAINT_IDENTIFIER  () { qr{ \A ([a-zA-Z0-9_]+)    \z }mx }
@@ -95,6 +96,15 @@ sub Exception_Class {
    return $Exception_Class = $class;
 }
 
+sub Log_Levels {
+   my ($self, $levels) = @_; defined $levels or return $Log_Levels;
+
+   ref $levels eq 'ARRAY' and defined $levels->[ 0 ] or EXCEPTION_CLASS->throw
+      ( "Log levels must be an array reference with one defined value" );
+
+   return $Log_Levels = $levels;
+}
+
 1;
 
 __END__
@@ -107,7 +117,7 @@ Class::Usul::Constants - Definitions of constant values
 
 =head1 Synopsis
 
-   use Class::Usul::Constants;
+   use Class::Usul::Constants qw( FALSE SEP TRUE );
 
    my $bool = TRUE; my $slash = SEP;
 
@@ -129,7 +139,13 @@ Defines the following class attributes;
 
 =item C<Exception_Class>
 
+=item C<Log_Levels>
+
 =back
+
+These are accessor / mutators for class attributes of the same name. The
+constants with uppercase names return these values. At compile time they
+can be used to set values the are then constant at runtime
 
 =head1 Subroutines/Methods
 

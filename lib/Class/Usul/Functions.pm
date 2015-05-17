@@ -40,8 +40,8 @@ our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
                        assert_directory base64_decode_ns
                        base64_encode_ns bsonid bsonid_time bson64id
                        bson64id_time build canonicalise class2appdir classdir
-                       classfile create_token curry data_dumper distname
-                       elapsed emit emit_err emit_to
+                       classfile create_token curry data_dumper digest
+                       distname elapsed emit emit_err emit_to
                        ensure_class_loaded env_prefix escape_TT
                        exception find_apphome find_source first_char fold fqdn
                        fullname get_cfgfiles get_user hex2str
@@ -49,11 +49,11 @@ our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
                        is_hashref is_member is_win32 list_attr_of loginid
                        logname merge_attributes my_prefix
                        nonblocking_write_pipe_pair pad
-                       prefix2class product socket_pair split_on__ split_on_dash
-                       squeeze strip_leader sub_name sum symlink thread_id
-                       throw throw_on_error trim unescape_TT
-                       untaint_cmdline untaint_identifier untaint_path
-                       untaint_string uuid zip );
+                       prefix2class product socket_pair
+                       split_on__ split_on_dash squeeze strip_leader sub_name
+                       sum symlink thread_id throw throw_on_error trim
+                       unescape_TT untaint_cmdline untaint_identifier
+                       untaint_path untaint_string urandom uuid zip );
 our %EXPORT_REFS =   ( assert => sub { ASSERT }, );
 our %EXPORT_TAGS =   ( all    => [ @EXPORT_OK ], );
 
@@ -143,6 +143,10 @@ my $_index64 = sub {
                XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
                XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
                XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX) ];
+};
+
+my $_pseudo_random = sub {
+   return join q(), time, rand 10_000, $PID, {};
 };
 
 my $_bsonid = sub {
@@ -352,6 +356,18 @@ sub classfile ($) {
 }
 
 sub create_token (;$) {
+   return digest( (shift) // urandom() )->hexdigest;
+}
+
+sub curry (&$;@) {
+   my ($code, @args) = @_; return sub { $code->( @args, @_ ) };
+}
+
+sub data_dumper (;@) {
+   _data_dumper( @_ ); return 1;
+}
+
+sub digest ($) {
    my $seed = shift; my ($candidate, $digest); state $cache;
 
    if ($cache) { $digest = Digest->new( $cache ) }
@@ -363,17 +379,9 @@ sub create_token (;$) {
       $digest or throw( 'Digest algorithm not found' ); $cache = $candidate;
    }
 
-   $digest->add( $seed || join q(), time, rand 10_000, $PID, {} );
+   $digest->add( $seed );
 
-   return $digest->hexdigest;
-}
-
-sub curry (&$;@) {
-   my ($code, @args) = @_; return sub { $code->( @args, @_ ) };
-}
-
-sub data_dumper (;@) {
-   _data_dumper( @_ ); return 1;
+   return $digest;
 }
 
 sub distname ($) {
@@ -471,7 +479,7 @@ sub find_apphome ($;$$) {
    # 1b.   Environment variable - for config file
    $path = $_get_env_var_for_conf->( "${env_pref}_CONFIG" ) and return $path;
    # 2a.   Users XDG_DATA_HOME env variable or XDG default share directory
-   $path = $ENV{ 'XDG_DATA_HOME' } || catdir( $my_home, '.local', 'share' );
+   $path = $ENV{ 'XDG_DATA_HOME' } // catdir( $my_home, '.local', 'share' );
    $path = assert_directory catdir( $path, $appdir ) and return $path;
    # 2b.   Users home directory - dot file containing shell env variable
    $path = $_get_file_var->( $my_home, $app_pref, $classdir ) and return $path;
@@ -481,12 +489,12 @@ sub find_apphome ($;$$) {
    # 3.    Well known path containing shell env file
    $path = $_get_known_file_var->( $appdir, $classdir ) and return $path;
    # 4.    Default install prefix
-   $path = catdir( @{ PREFIX() }, $appdir, qw( default lib ), $classdir );
+   $path = catdir( @{ PREFIX() }, $appdir, 'default', 'lib', $classdir );
    $path = assert_directory $path and return $path;
    # 5a.   Config file found in @INC - underscore as separator
    $path = $_find_cfg_in_inc->( $classdir, $app_pref, $extns ) and return $path;
    # 5b.   Config file found in @INC - dash as separator
-   $path = $_find_cfg_in_inc->( $classdir, $appdir, $extns ) and return $path;
+   $path = $_find_cfg_in_inc->( $classdir, $appdir,   $extns ) and return $path;
    # 6.    Pass the default in
    $path = assert_directory $default and return $path;
    # 7.    Default to /tmp
@@ -787,8 +795,22 @@ sub untaint_string ($;$) {
    return $untainted;
 }
 
+sub urandom (;$$) {
+   my ($wanted, $opts) = @_; $wanted //= 64; $opts //= {};
+
+   my $default = [ q(), 'dev', $OSNAME eq 'freebsd' ? 'random' : 'urandom' ];
+   my $io      = io( $opts->{source} // $default )->block_size( $wanted );
+
+   my $red; $io->exists and $io->is_readable and $red = $io->read
+      and $red == $wanted and return ${ $io->buffer };
+
+   my $res = q(); while (length $res < $wanted) { $res .= $_pseudo_random->() }
+
+   return substr $res, 0, $wanted;
+}
+
 sub uuid {
-   return io( $_[ 0 ] || UUID_PATH )->lock->chomp->getline;
+   return io( $_[ 0 ] || UUID_PATH )->chomp->getline;
 }
 
 sub zip (@) {
@@ -935,11 +957,11 @@ C<App/Munchies.pm>
 
 =head2 create_token
 
-   $random_hex = create_token $seed;
+   $random_hex = create_token $optional_seed;
 
-Create a random string token using the first available L<Digest>
-algorithm. If C<$seed> is defined then add that to the digest,
-otherwise add some random data. Returns a hexadecimal string
+Create a random string token using L</digest>. If C<$seed> is defined then add
+that to the digest, otherwise add some random data provided by a call to
+L</urandom>. Returns a hexadecimal string
 
 =head2 curry
 
@@ -956,6 +978,14 @@ at least one argument
    data_dumper $thing;
 
 Uses L<Data::Printer> to dump C<$thing> in colour to I<stderr>
+
+=head2 digest
+
+   $digest_object = digest $seed;
+
+Creates an instance of the first available L<Digest> class and adds the seed.
+The constant C<DIGEST_ALGORITHMS> is consulted for the list of algorithms to
+search for. Returns the digest object reference
 
 =head2 distname
 
@@ -1324,9 +1354,18 @@ matching regex from L<Class::Usul::Constants>
 
 Returns an untainted string or throws
 
+=head2 urandom
+
+   $bytes = urandom $optional_length, $optional_provider;
+
+Returns random bytes. Length defaults to 64. The provider defaults to
+F</dev/urandom> and can be any type accepted by L</io>. If the provider exists
+and is readable, length bytes are read from it and returned. Otherwise some
+bytes from the second best generator are returned
+
 =head2 uuid
 
-   $uuid = uuid( $optional_uuid_proc_filesystem_path );
+   $uuid = uuid $optional_uuid_proc_filesystem_path;
 
 Return the contents of F</proc/sys/kernel/random/uuid>
 
