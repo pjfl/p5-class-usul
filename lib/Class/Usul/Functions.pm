@@ -40,8 +40,8 @@ our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
                        assert_directory base64_decode_ns
                        base64_encode_ns bsonid bsonid_time bson64id
                        bson64id_time build canonicalise class2appdir classdir
-                       classfile create_token curry data_dumper digest
-                       distname elapsed emit emit_err emit_to
+                       classfile create_token curry dash2under data_dumper
+                       digest distname elapsed emit emit_err emit_to
                        ensure_class_loaded env_prefix escape_TT
                        exception find_apphome find_source first_char fold fqdn
                        fullname get_cfgfiles get_user hex2str
@@ -356,11 +356,15 @@ sub classfile ($) {
 }
 
 sub create_token (;$) {
-   return digest( (shift) // urandom() )->hexdigest;
+   return digest( $_[ 0 ] // urandom() )->hexdigest;
 }
 
 sub curry (&$;@) {
    my ($code, @args) = @_; return sub { $code->( @args, @_ ) };
+}
+
+sub dash2under (;$) {
+  (my $v = $_[ 0 ] // q()) =~ s{ [\-] }{_}gmx; return $v;
 }
 
 sub data_dumper (;@) {
@@ -980,6 +984,12 @@ Returns a subroutine reference which when called, calls and returns the
 initial code reference passing in the original argument list and the
 arguments from the curried call. Must be called with a code reference and
 at least one argument
+
+=head2 dash2under
+
+   $string_with_underscores = dash2under 'a-string-with-dashes';
+
+Substitutes underscores for dashes
 
 =head2 data_dumper
 

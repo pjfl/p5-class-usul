@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Split Programs into OutputLogging and Usage roles
           - Added whiten to Functions
           - Stopped shortening the key in Crypt
           - Added Functions urandom

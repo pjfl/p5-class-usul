@@ -3,7 +3,7 @@ package Class::Usul::TraitFor::Prompting;
 use namespace::autoclean;
 
 use Class::Usul::Constants qw( BRK FAILED FALSE NO NUL QUIT SPC TRUE YES );
-use Class::Usul::Functions qw( arg_list emit_to pad throw );
+use Class::Usul::Functions qw( arg_list emit_to is_hashref pad throw );
 use Class::Usul::Types     qw( BaseType );
 use English                qw( -no_match_vars );
 use IO::Interactive;
@@ -42,6 +42,20 @@ my $_map_prompt_args = sub { # IO::Prompt equiv. sub has an obscure bug so this
    }
 
    return $args;
+};
+
+my $_opts = sub {
+   my ($type, @args) = @_; is_hashref $args[ 0 ] and return $args[ 0 ];
+
+   my $attr = { default => $args[ 0 ], quit => $args[ 1 ], width => $args[ 2 ]};
+
+   if    ($type eq 'get_line') {
+      $attr->{multiline} = $args[ 3 ]; $attr->{noecho} = $args[ 4 ];
+   }
+   elsif ($type eq 'get_option') { $attr->{options} = $args[ 3 ] }
+   elsif ($type eq 'yorn')       { $attr->{newline} = $args[ 3 ] }
+
+   return $attr;
 };
 
 my $_raw_mode = sub { # Puts the terminal in raw input mode
@@ -137,53 +151,53 @@ sub anykey {
 }
 
 sub get_line { # General text input routine.
-   my ($self, $question, $default, $quit, $width, $multiline, $noecho) = @_;
+   my ($self, $question, @args) = @_; my $opts = $_opts->( 'get_line', @args );
 
-   $question  = $self->$_prepare( $question || 'Enter your answer' );
-   $default //= NUL;
+   $question = $self->$_prepare( $question || 'Enter your answer' );
 
-   my $advice       = $quit ? $self->loc( '([_1] to quit)', QUIT ) : NUL;
-   my $right_prompt = $advice.($multiline ? NUL : " [${default}]");
-   my $left_prompt  = $question;
+   my $default  = $opts->{default} // NUL;
+   my $advice   = $opts->{quit} ? $self->loc( '([_1] to quit)', QUIT ) : NUL;
+   my $r_prompt = $advice.($opts->{multiline} ? NUL : " [${default}]");
+   my $l_prompt = $question;
 
-   if (defined $width) {
-      my $total  = $width || $self->config->pwidth;
-      my $left_x = $total - (length $right_prompt);
+   if (defined $opts->{width}) {
+      my $total  = $opts->{width} || $self->config->pwidth;
+      my $left_x = $total - (length $r_prompt);
 
-      $left_prompt = sprintf '%-*s', $left_x, $question;
+      $l_prompt = sprintf '%-*s', $left_x, $question;
    }
 
-   my $prompt  = "${left_prompt} ${right_prompt}";
-      $prompt .= ($multiline ? "\n[${default}]" : NUL).BRK;
-   my $result  = $noecho
+   my $prompt  = "${l_prompt} ${r_prompt}"
+               . ($opts->{multiline} ? "\n[${default}]" : NUL).BRK;
+   my $result  = $opts->{noecho}
                ? $_prompt->( -d => $default, -p => $prompt, -e => '*' )
                : $_prompt->( -d => $default, -p => $prompt );
 
-   $quit and defined $result and lc $result eq QUIT and exit FAILED;
+   $opts->{quit} and defined $result and lc $result eq QUIT and exit FAILED;
 
    return "${result}";
 }
 
 sub get_option { # Select from an numbered list of options
-   my ($self, $prompt, $default, $quit, $width, $options) = @_;
+   my ($self, $prompt, @args) = @_; my $opts = $_opts->( 'get_option', @args );
 
    $prompt ||= '+Select one option from the following list:';
 
    my $no_lead = ('+' eq substr $prompt, 0, 1) ? FALSE : TRUE;
    my $leader  = $no_lead ? NUL : '+'; $prompt =~ s{ \A \+ }{}mx;
-   my $max     = @{ $options // [] };
+   my $max     = @{ $opts->{options} // [] };
 
    $self->output( $prompt, { no_lead => $no_lead } ); my $count = 1;
 
    my $text = join "\n", map { $_justify_count->( $max, $count++ )." - ${_}" }
-                            @{ $options };
+                            @{ $opts->{options} // [] };
 
    $self->output( $text, { cl => TRUE, nl => TRUE, no_lead => $no_lead } );
 
    my $question = "${leader}Select option";
-   my $opt      = $self->get_line( $question, $default, $quit, $width );
+   my $opt      = $self->get_line( $question, $opts );
 
-   $opt !~ m{ \A \d+ \z }mx and $opt = $default // 0;
+   $opt !~ m{ \A \d+ \z }mx and $opt = $opts->{default} // 0;
 
    return $opt - 1;
 }
@@ -193,28 +207,27 @@ sub is_interactive {
 }
 
 sub yorn { # General yes or no input routine
-   my ($self, $question, $default, $quit, $width, $newline) = @_;
+   my ($self, $question, @args) = @_; my $opts = $_opts->( 'yorn', @args );
 
    my $no = NO; my $yes = YES; my $result;
 
    $question = $self->$_prepare( $question || 'Choose' );
-   $default  = $default ? $yes : $no; $quit = $quit ? QUIT : NUL;
 
-   my $advice       = $quit ? "(${yes}/${no}, ${quit}) " : "(${yes}/${no}) ";
-   my $right_prompt = "${advice}[${default}]";
-   my $left_prompt  = $question;
+   my $default  = $opts->{default} ? $yes : $no;
+   my $quit     = $opts->{quit   } ? QUIT : NUL;
+   my $advice   = $quit ? "(${yes}/${no}, ${quit}) " : "(${yes}/${no}) ";
+   my $r_prompt = "${advice}[${default}]";
+   my $l_prompt = $question;
 
-   if (defined $width) {
-      my $max_width = $width || $self->config->pwidth;
-      my $right_x   = length $right_prompt;
+   if (defined $opts->{width}) {
+      my $max_width = $opts->{width} || $self->config->pwidth;
+      my $right_x   = length $r_prompt;
       my $left_x    = $max_width - $right_x;
 
-      $left_prompt  = sprintf '%-*s', $left_x, $question;
+      $l_prompt = sprintf '%-*s', $left_x, $question;
    }
 
-   my $prompt = "${left_prompt} ${right_prompt}".BRK;
-
-   $newline and $prompt .= "\n";
+   my $prompt = "${l_prompt} ${r_prompt}".BRK.($opts->{newline} ? "\n" : NUL);
 
    while ($result = $_prompt->( -d => $default, -p => $prompt )) {
       $quit and $result =~ m{ \A (?: $quit | [\e] ) }imx and exit FAILED;
