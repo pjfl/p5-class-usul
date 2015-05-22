@@ -2,11 +2,10 @@ package Class::Usul;
 
 use 5.010001;
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.58.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.58.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
-use Class::Usul::Constants  qw( EXCEPTION_CLASS FALSE TRUE );
-use Class::Usul::Functions  qw( data_dumper merge_attributes
-                                untaint_identifier );
+use Class::Usul::Constants  qw( FALSE TRUE );
+use Class::Usul::Functions  qw( data_dumper merge_attributes );
 use Class::Usul::Types      qw( Bool ConfigType EncodingType HashRef
                                 L10NType LoadableClass LockType LogType );
 use Moo;
@@ -18,10 +17,7 @@ my $_build_lock = sub {
    my $attr   = { %{ $config->lock_attributes } };
 
    merge_attributes $attr, $self,   {}, [ 'debug', 'log' ];
-   merge_attributes $attr, $config, { 'exception_class' => EXCEPTION_CLASS },
-                                    [ 'exception_class', 'tempdir' ];
-
-   $attr->{type} = untaint_identifier $attr->{type};
+   merge_attributes $attr, $config, {}, [ 'tempdir' ];
 
    return $self->lock_class->new( $attr );
 };
@@ -73,6 +69,8 @@ __END__
 
 =pod
 
+=encoding utf8
+
 =begin html
 
 <a href="http://badge.fury.io/pl/Class-Usul"><img src="https://badge.fury.io/pl/Class-Usul.svg" alt="CPAN Badge"></a>
@@ -86,7 +84,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.58.$Rev: 4 $
+Describes Class::Usul version v0.58.$Rev: 5 $
 
 =head1 Synopsis
 
@@ -216,9 +214,9 @@ There are no known incompatibilities in this module
 
 =head1 Bugs and Limitations
 
-There are no known bugs in this module.
-Please report problems to the address below.
-Patches are welcome
+There are no known bugs in this module. Please report problems to
+http://rt.cpan.org/NoAuth/Bugs.html?Dist=Class-Usul. Patches are
+welcome
 
 =head1 Author
 

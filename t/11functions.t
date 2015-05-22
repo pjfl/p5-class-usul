@@ -7,6 +7,7 @@ use Class::Usul::Constants ();
 
 BEGIN { Class::Usul::Constants->Assert( sub { 1 } ) }
 
+use Class::Usul::Crypt     qw( decrypt encrypt );
 use Class::Usul::Functions qw( :all );
 use English                qw( -no_match_vars );
 use File::Spec::Functions  qw( catdir catfile updir );
@@ -206,10 +207,17 @@ eval { untaint_path( 'x$x' ) }; $e = exception; $EVAL_ERROR = undef;
 
 is $e->class, q(Tainted), 'untaint_path - 2';
 
+is length urandom, 64, 'Urandom';
+
 SKIP: {
    $ENV{AUTHOR_TESTING} or skip 'UUID test only for developers', 1;
    ok length uuid, 'uuid';
 }
+
+my $secret = whiten 'hostname."XYZZY"';
+my $enc    = encrypt { seed => $secret }, 'This is plain text';
+
+is decrypt( { seed => $secret }, $enc ),  'This is plain text', 'Whiten';
 
 is { zip( qw( a b c ), qw( 1 2 3 ) ) }->{b}, 2, 'zip';
 

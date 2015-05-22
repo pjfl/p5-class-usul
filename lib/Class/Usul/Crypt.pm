@@ -45,7 +45,7 @@ my $_new_crypt_cbc = sub {
 };
 
 my $_token = sub {
-   substr create_token( $_compose->( $_[ 0 ] || {} ) ), 0, 32;
+   create_token( $_compose->( $_[ 0 ] || {} ) );
 };
 
 my $_wards = sub {

@@ -98,7 +98,7 @@ sub import {
 
       my @banish_keywords = qw( extra_argv new_with_options next_argv option
                                 _options_data _options_config options_usage
-                                _parse_options unshift_argv );
+                                _parse_options unshift_argv untainted_argv );
 
       for my $ban (grep { $_ eq $name } @banish_keywords) {
          throw 'Method [_1] used by class [_2] as an attribute',

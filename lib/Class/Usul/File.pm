@@ -13,9 +13,8 @@ use Unexpected::Functions  qw( Unspecified );
 use Moo;
 
 # Private attributes
-has '_usul' => is => 'ro', isa => BaseType,
-   handles  => [ qw( config debug lock log ) ], init_arg => 'builder',
-   required => TRUE, weak_ref => TRUE;
+has '_usul' => is => 'ro', isa => BaseType, handles => [ 'config' ],
+   init_arg => 'builder', required => TRUE, weak_ref => TRUE;
 
 # Public methods
 sub data_dump {

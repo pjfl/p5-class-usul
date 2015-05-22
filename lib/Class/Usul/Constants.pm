@@ -8,12 +8,14 @@ use parent 'Exporter::Tiny';
 use Class::Usul::Exception;
 use File::DataClass::Constants ( );
 use File::Spec::Functions    qw( tmpdir );
+use IPC::SRLock::Constants     ( );
 
 my $Assert          = sub {};
 my $Config_Extn     = '.json';
 my $Exception_Class = 'Class::Usul::Exception';
 my $Log_Levels      = [ qw( alert debug error fatal info warn ) ];
 
+IPC::SRLock::Constants->Exception_Class( __PACKAGE__->Exception_Class );
 File::DataClass::Constants->Exception_Class( __PACKAGE__->Exception_Class );
 
 our @EXPORT = qw( ARRAY AS_PARA AS_PASSWORD ASSERT BRK CODE COMMA CONFIG_EXTN
@@ -91,6 +93,7 @@ sub Exception_Class {
    $class->can( 'throw' ) or $Exception_Class->throw
       ( "Exception class ${class} is not loaded or has no throw method" );
 
+   IPC::SRLock::Constants->Exception_Class( $class );
    File::DataClass::Constants->Exception_Class( $class );
 
    return $Exception_Class = $class;

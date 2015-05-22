@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - Added whiten to Functions
+          - Stopped shortening the key in Crypt
           - Added Functions urandom
           - Logs levels settable via Constants class attr
           - Added log object tests

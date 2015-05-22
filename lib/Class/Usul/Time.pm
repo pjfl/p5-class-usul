@@ -12,8 +12,8 @@ use Time::Local;
 use Time::Zone;
 use Unexpected::Functions  qw( DateTimeCoercion );
 
-our @EXPORT     = qw( str2time time2str );
-our @EXPORT_OK  = qw( nap str2date_time str2time time2str );
+our @EXPORT    = qw( str2time time2str );
+our @EXPORT_OK = qw( nap str2date_time str2time time2str );
 
 sub nap ($) {
    my $period = shift;

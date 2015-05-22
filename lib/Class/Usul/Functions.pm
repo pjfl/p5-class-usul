@@ -53,7 +53,7 @@ our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
                        split_on__ split_on_dash squeeze strip_leader sub_name
                        sum symlink thread_id throw throw_on_error trim
                        unescape_TT untaint_cmdline untaint_identifier
-                       untaint_path untaint_string urandom uuid zip );
+                       untaint_path untaint_string urandom uuid whiten zip );
 our %EXPORT_REFS =   ( assert => sub { ASSERT }, );
 our %EXPORT_TAGS =   ( all    => [ @EXPORT_OK ], );
 
@@ -809,8 +809,16 @@ sub urandom (;$$) {
    return substr $res, 0, $wanted;
 }
 
-sub uuid {
-   return io( $_[ 0 ] || UUID_PATH )->chomp->getline;
+sub uuid (;$) {
+   return io( $_[ 0 ] // UUID_PATH )->chomp->getline;
+}
+
+sub whiten ($) {
+   my $v = unpack "b*", pop; my $pad = " \t" x 8;
+
+   $v =~ tr{01}{ \t}; $v =~ s{ (.{9}) }{$1\n}gmx;
+
+   return "${pad}\n${v}";
 }
 
 sub zip (@) {
@@ -1368,6 +1376,15 @@ bytes from the second best generator are returned
    $uuid = uuid $optional_uuid_proc_filesystem_path;
 
 Return the contents of F</proc/sys/kernel/random/uuid>
+
+=head2 whiten
+
+   $encoded = whiten 'plain_text_to_be_obfuscated';
+
+Lifted from L<Acme::Bleach> this function encodes the passed scalar as spaces,
+tabs, and newlines. The L<encrypt> and L<decrypt> functions take a seed
+attribute in their options hash reference. A whitened line of Perl code
+would be a suitable value
 
 =head2 zip
 
