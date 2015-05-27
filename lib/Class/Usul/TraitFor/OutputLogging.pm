@@ -16,7 +16,7 @@ option 'locale'   => is => 'lazy', isa => SimpleStr, format => 's',
    documentation  => 'Loads the specified language message catalogue',
    builder        => sub { $_[ 0 ]->config->locale }, short => 'L';
 
-option 'quiet'    => is => 'ro', isa => Bool, default => FALSE,
+option 'quiet'    => is => 'ro',   isa => Bool, default => FALSE,
    documentation  => 'Quiet the display of information messages',
    reader         => 'quiet_flag', short => 'q';
 
@@ -29,9 +29,10 @@ has '_quiet_flag' => is => 'rw', isa => Bool,
 my $_loc = sub {
    my ($self, $text, $opts, $quote) = @_; $opts //= {}; $quote //= FALSE;
 
-   $opts = { no_quote_bind_values => $quote, params => $opts->{args} // [] };
-
-   return $self->loc( $text // '[no message]', $opts );
+   return $self->localize( $text // '[no message]', {
+      locale               => $self->locale,
+      no_quote_bind_values => $quote,
+      params               => $opts->{args} // [] } );
 };
 
 # Public methods

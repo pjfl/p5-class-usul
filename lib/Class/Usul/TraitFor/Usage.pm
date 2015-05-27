@@ -48,11 +48,15 @@ has 'ipc'             => is => 'lazy', isa => IPCType,
 
 # Private functions
 my $_list_methods_of = sub {
-   return map  { s{ \A .+ :: }{}msx; $_ }
+   my $class = blessed $_[ 0 ] || $_[ 0 ]; state $cache //= {};
+
+   exists $cache->{ $class } or $cache->{ $class }
+      = [ map  { s{ \A .+ :: }{}msx; $_ }
           grep { my $subr = $_;
                  grep { $_ eq 'method' } attributes::get( \&{ $subr } ) }
-              @{ Class::Inspector->methods
-                    ( blessed $_[ 0 ] || $_[ 0 ], 'full', 'public' ) };
+              @{ Class::Inspector->methods( $class, 'full', 'public' ) } ];
+
+   return $cache->{ $class };
 };
 
 my $_get_pod_header_for_method = sub {
@@ -172,12 +176,12 @@ sub app_version {
 }
 
 sub can_call {
-   my ($self, $method) = @_; state $cache = {}; $method or return FALSE;
+   my ($self, $method) = @_; state $cache //= {}; $method or return FALSE;
 
-   exists $cache->{ $method } and return $cache->{ $method };
-
-   return $cache->{ $method }
+   exists $cache->{ $method } or $cache->{ $method }
       = (is_member $method, $_list_methods_of->( $self )) ? TRUE : FALSE;
+
+   return $cache->{ $method };
 }
 
 sub dump_config_attr : method {
@@ -193,6 +197,7 @@ sub dump_self : method {
    my $self = shift;
 
    $self->dumper( $self ); $self->dumper( $self->config );
+
    return OK;
 }
 
@@ -213,7 +218,7 @@ sub list_methods : method {
 
    my $abstract = {}; my $max = 0; my $classes = $self->$_get_classes_and_roles;
 
-   for my $method ($_list_methods_of->( $self )) {
+   for my $method (@{ $_list_methods_of->( $self ) }) {
       my $mlen = length $method; $mlen > $max and $max = $mlen;
 
       for my $class (@{ $classes }) {
@@ -231,7 +236,7 @@ sub list_methods : method {
    for my $key (sort keys %{ $abstract }) {
       my ($method, @rest) = split SPC, $abstract->{ $key };
 
-      emit( (pad $key, $max).SPC.(join SPC, @rest) );
+      $key =~ s{ [_] }{-}gmx; emit( (pad $key, $max).SPC.(join SPC, @rest) );
    }
 
    return OK;

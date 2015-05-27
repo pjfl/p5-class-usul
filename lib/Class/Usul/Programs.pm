@@ -26,14 +26,15 @@ option 'home'    => is => 'lazy', isa => Directory, format => 's',
 
 # Construction
 around 'BUILDARGS' => sub {
-   my ($orig, $self, @args) = @_; my $attr = $orig->( $self, @args );
+   my ($orig, $self, @args) = @_;
 
-   my $conf = $attr->{config} //= {}; my $appclass = delete $attr->{appclass};
+   my $attr = $orig->( $self, @args ); my $conf = $attr->{config} //= {};
+
+   my $appclass = delete $attr->{appclass}; my $home = delete $attr->{home};
 
    $conf->{appclass} //= $appclass || blessed $self || $self;
-   $conf->{home    } //= find_apphome $conf->{appclass}, $attr->{home};
+   $conf->{home    } //= find_apphome $conf->{appclass}, $home;
    $conf->{cfgfiles} //= get_cfgfiles $conf->{appclass}, $conf->{home};
-   $attr->{home    }   = $conf->{home};
 
    return $attr;
 };
