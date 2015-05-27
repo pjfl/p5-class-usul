@@ -119,10 +119,11 @@ around 'BUILDARGS' => sub {
 
    my $builder = delete $attr->{builder} or return $attr;
    my $config  = $builder->can( 'config' ) ? $builder->config : {};
+   my $cfgattr = [ qw( l10n_attributes locale localedir tempdir ) ];
 
    merge_attributes $attr, $builder, {}, [ 'log' ];
-   merge_attributes $attr, $config,  {},
-      [ qw( l10n_attributes locale localedir tempdir ) ];
+   merge_attributes $attr, $config,  {}, $cfgattr;
+
    return $attr;
 };
 

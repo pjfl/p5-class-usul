@@ -1,12 +1,10 @@
 #!/usr/bin/env perl
-# @(#)Ident: usul_cli 2013-10-13 10:32 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.58.%d', q$Rev: 1 $ =~ /\d+/gmx );
-use File::Spec::Functions   qw( catdir updir );
-use FindBin                 qw( $Bin );
-use lib                 catdir( $Bin, updir, 'lib' );
+use File::Spec::Functions qw( catdir updir );
+use FindBin               qw( $Bin );
+use lib               catdir( $Bin, updir, 'lib' );
 
 # Replace this with the name of your subclass
 use Class::Usul::Programs;
@@ -27,15 +25,15 @@ usul_cli - A command line interface to OO methods
 
 =over 3
 
-=item B<usul_cli> B<-nc> I<method> [B<-o> I<var=value,...>]
+=item B<usul_cli> B<-nc> I<method> [B<-o> I<key1=value1> B<-o> I<key2=value2>]
 
-Calls the named method
+Calls the named method which has access to the hash reference of options
 
-=item B<usul_cli> B<-H> | B<-h> | B<-?> [I<method>]
+=item B<usul_cli> B<-H> | B<-h> [I<method>] | B<-?>
 
-Display man page | program options | usage string or method docs
+Display man page | method docs | usage string
 
-=item B<usul_cli> B<-nc> list_methods
+=item B<usul_cli> B<-nc> list-methods
 
 Displays a list of available methods
 
@@ -121,9 +119,9 @@ There are no known incompatibilities in this module
 
 =head1 BUGS and LIMITATIONS
 
-There are no known bugs in this module.
-Please report problems to the address below.
-Patches are welcome
+There are no known bugs in this module. Please report problems to
+http://rt.cpan.org/NoAuth/Bugs.html?Dist=Class-Usul. Patches are
+welcome
 
 =head1 ACKNOWLEDGEMENTS
 

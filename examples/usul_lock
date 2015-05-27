@@ -2,10 +2,9 @@
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.58.%d', q$Rev: 1 $ =~ /\d+/gmx );
-use File::Spec::Functions   qw( catdir updir );
-use FindBin                 qw( $Bin );
-use lib                 catdir( $Bin, updir, 'lib' );
+use File::Spec::Functions qw( catdir updir );
+use FindBin               qw( $Bin );
+use lib               catdir( $Bin, updir, 'lib' );
 
 # Replace this with the name of your subclass
 use Class::Usul::Lock;
@@ -26,15 +25,15 @@ usul_lock - A command line interface to the IPC::SRLock module
 
 =over 3
 
-=item B<usul_lock> B<-nc> I<method> [B<-o> I<var=value,...>]
+=item B<usul_lock> B<-nc> I<method> [B<-o> I<var=value>]
 
 Calls the named method
 
-=item B<usul_lock> B<-H> | B<-h> | B<-?> [I<method>]
+=item B<usul_lock> B<-H> | B<-h> [I<method>] | B<-?>
 
-Display man page | program options | usage string or method docs
+Display man page | method docs | usage string
 
-=item B<usul_lock> B<-nc> list_methods
+=item B<usul_lock> B<-nc> list-methods
 
 Displays a list of available methods
 

@@ -2,7 +2,7 @@ package Class::Usul;
 
 use 5.010001;
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.58.%d', q$Rev: 9 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.58.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants  qw( FALSE TRUE );
 use Class::Usul::Functions  qw( data_dumper merge_attributes );
@@ -12,12 +12,10 @@ use Moo;
 
 # Attribute constructors
 my $_build_lock = sub {
-   my $self   = shift;
-   my $config = $self->config;
-   my $attr   = { %{ $config->lock_attributes } };
+   my $self = shift; my $attr = { %{ $self->config->lock_attributes } };
 
-   merge_attributes $attr, $self,   {}, [ 'debug', 'log' ];
-   merge_attributes $attr, $config, {}, [ 'tempdir' ];
+   merge_attributes $attr, $self,         {}, [ 'debug', 'log' ];
+   merge_attributes $attr, $self->config, {}, [ 'tempdir' ];
 
    return $self->lock_class->new( $attr );
 };
@@ -84,7 +82,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.58.$Rev: 9 $
+Describes Class::Usul version v0.58.$Rev: 10 $
 
 =head1 Synopsis
 
