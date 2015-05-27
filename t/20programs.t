@@ -47,7 +47,7 @@ my ($out, $err) = capture { $prog->run };
 
 like $err, qr{ Class::Usul::Programs }mx, 'Runs dump self';
 like $prog->options_usage, qr{ Did \s we \s forget }mx, 'Default options usage';
-is   ref $prog->os, 'HASH', 'Has OS hash';
+is   ref $prog->config->os, 'HASH', 'Has OS hash';
 
 my $path = find_source 'Class::Usul::Functions';
 

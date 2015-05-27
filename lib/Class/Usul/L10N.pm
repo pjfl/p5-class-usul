@@ -7,12 +7,11 @@ use Class::Null;
 use Class::Usul::Constants   qw( FALSE NUL SEP TRUE );
 use Class::Usul::Functions   qw( assert is_arrayref
                                  is_hashref merge_attributes );
-use Class::Usul::Types       qw( ArrayRef Bool HashRef LogType
-                                 SimpleStr Str Undef );
+use Class::Usul::Types       qw( ArrayRef Bool ConfigType HashRef
+                                 LogType SimpleStr Str );
 use File::DataClass::Types   qw( Directory Path );
 use File::Gettext::Constants qw( CONTEXT_SEP );
 use File::Gettext;
-use File::Spec;
 use Try::Tiny;
 use Unexpected::Functions    qw( inflate_placeholders );
 use Moo;
@@ -20,15 +19,20 @@ use Moo;
 my $Domain_Cache = {}; my $Locale_Cache = {};
 
 # Public attributes
-has 'l10n_attributes' => is => 'ro',   isa => HashRef, default => sub { {} };
+has 'l10n_attributes' => is => 'lazy', isa => HashRef,
+   builder            => sub { $_[ 0 ]->_config->l10n_attributes };
 
-has 'localedir'       => is => 'ro',   isa => Path | Undef, coerce => TRUE;
+has 'locale'          => is => 'lazy', isa => SimpleStr,
+   builder            => sub { $_[ 0 ]->_config->locale };
+
+has 'localedir'       => is => 'lazy', isa => Path, coerce => TRUE,
+   builder            => sub { $_[ 0 ]->_config->localedir };
 
 has 'log'             => is => 'ro',   isa => LogType,
-   default            => sub { Class::Null->new };
+   builder            => sub { Class::Null->new };
 
-has 'tempdir'         => is => 'ro',   isa => Directory, coerce => TRUE,
-   default            => File::Spec->tmpdir;
+has 'tempdir'         => is => 'lazy', isa => Directory, coerce => TRUE,
+   builder            => sub { $_[ 0 ]->_config->tempdir };
 
 # Private attributes
 has '_domains'        => is => 'lazy', isa => ArrayRef[Str], builder => sub {
@@ -118,12 +122,7 @@ around 'BUILDARGS' => sub {
 
    merge_attributes $attr, $builder, {}, [ 'log' ];
    merge_attributes $attr, $config,  {},
-      [ qw( l10n_attributes localedir tempdir ) ];
-
-   my $names = delete $attr->{domain_names}; # Deprecated
-
-   $attr->{l10n_attributes}->{domains} //= $names;
-
+      [ qw( l10n_attributes locale localedir tempdir ) ];
    return $attr;
 };
 
@@ -141,6 +140,10 @@ sub invalidate_cache {
    $Domain_Cache = {}; return;
 }
 
+sub loc {
+   my $self = shift; return $self->localizer( $self->locale, @_ );
+}
+
 sub localize {
    my ($self, $key, $args) = @_;
 
@@ -153,7 +156,7 @@ sub localize {
       0 > index $text, '[_' and return $text;
 
       # Expand positional parameters of the form [_<n>]
-      return inflate_placeholders [ '[?]', '[]', !$args->{quote_bind_values} ],
+      return inflate_placeholders [ '[?]', '[]', $args->{no_quote_bind_values}],
                                   $text, @{ $args->{params} };
    }
 
@@ -172,7 +175,8 @@ sub localizer {
    my $args = (is_hashref $car) ? { %{ $car } }
             : { params => (is_arrayref $car) ? $car : [ @args ] };
 
-   $args->{locale} //= $locale;
+   $args->{locale              } //= $locale;
+   $args->{no_quote_bind_values} //= TRUE;
 
    return $self->localize( $key, $args );
 }
@@ -274,6 +278,12 @@ Returns a hash ref containing the keys and values of the PO header record
    $l10n->invalidate_cache;
 
 Causes a reload of the domain files the next time a message is localised
+
+=head2 loc
+
+   $local_text = $l10n->loc( $key, @args );
+
+Calls L</localizer> supplying L</locale> as the first argument
 
 =head2 localize
 

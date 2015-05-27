@@ -15,15 +15,14 @@ my $Config_Extn     = '.json';
 my $Exception_Class = 'Class::Usul::Exception';
 my $Log_Levels      = [ qw( alert debug error fatal info warn ) ];
 
-IPC::SRLock::Constants->Exception_Class( __PACKAGE__->Exception_Class );
-File::DataClass::Constants->Exception_Class( __PACKAGE__->Exception_Class );
+__PACKAGE__->Exception_Class( $Exception_Class ); # Trigger redispatch
 
 our @EXPORT = qw( ARRAY AS_PARA AS_PASSWORD ASSERT BRK CODE COMMA CONFIG_EXTN
                   DEFAULT_CONFHOME DEFAULT_ENVDIR DEFAULT_ENCODING
                   DEFAULT_L10N_DOMAIN DIGEST_ALGORITHMS ENCODINGS
                   EXCEPTION_CLASS FAILED FALSE HASH LANG LBRACE
-                  LOCALIZE LOG_LEVELS MODE NO NUL OK PERL_EXTNS PHASE
-                  PREFIX QUIT SEP SPC TRUE UNDEFINED_RV
+                  LOCALIZE LOG_LEVELS NO NUL OK PERL_EXTNS PHASE
+                  PREFIX QUIT SEP SPC TRUE UMASK UNDEFINED_RV
                   UNTAINT_CMDLINE UNTAINT_IDENTIFIER UNTAINT_PATH
                   UUID_PATH WIDTH YES );
 
@@ -37,7 +36,6 @@ sub HASH     () { 'HASH'  }
 sub LANG     () { 'en'    }
 sub LBRACE   () { '{'     }
 sub LOCALIZE () { '[_'    }
-sub MODE     () { '027'   }
 sub NO       () { 'n'     }
 sub NUL      () { q()     }
 sub OK       () { 0       }
@@ -46,6 +44,7 @@ sub QUIT     () { 'q'     }
 sub SEP      () { '/'     }
 sub SPC      () { ' '     }
 sub TRUE     () { 1       }
+sub UMASK    () { '027'   }
 sub WIDTH    () { 80      }
 sub YES      () { 'y'     }
 
@@ -64,7 +63,7 @@ sub LOG_LEVELS          () { @{ __PACKAGE__->Log_Levels } }
 sub PERL_EXTNS          () { ( qw( .pl .pm .t ) ) }
 sub PREFIX              () { [ q(), 'opt' ] }
 sub UNDEFINED_RV        () { -1 }
-sub UNTAINT_CMDLINE     () { qr{ \A ([^\$&;<>|]+)      \z }mx }
+sub UNTAINT_CMDLINE     () { qr{ \A ([^\$&;<>\`|]+)    \z }mx }
 sub UNTAINT_IDENTIFIER  () { qr{ \A ([a-zA-Z0-9_]+)    \z }mx }
 sub UNTAINT_PATH        () { qr{ \A ([^\$%&\*;<>\`|]+) \z }mx }
 sub UUID_PATH           () { [ q(), qw( proc sys kernel random uuid ) ] }
@@ -93,8 +92,9 @@ sub Exception_Class {
    $class->can( 'throw' ) or $Exception_Class->throw
       ( "Exception class ${class} is not loaded or has no throw method" );
 
-   IPC::SRLock::Constants->Exception_Class( $class );
    File::DataClass::Constants->Exception_Class( $class );
+   IPC::SRLock::Constants->can( 'Exception_Class' )
+      and IPC::SRLock::Constants->Exception_Class( $class );
 
    return $Exception_Class = $class;
 }
@@ -255,10 +255,6 @@ parameter, C<[_>
 
 List of methods the log object is expected to support
 
-=head2 MODE
-
-Default file creation mask, 027
-
 =head2 NO
 
 The letter C<n>
@@ -299,6 +295,10 @@ Space character
 =head2 TRUE
 
 Digit C<1>
+
+=head2 UMASK
+
+Default file creation mask, 027 octal, that's C<rw-r----->
 
 =head2 UNDEFINED_RV
 

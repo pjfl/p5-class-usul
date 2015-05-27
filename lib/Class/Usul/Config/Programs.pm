@@ -3,16 +3,27 @@ package Class::Usul::Config::Programs;
 use namespace::autoclean;
 
 use Moo;
-use Class::Usul::Constants qw( MODE TRUE );
-use Class::Usul::Types     qw( ArrayRef Bool NonEmptySimpleStr
+use Class::Usul::Constants qw( TRUE UMASK );
+use Class::Usul::File;
+use Class::Usul::Types     qw( ArrayRef Bool HashRef NonEmptySimpleStr
                                NonZeroPositiveInt PositiveInt );
+use Config;
 use File::Basename         qw( basename );
 use File::DataClass::Types qw( Path OctalNum );
 use File::HomeDir;
 
 extends q(Class::Usul::Config);
 
-# Construction
+# Attribute constructors
+my $_build_os = sub {
+   my $self = shift;
+   my $file = 'os_'.$Config{osname}.$self->extension;
+   my $path = $self->ctrldir->catfile( $file ); $path->exists or return {};
+   my $conf = Class::Usul::File->data_load( paths => [ $path ] ) || {};
+
+   return $conf->{os} // {};
+};
+
 my $_build_owner = sub {
    return $_[ 0 ]->inflate_symbol( $_[ 1 ], 'prefix' ) || 'root';
 };
@@ -28,11 +39,10 @@ has 'doc_title'    => is => 'ro',   isa => NonEmptySimpleStr,
 has 'man_page_cmd' => is => 'ro',   isa => ArrayRef,
    builder         => sub { [ 'nroff', '-man' ] };
 
-has 'mode'         => is => 'ro',   isa => OctalNum, coerce => TRUE,
-   default         => MODE;
-
 has 'my_home'      => is => 'lazy', isa => Path, coerce => TRUE,
    builder         => sub { File::HomeDir->my_home };
+
+has 'os'           => is => 'lazy', isa => HashRef, builder => $_build_os;
 
 has 'owner'        => is => 'lazy', isa => NonEmptySimpleStr,
    builder         => $_build_owner;
@@ -41,6 +51,9 @@ has 'pwidth'       => is => 'ro',   isa => NonZeroPositiveInt, default => 60;
 
 has 'script'       => is => 'lazy', isa => NonEmptySimpleStr,
    builder         => $_build_script;
+
+has 'umask'        => is => 'ro',   isa => OctalNum, coerce => TRUE,
+   default         => UMASK;
 
 1;
 
@@ -86,13 +99,14 @@ pages
 Array ref containing the command and options to produce a man page. Defaults
 to C<man -nroff>
 
-=item C<mode>
-
-Integer defaults to the constant C<MODE>. The default file creation mask
-
 =item C<my_home>
 
 A directory object reference which defaults to the users home
+
+=item C<os>
+
+A hash reference loaded from from a file selected by OS name. The file is named
+like F<os_linux.json> and can be found in the configuration C<ctrldir>
 
 =item C<owner>
 
@@ -105,6 +119,10 @@ Integer. Number of characters used to justify command line prompts
 =item C<script>
 
 String. The basename of the C<pathname> attribute
+
+=item C<umask>
+
+Integer defaults to the constant C<UMASK>. The default file creation mask
 
 =back
 

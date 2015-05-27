@@ -118,7 +118,7 @@ around 'BUILDARGS' => sub {
    my $paths; if ($paths = $attr->{cfgfiles} and $paths->[ 0 ]) {
       my $loaded = Class::Usul::File->data_load( paths => $paths ) || {};
 
-      $attr = { %{ $attr }, %{ $loaded } };
+      $attr = { %{ $loaded }, %{ $attr } }; # Yes this way round. Leave it alone
    }
 
    for my $name (keys %{ $attr }) {

@@ -2,7 +2,7 @@ package Class::Usul;
 
 use 5.010001;
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.58.%d', q$Rev: 6 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.58.%d', q$Rev: 7 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants  qw( FALSE TRUE );
 use Class::Usul::Functions  qw( data_dumper merge_attributes );
@@ -40,7 +40,7 @@ has 'encoding'     => is => 'lazy', isa => EncodingType,
 
 has 'l10n'         => is => 'lazy', isa => L10NType,
    builder         => sub { $_[ 0 ]->l10n_class->new( builder => $_[ 0 ] ) },
-   handles         => [ 'localize' ];
+   handles         => [ 'loc', 'localize' ];
 
 has 'l10n_class'   => is => 'lazy', isa => LoadableClass, coerce => TRUE,
    default         => 'Class::Usul::L10N';
@@ -84,7 +84,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.58.$Rev: 6 $
+Describes Class::Usul version v0.58.$Rev: 7 $
 
 =head1 Synopsis
 

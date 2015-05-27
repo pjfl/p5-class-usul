@@ -9,9 +9,9 @@ use Class::Usul::Constants qw( FAILED FALSE NUL OK SPC TRUE );
 use Class::Usul::File;
 use Class::Usul::Functions qw( dash2under emit emit_to ensure_class_loaded
                                find_source is_member list_attr_of pad throw
-                               untaint_identifier );
+                               untaint_cmdline untaint_identifier );
 use Class::Usul::IPC;
-use Class::Usul::Types     qw( Bool FileType IPCType );
+use Class::Usul::Types     qw( Bool EncodingType FileType IPCType );
 use Scalar::Util           qw( blessed );
 use Try::Tiny;
 use Moo::Role;
@@ -20,30 +20,31 @@ use Class::Usul::Options;
 requires qw( config dumper next_argv options_usage output quiet );
 
 # Public attributes
-option 'help_manual'  => is => 'ro',   isa => Bool, default => FALSE,
+option 'encoding'     => is => 'lazy', isa => EncodingType,
+   documentation      => 'Decode/encode input/output using this encoding',
+   default            => sub { $_[ 0 ]->config->encoding }, format => 's';
+
+option 'help_manual'  => is => 'ro', isa => Bool, default => FALSE,
    documentation      => 'Displays the documentation for the program',
    short              => 'H';
 
-option 'help_options' => is => 'ro',   isa => Bool, default => FALSE,
+option 'help_options' => is => 'ro', isa => Bool, default => FALSE,
    documentation      => 'Describes program options and methods',
    short              => 'h';
 
-option 'help_usage'   => is => 'ro',   isa => Bool, default => FALSE,
+option 'help_usage'   => is => 'ro', isa => Bool, default => FALSE,
    documentation      => 'Displays this command line usage',
    short              => '?';
 
-option 'show_version' => is => 'ro',   isa => Bool, default => FALSE,
-   documentation      => 'Displays the version number of the program class',
-   short              => 'V';
+option 'show_version' => is => 'ro', isa => Bool, default => FALSE,
+   documentation      => 'Displays the version number of the program class';
 
-# Private attributes
-has '_file' => is => 'lazy', isa => FileType,
-   builder  => sub { Class::Usul::File->new( builder => $_[ 0 ] ) },
-   reader   => 'file';
+has 'file'            => is => 'lazy', isa => FileType,
+   builder            => sub { Class::Usul::File->new( builder => $_[ 0 ] ) };
 
-has '_ipc'  => is => 'lazy', isa => IPCType,
-   builder  => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) },
-   handles  => [ 'run_cmd' ], reader => 'ipc';
+has 'ipc'             => is => 'lazy', isa => IPCType,
+   builder            => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) },
+   handles            => [ 'run_cmd' ];
 
 # Private functions
 my $_list_methods_of = sub {
@@ -68,6 +69,17 @@ my $_get_pod_header_for_method = sub {
 };
 
 # Private methods
+my $_apply_stdio_encoding = sub {
+   my $self = shift; my $enc = untaint_cmdline $self->encoding;
+
+   for (*STDIN, *STDOUT, *STDERR) {
+      $_->opened or next; binmode $_, ":encoding(${enc})";
+   }
+
+   autoflush STDOUT TRUE; autoflush STDERR TRUE;
+   return;
+};
+
 my $_get_classes_and_roles = sub {
    my $self = shift; my %uniq = (); ensure_class_loaded 'mro';
 
@@ -139,6 +151,17 @@ my $_output_usage = sub {
    return FAILED;
 };
 
+# Construction
+before 'BUILD' => sub {
+   my $self = shift; $self->$_apply_stdio_encoding;
+
+   $self->help_usage   and $self->exit_usage( 0 );
+   $self->help_options and $self->exit_usage( 1 );
+   $self->help_manual  and $self->exit_usage( 2 );
+   $self->show_version and $self->exit_version;
+   return;
+};
+
 # Public methods
 sub app_version {
    my $self = shift; my $conf = $self->config;
@@ -182,7 +205,7 @@ sub exit_version {
 }
 
 sub help : method {
-   my $self = shift; $self->$_output_usage( 0 ); return OK;
+   my $self = shift; $self->$_output_usage( 1 ); return OK;
 }
 
 sub list_methods : method {
@@ -243,6 +266,10 @@ Defines the following attributes;
 
 =over 3
 
+=item C<encoding>
+
+Decode/encode input/output using this encoding
+
 =item C<H help_manual>
 
 Print long help text extracted from this POD
@@ -298,13 +325,18 @@ Displays help text from the POD that describes the method
 =head2 list_methods - Lists available command line methods
 
 Lists the methods (marked by the I<method> subroutine attribute) that can
-be called via the L<run method|/run>
+be called via the L<run method|Class::Usul::TraitFor::RunningMethods/run>
 
 =head2 app_version
 
    $version_object = $self->app_version;
 
 The version number of the configured application class
+
+=head2 BUILD
+
+Called just after the object is constructed this method handles dispatching
+to the help methods
 
 =head2 can_call
 
@@ -333,7 +365,15 @@ None
 
 =over 3
 
+=item L<attributes>
+
 =item L<Class::Inspector>
+
+=item L<Class::Usul::IPC>
+
+=item L<Class::Usul::File>
+
+=item L<Class::Usul::Options>
 
 =item L<Moo::Role>
 

@@ -28,38 +28,37 @@ my $l10n = Class::Usul::L10N->new( debug           => 0,
 my $args = { locale => 'de_DE' };
 my $text = $l10n->localize( 'December', $args );
 
-ok $text eq 'Dezember', 'translated';
+is $text, 'Dezember', 'translated';
 
 $text = $l10n->localize( 'September', $args );
-ok $text eq 'September', 'same';
+is $text, 'September', 'same';
 
 $text = $l10n->localize( 'Not translated', $args );
-ok $text eq 'Not translated', 'not translated';
+is $text, 'Not translated', 'not translated';
 
 $text = $l10n->localize( 'March', $args );
-ok $text eq 'März', 'charset decode';
+is $text, 'März', 'charset decode';
 
 $args->{context} = 'Context here (2)';
 $text = $l10n->localize( 'Singular', $args );
-ok $text eq 'Einzahl 2', 'context';
+is $text, 'Einzahl 2', 'context';
 
 $args->{count} = 2;
 $text = $l10n->localize( 'Singular', $args );
-ok $text eq 'Mehrzahl 2', 'context plural';
+is $text, 'Mehrzahl 2', 'context plural';
 
 my $header = $l10n->get_po_header( $args );
 
-ok $header->{project_id_version} eq q(libintl-perl-text 1.12),
-   'get_po_header';
+is $header->{project_id_version}, 'libintl-perl-text 1.12', 'get_po_header';
 
 $text = $l10n->localizer( 'de_DE', 'December [_1]', '1st' );
-ok $text eq 'Dezember 1st', 'localizer';
+is $text, 'Dezember 1st', 'localizer';
 
 $text = $l10n->localizer( 'de_DE', 'December [_1]', [ '1st' ] );
-ok $text eq 'Dezember 1st', 'localizer - arrayref';
+is $text, 'Dezember 1st', 'localizer - arrayref';
 
 $text = $l10n->localizer( 'de_DE', 'December [_1]', { params => [ '1st' ] } );
-ok $text eq 'Dezember 1st', 'localizer - hashref';
+is $text, 'Dezember 1st', 'localizer - hashref';
 
 unlink catfile( qw( t file-dataclass-schema.dat ) );
 

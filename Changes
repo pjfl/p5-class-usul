@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - Refactored Programs into roles
+          - Added grave to untaint cmdline
           - Split Programs into OutputLogging and Usage roles
           - Added whiten to Functions
           - Stopped shortening the key in Crypt
