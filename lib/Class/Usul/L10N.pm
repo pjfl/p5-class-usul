@@ -4,7 +4,7 @@ use 5.010001;
 use namespace::autoclean;
 
 use Class::Null;
-use Class::Usul::Constants   qw( FALSE NUL SEP TRUE );
+use Class::Usul::Constants   qw( FALSE LANG NUL SEP TRUE );
 use Class::Usul::Functions   qw( assert is_arrayref
                                  is_hashref merge_attributes );
 use Class::Usul::Types       qw( ArrayRef Bool ConfigType HashRef
@@ -12,6 +12,8 @@ use Class::Usul::Types       qw( ArrayRef Bool ConfigType HashRef
 use File::DataClass::Types   qw( Directory Path );
 use File::Gettext::Constants qw( CONTEXT_SEP );
 use File::Gettext;
+use File::Gettext::Constants qw( LOCALE_DIRS );
+use File::Spec::Functions    qw( tmpdir );
 use Try::Tiny;
 use Unexpected::Functions    qw( inflate_placeholders );
 use Moo;
@@ -19,20 +21,18 @@ use Moo;
 my $Domain_Cache = {}; my $Locale_Cache = {};
 
 # Public attributes
-has 'l10n_attributes' => is => 'lazy', isa => HashRef,
-   builder            => sub { $_[ 0 ]->_config->l10n_attributes };
+has 'l10n_attributes' => is => 'lazy', isa => HashRef, builder => sub { {} };
 
-has 'locale'          => is => 'lazy', isa => SimpleStr,
-   builder            => sub { $_[ 0 ]->_config->locale };
+has 'locale'          => is => 'lazy', isa => SimpleStr, default => LANG;
 
 has 'localedir'       => is => 'lazy', isa => Path, coerce => TRUE,
-   builder            => sub { $_[ 0 ]->_config->localedir };
+   builder            => sub { LOCALE_DIRS->[ 0 ] };
 
 has 'log'             => is => 'ro',   isa => LogType,
    builder            => sub { Class::Null->new };
 
 has 'tempdir'         => is => 'lazy', isa => Directory, coerce => TRUE,
-   builder            => sub { $_[ 0 ]->_config->tempdir };
+   builder            => sub { tmpdir };
 
 # Private attributes
 has '_domains'        => is => 'lazy', isa => ArrayRef[Str], builder => sub {

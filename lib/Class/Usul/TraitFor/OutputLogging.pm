@@ -5,7 +5,7 @@ use namespace::autoclean;
 use Class::Usul::Constants qw( BRK FAILED FALSE NUL TRUE WIDTH );
 use Class::Usul::Functions qw( abs_path emit emit_to emit_err throw );
 use Class::Usul::Types     qw( Bool SimpleStr );
-use Text::Autoformat;
+use Text::Autoformat       qw( autoformat );
 use Moo::Role;
 use Class::Usul::Options;
 
@@ -25,14 +25,23 @@ has '_quiet_flag' => is => 'rw', isa => Bool,
    builder        => sub { $_[ 0 ]->quiet_flag },
    lazy           => TRUE, writer => '_set__quiet_flag';
 
+# Private methods
+my $_loc = sub {
+   my ($self, $text, $opts, $quote) = @_; $opts //= {}; $quote //= FALSE;
+
+   $opts = { no_quote_bind_values => $quote, params => $opts->{args} // [] };
+
+   return $self->loc( $text // '[no message]', $opts );
+};
+
 # Public methods
 sub add_leader {
-   my ($self, $text, $args) = @_; $text or return NUL; $args //= {};
+   my ($self, $text, $opts) = @_; $text or return NUL; $opts //= {};
 
-   my $leader = $args->{no_lead} ? NUL : (ucfirst $self->config->name).BRK;
+   my $leader = $opts->{no_lead} ? NUL : (ucfirst $self->config->name).BRK;
 
-   if ($args->{fill}) {
-      my $width = $args->{width} // WIDTH;
+   if ($opts->{fill}) {
+      my $width = $opts->{width} // WIDTH;
 
       $text = autoformat $text, { right => $width - 1 - length $leader };
    }
@@ -42,39 +51,38 @@ sub add_leader {
 }
 
 sub error {
-   my ($self, $text, $args) = @_; $args //= {};
-
-   $text = $self->loc( $text // '[no message]', $args->{args} // [] );
+   my ($self, $text, $opts) = @_; $text = $self->$_loc( $text, $opts );
 
    $self->log->error( $_ ) for (split m{ \n }mx, "${text}");
 
-   emit_to *STDERR, $self->add_leader( $text, $args )."\n";
+   emit_to *STDERR, $self->add_leader( $text, $opts )."\n";
+
    return TRUE;
 }
 
 sub fatal {
-   my ($self, $text, $args) = @_; my (undef, $file, $line) = caller 0;
+   my ($self, $text, $opts) = @_; my (undef, $file, $line) = caller 0;
 
-   my $posn = ' at '.abs_path( $file )." line ${line}"; $args //= {};
+   my $posn = ' at '.abs_path( $file )." line ${line}";
 
-   $text = $self->loc( $text // '[no message]', $args->{args} // [] );
+   $text = $self->$_loc( $text, $opts ).$posn;
 
-   $self->log->alert( $_ ) for (split m{ \n }mx, $text.$posn);
+   $self->log->alert( $_ ) for (split m{ \n }mx, $text);
 
-   emit_to *STDERR, $self->add_leader( $text, $args )."${posn}\n";
+   emit_to *STDERR, $self->add_leader( $text, $opts );
+
    exit FAILED;
 }
 
 sub info {
-   my ($self, $text, $args) = @_; $args //= {};
+   my ($self, $text, $opts) = @_;
 
-   my $opts = { params => $args->{args} // [], no_quote_bind_values => TRUE, };
-
-   $text = $self->loc( $text // '[no message]', $opts );
+   $opts //= {}; $text = $self->$_loc( $text, $opts, TRUE );
 
    $self->log->info( $_ ) for (split m{ [\n] }mx, $text);
 
-   $self->quiet or $args->{quiet} or emit $self->add_leader( $text, $args );
+   $self->quiet or $opts->{quiet} or emit $self->add_leader( $text, $opts );
+
    return TRUE;
 }
 
@@ -83,19 +91,17 @@ sub loc {
 }
 
 sub output {
-   my ($self, $text, $args) = @_; $args //= {};
+   my ($self, $text, $opts) = @_;
 
-   my $opts = { params => $args->{args} // [], no_quote_bind_values => TRUE, };
-
-   $text = $self->loc( $text // '[no message]', $opts );
+   $opts //= {}; $text = $self->$_loc( $text, $opts, TRUE );
 
    my $code = sub {
-      $args->{to} && $args->{to} eq 'err' ? emit_err( @_ ) : emit( @_ );
+      $opts->{to} && $opts->{to} eq 'err' ? emit_err( @_ ) : emit( @_ );
    };
 
-   $code->() if $args->{cl};
-   $code->( $self->add_leader( $text, $args ) );
-   $code->() if $args->{nl};
+   $code->() if $opts->{cl};
+   $code->( $self->add_leader( $text, $opts ) );
+   $code->() if $opts->{nl};
    return TRUE;
 }
 
@@ -108,13 +114,14 @@ sub quiet {
 }
 
 sub warning {
-   my ($self, $text, $args) = @_; $args //= {};
+   my ($self, $text, $opts) = @_;
 
-   $text = $self->loc( $text // '[no message]', $args->{args} // [] );
+   $opts //= {}; $text = $self->$_loc( $text, $opts );
 
    $self->log->warn( $_ ) for (split m{ \n }mx, $text);
 
-   $self->quiet or $args->{quiet} or emit $self->add_leader( $text, $args );
+   $self->quiet or $opts->{quiet} or emit $self->add_leader( $text, $opts );
+
    return TRUE;
 }
 
@@ -173,35 +180,35 @@ Quietens the usual started/finished information messages
 
 =head2 add_leader
 
-   $leader = $self->add_leader( $text, $args );
+   $leader = $self->add_leader( $text, $opts );
 
 Prepend C<< $self->config->name >> to each line of C<$text>. If
-C<< $args->{no_lead} >> exists then do nothing. Return C<$text> with
+C<< $opts->{no_lead} >> exists then do nothing. Return C<$text> with
 leader prepended
 
 =head2 error
 
-   $self->error( $text, $args );
+   $self->error( $text, $opts );
 
 Calls L<Class::Usul::localize|Class::Usul/localize> with
-the passed args. Logs the result at the error level, then adds the
+the passed options. Logs the result at the error level, then adds the
 program leader and prints the result to I<STDERR>
 
 =head2 fatal
 
-   $self->fatal( $text, $args );
+   $self->fatal( $text, $opts );
 
 Calls L<Class::Usul::localize|Class::Usul/localize> with
-the passed args. Logs the result at the alert level, then adds the
+the passed options. Logs the result at the alert level, then adds the
 program leader and prints the result to I<STDERR>. Exits with a return
 code of one
 
 =head2 info
 
-   $self->info( $text, $args );
+   $self->info( $text, $opts );
 
 Calls L<Class::Usul::localize|Class::Usul/localize> with
-the passed args. Logs the result at the info level, then adds the
+the passed options. Logs the result at the info level, then adds the
 program leader and prints the result to I<STDOUT>
 
 =head2 loc
@@ -214,10 +221,10 @@ C<< $self->locale >> to the arguments passed to C<localizer>
 
 =head2 output
 
-   $self->output( $text, $args );
+   $self->output( $text, $opts );
 
 Calls L<Class::Usul::localize|Class::Usul/localize> with
-the passed args. Adds the program leader and prints the result to
+the passed options. Adds the program leader and prints the result to
 I<STDOUT>
 
 =head2 quiet
@@ -229,10 +236,10 @@ to turn quiet mode off
 
 =head2 warning
 
-   $self->warning( $text, $args );
+   $self->warning( $text, $opts );
 
 Calls L<Class::Usul::localize|Class::Usul/localize> with
-the passed args. Logs the result at the warning level, then adds the
+the passed options. Logs the result at the warning level, then adds the
 program leader and prints the result to I<STDOUT>
 
 =head1 Diagnostics

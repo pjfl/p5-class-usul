@@ -19,8 +19,7 @@ use File::Spec::Functions qw( catdir catfile );
 
 use Class::Usul::L10N;
 
-my $l10n = Class::Usul::L10N->new( debug           => 0,
-                                   l10n_attributes => {
+my $l10n = Class::Usul::L10N->new( l10n_attributes => {
                                       domains      => [ 'default' ], },
                                    localedir       => catdir( qw( t locale ) ),
                                    log             => Logger->new,
