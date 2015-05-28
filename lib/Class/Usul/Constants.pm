@@ -93,8 +93,7 @@ sub Exception_Class {
       ( "Exception class ${class} is not loaded or has no throw method" );
 
    File::DataClass::Constants->Exception_Class( $class );
-   IPC::SRLock::Constants->can( 'Exception_Class' )
-      and IPC::SRLock::Constants->Exception_Class( $class );
+   IPC::SRLock::Constants->Exception_Class( $class );
 
    return $Exception_Class = $class;
 }
