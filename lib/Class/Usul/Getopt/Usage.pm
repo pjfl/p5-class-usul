@@ -4,9 +4,10 @@ use strict;
 use warnings;
 use parent 'Getopt::Long::Descriptive::Usage';
 
-use List::Util qw( max );
+use List::Util      qw( max );
+use Term::ANSIColor qw( color );
 
-my $NUL = q(); my $SPC = q( ); my $TAB = q(   );
+my $NUL = q(); my $SPC = q( ); my $TAB = q(   ); my $WIDTH = 78;
 
 my $_option_type = 'verbose';
 
@@ -14,7 +15,7 @@ my $_option_type = 'verbose';
 my $_split_description = sub {
    my ($length, $desc) = @_;
    # 3 for a tab, 2 for the space between option & desc;
-   my $max_length = 79 - ( length( $TAB ) + $length + 2 );
+   my $max_length = $WIDTH - ( length( $TAB ) + $length + 2 );
 
    length $desc <= $max_length and return $desc; my @lines;
 
@@ -68,15 +69,34 @@ my $_parse_assignment = sub {
    return $result ? " $result" : $NUL;
 };
 
+my $_assemble_spec = sub {
+   my ($length, $spec) = @_;
+
+   my $stripped = [ Getopt::Long::Descriptive->_strip_assignment( $spec ) ];
+   my $assign   = $_parse_assignment->( $stripped->[ 1 ] );
+   my $plain    = join $SPC, reverse
+                  map    { length > 1 ? "--${_}${assign}" : "-${_}${assign}" }
+                  split m{ [|] }mx, $stripped->[ 0 ];
+   my $pad      = $SPC x ($length - length $plain);
+
+   $assign = color( 'bold' ).$assign.color( 'reset' );
+
+   my $markedup = join $SPC, reverse
+                  map    { length > 1 ? "--${_}${assign}" : "-${_}${assign}" }
+                  split m{ [|] }mx, $stripped->[ 0 ];
+
+   return $markedup.$pad;
+};
+
 my $_option_length = sub {
-   my $fullspec          = shift;
-   my $number_opts       = 1;
-   my $last_pos          = 0;
-   my $number_shortopts  = 0;
+   my $fullspec         = shift;
+   my $number_opts      = 1;
+   my $last_pos         = 0;
+   my $number_shortopts = 0;
    my ($spec, $assign)
       = Getopt::Long::Descriptive->_strip_assignment( $fullspec );
-   my $length            = length $spec;
-   my $arglen            = length $_parse_assignment->( $assign );
+   my $length           = length $spec;
+   my $arglen           = length $_parse_assignment->( $assign );
    # Spacing rules:
    # For short options we want 1 space (for '-'), for long options 2
    # spaces (for '--').  Then one space for separating the options,
@@ -119,15 +139,9 @@ sub option_text {
    my $string   = $NUL;
 
    while (defined (my $opt = shift @options)) {
-      my $spec = $opt->{spec}; my $desc = $opt->{desc}; my $assign;
+      my $spec = $opt->{spec}; my $desc = $opt->{desc};
 
       if ($desc eq 'spacer') { $string .= sprintf "${spec_fmt}\n", $spec; next }
-
-      ($spec, $assign) = Getopt::Long::Descriptive->_strip_assignment( $spec );
-      $assign = $_parse_assignment->( $assign );
-      $spec   = join $SPC, reverse
-                map    { length > 1 ? "--${_}${assign}" : "-${_}${assign}" }
-                split m{ [|] }mx, $spec;
 
       if (exists $opt->{constraint}->{default} and $self->{show_defaults}) {
          my $dflt = $opt->{constraint}->{default};
@@ -140,7 +154,8 @@ sub option_text {
 
       my @desc = $_split_description->( $length, $desc );
 
-      $string .= sprintf "${spec_fmt}  %s\n", $spec, shift @desc;
+      $spec    = $_assemble_spec->( $length, $spec );
+      $string .= sprintf "${TAB}${spec}  %s\n", shift @desc;
 
       for my $line (@desc) {
          $string .= $TAB.($SPC x ( $length + 2 ))."${line}\n";
