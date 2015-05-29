@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+0.59.1    2015-05-29 02:01:42
           - Refactored no_quote_bind_values in OutputLogging
           - Refactored Programs into roles
           - Added grave to untaint cmdline
