@@ -2,7 +2,7 @@ package Class::Usul;
 
 use 5.010001;
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.59.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.59.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants  qw( FALSE TRUE );
 use Class::Usul::Functions  qw( data_dumper merge_attributes );
@@ -65,7 +65,7 @@ __END__
 
 =pod
 
-=encoding utf8
+=encoding utf-8
 
 =begin html
 
@@ -81,7 +81,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.59.$Rev: 1 $
+Describes Class::Usul version v0.59.$Rev: 2 $
 
 =head1 Synopsis
 

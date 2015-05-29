@@ -2,12 +2,11 @@ package Class::Usul::TraitFor::UntaintedGetopts;
 
 use namespace::autoclean;
 
-use Class::Usul::Constants qw( FAILED NUL );
+use Class::Usul::Constants qw( FAILED NUL TRUE );
 use Class::Usul::Functions qw( untaint_cmdline );
+use Class::Usul::Getopt    qw( describe_options );
 use Data::Record;
 use Encode                 qw( decode );
-use Getopt::Long 2.38;
-use Getopt::Long::Descriptive 0.091;
 use JSON::MaybeXS          qw( decode_json );
 use Regexp::Common;
 use Scalar::Util           qw( blessed );
@@ -55,6 +54,10 @@ my $_option_specification = sub {
    $opt->{negateable} and $option_spec .= '!';
    defined $opt->{format} and $option_spec .= '='.$opt->{format};
    return $option_spec;
+};
+
+my $_set_option_type = sub {
+   return Class::Usul::Getopt::Usage->option_type( $_[ 0 ] );
 };
 
 my $_split_args = sub {
@@ -126,15 +129,16 @@ my $_parse_options = sub {
 
    my ($splitters, @options) = $_build_options->( \%data );
 
-   my @flavour; defined $config{flavour}
-      and push @flavour, { getopt_conf => $config{flavour} };
+   my %gld_conf; my @gld_attr = ('getopt_conf', 'show_defaults');
 
-   $config{protect_argv} and local @ARGV = @ARGV;
+   @gld_conf{ @gld_attr } = @config{ @gld_attr };
+   $config{option_type  } and $_set_option_type->( $config{option_type} );
+   $config{protect_argv } and local @ARGV = @ARGV;
    $enc and @ARGV = map { decode( $enc, $_ ) } @ARGV;
    $config{no_untaint} or @ARGV = map { untaint_cmdline $_ } @ARGV;
    $Untainted_Argv = [ @ARGV ];
    keys %{ $splitters } and @ARGV = $_split_args->( $splitters );
-   ($opt, $Usage) = describe_options( ('Usage: %c %o'), @options, @flavour );
+   ($opt, $Usage) = describe_options( 'Usage: %c %o', @options, \%gld_conf );
    $Extra_Argv = [ @ARGV ];
 
    my ($params, @missing)

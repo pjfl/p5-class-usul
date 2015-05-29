@@ -3,7 +3,7 @@ package Class::Usul::Options;
 use strict;
 use warnings;
 
-use Class::Usul::Constants qw( TRUE );
+use Class::Usul::Constants qw( FALSE TRUE );
 use Class::Usul::Functions qw( throw );
 use Sub::Install           qw( install_sub );
 
@@ -48,10 +48,12 @@ my $_validate_and_filter_options = sub {
 sub import {
    my ($class, @args) = @_; my $target = caller;
 
-   my $options_config = { protect_argv       => TRUE,
-                          flavour            => [],
-                          skip_options       => [],
+   my $options_config = { getopt_conf        => [],
+                          option_type        => 'short',
                           prefer_commandline => TRUE,
+                          protect_argv       => TRUE,
+                          show_defaults      => FALSE,
+                          skip_options       => [],
                           @args, };
 
    for my $want (grep { not $target->can( $_ ) } qw( around has with )) {
@@ -128,7 +130,7 @@ __END__
 
 =pod
 
-=encoding utf8
+=encoding utf-8
 
 =head1 Name
 
@@ -139,11 +141,29 @@ Class::Usul::Options - Command line processing
    use Moo;
    use Class::Usul::Options;
 
+   option 'my_attr' => is => 'ro', isa => 'Bool';
+
 =head1 Description
 
 This is a clone of L<MooX::Options> but is closer to L<MooseX::Getopt::Dashes>
 
 =head1 Configuration and Environment
+
+The C<option> function adds the following attributes to those already
+supported by C<has>
+
+=over 3
+
+=item C<autosplit>
+
+If set split the option value using this string. Automatically creates a list
+of values
+
+=item C<doc>
+
+Alias for C<documentation>. Used to describe the attribute in the usage output
+
+=item C<format>
 
 Format of the parameters, same as L<Getopt::Long::Descriptive>
 
@@ -161,13 +181,77 @@ Format of the parameters, same as L<Getopt::Long::Descriptive>
 
 By default, it's a boolean value.
 
+=item C<json>
+
+Boolean which if true means that the argument to the option is in JSON format
+and will be decoded as such
+
+=item C<negateable>
+
+Applies only to boolean types. Means you can use C<--nooption-name> to
+explicitly indicate false
+
+=item C<order>
+
+Specifies the order in which usage options appear. Attributes with no C<order>
+value are alpha sorted
+
+=item C<repeatable>
+
+Boolean which if true means that the option can appear multiple times on the
+command line
+
+=item C<short>
+
+A single character that can be used as a short option, e.g. C<-s> instead
+of the longer C<--long-option>
+
+=back
+
 Defines no attributes
 
 =head1 Subroutines/Methods
 
 =head2 import
 
-Inject the C<option> method into the caller
+Injects the C<option> function into the caller
+
+Accepts the following configuration options;
+
+=over 3
+
+=item C<getopf_conf>
+
+An array reference of options passed to L<Getopt::Long::Configure>, defaults to
+an empty list
+
+=item C<option_type>
+
+One of; C<none>, C<short>, or C<verbose>. Determines the amount of option
+type information displayed by the L<option_text|Class::Usul::Usage/option_text>
+method. Defaults to C<short>
+
+=item C<prefer_commandline>
+
+A boolean which defaults to true. Prefer the command line values
+
+=item C<protect_argv>
+
+A boolean which defaults to true. Localises the C<@ARGV> variable before any
+processing takes place. Means that C<@ARGV> will contain all of the passed
+command line arguments
+
+=item C<show_defaults>
+
+A boolean which defaults to false. If true the default values are added to
+use options usage text output
+
+=item C<skip_options>
+
+An array reference which defaults to an empty list. List of options to
+ignore when processing the attributes passed to the C<option> subroutine
+
+=back
 
 =head1 Diagnostics
 
