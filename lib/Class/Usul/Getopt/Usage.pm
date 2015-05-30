@@ -47,7 +47,7 @@ my $_types = sub {
 };
 
 my $_parse_assignment = sub {
-   my $assign_spec = shift;
+   my $assign_spec = shift; $assign_spec or return $NUL;
 
    length $assign_spec < 2 and return $NUL; # Empty, ! or +
 
