@@ -10,17 +10,14 @@ use Term::ANSIColor qw( color );
 my $NUL = q(); my $SPC = q( ); my $USAGE_CONF = {};
 
 # Private functions
-my $_expand_tabstop = sub {
-   return $SPC x ($USAGE_CONF->{tabstop} // 3);
+my $_tabstop = sub {
+   my $v = $USAGE_CONF->{tabstop} // 3; return $v; # Eight is too much
 };
 
 my $_split_description = sub {
-   my ($length, $desc) = @_;
-
-   my $width      = $USAGE_CONF->{width} // 78;
-   my $tab        = $_expand_tabstop->();
+   my ($length, $desc) = @_; my $width = $USAGE_CONF->{width} // 78;
    # Length of a tab plus 2 for the space between option & desc;
-   my $max_length = $width - ( length( $tab ) + $length + 2 );
+   my $max_length = $width - ( $_tabstop->() + $length + 2 );
 
    length $desc <= $max_length and return $desc; my @lines;
 
@@ -39,11 +36,11 @@ my $_split_description = sub {
 my $_types = sub {
    my $k = shift; my $option_type = $USAGE_CONF->{option_type} // 'short';
 
-   $option_type eq 'none'    and return;
-   $option_type eq 'verbose' and return uc $k;
+   $option_type eq 'none'    and return;       # Old behaviour
+   $option_type eq 'verbose' and return uc $k; # New behaviour
 
    my $types = { int => 'i', key => 'k', num => 'n', str => 's', };
-   my $type  = $types->{ $k } // $NUL;
+   my $type  = $types->{ $k } // $NUL;         # Prefered behaviour
 
    return $type;
 };
@@ -85,7 +82,7 @@ my $_assemble_spec = sub {
    my $pad       = $SPC x ($length - length $plain);
    my $highlight = $USAGE_CONF->{highlight} // 'bold';
 
-   $highlight eq 'none' and return $plain.$pad;
+   $highlight eq 'none' and return $plain.$pad; # Old behaviour
 
    $assign = color( $highlight ).$assign.color( 'reset' );
 
@@ -93,7 +90,7 @@ my $_assemble_spec = sub {
                    map    { length > 1 ? "--${_}${assign}" : "-${_}${assign}" }
                    split m{ [|] }mx, $stripped->[ 0 ];
 
-   return $markedup.$pad;
+   return $markedup.$pad; # Prefered behaviour works well with short types
 };
 
 my $_option_length = sub {
@@ -122,6 +119,7 @@ my $_option_length = sub {
    }
 
    # Was the last option a "short" one?
+   # Getopt::Long::Descriptive has a 2 here and thats wrong
    ($length - $last_pos) == 1 and $number_shortopts++;
    # We got $number_opts options, each with an argument length of
    # $arglen.  Plus each option (after the first) needs 3 a char
@@ -143,7 +141,7 @@ sub option_text {
    my @options  = @{ $self->{options} // [] };
    my @specs    = map { $_->{spec} } grep { $_->{desc} ne 'spacer' } @options;
    my $length   = max( map { $_option_length->( $_ ) } @specs ) || 0;
-   my $tab      = $_expand_tabstop->();
+   my $tab      = $SPC x $_tabstop->(); # Originally an actual tab char
    my $spec_fmt = "${tab}%-${length}s";
    my $string   = $NUL;
 
@@ -157,7 +155,7 @@ sub option_text {
             $dflt = not defined $dflt ? '[undef]'
                   : not length  $dflt ? '[null]'
                                       : $dflt;
-
+         # Add the default to the description before splitting into lines
          $desc   .= " (default value: ${dflt})";
       }
 
@@ -209,6 +207,8 @@ Class::Usul::Getopt::Usage - The usage description for Getopt::Long::Descriptive
 
 The usage description for L<Getopt::Long::Descriptive>. Inherits from
 L<Getopt::Long::Descriptive::Usage>
+
+See L<Class::Usul::Options> for more usage information
 
 =head1 Configuration and Environment
 

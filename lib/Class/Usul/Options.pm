@@ -143,14 +143,26 @@ Class::Usul::Options - Command line processing
 
    option 'my_attr' => is => 'ro', isa => 'Bool';
 
+   # OR
+   # Causes Getopt::Long:Descriptive::Usage to produce it's new default output
+
+   use Class::Usul::Options 'usage_conf' => {
+       highlight => 'none', option_type => 'verbose', tabstop => 8 };
+
+   # OR
+   # Causes Getopt::Long:Descriptive::Usage to produce it's old default output
+
+   use Class::Usul::Options 'usage_conf' => {
+       highlight => 'none', option_type => 'none', tabstop => 8 };
+
 =head1 Description
 
 This is a clone of L<MooX::Options> but is closer to L<MooseX::Getopt::Dashes>
 
 =head1 Configuration and Environment
 
-The C<option> function adds the following attributes to those already
-supported by C<has>
+The C<option> function accepts the following attributes in addition to those
+already supported by C<has>
 
 =over 3
 
