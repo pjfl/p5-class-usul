@@ -114,7 +114,7 @@ my $_option_length = sub {
    }
 
    # Was the last option a "short" one?
-   ($length - $last_pos) == 2 and $number_shortopts++;
+   ($length - $last_pos) == 1 and $number_shortopts++;
    # We got $number_opts options, each with an argument length of
    # $arglen.  Plus each option (after the first) needs 3 a char
    # spacing.  $length gives us the total length of all options and 1
@@ -124,9 +124,9 @@ my $_option_length = sub {
    my $number_longopts = $number_opts - $number_shortopts;
    my $total_arglen    = $number_opts * $arglen;
    my $total_optsep    = 2 * $number_longopts + $number_shortopts;
-   my $total           = $length + $total_optsep + $total_arglen + 1;
-   # Because this looks better than the calculated total
-   return $total - 2;
+   my $total           = $length + $total_optsep + $total_arglen;
+
+   return $total;
 };
 
 # Public methods
