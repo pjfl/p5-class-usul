@@ -25,30 +25,35 @@ Class::Usul::Getopt - Getopt::Long but simpler more powerful and flexible
 
 =head1 Synopsis
 
-   use Class::Usul::Getopt;
-   # Brief but working code examples
+   use Class::Usul::Getopt qw( describe_options );
 
 =head1 Description
 
+L<Getopt::Long> but simpler more powerful and flexible. Inherits from
+L<Getopt::Long::Descriptive>
+
 =head1 Configuration and Environment
 
-Defines the following attributes;
-
-=over 3
-
-=back
+Defines no attributes
 
 =head1 Subroutines/Methods
 
 =head2 C<usage_class>
 
+Overrides the class method in the L<Getopt::Long::Descriptive> setting the
+usage class to L<Class::Usul::Getopt::Usuage>
+
 =head1 Diagnostics
+
+None
 
 =head1 Dependencies
 
 =over 3
 
-=item L<Class::Usul>
+=item L<Class::Usul::Getopt::Usuage>
+
+=item L<Getopt::Long::Descriptive>
 
 =back
 

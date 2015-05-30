@@ -56,8 +56,8 @@ my $_option_specification = sub {
    return $option_spec;
 };
 
-my $_set_option_type = sub {
-   return Class::Usul::Getopt::Usage->option_type( $_[ 0 ] );
+my $_set_usage_conf = sub {
+   return Class::Usul::Getopt::Usage->usage_conf( $_[ 0 ] );
 };
 
 my $_split_args = sub {
@@ -132,7 +132,7 @@ my $_parse_options = sub {
    my %gld_conf; my @gld_attr = ('getopt_conf', 'show_defaults');
 
    @gld_conf{ @gld_attr } = @config{ @gld_attr };
-   $config{option_type  } and $_set_option_type->( $config{option_type} );
+   $config{usage_conf   } and $_set_usage_conf->( $config{usage_conf} );
    $config{protect_argv } and local @ARGV = @ARGV;
    $enc and @ARGV = map { decode( $enc, $_ ) } @ARGV;
    $config{no_untaint} or @ARGV = map { untaint_cmdline $_ } @ARGV;

@@ -7,15 +7,20 @@ use parent 'Getopt::Long::Descriptive::Usage';
 use List::Util      qw( max );
 use Term::ANSIColor qw( color );
 
-my $NUL = q(); my $SPC = q( ); my $TAB = q(   ); my $WIDTH = 78;
-
-my $_option_type = 'verbose';
+my $NUL = q(); my $SPC = q( ); my $USAGE_CONF = {};
 
 # Private functions
+my $_expand_tabstop = sub {
+   return $SPC x ($USAGE_CONF->{tabstop} // 3);
+};
+
 my $_split_description = sub {
    my ($length, $desc) = @_;
-   # 3 for a tab, 2 for the space between option & desc;
-   my $max_length = $WIDTH - ( length( $TAB ) + $length + 2 );
+
+   my $width      = $USAGE_CONF->{width} // 78;
+   my $tab        = $_expand_tabstop->();
+   # Length of a tab plus 2 for the space between option & desc;
+   my $max_length = $width - ( length( $tab ) + $length + 2 );
 
    length $desc <= $max_length and return $desc; my @lines;
 
@@ -32,10 +37,10 @@ my $_split_description = sub {
 };
 
 my $_types = sub {
-   my $k = shift;
+   my $k = shift; my $option_type = $USAGE_CONF->{option_type} // 'short';
 
-   $_option_type eq 'none'    and return;
-   $_option_type eq 'verbose' and return uc $k;
+   $option_type eq 'none'    and return;
+   $option_type eq 'verbose' and return uc $k;
 
    my $types = { int => 'i', key => 'k', num => 'n', str => 's', };
    my $type  = $types->{ $k } // $NUL;
@@ -72,18 +77,21 @@ my $_parse_assignment = sub {
 my $_assemble_spec = sub {
    my ($length, $spec) = @_;
 
-   my $stripped = [ Getopt::Long::Descriptive->_strip_assignment( $spec ) ];
-   my $assign   = $_parse_assignment->( $stripped->[ 1 ] );
-   my $plain    = join $SPC, reverse
-                  map    { length > 1 ? "--${_}${assign}" : "-${_}${assign}" }
-                  split m{ [|] }mx, $stripped->[ 0 ];
-   my $pad      = $SPC x ($length - length $plain);
+   my $stripped  = [ Getopt::Long::Descriptive->_strip_assignment( $spec ) ];
+   my $assign    = $_parse_assignment->( $stripped->[ 1 ] );
+   my $plain     = join $SPC, reverse
+                   map    { length > 1 ? "--${_}${assign}" : "-${_}${assign}" }
+                   split m{ [|] }mx, $stripped->[ 0 ];
+   my $pad       = $SPC x ($length - length $plain);
+   my $highlight = $USAGE_CONF->{highlight} // 'bold';
 
-   $assign = color( 'bold' ).$assign.color( 'reset' );
+   $highlight eq 'none' and return $plain.$pad;
 
-   my $markedup = join $SPC, reverse
-                  map    { length > 1 ? "--${_}${assign}" : "-${_}${assign}" }
-                  split m{ [|] }mx, $stripped->[ 0 ];
+   $assign = color( $highlight ).$assign.color( 'reset' );
+
+   my $markedup  = join $SPC, reverse
+                   map    { length > 1 ? "--${_}${assign}" : "-${_}${assign}" }
+                   split m{ [|] }mx, $stripped->[ 0 ];
 
    return $markedup.$pad;
 };
@@ -135,7 +143,8 @@ sub option_text {
    my @options  = @{ $self->{options} // [] };
    my @specs    = map { $_->{spec} } grep { $_->{desc} ne 'spacer' } @options;
    my $length   = max( map { $_option_length->( $_ ) } @specs ) || 0;
-   my $spec_fmt = "${TAB}%-${length}s";
+   my $tab      = $_expand_tabstop->();
+   my $spec_fmt = "${tab}%-${length}s";
    my $string   = $NUL;
 
    while (defined (my $opt = shift @options)) {
@@ -155,18 +164,22 @@ sub option_text {
       my @desc = $_split_description->( $length, $desc );
 
       $spec    = $_assemble_spec->( $length, $spec );
-      $string .= sprintf "${TAB}${spec}  %s\n", shift @desc;
+      $string .= sprintf "${tab}${spec}  %s\n", shift @desc;
 
       for my $line (@desc) {
-         $string .= $TAB.($SPC x ( $length + 2 ))."${line}\n";
+         $string .= $tab.($SPC x ( $length + 2 ))."${line}\n";
       }
    }
 
    return $string;
 }
 
-sub option_type {
-   my ($self, $v) = @_; defined $v and $_option_type = $v; return $_option_type;
+sub usage_conf {
+   my ($self, $v) = @_; defined $v or return $USAGE_CONF;
+
+   ref $v eq 'HASH' or die 'Usage configuration must be a hash reference';
+
+   return $USAGE_CONF = $v;
 }
 
 1;
@@ -183,32 +196,72 @@ Class::Usul::Getopt::Usage - The usage description for Getopt::Long::Descriptive
 
 =head1 Synopsis
 
+   use parent 'Getopt::Long::Descriptive';
+
    use Class::Usul::Getopt::Usage;
-   # Brief but working code examples
+   use Getopt::Long 2.38;
+
+   sub usage_class {
+      return 'Class::Usul::Getopt::Usage';
+   }
 
 =head1 Description
 
+The usage description for L<Getopt::Long::Descriptive>. Inherits from
+L<Getopt::Long::Descriptive::Usage>
+
 =head1 Configuration and Environment
 
-Defines the following attributes;
-
-=over 3
-
-=back
+Defines no attributes
 
 =head1 Subroutines/Methods
 
 =head2 C<option_text>
 
-=head2 C<option_type>
+Returns the multiline string which is the usage text
+
+=head2 C<usage_conf>
+
+A class accessor / mutator for the configuration hash reference. Supported
+attributes are;
+
+=over 3
+
+=item C<highlight>
+
+Defaults to C<bold> which causes the option argument types to be displayed
+in a bold font. Set to C<none> to turn off highlighting
+
+=item C<option_type>
+
+One of; C<none>, C<short>, or C<verbose>. Determines the amount of option
+type information displayed by the L<option_text|Class::Usul::Usage/option_text>
+method. Defaults to C<short>
+
+=item C<tabstop>
+
+Defaults to 3. The number of spaces to expand the leading tab in the usage
+string
+
+=item C<width>
+
+The total line width available for displaying usage text, defaults to 78
+
+=back
 
 =head1 Diagnostics
+
+None
 
 =head1 Dependencies
 
 =over 3
 
-=item L<Class::Usul>
+=item L<Getopt::Long::Descriptive::Usage>
+
+=item L<List::Util>
+
+=item L<Term::ANSIColor>
 
 =back
 

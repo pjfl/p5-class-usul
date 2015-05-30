@@ -49,11 +49,11 @@ sub import {
    my ($class, @args) = @_; my $target = caller;
 
    my $options_config = { getopt_conf        => [],
-                          option_type        => 'short',
                           prefer_commandline => TRUE,
                           protect_argv       => TRUE,
                           show_defaults      => FALSE,
                           skip_options       => [],
+                          usage_conf         => {},
                           @args, };
 
    for my $want (grep { not $target->can( $_ ) } qw( around has with )) {
@@ -225,12 +225,6 @@ Accepts the following configuration options;
 An array reference of options passed to L<Getopt::Long::Configure>, defaults to
 an empty list
 
-=item C<option_type>
-
-One of; C<none>, C<short>, or C<verbose>. Determines the amount of option
-type information displayed by the L<option_text|Class::Usul::Usage/option_text>
-method. Defaults to C<short>
-
 =item C<prefer_commandline>
 
 A boolean which defaults to true. Prefer the command line values
@@ -250,6 +244,34 @@ use options usage text output
 
 An array reference which defaults to an empty list. List of options to
 ignore when processing the attributes passed to the C<option> subroutine
+
+=item C<usage_conf>
+
+By default an empty hash reference. Attributes can be any of;
+
+=over 3
+
+=item C<highlight>
+
+Defaults to C<bold> which causes the option argument types to be displayed
+in a bold font. Set to C<none> to turn off highlighting
+
+=item C<option_type>
+
+One of; C<none>, C<short>, or C<verbose>. Determines the amount of option
+type information displayed by the L<option_text|Class::Usul::Usage/option_text>
+method. Defaults to C<short>
+
+=item C<tabstop>
+
+Defaults to 3. The number of spaces to expand the leading tab in the usage
+string
+
+=item C<width>
+
+The total line width available for displaying usage text, defaults to 78
+
+=back
 
 =back
 
