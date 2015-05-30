@@ -39,7 +39,8 @@ my $_types = sub {
    $option_type eq 'none'    and return;       # Old behaviour
    $option_type eq 'verbose' and return uc $k; # New behaviour
 
-   my $types = { int => 'i', key => 'k', num => 'n', str => 's', };
+   my $types = $USAGE_CONF->{type_map}
+            // { int => 'i', key => 'k', num => 'n', str => 's', };
    my $type  = $types->{ $k } // $NUL;         # Prefered behaviour
 
    return $type;
@@ -242,6 +243,11 @@ method. Defaults to C<short>
 
 Defaults to 3. The number of spaces to expand the leading tab in the usage
 string
+
+=item C<type_map>
+
+A hash reference keyed by option type. By default maps C<int> to C<i>, C<key>
+to C<k>, C<num> to C<n>, and C<str> to C<s>
 
 =item C<width>
 

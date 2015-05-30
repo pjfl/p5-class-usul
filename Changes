@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Added type_map to Usage configuration options
           - Added usage configuration options
           - Bugfix in Getopt::Usage::_option_length
           - Added option highlighting to Getopt::Usage output

@@ -8,6 +8,11 @@ use File::Basename qw( basename );
 use Test::Deep;
 use Class::Usul::Functions qw( find_source );
 use File::Spec::Functions qw( catfile );
+use Sys::Hostname;
+
+SKIP: {
+# 48aff258-06c0-11e5-a85a-e28fcaadd3a7
+hostname eq 'nyrs.bingosnet.co.uk' and skip 'Something wrong with smoker', 1;
 
 use_ok 'Class::Usul::Programs';
 
@@ -76,9 +81,11 @@ $prog = Class::Usul::Programs->new
 
 is $prog->debug, 1, 'Debug true - from env';
 
-done_testing;
-
 unlink $logfile;
+
+}
+
+done_testing;
 
 # Local Variables:
 # mode: perl
