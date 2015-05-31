@@ -229,25 +229,25 @@ sub _build_prefix {
 sub _build_root {
    my $dir = $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir', 'root' );
 
-   return -d $dir ? $dir : $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir' );
+   return -d $dir ? $dir : $_[ 0 ]->inflate_path( $_[ 1 ], 'tempdir' );
 }
 
 sub _build_rundir {
    my $dir = $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir', 'run' );
 
-   return -d $dir ? $dir : $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir' );
+   return -d $dir ? $dir : $_[ 0 ]->inflate_path( $_[ 1 ], 'tempdir' );
 }
 
 sub _build_sessdir {
-   my $dir = $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir', 'hist' );
+   my $dir = $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir', 'session' );
 
-   return -d $dir ? $dir : $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir' );
+   return -d $dir ? $dir : $_[ 0 ]->inflate_path( $_[ 1 ], 'tempdir' );
 }
 
 sub _build_sharedir {
    my $dir =  $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir', 'share' );
 
-   return -d $dir ? $dir : $_[ 0 ]->inflate_path( $_[ 1 ], 'vardir' );
+   return -d $dir ? $dir : $_[ 0 ]->inflate_path( $_[ 1 ], 'tempdir' );
 }
 
 sub _build_shell {
@@ -264,7 +264,7 @@ sub _build_salt {
 sub _build_suid {
    my $prefix = $_[ 0 ]->inflate_symbol( $_[ 1 ], 'prefix' );
 
-   return $_[ 0 ]->inflate_path( $_[ 1 ], 'binsdir', "${prefix}_admin" );
+   return $_[ 0 ]->inflate_path( $_[ 1 ], 'binsdir', "${prefix}-admin" );
 }
 
 sub _build_tempdir {
@@ -479,12 +479,12 @@ File. The default shell used to create new OS users
 =item C<suid>
 
 File. Name of the setuid root program in the F<bin> directory. Defaults to
-the C<prefix>_admin
+C<prefix>-admin
 
 =item C<tempdir>
 
 Directory. It is the location of any temporary files created by the
-application. Defaults to the L<File::Spec> tempdir
+application. Defaults to the L<File::Spec> C<tempdir>
 
 =item C<vardir>
 

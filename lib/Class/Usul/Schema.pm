@@ -22,7 +22,7 @@ with    q(Class::Usul::TraitFor::ConnectInfo);
 my $_build_qdb = sub {
    my $self = shift;
    my $cmds = $self->ddl_commands->{ lc $self->driver };
-   my $code = $cmds ? $cmds->{ '-qualify-db' } : undef;
+   my $code = $cmds ? $cmds->{ '-qualify_db' } : undef;
 
    return $code ? $code->( $self, $self->database ) : $self->database;
 };
@@ -30,9 +30,9 @@ my $_build_qdb = sub {
 my $_extract_from_dsn = sub {
    my ($self, $field) = @_;
 
-   return (map    { s{ \A $field [=] }{}mx; $_ }
-           grep   { m{ \A $field [=] }mx }
-           split m{ [;] }mx, $self->dsn)[ 0 ];
+   return (map  { s{ \A $field [=] }{}mx; $_ }
+           grep { m{ \A $field [=] }mx }
+           split  m{           [;] }mx, $self->dsn)[ 0 ];
 };
 
 my $_qualify_database_path = sub {
@@ -107,12 +107,12 @@ has 'connect_info'      => is => 'lazy', isa => ArrayRef, builder => sub {
 has 'ddl_commands'      => is => 'lazy', isa => HashRef,  builder => sub { {
    'mysql'              => {
       'create_user'     => "create user '[_2]'\@'[_1]' identified by '[_3]';",
-      'create_db'       => 'create database if not exists [_3] default '.
-                           'character set utf8 collate utf8_unicode_ci;',
+      'create_db'       => 'create database if not exists [_3] default '
+                         . 'character set utf8 collate utf8_unicode_ci;',
       'drop_db'         => 'drop database if exists [_3];',
       'drop_user'       => "drop user '[_2]'\@'[_1]';",
-      'grant_all'       => "grant all privileges on [_3].* to '[_2]'\@'[_1]' ".
-                           'with grant option;',
+      'grant_all'       => "grant all privileges on [_3].* to '[_2]'\@'[_1]' "
+                         . 'with grant option;',
       '-execute_ddl'    => 'mysql -A -h [_1] -u [_2] -p[_3] mysql', },
    'pg'                 => {
       'create_user'     => "create role [_2] login password '[_3]';",
@@ -122,8 +122,8 @@ has 'ddl_commands'      => is => 'lazy', isa => HashRef,  builder => sub { {
       '-execute_ddl'    => 'PGPASSWORD=[_3] psql -q -w -h [_1] -U [_2]', },
    'sqlite'             => {
       '-execute_ddl'    => "sqlite3 [_5] '[_4]'",
-      '-no-pipe'        => TRUE,
-      '-qualify-db'     => $_qualify_database_path, }, } };
+      '-no_pipe'        => TRUE,
+      '-qualify_db'     => $_qualify_database_path, }, } };
 
 has 'driver'            => is => 'rwp',  isa => NonEmptySimpleStr,
    builder              => sub { (split m{ [:] }mx, $_[ 0 ]->dsn)[ 1 ] },
@@ -163,7 +163,7 @@ my $_unquote = sub {
 
 # Private methods
 my $_db_attr = sub {
-   my  $self = shift; my $attr = $self->connect_info->[ 3 ];
+   my $self = shift; my $attr = $self->connect_info->[ 3 ];
 
    $attr->{ $_ } = $self->db_attr->{ $_ } for (keys %{ $self->db_attr });
 
@@ -174,8 +174,8 @@ my $_get_db_admin_creds = sub {
    my ($self, $reason) = @_;
 
    my $attrs  = { password => NUL, user => NUL, };
-   my $text   = 'Need the database administrators id and password to perform '.
-                "a ${reason} operation";
+   my $text   = 'Need the database administrators id and password to perform '
+              . "a ${reason} operation";
 
    $self->output( $text, AS_PARA );
 
@@ -277,7 +277,7 @@ my $_execute_ddl = sub {
    my $cmd  = $cmds->{ '-execute_ddl'  };
 
    $cmd = $_inflate->( $cmd, $host, $user, $pass, $ddl, $self->_qualified_db );
-   $cmds->{ '-no-pipe' } or $cmd = "echo \"${ddl}\" | ${cmd}";
+   $cmds->{ '-no_pipe' } or $cmd = "echo \"${ddl}\" | ${cmd}";
    $self->dry_run and $self->output( $cmd ) and return;
 
    return $self->run_cmd( $cmd, { out => 'stdout', %{ $opts // {} } } );
@@ -319,9 +319,9 @@ sub create_ddl : method {
 sub create_schema : method { # Create databases and edit credentials
    my $self    = shift;
    my $default = $self->yes;
-   my $text    = 'Schema creation requires a database, id and password. '.
-                 'For Postgres the driver is Pg and the port 5432. For '.
-                 'MySQL the driver is mysql and the port 3306';
+   my $text    = 'Schema creation requires a database, id and password. '
+               . 'For Postgres the driver is Pg and the port 5432. For '
+               . 'MySQL the driver is mysql and the port 3306';
 
    $self->output( $text, AS_PARA );
    $self->yorn( '+Create database schema', $default, TRUE, 0 ) or return OK;
@@ -390,7 +390,7 @@ sub edit_credentials : method {
       my $prompt = '+'.$prompts->{ $field };
       my $is_pw  = $field eq 'password' ? TRUE : FALSE;
       my $value  = $defaults->{ $field } ne '_field' ? $defaults->{ $field }
-                 :                                        $creds->{ $field };
+                                                     :    $creds->{ $field };
 
       $value = $self->get_line( $prompt, $value, TRUE, 0, FALSE, $is_pw );
       $field ne 'name' and $self->$setter( $value // NUL );

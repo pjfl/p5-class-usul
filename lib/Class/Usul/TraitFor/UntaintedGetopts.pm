@@ -135,11 +135,11 @@ my $_parse_options = sub {
    $config{usage_conf   } and $_set_usage_conf->( $config{usage_conf} );
    $config{protect_argv } and local @ARGV = @ARGV;
    $enc and @ARGV = map { decode( $enc, $_ ) } @ARGV;
-   $config{no_untaint} or @ARGV = map { untaint_cmdline $_ } @ARGV;
+   $config{no_untaint   } or  @ARGV = map { untaint_cmdline $_ } @ARGV;
    $Untainted_Argv = [ @ARGV ];
-   keys %{ $splitters } and @ARGV = $_split_args->( $splitters );
-   ($opt, $Usage) = describe_options( 'Usage: %c %o', @options, \%gld_conf );
-   $Extra_Argv = [ @ARGV ];
+   keys  %{ $splitters  } and @ARGV = $_split_args->( $splitters );
+   ($opt, $Usage)  = describe_options( 'Usage: %c %o', @options, \%gld_conf );
+   $Extra_Argv     = [ @ARGV ];
 
    my ($params, @missing)
       = $_extract_params->( \%args, \%config, \%data, $opt );

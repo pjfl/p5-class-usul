@@ -41,7 +41,7 @@ Defines no attributes
 =head2 C<usage_class>
 
 Overrides the class method in the L<Getopt::Long::Descriptive> setting the
-usage class to L<Class::Usul::Getopt::Usuage>
+usage class to L<Class::Usul::Getopt::Usage>
 
 =head1 Diagnostics
 

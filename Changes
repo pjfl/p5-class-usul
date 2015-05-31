@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - Changed some Config directory defaults to be more sensible
+
 0.60.1    2015-05-30 14:32:15
           - Added type_map to Usage configuration options
           - Added usage configuration options
