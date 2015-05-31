@@ -10,9 +10,10 @@ use Class::Usul::Functions qw( find_source );
 use File::Spec::Functions qw( catfile );
 use Sys::Hostname;
 
-SKIP: {
-# 48aff258-06c0-11e5-a85a-e28fcaadd3a7
-hostname eq 'nyrs.bingosnet.co.uk' and skip 'Something wrong with smoker', 1;
+BEGIN {
+   lc hostname eq 'nwyf.bingosnet.co.uk' # 48aff258-06c0-11e5-a85a-e28fcaadd3a7
+      and plan skip_all => 'Something wrong with smoker';
+}
 
 use_ok 'Class::Usul::Programs';
 
@@ -82,8 +83,6 @@ $prog = Class::Usul::Programs->new
 is $prog->debug, 1, 'Debug true - from env';
 
 unlink $logfile;
-
-}
 
 done_testing;
 
