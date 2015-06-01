@@ -215,7 +215,7 @@ Returns exit code C<FAILED>
    $method = $self->select_method;
 
 Called by L</run> it examines the L</method> attribute and if necessary the
-extra commandline arguments to determine the method to call
+extra command line arguments to determine the method to call
 
 =head1 Diagnostics
 

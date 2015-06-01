@@ -3,7 +3,7 @@ package Class::Usul::TraitFor::UntaintedGetopts;
 use namespace::autoclean;
 
 use Class::Usul::Constants qw( FAILED NUL TRUE );
-use Class::Usul::Functions qw( untaint_cmdline );
+use Class::Usul::Functions qw( emit_err untaint_cmdline );
 use Class::Usul::Getopt    qw( describe_options );
 use Data::Record;
 use Encode                 qw( decode );
@@ -56,7 +56,7 @@ my $_option_specification = sub {
    return $option_spec;
 };
 
-my $_set_usage_conf = sub {
+my $_set_usage_conf = sub { # Should be in describe_options third argument
    return Class::Usul::Getopt::Usage->usage_conf( $_[ 0 ] );
 };
 
@@ -99,10 +99,11 @@ my $_build_options = sub {
 
    for my $name (sort  { $_sort_options->( $options_data, $a, $b ) }
                  keys %{ $options_data }) {
-      my $option = $options_data->{ $name }; my $doc = $option->{doc};
+      my $option = $options_data->{ $name };
+      my $cfg    = $option->{config} // {};
+      my $doc    = $option->{doc   } // "No help for ${name}";
 
-      defined $doc or $doc = "No help for ${name}";
-      push @options, [ $_option_specification->( $name, $option ), $doc ];
+      push @options, [ $_option_specification->( $name, $option ), $doc, $cfg ];
       defined $option->{autosplit} or next;
       $splitters->{ $name } = Data::Record->new( {
          split => $option->{autosplit}, unless => $RE{quoted} } );
@@ -145,8 +146,8 @@ my $_parse_options = sub {
       = $_extract_params->( \%args, \%config, \%data, $opt );
 
    if ($config{missing_fatal} and @missing) {
-      print join( "\n", (map { "${_} is missing" } @missing), NUL );
-      print $Usage, "\n";
+      emit_err join( "\n", map { "Option '${_}' is missing" } @missing );
+      emit_err $Usage;
       exit FAILED;
    }
 

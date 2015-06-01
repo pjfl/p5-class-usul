@@ -7,12 +7,16 @@ use Class::Usul::Constants qw( FALSE TRUE );
 use Class::Usul::Functions qw( throw );
 use Sub::Install           qw( install_sub );
 
-my @OPTIONS_ATTRIBUTES
-   = qw( autosplit doc format json negateable order repeatable short );
+my @OPTION_ATTRIBUTES
+   = qw( autosplit config doc format json negateable order repeatable short );
+
+my @BANISHED_KEYWORDS
+   = qw( extra_argv new_with_options next_argv option _options_data
+         _options_config options_usage unshift_argv untainted_argv );
 
 # Private functions
 my $_filter_attributes = sub {
-   my %attributes = @_; my %filter_key = map { $_ => 1 } @OPTIONS_ATTRIBUTES;
+   my %attributes = @_; my %filter_key = map { $_ => 1 } @OPTION_ATTRIBUTES;
 
    return map { ( $_ => $attributes{ $_ } ) }
          grep { not exists $filter_key{ $_ } } keys %attributes;
@@ -30,7 +34,7 @@ my $_validate_and_filter_options = sub {
    }
 
    my %cmdline_options = map { ( $_ => $options{ $_ } ) }
-      grep { exists $options{ $_ } } @OPTIONS_ATTRIBUTES, 'required';
+      grep { exists $options{ $_ } } @OPTION_ATTRIBUTES, 'required';
 
    $cmdline_options{autosplit} and $cmdline_options{repeatable} = TRUE;
    $cmdline_options{repeatable}
@@ -98,11 +102,7 @@ sub import {
    my $option = sub {
       my ($name, %attributes) = @_;
 
-      my @banish_keywords = qw( extra_argv new_with_options next_argv option
-                                _options_data _options_config options_usage
-                                _parse_options unshift_argv untainted_argv );
-
-      for my $ban (grep { $_ eq $name } @banish_keywords) {
+      for my $ban (grep { $_ eq $name } @BANISHED_KEYWORDS) {
          throw 'Method [_1] used by class [_2] as an attribute',
                [ $ban, $target ];
       }
@@ -138,10 +138,13 @@ Class::Usul::Options - Command line processing
 
 =head1 Synopsis
 
+   use Class::Usul::Types qw( Str );
    use Moo;
    use Class::Usul::Options;
 
-   option 'my_attr' => is => 'ro', isa => 'Bool';
+   option 'my_attr' => is => 'ro', isa => 'Str',
+      documentation => 'This appears in the option usage output',
+             format => 's', short => 'a';
 
    # OR
    # Causes Getopt::Long:Descriptive::Usage to produce it's new default output
@@ -157,7 +160,8 @@ Class::Usul::Options - Command line processing
 
 =head1 Description
 
-This is a clone of L<MooX::Options> but is closer to L<MooseX::Getopt::Dashes>
+This is an extended clone of L<MooX::Options> but is closer to
+L<MooseX::Getopt::Dashes>
 
 =head1 Configuration and Environment
 
@@ -170,6 +174,20 @@ already supported by C<has>
 
 If set split the option value using this string. Automatically creates a list
 of values
+
+=item C<config>
+
+A hash reference passed as the third element in the
+list of tuples which forms the second argument to the
+L<describe options|Getopt::Long::Descriptive/describe_options> function
+
+For example;
+
+   option 'my_attr' => is => 'ro', isa => 'Str', config => { hidden => 1 },
+      documentation => 'This appears in the option usage output',
+             format => 's', short => 'a';
+
+would prevent the option from appearing in the usage text
 
 =item C<doc>
 
