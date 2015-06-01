@@ -138,7 +138,8 @@ SKIP: {
 }
 
 SKIP: {
-   $osname eq 'mswin32' and skip 'IPC::Run test - not on MSWin32', 6;
+   ($osname eq 'mswin32' or $osname eq 'cygwin')
+      and skip 'IPC::Run test - not on MSWin32 or Cygwin', 6;
 
    eval { require IPC::Run }; $EVAL_ERROR
       and skip 'IPC::Run test - not installed', 6;
