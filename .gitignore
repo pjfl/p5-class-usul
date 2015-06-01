@@ -20,6 +20,7 @@ pm_to_blib
 README
 README.pod
 t/ipc_srlock*
+t/*.log
 *.tar.gz
 Class-Usul-*
 lib/Class/Usul/Build.pm

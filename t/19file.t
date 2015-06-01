@@ -12,7 +12,7 @@ use File::Spec::Functions qw( catdir catfile );
 
    sub new   { return bless {}, __PACKAGE__ }
    sub alert { warn '[ALERT] '.$_[ 1 ] }
-   sub debug { warn '[DEBUG] '.$_[ 1 ] }
+   sub debug { }
    sub error { warn '[ERROR] '.$_[ 1 ] }
    sub fatal { warn '[ALERT] '.$_[ 1 ] }
    sub info  { warn '[ALERT] '.$_[ 1 ] }
@@ -64,10 +64,10 @@ ok $cuf->tempname =~ m{ $PID .{4} }msx, 'Temporary filename correct pattern';
 my $io = io( 't' ); my $entry;
 
 while (defined ($entry = $io->next)) {
-   $entry->filename eq '18file.t' and last;
+   $entry->filename eq '19file.t' and last;
 }
 
-ok defined $entry && $entry->filename eq '18file.t', 'Directory listing';
+ok defined $entry && $entry->filename eq '19file.t', 'Directory listing';
 
 done_testing;
 

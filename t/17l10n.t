@@ -10,7 +10,7 @@ use File::Spec::Functions qw( catdir catfile );
 
    sub new   { return bless {}, __PACKAGE__ }
    sub alert { warn '[ALERT] '.$_[ 1 ] }
-   sub debug { warn '[DEBUG] '.$_[ 1 ] }
+   sub debug { }
    sub error { warn '[ERROR] '.$_[ 1 ] }
    sub fatal { warn '[ALERT] '.$_[ 1 ] }
    sub info  { warn '[ALERT] '.$_[ 1 ] }

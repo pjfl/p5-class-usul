@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Added two points to the coverage
           - Added Options option config passed to GLD
           - Exposed select_method in RunningMethods
           - Fixed newline on OutputLogging fatal method

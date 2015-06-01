@@ -30,7 +30,7 @@ cmp_deeply $prog, methods( encoding => 'UTF-8' ), 'Constructs default object';
 is $prog->config->script, "${name}.t", 'Config->script';
 is $prog->config->name, $name, 'Config->name';
 is $prog->add_leader(), '', 'Default leader';
-is $prog->add_leader( 'Dummy' ), '20programs: Dummy', 'Text plus leader';
+is $prog->add_leader( 'Dummy' ), '21programs: Dummy', 'Text plus leader';
 is $prog->can_call( 'dump_self' ), 1, 'Can call true';
 is $prog->can_call( 'add_leader' ), 0, 'Can call false';
 
