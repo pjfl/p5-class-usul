@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+          - Exposed select_method in RunningMethods
+          - Fixed newline on OutputLogging fatal method
+          - Removed taint from attribute POD content
           - Changed some Config directory defaults to be more sensible
 
 0.60.1    2015-05-30 14:32:15

@@ -64,25 +64,10 @@ my $_handle_run_exception = sub {
    return $e->rv || (defined $e->rv ? FAILED : UNDEFINED_RV);
 };
 
-my $_select_method = sub {
-   my $self = shift; my $method = untaint_identifier dash2under $self->method;
-
-   unless ($self->can_call( $method )) {
-      $method = untaint_identifier dash2under $self->extra_argv( 0 );
-      $method and $self->_set_method( $method );
-      $method = $self->can_call( $method )
-              ? untaint_identifier dash2under $self->next_argv : NUL;
-   }
-
-   $method ||= 'run_chain';
-  (is_member $method, 'help', 'run_chain') and $self->quiet( TRUE );
-   return $method;
-};
-
 # Public methods
 sub run {
    my $self   = shift;
-   my $method = $self->$_select_method;
+   my $method = $self->select_method;
    my $text   = 'Started by [_1] Version [_2] Pid [_3]';
    my $args   = { args => [ logname, $self->app_version, abs $PID ] };
 
@@ -130,6 +115,21 @@ sub run_chain {
                  : $self->error( 'Method not specified' );
    $self->exit_usage( 0 );
    return; # Not reached
+}
+
+sub select_method {
+   my $self = shift; my $method = untaint_identifier dash2under $self->method;
+
+   unless ($self->can_call( $method )) {
+      $method = untaint_identifier dash2under $self->extra_argv( 0 );
+      $method and $self->_set_method( $method );
+      $method = $self->can_call( $method )
+              ? untaint_identifier dash2under $self->next_argv : NUL;
+   }
+
+   $method ||= 'run_chain';
+  (is_member $method, 'help', 'run_chain') and $self->quiet( TRUE );
+   return $method;
 }
 
 1;
@@ -205,10 +205,17 @@ line. Returns the exit code
 
    $exit_code = $self->run_chain( $method );
 
-Called by L</run> when C<_select_method> cannot determine which method to
-call. Outputs usage if C<$method> is undefined. Logs an error if
-C<$method> is defined but not (by definition a callable method).
+Called by L</run> when L</select_method> cannot determine which method to
+call. Outputs usage if C<method> is undefined. Logs an error if
+C<method> is defined but not (by definition a callable method).
 Returns exit code C<FAILED>
+
+=head2 select_method
+
+   $method = $self->select_method;
+
+Called by L</run> it examines the L</method> attribute and if necessary the
+extra commandline arguments to determine the method to call
 
 =head1 Diagnostics
 

@@ -120,7 +120,9 @@ my $_get_pod_content_for_attr = sub {
       $ev and $ev->{type} eq 'text' and $pod = $ev->{content} and last;
    }
 
-   $pod //= 'Undocumented'; $pod and chomp $pod; $pod =~ s{ [\n] }{ }gmx;
+   $pod ||= 'Undocumented'; chomp $pod; $pod =~ s{ [\n] }{ }gmx;
+
+   $pod = squeeze( $pod ); $pod =~ m{ \A (.+) \z }msx and $pod = $1;
 
    return $pod;
 };

@@ -3,7 +3,7 @@ package Class::Usul::TraitFor::OutputLogging;
 use namespace::autoclean;
 
 use Class::Usul::Constants qw( BRK FAILED FALSE NUL TRUE WIDTH );
-use Class::Usul::Functions qw( abs_path emit emit_to emit_err throw );
+use Class::Usul::Functions qw( abs_path emit emit_err throw );
 use Class::Usul::Types     qw( Bool SimpleStr );
 use Text::Autoformat       qw( autoformat );
 use Moo::Role;
@@ -56,7 +56,7 @@ sub error {
 
    $self->log->error( $_ ) for (split m{ \n }mx, "${text}");
 
-   emit_to *STDERR, $self->add_leader( $text, $opts )."\n";
+   emit_err $self->add_leader( $text, $opts );
 
    return TRUE;
 }
@@ -70,7 +70,7 @@ sub fatal {
 
    $self->log->alert( $_ ) for (split m{ \n }mx, $text);
 
-   emit_to *STDERR, $self->add_leader( $text, $opts );
+   emit_err $self->add_leader( $text, $opts );
 
    exit FAILED;
 }
