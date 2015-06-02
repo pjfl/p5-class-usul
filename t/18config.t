@@ -1,10 +1,12 @@
 use t::boilerplate;
 
 use Test::More;
+use Scalar::Util qw( blessed );
 
 use_ok 'Class::Usul::Config';
 
-my $conf = Class::Usul::Config->new
+my $osname = lc $^O;
+my $conf   = Class::Usul::Config->new
    (  appclass => 'Class::Usul', tempdir  => 't', );
 
 $conf->cfgfiles;
@@ -15,7 +17,9 @@ $conf->root;
 $conf->rundir;
 $conf->sessdir;
 $conf->sharedir;
-$conf->shell;
+
+$osname ne 'mswin32' and $osname ne 'cygwin'
+   and is blessed $conf->shell, 'File::DataClass::IO', 'Shell is io object';
 
 like $conf->suid, qr{ \Qusul-admin\E \z }mx, 'Default suid' ;
 

@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+0.62.1    2015-06-02 10:46:24
+          - Fixed mswin32 configuration test
+
 0.61.1    2015-06-01 21:40:56
           - Added two points to the coverage
           - Added Options option config passed to GLD
