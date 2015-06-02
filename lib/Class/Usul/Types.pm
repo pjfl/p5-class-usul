@@ -11,8 +11,7 @@ use Try::Tiny;
 use Type::Library             -base, -declare =>
                            qw( BaseType ConfigType DateTimeType EncodingType
                                FileType IPCType L10NType LockType
-                               LogType NullLoadingClass PromptType
-                               RequestType );
+                               LogType NullLoadingClass RequestType );
 use Type::Utils            qw( as class_type coerce extends
                                from message subtype via where );
 use Unexpected::Functions  qw( inflate_message is_class_loaded );
@@ -26,6 +25,13 @@ my $_exception_message_for_object_reference = sub {
    return inflate_message 'String [_1] is not an object reference', $_[ 0 ];
 };
 
+my $_exception_message_for_basetype = sub {
+   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
+      'Object [_1] is missing some builder attributes', blessed $_[ 0 ];
+
+   return $_exception_message_for_object_reference->( $_[ 0 ] );
+};
+
 my $_exception_message_for_configtype = sub {
    $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
       'Object [_1] is missing some config attributes', blessed $_[ 0 ];
@@ -36,6 +42,20 @@ my $_exception_message_for_configtype = sub {
 my $_exception_message_for_datetime = sub {
    $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
       'Object [_1] is not of class DateTime', blessed $_[ 0 ];
+
+   return $_exception_message_for_object_reference->( $_[ 0 ] );
+};
+
+my $_exception_message_for_filetype = sub {
+   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
+      'Object [_1] is missing the "data_load" method', blessed $_[ 0 ];
+
+   return $_exception_message_for_object_reference->( $_[ 0 ] );
+};
+
+my $_exception_message_for_ipctype = sub {
+   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
+      'Object [_1] is missing the "run_cmd" method', blessed $_[ 0 ];
 
    return $_exception_message_for_object_reference->( $_[ 0 ] );
 };
@@ -66,6 +86,14 @@ my $_exception_message_for_requesttype = sub {
       'Object [_1] is missing a params method', blessed $_[ 0 ];
 
    return $_exception_message_for_object_reference->( $_[ 0 ] );
+};
+
+my $_has_builder_attributes = sub {
+   my $obj = shift;
+
+   $obj->can( $_ ) or return FALSE for (qw( config debug l10n lock log ));
+
+   return TRUE;
 };
 
 my $_has_log_level_methods = sub {
@@ -108,10 +136,9 @@ my $_str2date_time = sub {
 };
 
 # Type definitions
-class_type BaseType,   { class => 'Class::Usul'         };
-class_type FileType,   { class => 'Class::Usul::File'   };
-class_type IPCType,    { class => 'Class::Usul::IPC'    };
-class_type PromptType, { class => 'Class::Usul::Prompt' };
+subtype BaseType, as Object,
+   where   { $_has_builder_attributes->( $_ ) },
+   message { $_exception_message_for_basetype->( $_ ) };
 
 subtype ConfigType, as Object,
    where   { $_has_min_config_attributes->( $_ ) },
@@ -130,6 +157,14 @@ subtype EncodingType, as Str,
 coerce EncodingType,
    from Str,   via { untaint_cmdline $_ },
    from Undef, via { DEFAULT_ENCODING };
+
+subtype FileType, as Object,
+   where   { $_->can( 'data_load' ) },
+   message { $_exception_message_for_filetype->( $_ ) };
+
+subtype IPCType, as Object,
+   where   { $_->can( 'run_cmd' ) },
+   message { $_exception_message_for_ipctype->( $_ ) };
 
 subtype L10NType, as Object,
    where   { $_->can( 'localize' ) },
@@ -160,6 +195,8 @@ __END__
 
 =pod
 
+=encoding utf-8
+
 =head1 Name
 
 Class::Usul::Types - Defines type constraints
@@ -170,23 +207,57 @@ Class::Usul::Types - Defines type constraints
 
 =head1 Description
 
-Defines the following type constraints
+Defines the following type constraints;
+
 
 =over 3
 
+=item C<BaseType>
+
+Duck type that can; C<config>, C<debug>, C<l10n>, C<lock>, and C<log>
+
 =item C<ConfigType>
 
-Subtype of I<Object> can be coerced from a hash ref
+Subtype of I<Object> can be coerced from a hash reference
+
+=item C<DataTimeType>
+
+Coerces a L<DateTime> object from a string
 
 =item C<EncodingType>
 
 Subtype of I<Str> which has to be one of the list of encodings in the
-I<ENCODINGS> constant
+L<ENCODINGS|Class::Usul::Constants/ENCODINGS> constant
+
+=item C<FileType>
+
+Duck type that can; C<data_load>
+
+=item C<IPCType>
+
+Duck type that can; C<run_cmd>
+
+=item C<L10NType>
+
+Duck type that can; C<localize>
+
+=item C<LockType>
+
+Duck type that can; C<reset> and C<set>
 
 =item C<LogType>
 
 Subtype of I<Object> which has to implement all of the methods in the
-I<LOG_LEVELS> constant
+L<LOG_LEVELS|Class::Usul::Constants/LOG_LEVELS> constant
+
+=item C<NullLoadingClass>
+
+Loads the given class if possible. If loading fails, load L<Class::Null>
+and return that instead
+
+=item C<RequestType>
+
+Duck type that can; C<params>
 
 =back
 

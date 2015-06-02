@@ -46,7 +46,7 @@ around 'BUILDARGS' => sub {
 
    my $builder = delete $attr->{builder} or return $attr;
    my $config  = $builder->can( 'config' ) ? $builder->config : {};
-   my $cfgattr = [ qw( log_attributes log_class logfile ) ];
+   my $cfgattr = [ qw( encoding log_attributes log_class logfile ) ];
 
    merge_attributes $attr, $builder, {}, [ 'debug', 'encoding' ];
    merge_attributes $attr, $config,  {}, $cfgattr;

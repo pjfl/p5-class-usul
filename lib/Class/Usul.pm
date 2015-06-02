@@ -2,7 +2,7 @@ package Class::Usul;
 
 use 5.010001;
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.62.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.62.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants  qw( FALSE TRUE );
 use Class::Usul::Functions  qw( data_dumper merge_attributes );
@@ -33,6 +33,7 @@ has 'config_class' => is => 'ro',   isa => LoadableClass, coerce => TRUE,
 
 has 'debug'        => is => 'lazy', isa => Bool, default => FALSE;
 
+# TODO: Workout where this is used an eliminate
 has 'encoding'     => is => 'lazy', isa => EncodingType,
    builder         => sub { $_[ 0 ]->config->encoding };
 
@@ -81,7 +82,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.62.$Rev: 1 $
+Describes Class::Usul version v0.62.$Rev: 2 $
 
 =head1 Synopsis
 
@@ -139,6 +140,9 @@ into the constructors of other classes which set their own debug state to this
 value
 
 =item C<encoding>
+
+Deprecated. An object should define it's own C<encoding> attribute which
+defaults to the configuration value
 
 Defaults to C<< $self->config->encoding >> which defaults to to C<UTF-8>.
 Used to decode input and encode output

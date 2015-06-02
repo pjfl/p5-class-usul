@@ -10,6 +10,7 @@ requires "Exporter::Tiny" => "0.042";
 requires "File::DataClass" => "v0.62.0";
 requires "File::Gettext" => "v0.27.0";
 requires "File::HomeDir" => "1.0";
+requires "File::Which" => "1.18";
 requires "Getopt::Long::Descriptive" => "0.099";
 requires "IO::Interactive" => "v0.0.6";
 requires "IPC::SRLock" => "v0.26.0";

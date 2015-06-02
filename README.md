@@ -10,7 +10,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 # Version
 
-Describes Class::Usul version v0.62.$Rev: 1 $
+Describes Class::Usul version v0.62.$Rev: 2 $
 
 # Synopsis
 
@@ -66,6 +66,9 @@ Defines the following attributes;
     value
 
 - `encoding`
+
+    Deprecated. An object should define it's own `encoding` attribute which
+    defaults to the configuration value
 
     Defaults to `$self->config->encoding` which defaults to to `UTF-8`.
     Used to decode input and encode output

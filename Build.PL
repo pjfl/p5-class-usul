@@ -39,6 +39,7 @@ my $prereqs  = {
     'File::DataClass' => 'v0.62.0',
     'File::Gettext' => 'v0.27.0',
     'File::HomeDir' => '1.0',
+    'File::Which' => '1.18',
     'Getopt::Long::Descriptive' => '0.099',
     'IO::Interactive' => 'v0.0.6',
     'IPC::SRLock' => 'v0.26.0',

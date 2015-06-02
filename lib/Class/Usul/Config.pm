@@ -19,6 +19,7 @@ use File::DataClass::Types   qw( Directory File Path );
 use File::Gettext::Constants qw( LOCALE_DIRS );
 use File::Spec::Functions    qw( canonpath catdir catfile
                                  rel2abs rootdir tmpdir );
+use File::Which              qw( which );
 use Scalar::Util             qw( blessed );
 use Moo;
 
@@ -251,9 +252,10 @@ sub _build_sharedir {
 }
 
 sub _build_shell {
-   my $file = $ENV{SHELL};                   -e $file and return $file;
+   my $file = $ENV{SHELL};         $file and -e $file and return $file;
       $file = catfile( NUL, 'bin', 'ksh'  ); -e $file and return $file;
       $file = catfile( NUL, 'bin', 'bash' ); -e $file and return $file;
+      $file = which  ( 'sh'               ); -e $file and return $file;
    return     catfile( NUL, 'bin', 'sh'   );
 }
 
@@ -474,7 +476,11 @@ Directory containing assets used by the application
 
 =item C<shell>
 
-File. The default shell used to create new OS users
+File. The default shell used to create new OS users. Defaults to the
+environment variable C<SHELL>. If that is not set tries (in order);
+F</bin/ksh>, F</bin/bash>. L<which|File::Which/which> 'sh', and finally
+defaults to F</bin/sh>. If the selected file does not exist then the
+type constraint on the attribute will throw
 
 =item C<suid>
 

@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+          - Improved Types documentation
+          - Made Config shell attr builder use File::Which
+
 0.62.1    2015-06-02 10:46:24
           - Fixed mswin32 configuration test
 
