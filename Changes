@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+0.63.1    2015-06-03 21:15:44
+          - Disable smoking on broken smoker
+            158a80fe-0a22-11e5-9d49-e60ed23c8333
           - Functions find_apphome uses defined home for short circuit
           - Improved Types documentation
           - Made Config shell attr builder use File::Which
