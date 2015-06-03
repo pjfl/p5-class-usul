@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Functions find_apphome uses defined home for short circuit
           - Improved Types documentation
           - Made Config shell attr builder use File::Which
 

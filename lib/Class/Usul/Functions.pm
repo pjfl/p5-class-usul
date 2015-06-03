@@ -471,8 +471,8 @@ sub exception (;@) {
 sub find_apphome ($;$$) {
    my ($appclass, $default, $extns) = @_; my $path;
 
-   # 0. Appclass false and pass the directory in (short circuit the search)
-   not $appclass and $path = assert_directory $default and return $path;
+   # 0. Pass the directory in (short circuit the search)
+   $path = assert_directory $default and return $path;
 
    my $app_pref = app_prefix   $appclass;
    my $appdir   = class2appdir $appclass;
@@ -501,9 +501,7 @@ sub find_apphome ($;$$) {
    $path = $_find_cfg_in_inc->( $classdir, $app_pref, $extns ) and return $path;
    # 5b.   Config file found in @INC - dash as separator
    $path = $_find_cfg_in_inc->( $classdir, $appdir,   $extns ) and return $path;
-   # 6.    Pass the default in
-   $path = assert_directory $default and return $path;
-   # 7.    Default to /tmp
+   # 6.    Default to /tmp
    return  untaint_path( DEFAULT_CONFHOME );
 }
 
@@ -1074,7 +1072,7 @@ class L<Class::Usul::Exception>. Returns a new error object
 
 Returns the path to the applications home directory. Searches the following:
 
-   # 0.  Undef appclass and pass the directory in (short circuit the search)
+   # 0.  Pass the directory in (short circuit the search)
    # 1a. Environment variable - for application directory
    # 1b. Environment variable - for config file
    # 2a. Users XDG_DATA_HOME env variable or XDG default share directory
@@ -1084,8 +1082,7 @@ Returns the path to the applications home directory. Searches the following:
    # 4.  Default install prefix
    # 5a. Config file found in @INC - underscore as separator
    # 5b. Config file found in @INC - dash as separator
-   # 6.  Pass the default in
-   # 7.  Default to /tmp
+   # 6.  Default to /tmp
 
 =head2 find_source
 

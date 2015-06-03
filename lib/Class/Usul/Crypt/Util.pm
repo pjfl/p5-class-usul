@@ -48,7 +48,8 @@ my $_get_crypt_args = sub { # Sets cipher, salt, and seed keys in args hash
       $path->exists and ($path->stat->{mode} & 0777) == 0600
          and $args->{seed} = $cache->{ $file } = $path->all;
 
-      not $args->{seed} and $path = io [ $params->{ctrldir}, "${file}.key" ]
+      not $args->{seed}
+         and $path = io( [ $params->{ctrldir} // NUL, "${file}.key" ] )
          and $path->exists and ($path->stat->{mode} & 0777) == 0600
          and $args->{seed} = $cache->{ $file } = $path->all;
    }
@@ -59,19 +60,22 @@ my $_get_crypt_args = sub { # Sets cipher, salt, and seed keys in args hash
 # Public functions
 sub decrypt_from_config ($$) {
    my ($config, $encrypted) = @_;
-   my ($cipher, $password)  = $_extract_crypt_params->( $encrypted );
-   my $args                 = $_get_crypt_args->( $config, $cipher );
 
-   return $password ? decrypt $args, $password : $encrypted;
+   my ($cipher, $cipher_text) = $_extract_crypt_params->( $encrypted );
+   my $args = $_get_crypt_args->( $config, $cipher );
+
+   return $cipher_text ? decrypt $args, $cipher_text : $encrypted;
 }
 
 sub encrypt_for_config ($$;$) {
-   my ($config, $password, $encrypted) = @_;
+   my ($config, $plain_text, $encrypted) = @_;
+
+   $plain_text or return $plain_text;
 
    my ($cipher) = $_extract_crypt_params->( $encrypted );
    my $args     = $_get_crypt_args->( $config, $cipher );
 
-   return $password ? "{${cipher}}".(encrypt $args, $password) : $password;
+   return "{${cipher}}".(encrypt $args, $plain_text);
 }
 
 sub get_cipher ($) {
