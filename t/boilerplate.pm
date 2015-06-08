@@ -11,15 +11,19 @@ use Test::Requires { version => 0.88 };
 use Module::Build;
 use Sys::Hostname;
 
-my $builder; my $notes; my $perl_ver;
+my ($builder, $host, $notes, $perl_ver);
 
 BEGIN {
+   $host     = lc hostname;
    $builder  = eval { Module::Build->current };
    $notes    = $builder ? $builder->notes : {};
    $perl_ver = $notes->{min_perl_version} || 5.008;
-   $Bin =~ m{ : .+ : }mx and plan skip_all => 'Two colons in $Bin path';
-   lc hostname eq 'davids-macbook-pro-2.local'
-      and plan skip_all => 'Broken smoker';
+
+   if ($notes->{testing}) {
+      $Bin  =~ m{ : .+ : }mx and plan skip_all => 'Two colons in $Bin path';
+      $host =~ m{ \A davids-macbook }mx and
+          plan skip_all => 'Broken smoker 158a80fe-0a22-11e5-9d49-e60ed23c8333';
+   }
 }
 
 use Test::Requires "${perl_ver}";

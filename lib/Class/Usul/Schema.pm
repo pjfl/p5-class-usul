@@ -372,12 +372,12 @@ sub edit_credentials : method {
    my $creds     = $bootstrap ? {}
                  : $self->extract_creds_from( $self_cfg, $db, $cfg_data );
    my $stored_pw = $creds->{password};
-   my $prompts   = { name     => 'Enter db name',
-                     driver   => 'Enter DBD driver',
-                     host     => 'Enter db host',
-                     port     => 'Enter db port',
-                     user     => 'Enter db user',
-                     password => 'Enter db password' };
+   my $prompts   = { name     => 'Database name',
+                     driver   => 'Driver type',
+                     host     => 'Host name',
+                     port     => 'Port number',
+                     user     => 'User name',
+                     password => 'User password' };
    my $defaults  = { name     => $db,
                      driver   => '_field',
                      host     => 'localhost',
@@ -392,7 +392,7 @@ sub edit_credentials : method {
       my $value  = $defaults->{ $field } ne '_field' ? $defaults->{ $field }
                                                      :    $creds->{ $field };
 
-      $value = $self->get_line( $prompt, $value, TRUE, 0, FALSE, $is_pw );
+      $value = $self->get_line( $prompt, $value, TRUE, 50, FALSE, $is_pw );
       $field ne 'name' and $self->$setter( $value // NUL );
       $is_pw and $value = encrypt_for_config $self_cfg, $value, $stored_pw;
       $creds->{ $field } = $value // NUL;

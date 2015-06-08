@@ -11,8 +11,8 @@ use File::Spec::Functions qw( catfile );
 use Sys::Hostname;
 
 BEGIN {
-   lc hostname eq 'nwyf.bingosnet.co.uk' # 48aff258-06c0-11e5-a85a-e28fcaadd3a7
-      and plan skip_all => 'Something wrong with smoker';
+   lc hostname eq 'nwyf.bingosnet.co.uk'
+      and plan skip_all => 'Broken smoker 48aff258-06c0-11e5-a85a-e28fcaadd3a7';
 }
 
 use_ok 'Class::Usul::Programs';
