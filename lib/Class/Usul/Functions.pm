@@ -36,24 +36,22 @@ use Unexpected::Functions      qw( is_class_loaded PathAlreadyExists
                                    PathNotFound Tainted Unspecified );
 use User::pwent;
 
-our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert
-                       assert_directory base64_decode_ns
-                       base64_encode_ns bsonid bsonid_time bson64id
-                       bson64id_time build canonicalise class2appdir classdir
-                       classfile create_token curry dash2under data_dumper
-                       digest distname elapsed emit emit_err emit_to
-                       ensure_class_loaded env_prefix escape_TT
+our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert assert_directory
+                       base64_decode_ns base64_encode_ns bsonid bsonid_time
+                       bson64id bson64id_time build canonicalise class2appdir
+                       classdir classfile create_token curry dash2under
+                       data_dumper digest distname elapsed emit emit_err
+                       emit_to ensure_class_loaded env_prefix escape_TT
                        exception find_apphome find_source first_char fold fqdn
-                       fullname get_cfgfiles get_user hex2str
-                       home2appldir io is_arrayref is_coderef
-                       is_hashref is_member is_win32 list_attr_of loginid
-                       logname merge_attributes my_prefix
-                       nonblocking_write_pipe_pair pad
-                       prefix2class product socket_pair
-                       split_on__ split_on_dash squeeze strip_leader sub_name
-                       sum symlink thread_id throw throw_on_error trim
-                       unescape_TT untaint_cmdline untaint_identifier
-                       untaint_path untaint_string urandom uuid whiten zip );
+                       fullname get_cfgfiles get_user hex2str home2appldir io
+                       is_arrayref is_coderef is_hashref is_member is_win32
+                       list_attr_of loginid logname merge_attributes my_prefix
+                       nonblocking_write_pipe_pair pad prefix2class product
+                       socket_pair split_on__ split_on_dash squeeze
+                       strip_leader sub_name sum symlink thread_id throw
+                       throw_on_error trim unescape_TT untaint_cmdline
+                       untaint_identifier untaint_path untaint_string urandom
+                       uuid whiten zip );
 our %EXPORT_REFS =   ( assert => sub { ASSERT }, );
 our %EXPORT_TAGS =   ( all    => [ @EXPORT_OK ], );
 
