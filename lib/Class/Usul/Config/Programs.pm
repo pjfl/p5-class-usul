@@ -2,7 +2,6 @@ package Class::Usul::Config::Programs;
 
 use namespace::autoclean;
 
-use Moo;
 use Class::Usul::Constants qw( TRUE UMASK );
 use Class::Usul::File;
 use Class::Usul::Types     qw( ArrayRef Bool HashRef NonEmptySimpleStr
@@ -11,6 +10,7 @@ use Config;
 use File::Basename         qw( basename );
 use File::DataClass::Types qw( Path OctalNum );
 use File::HomeDir;
+use Moo;
 
 extends q(Class::Usul::Config);
 

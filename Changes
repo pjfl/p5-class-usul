@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+          - Dropped usage of feature state
+          - Removed C:U:encoding
+          - Default to connect-info in ctrldir for db connection data
           - Disable smoking on broken smoker
             2267ff46-0a8a-11e5-a85a-e28fcaadd3a7
 

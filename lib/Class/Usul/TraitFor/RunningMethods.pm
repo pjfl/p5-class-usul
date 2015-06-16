@@ -49,6 +49,26 @@ my $_output_stacktrace = sub {
 };
 
 # Private methods
+my $handle_result = sub {
+   my ($self, $method, $rv) = @_;
+
+   if (defined $rv and $rv == OK) {
+      $self->quiet or $self->output
+         ( 'Finished in [_1] seconds', { args => [ elapsed ] } );
+   }
+   elsif (defined $rv and $rv > OK) {
+      $self->error( 'Terminated code [_1]', { args => [ $rv ] } );
+   }
+   else {
+      not defined $rv and $rv = UNDEFINED_RV
+         and $self->error( 'Method [_1] error uncaught or rv undefined',
+                           { args => [ $method ] } );
+      $self->error( 'Terminated with undefined rv' );
+   }
+
+   return;
+};
+
 my $_handle_run_exception = sub {
    my ($self, $method, $error) = @_; my $e;
 
@@ -71,6 +91,8 @@ sub run {
    my $text   = 'Started by [_1] Version [_2] Pid [_3]';
    my $args   = { args => [ logname, $self->app_version, abs $PID ] };
 
+  (is_member $method, 'help', 'run_chain') and $self->quiet( TRUE );
+
    $self->quiet or $self->output( $text, $args ); umask $self->umask; my $rv;
 
    if ($method eq 'run_chain' or $self->can_call( $method )) {
@@ -90,20 +112,7 @@ sub run {
       $rv = UNDEFINED_RV;
    }
 
-   if (defined $rv and $rv == OK) {
-      $self->quiet or $self->output
-         ( 'Finished in [_1] seconds', { args => [ elapsed ] } );
-   }
-   elsif (defined $rv and $rv > OK) {
-      $self->error( 'Terminated code [_1]', { args => [ $rv ] } );
-   }
-   else {
-      not defined $rv and $rv = UNDEFINED_RV
-         and $self->error( 'Method [_1] error uncaught or rv undefined',
-                           { args => [ $method ] } );
-      $self->error( 'Terminated with undefined rv' );
-   }
-
+   $self->$handle_result( $method, $rv );
    $self->file->delete_tmp_files;
    return $rv;
 }
@@ -123,13 +132,11 @@ sub select_method {
    unless ($self->can_call( $method )) {
       $method = untaint_identifier dash2under $self->extra_argv( 0 );
       $method and $self->_set_method( $method );
-      $method = $self->can_call( $method )
-              ? untaint_identifier dash2under $self->next_argv : NUL;
+     ($method and $self->can_call( $method ) and $self->next_argv)
+        or $method = undef;
    }
 
-   $method ||= 'run_chain';
-  (is_member $method, 'help', 'run_chain') and $self->quiet( TRUE );
-   return $method;
+   return $method ? $method : 'run_chain';
 }
 
 1;

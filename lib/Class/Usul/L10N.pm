@@ -1,6 +1,5 @@
 package Class::Usul::L10N;
 
-use 5.010001;
 use namespace::autoclean;
 
 use Class::Null;
@@ -10,15 +9,12 @@ use Class::Usul::Functions   qw( assert is_arrayref
 use Class::Usul::Types       qw( ArrayRef Bool ConfigType HashRef
                                  LogType SimpleStr Str );
 use File::DataClass::Types   qw( Directory Path );
-use File::Gettext::Constants qw( CONTEXT_SEP );
 use File::Gettext;
-use File::Gettext::Constants qw( LOCALE_DIRS );
+use File::Gettext::Constants qw( CONTEXT_SEP LOCALE_DIRS );
 use File::Spec::Functions    qw( tmpdir );
 use Try::Tiny;
 use Unexpected::Functions    qw( inflate_placeholders );
 use Moo;
-
-my $Domain_Cache = {}; my $Locale_Cache = {};
 
 # Public attributes
 has 'l10n_attributes' => is => 'lazy', isa => HashRef, builder => sub { {} };
@@ -47,16 +43,19 @@ has '_use_country'    => is => 'lazy', isa => Bool, builder => sub {
    $_[ 0 ]->l10n_attributes->{use_country} // FALSE },
    reader             => 'use_country';
 
+# Class attributes
+my $domain_cache = {}; my $locale_cache = {};
+
 # Private methods
 my $_extract_lang_from = sub {
    my ($self, $locale) = @_;
 
-   exists $Locale_Cache->{ $locale } and return $Locale_Cache->{ $locale };
+   exists $locale_cache->{ $locale } and return $locale_cache->{ $locale };
 
    my $sep  = $self->use_country ? '.' : '_';
    my $lang = (split m{ \Q$sep\E }msx, $locale.$sep )[ 0 ];
 
-   return $Locale_Cache->{ $locale } = $lang;
+   return $locale_cache->{ $locale } = $lang;
 };
 
 my $_load_domains = sub {
@@ -70,7 +69,7 @@ my $_load_domains = sub {
    my @names  = grep { defined and length } @{ $names };
    my $key    = $lang.SEP.(join '+', @names );
 
-   defined $Domain_Cache->{ $key } and return $Domain_Cache->{ $key };
+   defined $domain_cache->{ $key } and return $domain_cache->{ $key };
 
    my $attrs  = { %{ $self->l10n_attributes }, builder => $self,
                   source_name => $self->source_name, };
@@ -85,7 +84,7 @@ my $_load_domains = sub {
    my $domain = try   { File::Gettext->new( $attrs )->load( $lang, @names ) }
                 catch { $self->log->error( $_ ); return };
 
-   return $domain ? $Domain_Cache->{ $key } = $domain : undef;
+   return $domain ? $domain_cache->{ $key } = $domain : undef;
 };
 
 my $_gettext = sub {
@@ -94,7 +93,7 @@ my $_gettext = sub {
    my $count   = $args->{count} || 1;
    my $default = $args->{no_default} ? NUL : $key;
    my $domain  = $self->$_load_domains( $args )
-      or return ($default, $args->{plural_key})[ $count > 1 ] || $default;
+      or return ($default, $args->{plural_key})[ $count > 1 ] // $default;
    # Select either singular or plural translation
    my ($nplurals, $plural) = (1, 0);
 
@@ -107,10 +106,10 @@ my $_gettext = sub {
 
    my $id   = defined $args->{context}
             ? $args->{context}.CONTEXT_SEP.$key : $key;
-   my $msgs = $domain->{ $self->source_name } || {};
-   my $msg  = $msgs->{ $id } || {};
+   my $msgs = $domain->{ $self->source_name } // {};
+   my $msg  = $msgs->{ $id } // {};
 
-   return @{ $msg->{msgstr} || [] }[ $plural ] || $default;
+   return @{ $msg->{msgstr} // [] }[ $plural ] // $default;
 };
 
 # Construction
@@ -134,11 +133,11 @@ sub get_po_header {
    my $domain = $self->$_load_domains( $args // {} ) or return {};
    my $header = $domain->{po_header} or return {};
 
-   return $header->{msgstr} || {};
+   return $header->{msgstr} // {};
 }
 
 sub invalidate_cache {
-   $Domain_Cache = {}; return;
+   $domain_cache = {}; return;
 }
 
 sub loc {
@@ -166,7 +165,8 @@ sub localize {
    # Expand named parameters of the form {param_name}
    my %args = %{ $args }; my $re = join '|', map { quotemeta $_ } keys %args;
 
-   $text =~ s{ \{($re)\} }{ defined $args{ $1 } ? $args{ $1 } : "{$1}" }egmx;
+   $text =~ s{ \{($re)\} }{ defined $args{ $1 } ? $args{ $1 } : "{${1}?}" }egmx;
+
    return $text;
 }
 

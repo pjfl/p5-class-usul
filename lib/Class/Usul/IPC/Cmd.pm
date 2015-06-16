@@ -1,6 +1,5 @@
 package Class::Usul::IPC::Cmd;
 
-use 5.01;
 use namespace::autoclean;
 
 use Class::Null;

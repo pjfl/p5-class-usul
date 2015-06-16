@@ -2,20 +2,21 @@ package Class::Usul;
 
 use 5.010001;
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.63.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.63.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants  qw( FALSE TRUE );
-use Class::Usul::Functions  qw( data_dumper merge_attributes );
-use Class::Usul::Types      qw( Bool ConfigType EncodingType HashRef
-                                L10NType LoadableClass LockType LogType );
+use Class::Usul::Functions  qw( data_dumper );
+use Class::Usul::Types      qw( Bool ConfigType HashRef L10NType
+                                LoadableClass LockType LogType );
 use Moo;
 
 # Attribute constructors
 my $_build_lock = sub {
    my $self = shift; my $attr = { %{ $self->config->lock_attributes } };
 
-   merge_attributes $attr, $self,         {}, [ 'debug', 'log' ];
-   merge_attributes $attr, $self->config, {}, [ 'tempdir' ];
+   $attr->{debug  } = $self->debug;
+   $attr->{log    } = $self->log;
+   $attr->{tempdir} = $self->config->tempdir;
 
    return $self->lock_class->new( $attr );
 };
@@ -32,10 +33,6 @@ has 'config_class' => is => 'ro',   isa => LoadableClass, coerce => TRUE,
    default         => 'Class::Usul::Config';
 
 has 'debug'        => is => 'lazy', isa => Bool, default => FALSE;
-
-# TODO: Workout where this is used an eliminate
-has 'encoding'     => is => 'lazy', isa => EncodingType,
-   builder         => sub { $_[ 0 ]->config->encoding };
 
 has 'l10n'         => is => 'lazy', isa => L10NType,
    builder         => sub { $_[ 0 ]->l10n_class->new( builder => $_[ 0 ] ) },
@@ -82,7 +79,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.63.$Rev: 3 $
+Describes Class::Usul version v0.63.$Rev: 4 $
 
 =head1 Synopsis
 
@@ -138,14 +135,6 @@ subclassing this class
 A boolean which defaults to false. Usually an instance of this class is passed
 into the constructors of other classes which set their own debug state to this
 value
-
-=item C<encoding>
-
-Deprecated. An object should define it's own C<encoding> attribute which
-defaults to the configuration value
-
-Defaults to C<< $self->config->encoding >> which defaults to to C<UTF-8>.
-Used to decode input and encode output
 
 =item C<l10n>
 

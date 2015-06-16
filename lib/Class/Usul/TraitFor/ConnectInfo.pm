@@ -1,7 +1,5 @@
 package Class::Usul::TraitFor::ConnectInfo;
 
-use 5.010001;
-use feature 'state';
 use namespace::autoclean;
 
 use Class::Usul::Constants   qw( EXCEPTION_CLASS CONFIG_EXTN FALSE TRUE );
@@ -14,6 +12,8 @@ use Unexpected::Functions    qw( Unspecified );
 use Moo::Role;
 
 requires qw( config ); # As a class method
+
+my $_cache = {};
 
 # Private functions
 my $_connect_attr = sub {
@@ -30,9 +30,9 @@ my $_get_cache_key = sub {
 };
 
 my $_get_credentials_file = sub {
-   my $param = shift; my $ctlfile = $param->{ctlfile};
+   my $param = shift; my $file = $param->{ctlfile};
 
-   defined $ctlfile and -f $ctlfile and return $ctlfile;
+   defined $file and -f $file and return $file;
 
    my $dir = $param->{ctrldir}; my $db = $param->{database};
 
@@ -40,7 +40,11 @@ my $_get_credentials_file = sub {
    -d $dir or throw 'Directory [_1] not found', [ $dir ];
        $db or throw 'Class [_1] has no database name', [ $param->{class} ];
 
-   return catfile( $dir, $db.($param->{extension} || CONFIG_EXTN) );
+   $file = catfile( $dir, $db.($param->{extension} // CONFIG_EXTN) );
+
+   -f $file and return $file;
+
+   return catfile( $dir, 'connect-info'.($param->{extension} // CONFIG_EXTN) );
 };
 
 my $_get_dataclass_schema = sub {
@@ -120,7 +124,7 @@ sub get_connect_info {
    my $class    = $param->{class} = blessed $self || $self;
    my $key      = $_get_cache_key->( $param );
 
-   state $cache //= {}; defined $cache->{ $key } and return $cache->{ $key };
+   defined $_cache->{ $key } and return $_cache->{ $key };
 
    my $cfg_data = $_load_config_data->( $param );
    my $creds    = $_extract_creds_from->( $param, $cfg_data );
@@ -131,7 +135,7 @@ sub get_connect_info {
    $creds->{host} and $dsn .= ';host='.$creds->{host};
    $creds->{port} and $dsn .= ';port='.$creds->{port};
 
-   return $cache->{ $key } = [ $dsn, $creds->{user}, $password, $opts ];
+   return $_cache->{ $key } = [ $dsn, $creds->{user}, $password, $opts ];
 }
 
 sub load_config_data {
@@ -146,7 +150,7 @@ sub load_config_data {
 
 =pod
 
-=encoding utf8
+=encoding utf-8
 
 =head1 Name
 
@@ -178,7 +182,7 @@ Class::Usul::TraitFor::ConnectInfo - Provides the DBIC connect info array ref
 
 =head1 Description
 
-Provides the DBIC connect info array ref
+Provides the DBIC connect information array reference
 
 =head1 Configuration and Environment
 
@@ -195,6 +199,8 @@ The JSON data looks like this:
         }
      }
    }
+
+where in this example C<schedule> is the database name
 
 =head1 Subroutines/Methods
 
@@ -230,7 +236,7 @@ required
 
 Returns a hash ref of configuration file data. The path to the file
 can be specified in C<< $app_config->{ctlfile} >> or it will default
-to the C<$db.$extension> file in the C<< $app_config->{ctrldir} >>
+to the F<connect-info.$extension> file in the C<< $app_config->{ctrldir} >>
 directory.  The C<$extension> is either C<< $app_config->{extension} >>
 or C<< $self->config->{extension} >> or the default extension given
 by the C<CONFIG_EXTN> constant

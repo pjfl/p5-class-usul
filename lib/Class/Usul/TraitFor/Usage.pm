@@ -1,7 +1,6 @@
 package Class::Usul::TraitFor::Usage;
 
 use attributes ();
-use feature 'state';
 use namespace::autoclean;
 
 use Class::Inspector;
@@ -46,17 +45,20 @@ has 'ipc'             => is => 'lazy', isa => IPCType,
    builder            => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) },
    handles            => [ 'run_cmd' ];
 
+# Class attributes
+my $_can_call_cache = {}; my $_method_cache = {};
+
 # Private functions
 my $_list_methods_of = sub {
-   my $class = blessed $_[ 0 ] || $_[ 0 ]; state $cache //= {};
+   my $class = blessed $_[ 0 ] || $_[ 0 ];
 
-   exists $cache->{ $class } or $cache->{ $class }
+   exists $_method_cache->{ $class } or $_method_cache->{ $class }
       = [ map  { s{ \A .+ :: }{}msx; $_ }
           grep { my $subr = $_;
                  grep { $_ eq 'method' } attributes::get( \&{ $subr } ) }
               @{ Class::Inspector->methods( $class, 'full', 'public' ) } ];
 
-   return $cache->{ $class };
+   return $_method_cache->{ $class };
 };
 
 my $_get_pod_header_for_method = sub {
@@ -176,12 +178,12 @@ sub app_version {
 }
 
 sub can_call {
-   my ($self, $method) = @_; state $cache //= {}; $method or return FALSE;
+   my ($self, $method) = @_; $method or return FALSE;
 
-   exists $cache->{ $method } or $cache->{ $method }
+   exists $_can_call_cache->{ $method } or $_can_call_cache->{ $method }
       = (is_member $method, $_list_methods_of->( $self )) ? TRUE : FALSE;
 
-   return $cache->{ $method };
+   return $_can_call_cache->{ $method };
 }
 
 sub dump_config_attr : method {

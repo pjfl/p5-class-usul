@@ -1,10 +1,8 @@
 package Class::Usul::Functions;
 
-use 5.010001;
 use strict;
 use warnings;
-use feature 'state';
-use parent  'Exporter::Tiny';
+use parent 'Exporter::Tiny';
 
 use Class::Inspector;
 use Class::Null;
@@ -21,7 +19,6 @@ use Digest::MD5                qw( md5 );
 use English                    qw( -no_match_vars );
 use Fcntl                      qw( F_SETFL O_NONBLOCK );
 use File::Basename             qw( basename dirname );
-use File::DataClass::Constants qw( CYGWIN MSOFT );
 use File::DataClass::Functions qw( supported_extensions );
 use File::DataClass::IO        qw( );
 use File::HomeDir              qw( );
@@ -55,28 +52,29 @@ our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert assert_directory
 our %EXPORT_REFS =   ( assert => sub { ASSERT }, );
 our %EXPORT_TAGS =   ( all    => [ @EXPORT_OK ], );
 
-my $BSON_Id_Inc : shared = 0;
-
 # Private functions
 my $_base64_char_set = sub {
    return [ 0 .. 9, 'A' .. 'Z', '_', 'a' .. 'z', '~', '+' ];
 };
 
+my $bson_id_count : shared = 0; my $bson2_id_count = 0; my $bson2_prev_time = 0;
+
 my $_bsonid_inc = sub {
-   my ($now, $version) = @_; state $id_inc //= 0; state $prev_time //= 0;
+   my ($now, $version) = @_;
 
-   $version or return substr pack( 'N', $BSON_Id_Inc++ % 0xFFFFFF ), 1, 3;
+   $version or return substr pack( 'N', $bson_id_count++ % 0xFFFFFF ), 1, 3;
 
-   $id_inc++; $now > $prev_time and $id_inc = 0; $prev_time = $now;
+   $bson2_id_count++; $now > $bson2_prev_time and $bson2_id_count = 0;
+   $bson2_prev_time = $now;
 
    $version < 2 and return (substr pack( 'n', thread_id() % 0xFF ), 1, 1)
-                          .(pack 'n', $id_inc % 0xFFFF);
+                          .(pack 'n', $bson2_id_count % 0xFFFF);
 
    $version < 3 and return (pack 'n', thread_id() % 0xFFFF )
-                          .(pack 'n', $id_inc % 0xFFFF);
+                          .(pack 'n', $bson2_id_count % 0xFFFF);
 
    return (pack 'n', thread_id() % 0xFFFF )
-         .(substr pack( 'N', $id_inc % 0xFFFFFF ), 1, 3);
+         .(substr pack( 'N', $bson2_id_count % 0xFFFFFF ), 1, 3);
 };
 
 my $_bsonid_time = sub {
@@ -118,7 +116,7 @@ my $_get_pod_content_for_attr = sub {
       $ev and $ev->{type} eq 'text' and $pod = $ev->{content} and last;
    }
 
-   $pod ||= 'Undocumented'; chomp $pod; $pod =~ s{ [\n] }{ }gmx;
+   $pod //= 'Undocumented'; chomp $pod; $pod =~ s{ [\n] }{ }gmx;
 
    $pod = squeeze( $pod ); $pod =~ m{ \A (.+) \z }msx and $pod = $1;
 
@@ -154,7 +152,7 @@ my $_bsonid = sub {
    my $now     = time;
    my $time    = $_bsonid_time->( $now, $version );
    my $host    = substr md5( hostname ), 0, 3;
-   my $pid     = pack 'n', $$ % 0xFFFF;
+   my $pid     = pack 'n', $PID % 0xFFFF;
 
    return $time.$host.$pid.$_bsonid_inc->( $now, $version );
 };
@@ -164,7 +162,7 @@ my $_find_cfg_in_inc = sub {
 
    for my $dir (grep { defined and -d $_ }
                 map  { abs_path( catdir( $_, $classdir ) ) } @INC) {
-      for my $extn (@{ $extns || [ supported_extensions() ] }) {
+      for my $extn (@{ $extns // [ supported_extensions() ] }) {
          my $path = $_catpath->( $dir, $file.$extn );
 
          -f $path and return dirname( $path );
@@ -198,7 +196,7 @@ my $_get_file_var = sub {
 };
 
 my $_get_known_file_var = sub {
-   my ($appname, $classdir) = @_; $appname || return;
+   my ($appname, $classdir) = @_; length $appname or return;
 
    my $path; $path = $_read_variable->( DEFAULT_ENVDIR(), $appname, 'APPLDIR' )
          and $path = catdir( $path, 'lib', $classdir );
@@ -229,7 +227,7 @@ sub abs_path ($) {
 }
 
 sub app_prefix ($) {
-   (my $v = lc ($_[ 0 ] || q())) =~ s{ :: }{_}gmx; return $v;
+   (my $v = lc ($_[ 0 ] // q())) =~ s{ :: }{_}gmx; return $v;
 }
 
 sub arg_list (;@) {
@@ -239,9 +237,11 @@ sub arg_list (;@) {
 }
 
 sub assert_directory ($) {
-   my $v = abs_path( $_[ 0 ] ); (defined $v and length $v) or return $v;
+   my $v = abs_path( $_[ 0 ] );
 
-   return -d "${v}" ? untaint_path( $v ) : undef;
+   defined $v and length $v and -d "${v}" and return $v;
+
+   return;
 }
 
 sub base64_decode_ns ($) {
@@ -326,7 +326,7 @@ sub bson64id_time ($) {
 }
 
 sub build (&;$) {
-   my $code = shift; my $f = shift || sub {}; return sub { $code->( $f->() ) };
+   my $code = shift; my $f = shift // sub {}; return sub { $code->( $f->() ) };
 }
 
 sub canonicalise ($;$) {
@@ -348,7 +348,7 @@ sub class2appdir ($) {
 }
 
 sub classdir ($) {
-   return catdir( split m{ :: }mx, $_[ 0 ] || q() );
+   return catdir( split m{ :: }mx, $_[ 0 ] // q() );
 }
 
 sub classfile ($) {
@@ -371,16 +371,19 @@ sub data_dumper (;@) {
    _data_dumper( @_ ); return 1;
 }
 
-sub digest ($) {
-   my $seed = shift; my ($candidate, $digest); state $cache;
+my $digest_cache;
 
-   if ($cache) { $digest = Digest->new( $cache ) }
+sub digest ($) {
+   my $seed = shift; my ($candidate, $digest);
+
+   if ($digest_cache) { $digest = Digest->new( $digest_cache ) }
    else {
       for (DIGEST_ALGORITHMS) {
          $candidate = $_; $digest = eval { Digest->new( $candidate ) } and last;
       }
 
-      $digest or throw( 'Digest algorithm not found' ); $cache = $candidate;
+      $digest or throw( 'Digest algorithm not found' );
+      $digest_cache = $candidate;
    }
 
    $digest->add( $seed );
@@ -389,7 +392,7 @@ sub digest ($) {
 }
 
 sub distname ($) {
-   (my $v = $_[ 0 ] || q()) =~ s{ :: }{-}gmx; return $v;
+   (my $v = $_[ 0 ] // q()) =~ s{ :: }{-}gmx; return $v;
 }
 
 #head2 downgrade
@@ -400,7 +403,7 @@ sub distname ($) {
 #the input scalar to the output scalar but resets the output scalar
 #type to C<PV>
 #sub downgrade (;$) {
-#   my $x = shift || q(); my ($y) = $x =~ m{ (.*) }msx; return $y;
+#   my $x = shift // q(); my ($y) = $x =~ m{ (.*) }msx; return $y;
 #}
 
 sub elapsed () {
@@ -530,13 +533,13 @@ sub fold (&) {
 }
 
 sub fqdn (;$) {
-   my $x = shift || hostname; return (gethostbyname( $x ))[ 0 ];
+   my $x = shift // hostname; return (gethostbyname( $x ))[ 0 ];
 }
 
 sub fullname () {
-   my $v = (split m{ \s* , \s * }msx, (get_user()->gecos || q()))[ 0 ];
+   my $v = (split m{ \s* , \s * }msx, (get_user()->gecos // q()))[ 0 ];
 
-   $v ||= q(); $v =~ s{ [\&] }{}gmx; # Coz af25e158-d0c7-11e3-bdcb-31d9eda79835
+   $v //= q(); $v =~ s{ [\&] }{}gmx; # Coz af25e158-d0c7-11e3-bdcb-31d9eda79835
 
    return untaint_cmdline( $v );
 }
@@ -550,11 +553,11 @@ sub get_cfgfiles ($;$$) {
    my $app_pref = app_prefix   $appclass;
    my $appdir   = class2appdir $appclass;
    my $env_pref = env_prefix   $appclass;
-   my $suffix   = $ENV{ "${env_pref}_CONFIG_LOCAL_SUFFIX" } || '_local';
+   my $suffix   = $ENV{ "${env_pref}_CONFIG_LOCAL_SUFFIX" } // '_local';
    my @paths    = ();
 
    for my $dir (@{ $dirs }) {
-      for my $extn (@{ $extns || [ supported_extensions() ] }) {
+      for my $extn (@{ $extns // [ supported_extensions() ] }) {
          for my $path (map { $_catpath->( $dir, $_ ) } "${app_pref}${extn}",
                        "${appdir}${extn}", "${app_pref}${suffix}${extn}",
                        "${appdir}${suffix}${extn}") {
@@ -615,11 +618,11 @@ sub is_member (;@) {
 }
 
 sub is_ntfs  () {
-   return is_win32() || lc $OSNAME eq CYGWIN ? 1 : 0;
+   return is_win32() || lc $OSNAME eq 'cygwin' ? 1 : 0;
 }
 
 sub is_win32 () {
-   return lc $OSNAME eq MSOFT ? 1 : 0;
+   return lc $OSNAME eq 'mswin32' ? 1 : 0;
 }
 
 sub list_attr_of ($;@) {
@@ -638,7 +641,7 @@ sub loginid (;$) {
    return untaint_cmdline( get_user( $_[ 0 ] )->name || 'unknown' );
 }
 
-sub logname (;$) { # Deprecated
+sub logname (;$) { # Deprecated use loginid
    return untaint_cmdline( $ENV{USER} || $ENV{LOGNAME} || loginid( $_[ 0 ] ) );
 }
 
@@ -646,7 +649,7 @@ sub merge_attributes ($$$;$) {
    my ($dest, $src, $defaults, $attrs) = @_; my $class = blessed $src;
 
    for (grep { not exists $dest->{ $_ } or not defined $dest->{ $_ } }
-        @{ $attrs || [] }) {
+        @{ $attrs // [] }) {
       my $v = $class ? ($src->can( $_ ) ? $src->$_() : undef) : $src->{ $_ };
 
       defined $v or $v = $defaults->{ $_ }; defined $v and $dest->{ $_ } = $v;
@@ -656,7 +659,7 @@ sub merge_attributes ($$$;$) {
 }
 
 sub my_prefix (;$) {
-   return split_on__( basename( $_[ 0 ] || q(), PERL_EXTNS ) );
+   return split_on__( basename( $_[ 0 ] // q(), PERL_EXTNS ) );
 }
 
 sub nonblocking_write_pipe_pair () {
@@ -703,25 +706,25 @@ sub socket_pair () {
 }
 
 sub split_on__ (;$$) {
-   return (split m{ _ }mx, $_[ 0 ] || q())[ $_[ 1 ] || 0 ];
+   return (split m{ _ }mx, $_[ 0 ] // q())[ $_[ 1 ] // 0 ];
 }
 
 sub split_on_dash (;$$) {
-   return (split m{ \- }mx, $_[ 0 ] || q())[ $_[ 1 ] || 0 ];
+   return (split m{ \- }mx, $_[ 0 ] // q())[ $_[ 1 ] // 0 ];
 }
 
 sub squeeze (;$) {
-   (my $v = $_[ 0 ] || q()) =~ s{ \s+ }{ }gmx; return $v;
+   (my $v = $_[ 0 ] // q()) =~ s{ \s+ }{ }gmx; return $v;
 }
 
 sub strip_leader (;$) {
-   (my $v = $_[ 0 ] || q()) =~ s{ \A [^:]+ [:] \s+ }{}msx; return $v;
+   (my $v = $_[ 0 ] // q()) =~ s{ \A [^:]+ [:] \s+ }{}msx; return $v;
 }
 
 sub sub_name (;$) {
-   my $frame = 1 + ($_[ 0 ] || 0);
+   my $frame = 1 + ($_[ 0 ] // 0);
 
-   return (split m{ :: }mx, ((caller $frame)[ 3 ]) || 'main')[ -1 ];
+   return (split m{ :: }mx, ((caller $frame)[ 3 ]) // 'main')[ -1 ];
 }
 
 sub sum (;@) {
@@ -757,7 +760,7 @@ sub throw_on_error (;@) {
 }
 
 sub trim (;$$) {
-   my $chs = $_[ 1 ] || " \t"; (my $v = $_[ 0 ] || q()) =~ s{ \A [$chs]+ }{}mx;
+   my $chs = $_[ 1 ] // " \t"; (my $v = $_[ 0 ] // q()) =~ s{ \A [$chs]+ }{}mx;
 
    chomp $v; $v =~ s{ [$chs]+ \z }{}mx; return $v;
 }
@@ -1184,7 +1187,8 @@ L<cygwin|File::DataClass::Constants/CYGWIN>
 
    $bool = is_win32;
 
-Returns true if the C<$OSNAME> is L<evil|File::DataClass::Constants/MSOFT>
+Returns true if the C<$OSNAME> is
+L<unfortunate|File::DataClass::Constants/MSOFT>
 
 =head2 list_attr_of
 

@@ -1,6 +1,5 @@
 package Class::Usul::Constants;
 
-use 5.010001;
 use strict;
 use warnings;
 use parent 'Exporter::Tiny';

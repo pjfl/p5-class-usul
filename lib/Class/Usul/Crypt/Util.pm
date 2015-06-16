@@ -1,9 +1,7 @@
 package Class::Usul::Crypt::Util;
 
-use 5.010001;
 use strict;
 use warnings;
-use feature 'state';
 
 use Class::Usul::Constants qw( FALSE NUL TRUE );
 use Class::Usul::Crypt     qw( decrypt default_cipher encrypt );
@@ -15,6 +13,8 @@ use Try::Tiny;
 our @EXPORT_OK = qw( decrypt_from_config encrypt_for_config
                      get_cipher is_encrypted );
 
+my $_args_cache = {};
+
 # Private functions
 my $_extract_crypt_params = sub { # Returns cipher and encrypted text
    # A single scalar arg not matching the pattern is just a cipher
@@ -24,7 +24,7 @@ my $_extract_crypt_params = sub { # Returns cipher and encrypted text
 };
 
 my $_get_crypt_args = sub { # Sets cipher, salt, and seed keys in args hash
-   my ($config, $cipher) = @_; my $params = {}; state $cache //= {};
+   my ($config, $cipher) = @_; my $params = {};
 
    # Works if config is an object or a hash
    merge_attributes $params, $config, {},
@@ -34,24 +34,26 @@ my $_get_crypt_args = sub { # Sets cipher, salt, and seed keys in args hash
                 salt   => $params->{salt} || $params->{prefix} || NUL };
    my $file = $params->{seed_file} || $params->{prefix} || 'seed';
 
-   if    ($params->{seed})           { $args->{seed} = $params->{seed}   }
-   elsif (defined $cache->{ $file }) { $args->{seed} = $cache->{ $file } }
-   elsif ($params->{read_secure})    { # munchies_admin -qnc read_secure --
+   if ($params->{seed}) { $args->{seed} = $params->{seed} }
+   elsif (defined $_args_cache->{ $file }) {
+      $args->{seed} = $_args_cache->{ $file };
+   }
+   elsif ($params->{read_secure}) {
       my $cmd = $params->{read_secure}." ${file}";
 
-      try   { $args->{seed} = $cache->{ $file } = qx( $cmd ) }
-      catch { throw "Reading secure file: ${_}" }
+      try   { $args->{seed} = $_args_cache->{ $file } = qx( $cmd ) }
+      catch { throw "Reading secure file ${file}: ${_}" }
    }
    else {
       my $path = io $file;
 
       $path->exists and ($path->stat->{mode} & 0777) == 0600
-         and $args->{seed} = $cache->{ $file } = $path->all;
+         and $args->{seed} = $_args_cache->{ $file } = $path->all;
 
       not $args->{seed}
          and $path = io( [ $params->{ctrldir} // NUL, "${file}.key" ] )
          and $path->exists and ($path->stat->{mode} & 0777) == 0600
-         and $args->{seed} = $cache->{ $file } = $path->all;
+         and $args->{seed} = $_args_cache->{ $file } = $path->all;
    }
 
    return $args;

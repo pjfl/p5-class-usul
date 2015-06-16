@@ -7,22 +7,22 @@ use Class::Usul::Constants qw( FALSE TRUE );
 use Class::Usul::Functions qw( throw );
 use Sub::Install           qw( install_sub );
 
-my @OPTION_ATTRIBUTES
+my @option_attributes
    = qw( autosplit config doc format json negateable order repeatable short );
 
-my @BANISHED_KEYWORDS
+my @banished_keywords
    = qw( extra_argv new_with_options next_argv option _options_data
          _options_config options_usage unshift_argv untainted_argv );
 
 # Private functions
-my $_filter_attributes = sub {
-   my %attributes = @_; my %filter_key = map { $_ => 1 } @OPTION_ATTRIBUTES;
+my $filter_attributes = sub {
+   my %attributes = @_; my %filter_key = map { $_ => 1 } @option_attributes;
 
    return map { ( $_ => $attributes{ $_ } ) }
          grep { not exists $filter_key{ $_ } } keys %attributes;
 };
 
-my $_validate_and_filter_options = sub {
+my $validate_and_filter_options = sub {
    my (%options) = @_;
 
    defined $options{doc  } or $options{doc  } = $options{documentation};
@@ -34,9 +34,9 @@ my $_validate_and_filter_options = sub {
    }
 
    my %cmdline_options = map { ( $_ => $options{ $_ } ) }
-      grep { exists $options{ $_ } } @OPTION_ATTRIBUTES, 'required';
+      grep { exists $options{ $_ } } @option_attributes, 'required';
 
-   $cmdline_options{autosplit} and $cmdline_options{repeatable} = TRUE;
+   $cmdline_options{autosplit } and $cmdline_options{repeatable} = TRUE;
    $cmdline_options{repeatable}
       and defined $cmdline_options{format}
       and (substr $cmdline_options{format}, -1) ne '@'
@@ -102,15 +102,15 @@ sub import {
    my $option = sub {
       my ($name, %attributes) = @_;
 
-      for my $ban (grep { $_ eq $name } @BANISHED_KEYWORDS) {
+      for my $ban (grep { $_ eq $name } @banished_keywords) {
          throw 'Method [_1] used by class [_2] as an attribute',
                [ $ban, $target ];
       }
 
-      $has->( $name => $_filter_attributes->( %attributes ) );
+      $has->( $name => $filter_attributes->( %attributes ) );
 
       $options_data->{ $name }
-         = { $_validate_and_filter_options->( %attributes ) };
+         = { $validate_and_filter_options->( %attributes ) };
 
       $apply_modifiers->(); # TODO: I think this can go
       return;
