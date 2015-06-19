@@ -17,7 +17,8 @@ eval "use Test::Pod::Coverage 1.04";
 
 $EVAL_ERROR and plan skip_all => 'Test::Pod::Coverage 1.04 required';
 
-all_pod_coverage_ok();
+all_pod_coverage_ok( {
+   trustme => [ qr{ \A (AF_UNIX|PF_UNSPEC|WNOHANG) \z }mx ] } );
 
 # Local Variables:
 # mode: perl
