@@ -147,23 +147,22 @@ sub option_text {
    my $string   = $NUL;
 
    while (defined (my $opt = shift @options)) {
-      my $spec = $opt->{spec}; my $desc = $opt->{desc};
+      my $spec  = $opt->{spec}; my $desc = $opt->{desc};
 
       if ($desc eq 'spacer') { $string .= sprintf "${spec_fmt}\n", $spec; next }
 
       if (exists $opt->{constraint}->{default} and $self->{show_defaults}) {
-         my $dflt = $opt->{constraint}->{default};
-            $dflt = not defined $dflt ? '[undef]'
-                  : not length  $dflt ? '[null]'
-                                      : $dflt;
+         my $default = $opt->{constraint}->{default} // '[undef]';
+
+         length $default or $default = '[null]';
          # Add the default to the description before splitting into lines
-         $desc   .= " (default value: ${dflt})";
+         $desc .= " (default value: ${default})";
       }
 
-      my @desc = $_split_description->( $length, $desc );
+      my @desc  = $_split_description->( $length, $desc );
 
-      $spec    = $_assemble_spec->( $length, $spec );
-      $string .= sprintf "${tab}${spec}  %s\n", shift @desc;
+      $spec     = $_assemble_spec->( $length, $spec );
+      $string  .= sprintf "${tab}${spec}  %s\n", shift @desc;
 
       for my $line (@desc) {
          $string .= $tab.($SPC x ( $length + 2 ))."${line}\n";

@@ -36,7 +36,7 @@ use User::pwent;
 our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert assert_directory
                        base64_decode_ns base64_encode_ns bsonid bsonid_time
                        bson64id bson64id_time build canonicalise class2appdir
-                       classdir classfile create_token curry dash2under
+                       classdir classfile create_token curry cwdp dash2under
                        data_dumper digest distname elapsed emit emit_err
                        emit_to ensure_class_loaded env_prefix escape_TT
                        exception find_apphome find_source first_char fold fqdn
@@ -223,6 +223,7 @@ sub abs_path ($) {
    $v = Cwd::abs_path( untaint_path( $v ) );
 
    is_win32() and defined $v and $v =~ s{ / }{\\}gmx; # More hate
+
    return $v;
 }
 
@@ -361,6 +362,10 @@ sub create_token (;$) {
 
 sub curry (&$;@) {
    my ($code, @args) = @_; return sub { $code->( @args, @_ ) };
+}
+
+sub cwdp () {
+   return abs_path( curdir );
 }
 
 sub dash2under (;$) {
@@ -852,21 +857,21 @@ Provides globally accessible functions
 
 =head1 Subroutines/Methods
 
-=head2 abs_path
+=head2 C<abs_path>
 
    $absolute_untainted_path = abs_path $some_path;
 
 Untaints path. Makes it an absolute path and returns it. Returns undef
 otherwise. Traverses the filesystem
 
-=head2 app_prefix
+=head2 C<app_prefix>
 
    $prefix = app_prefix __PACKAGE__;
 
 Takes a class name and returns it lower cased with B<::> changed to
 B<_>, e.g. C<App::Munchies> becomes C<app_munchies>
 
-=head2 arg_list
+=head2 C<arg_list>
 
    $args = arg_list @rest;
 
@@ -874,7 +879,7 @@ Returns a hash ref containing the passed parameter list. Enables
 methods to be called with either a list or a hash ref as it's input
 parameters
 
-=head2 assert
+=head2 C<assert>
 
    assert $ioc_object, $condition, $message;
 
@@ -883,27 +888,27 @@ L<assert|Classs::Usul::Constants/ASSERT> constant can be set via
 an inherited class attribute to do something useful with whatever parameters
 are passed to it
 
-=head2 assert_directory
+=head2 C<assert_directory>
 
    $untainted_path = assert_directory $path_to_directory;
 
 Untaints directory path. Makes it an absolute path and returns it if it
 exists. Returns undef otherwise
 
-=head2 base64_decode_ns
+=head2 C<base64_decode_ns>
 
    $decoded_value = base64_decode_ns $encoded_value;
 
-Decode a scalar value encode using L<base64_encode_ns>
+Decode a scalar value encode using L</base64_encode_ns>
 
-=head2 base64_encode_ns
+=head2 C<base64_encode_ns>
 
    $encoded_value = base64_encode_ns $encoded_value;
 
 Base 64 encode a scalar value using an output character set that preserves
 the input values sort order (natural sort)
 
-=head2 bsonid
+=head2 C<bsonid>
 
    $bson_id = bsonid;
 
@@ -911,26 +916,26 @@ Generate a new C<BSON> id. Returns a 24 character string of hex digits that
 are reasonably unique across hosts and are in ascending order. Use this
 to create unique ids for data streams like message queues and file feeds
 
-=head2 bsonid_time
+=head2 C<bsonid_time>
 
    $seconds_elapsed_since_the_epoch = bsonid_time $bson_id;
 
 Returns the time the C<BSON> id was generated as Unix time
 
-=head2 bson64id
+=head2 C<bson64id>
 
    $base64_encoded_extended_bson64_id = bson64id;
 
 Like L</bsonid> but better thread long running process support. A custom
 Base64 encoding is used to reduce the id length
 
-=head2 bson64id_time
+=head2 C<bson64id_time>
 
    $seconds_elapsed_since_the_epoch = bson64id_time $bson64_id;
 
 Returns the time the C<BSON64> id was generated as Unix time
 
-=head2 build
+=head2 C<build>
 
    $code_ref = build { }, $code_ref;
 
@@ -938,7 +943,7 @@ Returns a code ref which when called returns the result of calling the block
 passing in the result of calling the optional code ref. Delays the calling
 of the input code ref until the output code ref is called
 
-=head2 canonicalise
+=head2 C<canonicalise>
 
    $untainted_canonpath = canonicalise $base, $relpath;
 
@@ -946,21 +951,21 @@ Appends C<$relpath> to C<$base> using L<File::Spec::Functions>. The C<$base>
 and C<$relpath> arguments can be an array reference or a scalar. The return
 path is untainted and canonicalised
 
-=head2 class2appdir
+=head2 C<class2appdir>
 
    $appdir = class2appdir __PACKAGE__;
 
 Returns lower cased L</distname>, e.g. C<App::Munchies> becomes
 C<app-munchies>
 
-=head2 classdir
+=head2 C<classdir>
 
    $dir_path = classdir __PACKAGE__;
 
 Returns the path (directory) of a given class. Like L</classfile> but
 without the I<.pm> extension
 
-=head2 classfile
+=head2 C<classfile>
 
    $file_path = classfile __PACKAGE__ ;
 
@@ -968,7 +973,7 @@ Returns the path (file name plus extension) of a given class. Uses
 L<File::Spec> for portability, e.g. C<App::Munchies> becomes
 C<App/Munchies.pm>
 
-=head2 create_token
+=head2 C<create_token>
 
    $random_hex = create_token $optional_seed;
 
@@ -976,7 +981,7 @@ Create a random string token using L</digest>. If C<$seed> is defined then add
 that to the digest, otherwise add some random data provided by a call to
 L</urandom>. Returns a hexadecimal string
 
-=head2 curry
+=head2 C<curry>
 
    $curried_code_ref = curry $code_ref, @args;
    $result = $curried_code_ref->( @more_args );
@@ -986,19 +991,25 @@ initial code reference passing in the original argument list and the
 arguments from the curried call. Must be called with a code reference and
 at least one argument
 
-=head2 dash2under
+=head2 C<cwdp>
+
+   $current_working_directory = cwdp;
+
+Returns the current working directory, physical location
+
+=head2 C<dash2under>
 
    $string_with_underscores = dash2under 'a-string-with-dashes';
 
 Substitutes underscores for dashes
 
-=head2 data_dumper
+=head2 C<data_dumper>
 
    data_dumper $thing;
 
 Uses L<Data::Printer> to dump C<$thing> in colour to I<stderr>
 
-=head2 digest
+=head2 C<digest>
 
    $digest_object = digest $seed;
 
@@ -1006,52 +1017,52 @@ Creates an instance of the first available L<Digest> class and adds the seed.
 The constant C<DIGEST_ALGORITHMS> is consulted for the list of algorithms to
 search for. Returns the digest object reference
 
-=head2 distname
+=head2 C<distname>
 
    $distname = distname __PACKAGE__;
 
 Takes a class name and returns it with B<::> changed to
 B<->, e.g. C<App::Munchies> becomes C<App-Munchies>
 
-=head2 elapsed
+=head2 C<elapsed>
 
    $elapsed_seconds = elapsed;
 
 Returns the number of seconds elapsed since the process started
 
-=head2 emit
+=head2 C<emit>
 
    emit @lines_of_text;
 
 Prints to I<STDOUT> the lines of text passed to it. Lines are C<chomp>ed
 and then have newlines appended. Throws on IO errors
 
-=head2 emit_err
+=head2 C<emit_err>
 
    emit_err @lines_of_text;
 
 Like L</emit> but output to C<STDERR>
 
-=head2 emit_to
+=head2 C<emit_to>
 
    emit_to $filehandle, @lines_of_text;
 
 Prints to the specified file handle
 
-=head2 ensure_class_loaded
+=head2 C<ensure_class_loaded>
 
    ensure_class_loaded $some_class, $options_ref;
 
 Require the requested class, throw an error if it doesn't load
 
-=head2 env_prefix
+=head2 C<env_prefix>
 
    $prefix = env_prefix $class;
 
 Returns upper cased C<app_prefix>. Suitable as prefix for environment
 variables
 
-=head2 escape_TT
+=head2 C<escape_TT>
 
    $text = escape_TT '[% some_stash_key %]';
 
@@ -1060,14 +1071,14 @@ less than symbol instead. Also replaces the right square bracket with
 greater than for balance. L<Template::Toolkit> will work with these
 sequences too, so unescaping isn't absolutely necessary
 
-=head2 exception
+=head2 C<exception>
 
    $e = exception $error;
 
 Expose the C<catch> method in the exception
 class L<Class::Usul::Exception>. Returns a new error object
 
-=head2 find_apphome
+=head2 C<find_apphome>
 
    $directory_path = find_apphome $appclass, $homedir, $extns
 
@@ -1085,31 +1096,31 @@ Returns the path to the applications home directory. Searches the following:
    # 5b. Config file found in @INC - dash as separator
    # 6.  Default to /tmp
 
-=head2 find_source
+=head2 C<find_source>
 
    $path = find_source $module_name;
 
 Find absolute path to the source code for the given module
 
-=head2 first_char
+=head2 C<first_char>
 
    $single_char = first_char $some_string;
 
 Returns the first character of C<$string>
 
-=head2 fold
+=head2 C<fold>
 
    *sum = fold { $a + $b } 0;
 
 Classic reduce function with optional base value
 
-=head2 fqdn
+=head2 C<fqdn>
 
    $domain_name = fqdn $hostname;
 
 Call C<gethostbyname> on the supplied hostname whist defaults to this host
 
-=head2 fullname
+=head2 C<fullname>
 
    $fullname = fullname;
 
@@ -1117,13 +1128,13 @@ Returns the untainted first sub field from the gecos attribute of the
 object returned by a call to L</get_user>. Returns the null string if
 the gecos attribute value is false
 
-=head2 get_cfgfiles
+=head2 C<get_cfgfiles>
 
    $paths = get_cfgfiles $appclass, $dirs, $extns
 
 Returns an array ref of configurations file paths for the application
 
-=head2 get_user
+=head2 C<get_user>
 
    $user_object = get_user $optional_uid_or_name;
 
@@ -1133,78 +1144,78 @@ package is loaded so objects are returned. On MSWin32 systems returns an
 instance of L<Class::Null>.  Defaults to the current uid but will lookup the
 supplied uid if provided
 
-=head2 hex2str
+=head2 C<hex2str>
 
    $string = hex2str $pairs_of_hex_digits;
 
 Converts the pairs of hex digits into a string of characters
 
-=head2 home2appldir
+=head2 C<home2appldir>
 
    $appldir = home2appldir $home_dir;
 
 Strips the trailing C<lib/my_package> from the supplied directory path
 
-=head2 io
+=head2 C<io>
 
    $io_object_ref = io $path_to_file_or_directory;
 
 Returns a L<File::DataClass::IO> object reference
 
-=head2 is_arrayref
+=head2 C<is_arrayref>
 
    $bool = is_arrayref $scalar_variable
 
 Tests to see if the scalar variable is an array ref
 
-=head2 is_coderef
+=head2 C<is_coderef>
 
    $bool = is_coderef $scalar_variable
 
 Tests to see if the scalar variable is a code ref
 
-=head2 is_hashref
+=head2 C<is_hashref>
 
    $bool = is_hashref $scalar_variable
 
 Tests to see if the scalar variable is a hash ref
 
-=head2 is_member
+=head2 C<is_member>
 
    $bool = is_member 'test_value', qw( a_value test_value b_value );
 
 Tests to see if the first parameter is present in the list of
 remaining parameters
 
-=head2 is_ntfs
+=head2 C<is_ntfs>
 
    $bool = is_ntfs;
 
 Returns true if L</is_win32> is true or the C<$OSNAME> is
 L<cygwin|File::DataClass::Constants/CYGWIN>
 
-=head2 is_win32
+=head2 C<is_win32>
 
    $bool = is_win32;
 
 Returns true if the C<$OSNAME> is
 L<unfortunate|File::DataClass::Constants/MSOFT>
 
-=head2 list_attr_of
+=head2 C<list_attr_of>
 
    $attribute_list = list_attr_of $object_ref, @exception_list;
 
 Lists the attributes of the object reference, including defining class name,
 documentation, and current value
 
-=head2 loginid
+=head2 C<loginid>
 
    $loginid = loginid;
 
 Returns the untainted name attribute of the object returned by a call
 to L</get_user> or 'unknown' if the name attribute value is false
 
-=head2 logname
+=head2 C<logname>
 
    $logname = logname;
 
@@ -1212,7 +1223,7 @@ Deprecated. Returns untainted the first true value returned by; the environment
 variable C<USER>, the environment variable C<LOGNAME>, and the function
 L</loginid>
 
-=head2 merge_attributes
+=head2 C<merge_attributes>
 
    $dest = merge_attributes $dest, $src, $defaults, $attr_list_ref;
 
@@ -1221,14 +1232,14 @@ C<$dest> hash values take precedence over the C<$src> hash values which
 take precedence over the C<$defaults> hash values. The C<$src> hash
 may be an object in which case its accessor methods are called
 
-=head2 nonblocking_write_pipe_pair
+=head2 C<nonblocking_write_pipe_pair>
 
    $array_ref = non_blocking_write_pipe;
 
 Returns a pair of file handles, read then write. The write file handle is
 non blocking, binmode is set on both
 
-=head2 my_prefix
+=head2 C<my_prefix>
 
    $prefix = my_prefix $PROGRAM_NAME;
 
@@ -1236,7 +1247,7 @@ Takes the basename of the supplied argument and returns the first _
 (underscore) separated field. Supplies basename with
 L<extensions|Class::Usul::Constants/PERL_EXTNS>
 
-=head2 pad
+=head2 C<pad>
 
    $padded_str = pad $unpadded_str, $wanted_length, $pad_char, $direction;
 
@@ -1244,65 +1255,65 @@ Pad a string out to the wanted length with the C<$pad_char> which
 defaults to a space. Direction can be; I<both>, I<left>, or I<right>
 and defaults to I<right>
 
-=head2 prefix2class
+=head2 C<prefix2class>
 
    $class = prefix2class $PROGRAM_NAME;
 
 Calls L</my_prefix> with the supplied argument, splits the result on dash,
 C<ucfirst>s the list and then C<join>s that with I<::>
 
-=head2 product
+=head2 C<product>
 
    $product = product 1, 2, 3, 4;
 
 Returns the product of the list of numbers
 
-=head2 socket_pair
+=head2 C<socket_pair>
 
    ($reader, $writer) = @{ socket_pair };
 
 Return a C<socketpair> reader then writer. The writer has been closed on the
 reader and the reader has been closed on the writer
 
-=head2 split_on__
+=head2 C<split_on__>
 
    $field = split_on__ $string, $field_no;
 
 Splits string by _ (underscore) and returns the requested field. Defaults
 to field zero
 
-=head2 split_on_dash
+=head2 C<split_on_dash>
 
    $field = split_on_dash $string, $field_no;
 
 Splits string by - (dash) and returns the requested field. Defaults
 to field zero
 
-=head2 squeeze
+=head2 C<squeeze>
 
    $string = squeeze $string_containing_muliple_spacesd;
 
 Squeezes multiple whitespace down to a single space
 
-=head2 strip_leader
+=head2 C<strip_leader>
 
    $stripped = strip_leader 'my_program: Error message';
 
 Strips the leading "program_name: whitespace" from the passed argument
 
-=head2 sub_name
+=head2 C<sub_name>
 
    $sub_name = sub_name $level;
 
 Returns the name of the method that calls it
 
-=head2 sum
+=head2 C<sum>
 
    $total = sum 1, 2, 3, 4;
 
 Adds the list of values
 
-=head2 symlink
+=head2 C<symlink>
 
    $message = symlink $from, $to, $base;
 
@@ -1310,13 +1321,13 @@ It creates a symlink. If either C<$from> or C<$to> is a relative path
 then C<$base> is prepended to make it absolute. Returns a message
 indicating success or throws an exception on failure
 
-=head2 thread_id
+=head2 C<thread_id>
 
    $tid = thread_id;
 
 Returns the id of this thread. Returns zero if threads are not loaded
 
-=head2 throw
+=head2 C<throw>
 
    throw error => 'error_key', args => [ 'error_arg' ];
 
@@ -1324,7 +1335,7 @@ Expose L<Class::Usul::Exception/throw>. L<Class::Usul::Constants> has a
 class attribute I<Exception_Class> which can be set change the class
 of the thrown exception
 
-=head2 throw_on_error
+=head2 C<throw_on_error>
 
    throw_on_error @args;
 
@@ -1332,7 +1343,7 @@ Passes it's optional arguments to L</exception> and if an exception object is
 returned it throws it. Returns undefined otherwise. If no arguments are
 passed L</exception> will use the value of the global C<$EVAL_ERROR>
 
-=head2 trim
+=head2 C<trim>
 
    $trimmed_string = trim $string_with_leading_and_trailing_whitespace;
 
@@ -1340,40 +1351,40 @@ Remove leading and trailing whitespace including trailing newlines. Takes
 an additional string used as the character class to remove. Defaults to
 space and tab
 
-=head2 unescape_TT
+=head2 C<unescape_TT>
 
    $text = unescape_TT '<% some_stash_key %>';
 
 Do the reverse of C<escape_TT>
 
-=head2 untaint_cmdline
+=head2 C<untaint_cmdline>
 
    $untainted_cmdline = untaint_cmdline $maybe_tainted_cmdline;
 
 Returns an untainted command line string. Calls L</untaint_string> with the
 matching regex from L<Class::Usul::Constants>
 
-=head2 untaint_identifier
+=head2 C<untaint_identifier>
 
    $untainted_identifier = untaint_identifier $maybe_tainted_identifier;
 
 Returns an untainted identifier string. Calls L</untaint_string> with the
 matching regex from L<Class::Usul::Constants>
 
-=head2 untaint_path
+=head2 C<untaint_path>
 
    $untainted_path = untaint_path $maybe_tainted_path;
 
 Returns an untainted file path. Calls L</untaint_string> with the
 matching regex from L<Class::Usul::Constants>
 
-=head2 untaint_string
+=head2 C<untaint_string>
 
    $untainted_string = untaint_string $regex, $maybe_tainted_string;
 
 Returns an untainted string or throws
 
-=head2 urandom
+=head2 C<urandom>
 
    $bytes = urandom $optional_length, $optional_provider;
 
@@ -1382,13 +1393,13 @@ F</dev/urandom> and can be any type accepted by L</io>. If the provider exists
 and is readable, length bytes are read from it and returned. Otherwise some
 bytes from the second best generator are returned
 
-=head2 uuid
+=head2 C<uuid>
 
    $uuid = uuid $optional_uuid_proc_filesystem_path;
 
 Return the contents of F</proc/sys/kernel/random/uuid>
 
-=head2 whiten
+=head2 C<whiten>
 
    $encoded = whiten 'plain_text_to_be_obfuscated';
 
@@ -1397,7 +1408,7 @@ tabs, and newlines. The L<encrypt> and L<decrypt> functions take a seed
 attribute in their options hash reference. A whitened line of Perl code
 would be a suitable value
 
-=head2 zip
+=head2 C<zip>
 
    %hash = zip @list_of_keys, @list_of_values;
 

@@ -4,7 +4,8 @@ use namespace::autoclean;
 
 use Class::Null;
 use Class::Usul::Constants qw( FALSE LOG_LEVELS NUL SPC TRUE );
-use Class::Usul::Functions qw( merge_attributes untaint_identifier );
+use Class::Usul::Functions qw( is_hashref is_member merge_attributes
+                               untaint_identifier );
 use Class::Usul::Types     qw( Bool EncodingType HashRef
                                LoadableClass LogType Undef );
 use Encode                 qw( encode );
@@ -109,6 +110,17 @@ sub get_log_attributes {
    return $attr;
 }
 
+sub log {
+   my ($self, @args) = @_;
+
+   my $args  = (is_hashref $args[ 0 ]) ? $args[ 0 ] : { @args };
+   my $level = $args->{level};
+
+   is_member $level, LOG_LEVELS and return $self->$level( $args->{message} );
+
+   return;
+}
+
 1;
 
 __END__
@@ -187,10 +199,16 @@ Monkey with the constructors signature
 Return the loggers file handle. This was added for L<IO::Async>, so that we
 can tell it not to close the log file handle when it forks a child process
 
-=head2 get_log_attributes
+=head2 C<get_log_attributes>
 
 Returns the hash reference passed to the constructor of the log class. Returns
 C<undef> to indicate no logging, an instance of L<Class::Null> is used instead
+
+=head2 C<log>
+
+   $self->log( { level => $level, message => $message } );
+
+Logs the message at the given level
 
 =head1 Diagnostics
 

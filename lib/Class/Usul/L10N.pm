@@ -147,7 +147,7 @@ sub loc {
 sub localize {
    my ($self, $key, $args) = @_;
 
-   $key or return; $key = "${key}"; chomp $key; $args //= {};
+   defined $key or return; $key = "${key}"; chomp $key; $args //= {};
 
    # Lookup the message using the supplied key from the po file
    my $text = $self->$_gettext( $key, $args );

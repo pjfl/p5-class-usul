@@ -91,7 +91,7 @@ my $_exception_message_for_requesttype = sub {
 my $_has_builder_attributes = sub {
    my $obj = shift;
 
-   $obj->can( $_ ) or return FALSE for (qw( config debug l10n lock log ));
+   $obj->can( $_ ) or return FALSE for (qw( config debug log ));
 
    return TRUE;
 };

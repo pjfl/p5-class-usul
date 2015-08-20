@@ -134,31 +134,38 @@ thrown
 
 =head1 Subroutines/Methods
 
-=head2 BUILDARGS
+=head2 C<BUILDARGS>
 
 Doesn't modify the C<BUILDARGS> method. This is here to workaround a
 bug in L<Moo> and / or L<Test::Pod::Coverage>
 
-=head2 as_string
+=head2 C<as_string>
 
    $error_text = $self->as_string;
 
 This is what the object stringifies to, including the C<leader> attribute
 
-=head2 caught
+=head2 C<caught>
 
    $self = $class->caught( [ @args ] );
 
 Catches and returns a thrown exception or generates a new exception if
 C<$EVAL_ERROR> has been set. Returns either an exception object or undef
 
-=head2 stacktrace
+=head2 C<clone>
+
+   $cloned_exception_object_ref = $self->clone( $args );
+
+Returns a clone of the invocant. The optional C<$args> hash reference mutates
+the returned clone
+
+=head2 C<stacktrace>
 
    $lines = $self->stacktrace( $num_lines_to_skip );
 
 Return the stack trace. Defaults to skipping zero lines of output
 
-=head2 throw
+=head2 C<throw>
 
    $class->throw error => 'Path [_1] not found', args => [ 'pathname' ];
 
@@ -170,7 +177,7 @@ parameter is passed the it is treated as a list and used to
 instantiate the new exception. The 'error' parameter must be provided
 in this case
 
-=head2 throw_on_error
+=head2 C<throw_on_error>
 
    $class->throw_on_error( [ @args ] );
 
