@@ -46,6 +46,8 @@ sub build_test { my $v = shift; $v //= 0; return $v + 1 } my $f = sub { 1 };
 is build( \&build_test )->(), 1, 'build';
 is build( \&build_test, $f )->(), 2, 'build - non default function';
 
+is chain( sub { 1 }, sub { $_[ 0 ] + 1 }, sub { $_[ 0 ] + 2 } ), 4, 'chain';
+
 is class2appdir( 'Test::Application' ), 'test-application', 'class2appdir';
 
 is classdir( 'Test::Application' ), catdir( qw( Test Application ) ),

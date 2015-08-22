@@ -35,29 +35,33 @@ use User::pwent;
 
 our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert assert_directory
                        base64_decode_ns base64_encode_ns bsonid bsonid_time
-                       bson64id bson64id_time build canonicalise class2appdir
-                       classdir classfile create_token curry cwdp dash2under
-                       data_dumper digest distname elapsed emit emit_err
-                       emit_to ensure_class_loaded env_prefix escape_TT
-                       exception find_apphome find_source first_char fold fqdn
-                       fullname get_cfgfiles get_user hex2str home2appldir io
-                       is_arrayref is_coderef is_hashref is_member is_win32
-                       list_attr_of loginid logname merge_attributes my_prefix
-                       nonblocking_write_pipe_pair pad prefix2class product
-                       socket_pair split_on__ split_on_dash squeeze
-                       strip_leader sub_name sum symlink thread_id throw
-                       throw_on_error trim unescape_TT untaint_cmdline
-                       untaint_identifier untaint_path untaint_string urandom
-                       uuid whiten zip );
+                       bson64id bson64id_time build canonicalise chain
+                       class2appdir classdir classfile create_token curry cwdp
+                       dash2under data_dumper digest distname elapsed emit
+                       emit_err emit_to ensure_class_loaded env_prefix
+                       escape_TT exception find_apphome find_source first_char
+                       fold fqdn fullname get_cfgfiles get_user hex2str
+                       home2appldir io is_arrayref is_coderef is_hashref
+                       is_member is_win32 list_attr_of loginid logname
+                       merge_attributes my_prefix nonblocking_write_pipe_pair
+                       pad prefix2class product socket_pair split_on__
+                       split_on_dash squeeze strip_leader sub_name sum symlink
+                       thread_id throw throw_on_error trim unescape_TT
+                       untaint_cmdline untaint_identifier untaint_path
+                       untaint_string urandom uuid whiten zip );
 our %EXPORT_REFS =   ( assert => sub { ASSERT }, );
 our %EXPORT_TAGS =   ( all    => [ @EXPORT_OK ], );
+
+# Package variables
+my $bson_id_count : shared = 0;
+my $bson2_id_count  = 0;
+my $bson2_prev_time = 0;
+my $digest_cache;
 
 # Private functions
 my $_base64_char_set = sub {
    return [ 0 .. 9, 'A' .. 'Z', '_', 'a' .. 'z', '~', '+' ];
 };
-
-my $bson_id_count : shared = 0; my $bson2_id_count = 0; my $bson2_prev_time = 0;
 
 my $_bsonid_inc = sub {
    my ($now, $version) = @_;
@@ -344,6 +348,10 @@ sub canonicalise ($;$) {
    return canonpath( untaint_path( catfile( $base, @relpath ) ) );
 }
 
+sub chain (;@) {
+   return (fold( sub { my ($x, $y) = @_; $x->$y })->( shift ))->( @_ );
+}
+
 sub class2appdir ($) {
    return lc distname( $_[ 0 ] );
 }
@@ -375,8 +383,6 @@ sub dash2under (;$) {
 sub data_dumper (;@) {
    _data_dumper( @_ ); return 1;
 }
-
-my $digest_cache;
 
 sub digest ($) {
    my $seed = shift; my ($candidate, $digest);
@@ -950,6 +956,13 @@ of the input code ref until the output code ref is called
 Appends C<$relpath> to C<$base> using L<File::Spec::Functions>. The C<$base>
 and C<$relpath> arguments can be an array reference or a scalar. The return
 path is untainted and canonicalised
+
+=head2 C<chain>
+
+   $result = chain $sub1, $sub2, $sub3
+
+Call each sub in turn passing the returned value as the first argument to
+the next function call
 
 =head2 C<class2appdir>
 

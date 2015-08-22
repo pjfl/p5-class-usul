@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Added Functions::chain
           - Added log method to Log class for Web::ComposableRequest
           - Relaxed the BaseType constraint
           - Added Functions cwdp current working directory
