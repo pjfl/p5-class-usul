@@ -145,7 +145,7 @@ my $_prepare = sub {
 sub anykey {
    my ($self, $prompt) = @_;
 
-   $prompt = $self->$_prepare( $prompt || 'Press any key to continue' );
+   $prompt = $self->$_prepare( $prompt // 'Press any key to continue' );
 
    return $_prompt->( -p => "${prompt}...", -d => TRUE, -e => NUL, -1 => TRUE );
 }
@@ -153,7 +153,7 @@ sub anykey {
 sub get_line { # General text input routine.
    my ($self, $question, @args) = @_; my $opts = $_opts->( 'get_line', @args );
 
-   $question = $self->$_prepare( $question || 'Enter your answer' );
+   $question = $self->$_prepare( $question // 'Enter your answer' );
 
    my $default  = $opts->{default} // NUL;
    my $advice   = $opts->{quit} ? $self->loc( '([_1] to quit)', QUIT ) : NUL;
@@ -181,7 +181,7 @@ sub get_line { # General text input routine.
 sub get_option { # Select from an numbered list of options
    my ($self, $prompt, @args) = @_; my $opts = $_opts->( 'get_option', @args );
 
-   $prompt ||= '+Select one option from the following list:';
+   $prompt //= '+Select one option from the following list:';
 
    my $no_lead = ('+' eq substr $prompt, 0, 1) ? FALSE : TRUE;
    my $leader  = $no_lead ? NUL : '+'; $prompt =~ s{ \A \+ }{}mx;
@@ -209,9 +209,9 @@ sub is_interactive {
 sub yorn { # General yes or no input routine
    my ($self, $question, @args) = @_; my $opts = $_opts->( 'yorn', @args );
 
-   my $no = NO; my $yes = YES; my $result;
+   $question = $self->$_prepare( $question // 'Choose' );
 
-   $question = $self->$_prepare( $question || 'Choose' );
+   my $no = NO; my $yes = YES; my $result;
 
    my $default  = $opts->{default} ? $yes : $no;
    my $quit     = $opts->{quit   } ? QUIT : NUL;

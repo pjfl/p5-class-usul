@@ -23,6 +23,8 @@ BEGIN {
       $Bin  =~ m{ : .+ : }mx and plan skip_all => 'Two colons in $Bin path';
       $host =~ m{ \A davids-macbook }mx and
          plan skip_all => 'Broken smoker 158a80fe-0a22-11e5-9d49-e60ed23c8333';
+      # TODO: Remove this when service is restored
+      plan skip_all => 'CPAN Testing down Aug 2015';
    }
 }
 
