@@ -4,10 +4,11 @@ use namespace::autoclean;
 
 use Class::Null;
 use Class::Usul::Constants    qw( EXCEPTION_CLASS FALSE NUL OK SPC TRUE );
-use Class::Usul::Functions    qw( arg_list get_user io loginid throw );
+use Class::Usul::Functions    qw( arg_list get_user io loginid
+                                  merge_attributes throw );
 use Class::Usul::IPC::Cmd;
 use Class::Usul::Time         qw( time2str );
-use Class::Usul::Types        qw( BaseType Bool LoadableClass );
+use Class::Usul::Types        qw( Bool ConfigProvider LoadableClass Logger );
 use English                   qw( -no_match_vars );
 use Module::Load::Conditional qw( can_load );
 use Unexpected::Functions     qw( Unspecified );
@@ -16,13 +17,12 @@ use Moo;
 # Public attributes
 has 'cache_ttys'  => is => 'ro',   isa => Bool, default => TRUE;
 
+has 'config'      => is => 'ro',   isa => ConfigProvider, required => TRUE;
+
+has 'log'         => is => 'ro',   isa => Logger, required => TRUE;
+
 has 'table_class' => is => 'lazy', isa => LoadableClass, coerce => TRUE,
    default        => 'Class::Usul::Response::Table';
-
-# Private attributes
-has '_usul'       => is => 'ro', isa => BaseType,
-   handles        => [ 'config', 'log' ], init_arg => 'builder',
-   required       => TRUE, weak_ref => TRUE;
 
 # Private functions
 my $_cmd_matches = sub {
@@ -122,6 +122,17 @@ my $_signal_cmd = sub {
    $flag and push @{ $opts }, '-o', 'flag=one';
 
    return [ $cmd, '-nc', 'signal_process', @{ $opts }, '--', @{ $pids || [] } ];
+};
+
+# Construction
+around 'BUILDARGS' => sub {
+   my ($orig, $self, @args) = @_; my $attr = $orig->( $self, @args );
+
+   my $builder = delete $attr->{builder} or return $attr;
+
+   merge_attributes $attr, $builder, {}, [ 'config', 'log' ];
+
+   return $attr;
 };
 
 # Public methods
@@ -266,6 +277,8 @@ __END__
 
 =pod
 
+=encoding utf-8
+
 =head1 Name
 
 Class::Usul::IPC - List / create / delete processes
@@ -294,24 +307,42 @@ Defines these attributes;
 
 Boolean that defaults to true. Passed to L<Proc::ProcessTable>
 
+=item C<config>
+
+A required instance of type C<ConfigProvider>
+
+=item C<log>
+
+A required instance of type C<Logger>
+
+=item C<table_class>
+
+A lazy evaluated C<LoadableClass> that defaults to
+L<Class::Usul::Response::Table>
+
 =back
 
 =head1 Subroutines/Methods
 
-=head2 child_list
+=head2 C<BUILDARGS>
+
+Extracts C<config> and C<log> objects from the C<builder> attribute if it is
+supplied to the constructor
+
+=head2 C<child_list>
 
    @pids = $self->child_list( $pid );
 
 Called with a process id for an argument this method returns a list of child
 process ids
 
-=head2 list_pids_by_file_system
+=head2 C<list_pids_by_file_system>
 
    @pids = $self->list_pids_by_file_system( $file_system );
 
 Returns the list of process ids produced by the C<fuser> command
 
-=head2 popen
+=head2 C<popen>
 
    $response = $self->popen( $cmd, @opts );
 
@@ -321,19 +352,19 @@ object's C<out> method returns the B<STDOUT> from the command. Throws
 in the event of an error. See L</run_cmd> for a full list of options and
 response attributes
 
-=head2 process_exists
+=head2 C<process_exists>
 
    $bool = $self->process_exists( file => $path, pid => $pid );
 
 Tests for the existence of the specified process. Either specify a
 path to a file containing the process id or specify the id directly
 
-=head2 process_table
+=head2 C<process_table>
 
 Generates the process table data used by the L<HTML::FormWidget> table
 subclass. Called by L<Class::Usul::Model::Process/proc_table>
 
-=head2 run_cmd
+=head2 C<run_cmd>
 
    $response = $self->run_cmd( $cmd, $opts );
 
@@ -349,11 +380,11 @@ in L<Class::Usul::IPC::Cmd>
 On C<MSWin32> the L</popen> method is used instead. That method does not
 support the C<async> option
 
-=head2 signal_process
+=head2 C<signal_process>
 
 Send a signal the the selected processes. Invokes the C<suid> root wrapper
 
-=head2 signal_process_as_root
+=head2 C<signal_process_as_root>
 
    $self->signal_process( [{] param => value, ... [}] );
 
@@ -381,8 +412,6 @@ None
 =item L<Class::Usul::Constants>
 
 =item L<Class::Usul::IPC::Cmd>
-
-=item L<Class::Usul::Response::IPC>
 
 =item L<Class::Usul::Response::Table>
 

@@ -2,15 +2,21 @@ package Class::Usul;
 
 use 5.010001;
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.64.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.64.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants  qw( FALSE TRUE );
-use Class::Usul::Functions  qw( data_dumper );
-use Class::Usul::Types      qw( Bool ConfigType HashRef L10NType
-                                LoadableClass LockType LogType );
+use Class::Usul::Functions  qw( data_dumper env_prefix );
+use Class::Usul::Types      qw( Bool ConfigProvider HashRef Localiser
+                                LoadableClass Locker Logger );
 use Moo;
 
 # Attribute constructors
+my $_build_debug = sub {
+   my $self = shift; my $k = (env_prefix $self->config->appclass).'_DEBUG';
+
+   return !$ENV{ $k } ? FALSE : TRUE;
+};
+
 my $_build_lock = sub {
    my $self = shift; my $attr = { %{ $self->config->lock_attributes } };
 
@@ -22,7 +28,7 @@ my $_build_lock = sub {
 };
 
 # Public attributes
-has 'config'       => is => 'lazy', isa => ConfigType, builder => sub {
+has 'config'       => is => 'lazy', isa => ConfigProvider, builder => sub {
    $_[ 0 ]->config_class->new( $_[ 0 ]->_config_attr ) },
    init_arg        => undef;
 
@@ -32,21 +38,21 @@ has '_config_attr' => is => 'ro',   isa => HashRef, builder => sub { {} },
 has 'config_class' => is => 'ro',   isa => LoadableClass, coerce => TRUE,
    default         => 'Class::Usul::Config';
 
-has 'debug'        => is => 'lazy', isa => Bool, default => FALSE;
+has 'debug'        => is => 'lazy', isa => Bool, builder => $_build_debug;
 
-has 'l10n'         => is => 'lazy', isa => L10NType,
+has 'l10n'         => is => 'lazy', isa => Localiser,
    builder         => sub { $_[ 0 ]->l10n_class->new( builder => $_[ 0 ] ) },
    handles         => [ 'loc', 'localize' ];
 
 has 'l10n_class'   => is => 'lazy', isa => LoadableClass, coerce => TRUE,
    default         => 'Class::Usul::L10N';
 
-has 'lock'         => is => 'lazy', isa => LockType, builder => $_build_lock;
+has 'lock'         => is => 'lazy', isa => Locker, builder => $_build_lock;
 
 has 'lock_class'   => is => 'lazy', isa => LoadableClass, coerce => TRUE,
    default         => 'IPC::SRLock';
 
-has 'log'          => is => 'lazy', isa => LogType,
+has 'log'          => is => 'lazy', isa => Logger,
    builder         => sub { $_[ 0 ]->log_class->new( builder => $_[ 0 ] ) };
 
 has 'log_class'    => is => 'lazy', isa => LoadableClass, coerce => TRUE,
@@ -79,7 +85,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.64.$Rev: 1 $
+Describes Class::Usul version v0.64.$Rev: 2 $
 
 =head1 Synopsis
 
@@ -87,8 +93,7 @@ Describes Class::Usul version v0.64.$Rev: 1 $
    use Class::Usul::Constants qw( FALSE );
    use Class::Usul::Functions qw( find_apphome get_cfgfiles );
 
-   my $attr = { config => {}, debug => $ENV{DEBUG} // FALSE };
-   my $conf = $attr->{config};
+   my $attr = { config => {} }; my $conf = $attr->{config};
 
    $conf->{appclass    } or  die "Application class not specified";
    $attr->{config_class} //= $conf->{appclass}.'::Config';
@@ -138,8 +143,8 @@ value
 
 =item C<l10n>
 
-A lazily evaluated instance of the C<l10n_class>. This object reference handles
-the C<localize> method
+A lazily evaluated instance of the C<l10n_class>. This object reference is a
+L<Localiser|Class::Usul::Types/Localiser> which handles the C<localize> method
 
 =item C<l10n_class>
 
@@ -147,7 +152,8 @@ A lazy loadable class which defaults to L<Class::Usul::L10N>
 
 =item C<lock>
 
-A lazily evaluated instance of the C<lock_class>
+A lazily evaluated instance of the C<lock_class>. This object reference is a
+L<Locker|Class::Usul::Types/Locker>
 
 =item C<lock_class>
 
@@ -155,7 +161,8 @@ A lazy loadable class which defaults to L<IPC::SRLock>
 
 =item C<log>
 
-A lazily evaluated instance of the C<log_class>
+A lazily evaluated instance of the C<log_class>. This object reference is a
+L<Logger|Class::Usul::Types/Logger>
 
 =item C<log_class>
 

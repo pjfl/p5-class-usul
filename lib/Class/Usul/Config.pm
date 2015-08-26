@@ -10,7 +10,7 @@ use Class::Usul::Functions   qw( app_prefix canonicalise class2appdir
                                  home2appldir is_arrayref split_on__
                                  split_on_dash untaint_cmdline
                                  untaint_identifier untaint_path );
-use Class::Usul::Types       qw( ArrayRef EncodingType HashRef NonEmptySimpleStr
+use Class::Usul::Types       qw( ArrayRef DataEncoding HashRef NonEmptySimpleStr
                                  NonZeroPositiveInt PositiveInt Str );
 use Config;
 use English                  qw( -no_match_vars );
@@ -39,7 +39,7 @@ has 'ctrldir'   => is => 'lazy', isa => Path, coerce => TRUE;
 
 has 'datadir'   => is => 'lazy', isa => Path, coerce => TRUE;
 
-has 'encoding'  => is => 'ro',   isa => EncodingType, coerce => TRUE,
+has 'encoding'  => is => 'ro',   isa => DataEncoding, coerce => TRUE,
    default      => DEFAULT_ENCODING;
 
 has 'extension' => is => 'lazy', isa => NonEmptySimpleStr,

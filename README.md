@@ -10,7 +10,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 # Version
 
-Describes Class::Usul version v0.64.$Rev: 1 $
+Describes Class::Usul version v0.64.$Rev: 2 $
 
 # Synopsis
 
@@ -18,8 +18,7 @@ Describes Class::Usul version v0.64.$Rev: 1 $
     use Class::Usul::Constants qw( FALSE );
     use Class::Usul::Functions qw( find_apphome get_cfgfiles );
 
-    my $attr = { config => {}, debug => $ENV{DEBUG} // FALSE };
-    my $conf = $attr->{config};
+    my $attr = { config => {} }; my $conf = $attr->{config};
 
     $conf->{appclass    } or  die "Application class not specified";
     $attr->{config_class} //= $conf->{appclass}.'::Config';
@@ -67,8 +66,8 @@ Defines the following attributes;
 
 - `l10n`
 
-    A lazily evaluated instance of the `l10n_class`. This object reference handles
-    the `localize` method
+    A lazily evaluated instance of the `l10n_class`. This object reference is a
+    [Localiser](https://metacpan.org/pod/Class::Usul::Types#Localiser) which handles the `localize` method
 
 - `l10n_class`
 
@@ -76,7 +75,8 @@ Defines the following attributes;
 
 - `lock`
 
-    A lazily evaluated instance of the `lock_class`
+    A lazily evaluated instance of the `lock_class`. This object reference is a
+    [Locker](https://metacpan.org/pod/Class::Usul::Types#Locker)
 
 - `lock_class`
 
@@ -84,7 +84,8 @@ Defines the following attributes;
 
 - `log`
 
-    A lazily evaluated instance of the `log_class`
+    A lazily evaluated instance of the `log_class`. This object reference is a
+    [Logger](https://metacpan.org/pod/Class::Usul::Types#Logger)
 
 - `log_class`
 

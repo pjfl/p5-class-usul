@@ -92,6 +92,7 @@ isa
 json
 lbrace
 loc
+localiser
 localize
 localizer
 login

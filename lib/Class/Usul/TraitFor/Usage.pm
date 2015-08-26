@@ -10,7 +10,7 @@ use Class::Usul::Functions qw( dash2under emit emit_to ensure_class_loaded
                                find_source is_member list_attr_of pad throw
                                untaint_cmdline untaint_identifier );
 use Class::Usul::IPC;
-use Class::Usul::Types     qw( Bool EncodingType FileType IPCType );
+use Class::Usul::Types     qw( Bool DataEncoding DataLumper ProcCommer );
 use Scalar::Util           qw( blessed );
 use Try::Tiny;
 use Moo::Role;
@@ -19,29 +19,29 @@ use Class::Usul::Options;
 requires qw( config dumper next_argv options_usage output quiet );
 
 # Public attributes
-option 'encoding'     => is => 'lazy', isa => EncodingType,
+option 'encoding'     => is => 'lazy', isa => DataEncoding,
    documentation      => 'Decode/encode input/output using this encoding',
    default            => sub { $_[ 0 ]->config->encoding }, format => 's';
 
-option 'help_manual'  => is => 'ro', isa => Bool, default => FALSE,
+option 'help_manual'  => is => 'ro',   isa => Bool, default => FALSE,
    documentation      => 'Displays the documentation for the program',
    short              => 'H';
 
-option 'help_options' => is => 'ro', isa => Bool, default => FALSE,
+option 'help_options' => is => 'ro',   isa => Bool, default => FALSE,
    documentation      => 'Describes program options and methods',
    short              => 'h';
 
-option 'help_usage'   => is => 'ro', isa => Bool, default => FALSE,
+option 'help_usage'   => is => 'ro',   isa => Bool, default => FALSE,
    documentation      => 'Displays this command line usage',
    short              => '?';
 
-option 'show_version' => is => 'ro', isa => Bool, default => FALSE,
+option 'show_version' => is => 'ro',   isa => Bool, default => FALSE,
    documentation      => 'Displays the version number of the program class';
 
-has 'file'            => is => 'lazy', isa => FileType,
+has 'file'            => is => 'lazy', isa => DataLumper,
    builder            => sub { Class::Usul::File->new( builder => $_[ 0 ] ) };
 
-has 'ipc'             => is => 'lazy', isa => IPCType,
+has 'ipc'             => is => 'lazy', isa => ProcCommer,
    builder            => sub { Class::Usul::IPC->new( builder => $_[ 0 ] ) },
    handles            => [ 'run_cmd' ];
 
@@ -115,7 +115,7 @@ my $_man_page_from = sub {
    my $cmd      = $conf->man_page_cmd || [];
    my $tempfile = $self->file->tempfile;
 
-   $parser->parse_from_file( NUL.$src->pathname, $tempfile->pathname );
+   $parser->parse_from_file( $src->pathname.NUL, $tempfile->pathname );
    emit $self->run_cmd( [ @{ $cmd }, $tempfile->pathname ] )->out;
    return OK;
 };
@@ -149,7 +149,7 @@ my $_output_usage = sub {
 
    ensure_class_loaded 'Pod::Usage'; $verbose > 0 and Pod::Usage::pod2usage
       ( { -exitval => OK,
-          -input   => NUL.$self->config->pathname,
+          -input   => $self->config->pathname.NUL,
           -message => SPC,
           -verbose => $verbose } ); # Never returns
 
@@ -170,20 +170,20 @@ before 'BUILD' => sub {
 
 # Public methods
 sub app_version {
-   my $self = shift; my $conf = $self->config;
+   my $self = shift; my $class = $self->config->appclass;
 
-   try { ensure_class_loaded $conf->appclass } catch {}; no strict 'refs';
+   my $ver  = try { ensure_class_loaded $class; $class->VERSION } catch { '?' };
 
-   return ${ $conf->appclass.'::VERSION' } // '?';
+   return $ver;
 }
 
 sub can_call {
-   my ($self, $method) = @_; $method or return FALSE;
+   my ($self, $wanted) = @_; $wanted or return FALSE;
 
-   exists $_can_call_cache->{ $method } or $_can_call_cache->{ $method }
-      = (is_member $method, $_list_methods_of->( $self )) ? TRUE : FALSE;
+   exists $_can_call_cache->{ $wanted } or $_can_call_cache->{ $wanted }
+      = (is_member $wanted, $_list_methods_of->( $self )) ? TRUE : FALSE;
 
-   return $_can_call_cache->{ $method };
+   return $_can_call_cache->{ $wanted };
 }
 
 sub dump_config_attr : method {

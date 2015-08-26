@@ -9,9 +9,9 @@ use Encode                 qw( find_encoding );
 use Scalar::Util           qw( blessed tainted );
 use Try::Tiny;
 use Type::Library             -base, -declare =>
-                           qw( BaseType ConfigType DateTimeType EncodingType
-                               FileType IPCType L10NType LockType
-                               LogType NullLoadingClass RequestType );
+                           qw( ConfigProvider DataEncoding DataLumper
+                               DateTimeRef Localiser Locker Logger
+                               NullLoadingClass Plinth ProcCommer );
 use Type::Utils            qw( as class_type coerce extends
                                from message subtype via where );
 use Unexpected::Functions  qw( inflate_message is_class_loaded );
@@ -25,16 +25,9 @@ my $_exception_message_for_object_reference = sub {
    return inflate_message 'String [_1] is not an object reference', $_[ 0 ];
 };
 
-my $_exception_message_for_basetype = sub {
+my $_exception_message_for_configprovider = sub {
    $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
-      'Object [_1] is missing some builder attributes', blessed $_[ 0 ];
-
-   return $_exception_message_for_object_reference->( $_[ 0 ] );
-};
-
-my $_exception_message_for_configtype = sub {
-   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
-      'Object [_1] is missing some config attributes', blessed $_[ 0 ];
+      'Object [_1] is missing some configuration attributes', blessed $_[ 0 ];
 
    return $_exception_message_for_object_reference->( $_[ 0 ] );
 };
@@ -46,44 +39,44 @@ my $_exception_message_for_datetime = sub {
    return $_exception_message_for_object_reference->( $_[ 0 ] );
 };
 
-my $_exception_message_for_filetype = sub {
+my $_exception_message_for_datalumper = sub {
    $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
       'Object [_1] is missing the "data_load" method', blessed $_[ 0 ];
 
    return $_exception_message_for_object_reference->( $_[ 0 ] );
 };
 
-my $_exception_message_for_ipctype = sub {
-   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
-      'Object [_1] is missing the "run_cmd" method', blessed $_[ 0 ];
-
-   return $_exception_message_for_object_reference->( $_[ 0 ] );
-};
-
-my $_exception_message_for_l10ntype = sub {
+my $_exception_message_for_localiser = sub {
    $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
       'Object [_1] is missing the localize method', blessed $_[ 0 ];
 
    return $_exception_message_for_object_reference->( $_[ 0 ] );
 };
 
-my $_exception_message_for_locktype = sub {
+my $_exception_message_for_locker = sub {
    $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
       'Object [_1] is missing set / reset methods', blessed $_[ 0 ];
 
    return $_exception_message_for_object_reference->( $_[ 0 ] );
 };
 
-my $_exception_message_for_logtype = sub {
+my $_exception_message_for_logger = sub {
    $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
       'Object [_1] is missing a log level method', blessed $_[ 0 ];
 
    return $_exception_message_for_object_reference->( $_[ 0 ] );
 };
 
-my $_exception_message_for_requesttype = sub {
+my $_exception_message_for_plinth = sub {
    $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
-      'Object [_1] is missing a params method', blessed $_[ 0 ];
+      'Object [_1] is missing some builder attributes', blessed $_[ 0 ];
+
+   return $_exception_message_for_object_reference->( $_[ 0 ] );
+};
+
+my $_exception_message_for_proccommer = sub {
+   $_[ 0 ] and blessed $_[ 0 ] and return inflate_message
+      'Object [_1] is missing the "run_cmd" method', blessed $_[ 0 ];
 
    return $_exception_message_for_object_reference->( $_[ 0 ] );
 };
@@ -91,7 +84,7 @@ my $_exception_message_for_requesttype = sub {
 my $_has_builder_attributes = sub {
    my $obj = shift;
 
-   $obj->can( $_ ) or return FALSE for (qw( config debug log ));
+   $obj->can( $_ ) or return FALSE for (qw( config debug l10n lock log ));
 
    return TRUE;
 };
@@ -126,7 +119,7 @@ my $_load_if_exists = sub {
       eval { ensure_class_loaded( $class ) }; exception or return $class;
    }
 
-   ensure_class_loaded( 'Class::Null' ); return 'Class::Null';
+   ensure_class_loaded 'Class::Null'; return 'Class::Null';
 };
 
 my $_str2date_time = sub {
@@ -136,47 +129,39 @@ my $_str2date_time = sub {
 };
 
 # Type definitions
-subtype BaseType, as Object,
-   where   { $_has_builder_attributes->( $_ ) },
-   message { $_exception_message_for_basetype->( $_ ) };
-
-subtype ConfigType, as Object,
+subtype ConfigProvider, as Object,
    where   { $_has_min_config_attributes->( $_ ) },
-   message { $_exception_message_for_configtype->( $_ ) };
+   message { $_exception_message_for_configprovider->( $_ ) };
 
-subtype DateTimeType, as Object,
-   where   { blessed $_ && $_->isa( 'DateTime' ) },
-   message { $_exception_message_for_datetime->( $_ ) };
-
-coerce DateTimeType, from Str, via { $_str2date_time->( $_ ) };
-
-subtype EncodingType, as Str,
+subtype DataEncoding, as Str,
    where   { $_isa_untainted_encoding->( $_ ) },
    message { inflate_message 'String [_1] is not a valid encoding', $_ };
 
-coerce EncodingType,
+coerce DataEncoding,
    from Str,   via { untaint_cmdline $_ },
    from Undef, via { DEFAULT_ENCODING };
 
-subtype FileType, as Object,
-   where   { $_->can( 'data_load' ) },
-   message { $_exception_message_for_filetype->( $_ ) };
+subtype DataLumper, as Object,
+   where   { $_->can( 'data_load' ) and $_->can( 'data_dump' ) },
+   message { $_exception_message_for_datalumper->( $_ ) };
 
-subtype IPCType, as Object,
-   where   { $_->can( 'run_cmd' ) },
-   message { $_exception_message_for_ipctype->( $_ ) };
+subtype DateTimeRef, as Object,
+   where   { blessed $_ && $_->isa( 'DateTime' ) },
+   message { $_exception_message_for_datetime->( $_ ) };
 
-subtype L10NType, as Object,
+coerce DateTimeRef, from Str, via { $_str2date_time->( $_ ) };
+
+subtype Localiser, as Object,
    where   { $_->can( 'localize' ) },
-   message { $_exception_message_for_l10ntype->( $_ ) };
+   message { $_exception_message_for_localiser->( $_ ) };
 
-subtype LockType, as Object,
+subtype Locker, as Object,
    where   { $_->can( 'set' ) and $_->can( 'reset' ) },
-   message { $_exception_message_for_locktype->( $_ ) };
+   message { $_exception_message_for_locker->( $_ ) };
 
-subtype LogType, as Object,
+subtype Logger, as Object,
    where   { $_->isa( 'Class::Null' ) or $_has_log_level_methods->( $_ ) },
-   message { $_exception_message_for_logtype->( $_ ) };
+   message { $_exception_message_for_logger->( $_ ) };
 
 subtype NullLoadingClass, as ClassName,
    where   { is_class_loaded( $_ ) };
@@ -185,9 +170,13 @@ coerce NullLoadingClass,
    from Str,   via { $_load_if_exists->( $_  ) },
    from Undef, via { $_load_if_exists->( NUL ) };
 
-subtype RequestType, as Object,
-   where   { $_->can( 'params' ) },
-   message { $_exception_message_for_requesttype->( $_ ) };
+subtype Plinth, as Object,
+   where   { $_has_builder_attributes->( $_ ) },
+   message { $_exception_message_for_plinth->( $_ ) };
+
+subtype ProcCommer, as Object,
+   where   { $_->can( 'run_cmd' ) },
+   message { $_exception_message_for_proccommer->( $_ ) };
 
 1;
 
@@ -209,43 +198,34 @@ Class::Usul::Types - Defines type constraints
 
 Defines the following type constraints;
 
-
 =over 3
 
-=item C<BaseType>
-
-Duck type that can; C<config>, C<debug>, C<l10n>, C<lock>, and C<log>
-
-=item C<ConfigType>
+=item C<ConfigProvider>
 
 Subtype of I<Object> can be coerced from a hash reference
 
-=item C<DataTimeType>
-
-Coerces a L<DateTime> object from a string
-
-=item C<EncodingType>
+=item C<DataEncoding>
 
 Subtype of I<Str> which has to be one of the list of encodings in the
 L<ENCODINGS|Class::Usul::Constants/ENCODINGS> constant
 
-=item C<FileType>
+=item C<DataLumper>
 
-Duck type that can; C<data_load>
+Duck type that can; C<data_load> and C<data_dump>. Load and dump, lump
 
-=item C<IPCType>
+=item C<DateTimeRef>
 
-Duck type that can; C<run_cmd>
+Coerces a L<DateTime> object from a string
 
-=item C<L10NType>
+=item C<Localiser>
 
 Duck type that can; C<localize>
 
-=item C<LockType>
+=item C<Locker>
 
 Duck type that can; C<reset> and C<set>
 
-=item C<LogType>
+=item C<Logger>
 
 Subtype of I<Object> which has to implement all of the methods in the
 L<LOG_LEVELS|Class::Usul::Constants/LOG_LEVELS> constant
@@ -255,9 +235,13 @@ L<LOG_LEVELS|Class::Usul::Constants/LOG_LEVELS> constant
 Loads the given class if possible. If loading fails, load L<Class::Null>
 and return that instead
 
-=item C<RequestType>
+=item C<Plinth>
 
-Duck type that can; C<params>
+Duck type that can; C<config>, C<debug>, C<l10n>, C<lock>, and C<log>
+
+=item C<ProcCommer>
+
+Duck type that can; C<run_cmd>
 
 =back
 

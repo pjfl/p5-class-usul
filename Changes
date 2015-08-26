@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - Improved naming of type constraints
+
 0.64.1    2015-08-22 18:08:11
           - Added Functions::chain
           - Added log method to Log class for Web::ComposableRequest

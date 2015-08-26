@@ -10,7 +10,7 @@ use Class::Usul::Functions    qw( arg_list emit_to io is_arrayref
                                   merge_attributes nonblocking_write_pipe_pair
                                   strip_leader throw );
 use Class::Usul::Time         qw( nap );
-use Class::Usul::Types        qw( ArrayRef Bool LoadableClass LogType
+use Class::Usul::Types        qw( ArrayRef Bool LoadableClass Logger
                                   NonEmptySimpleStr Num Object PositiveInt
                                   SimpleStr Str Undef );
 use English                   qw( -no_match_vars );
@@ -53,7 +53,7 @@ has 'in'               => is => 'ro',   isa => Path | SimpleStr, coerce => sub {
    (is_arrayref $_[ 0 ]) ? join $RS, @{ $_[ 0 ] } : $_[ 0 ] },
    default             => NUL;
 
-has 'log'              => is => 'lazy', isa => LogType,
+has 'log'              => is => 'lazy', isa => Logger,
    builder             => sub { Class::Null->new };
 
 has 'keep_fhs'         => is => 'lazy', isa => ArrayRef,

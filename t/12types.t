@@ -10,10 +10,10 @@ use Unexpected::Functions qw( catch_class );
    use Moo;
    use Class::Usul::Types qw( NullLoadingClass );
 
-   has 'test1' => is => 'ro', isa => NullLoadingClass, default => 'Class::Usul',
-      coerce   => NullLoadingClass->coercion;
-   has 'test2' => is => 'ro', isa => NullLoadingClass, default => 'FooX::BarT',
-      coerce   => NullLoadingClass->coercion;
+   has 'test1' => is => 'ro', isa => NullLoadingClass, coerce => 1,
+      default  => 'Class::Usul';
+   has 'test2' => is => 'ro', isa => NullLoadingClass, coerce => 1,
+      default  => 'FooX::BarT';
 
    $INC{ 'MyNLC.pm' } = __FILE__;
 }
@@ -26,30 +26,30 @@ is $obj->test2, 'Class::Null', 'NullLoadingClass - loads Class::Null if not';
 {  package MyDT;
 
    use Moo;
-   use Class::Usul::Types qw( DateTimeType );
+   use Class::Usul::Types qw( DateTimeRef );
 
-   has 'dt1' => is => 'ro',   isa => DateTimeType,
-      default => '11/9/2001 12:00 UTC', coerce => DateTimeType->coercion;
-   has 'dt2' => is => 'lazy', isa => DateTimeType,
-      default => 'today at noon', coerce => DateTimeType->coercion;
+   has 'dt1'  => is => 'ro',   isa => DateTimeRef, coerce => 1,
+      default => '11/9/2001 12:00 UTC';
+   has 'dt2'  => is => 'lazy', isa => DateTimeRef, coerce => 1,
+      default => 'today at noon';
 
    $INC{ 'MyDT.pm' } = __FILE__;
 }
 
 $obj = MyDT->new;
 
-is $obj->dt1, '2001-09-11T12:00:00', 'DateTimeType - coerces from string';
+is $obj->dt1, '2001-09-11T12:00:00', 'DateTimeRef - coerces from string';
 
 eval { $obj->dt2 }; my $e = $EVAL_ERROR;
 
-is $e->class, 'DateTimeCoercion', 'DateTimeType - throw expected class';
+is $e->class, 'DateTimeCoercion', 'DateTimeRef - throw expected class';
 
 my $ret = '';
 
 try         { $obj->dt2 }
 catch_class [ 'DateTimeCoercion' => sub { $ret = 'handled' } ];
 
-is $ret, 'handled', 'DateTimeType - can catch_class';
+is $ret, 'handled', 'DateTimeRef - can catch_class';
 
 done_testing;
 

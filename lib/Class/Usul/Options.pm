@@ -48,17 +48,20 @@ my $validate_and_filter_options = sub {
    return %cmdline_options;
 };
 
-# Public methods
+# Public functions
+sub default_options_config () {
+   return getopt_conf        => [],
+          prefer_commandline => TRUE,
+          protect_argv       => TRUE,
+          show_defaults      => FALSE,
+          skip_options       => [],
+          usage_conf         => {};
+}
+
 sub import {
    my ($class, @args) = @_; my $target = caller;
 
-   my $options_config = { getopt_conf        => [],
-                          prefer_commandline => TRUE,
-                          protect_argv       => TRUE,
-                          show_defaults      => FALSE,
-                          skip_options       => [],
-                          usage_conf         => {},
-                          @args, };
+   my $options_config = { default_options_config, @args };
 
    for my $want (grep { not $target->can( $_ ) } qw( around has with )) {
       throw 'Method [_1] not found in class [_2]', [ $want, $target ];
@@ -242,7 +245,12 @@ Defines no attributes
 
 =head1 Subroutines/Methods
 
-=head2 import
+=head2 C<default_options_config>
+
+Returns a list of keys and values. These are the defaults for the configuration
+options listed in L</import>
+
+=head2 C<import>
 
 Injects the C<option> function into the caller
 

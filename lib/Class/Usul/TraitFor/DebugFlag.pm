@@ -14,7 +14,7 @@ requires qw( config is_interactive yorn );
 my $_build_debug = sub {
    my $self = shift; my $k = (env_prefix $self->config->appclass).'_DEBUG';
 
-   return !!$ENV{ $k } ? TRUE : FALSE;
+   return !$ENV{ $k } ? FALSE : TRUE;
 };
 
 # Public attributes

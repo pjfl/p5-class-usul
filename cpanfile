@@ -34,6 +34,10 @@ recommends "IPC::Run" => "0.89";
 recommends "Proc::ProcessTable" => "0.42";
 
 on 'build' => sub {
+  requires "Module::Build" => "0.4004";
+};
+
+on 'test' => sub {
   requires "Capture::Tiny" => "0.22";
   requires "Hash::MoreUtils" => "0.05";
   requires "Module::Build" => "0.4004";

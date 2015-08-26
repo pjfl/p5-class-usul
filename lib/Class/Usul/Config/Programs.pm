@@ -122,7 +122,7 @@ String. The basename of the C<pathname> attribute
 
 =item C<umask>
 
-Integer defaults to the constant C<UMASK>. The default file creation mask
+Octal number defaults to the constant C<UMASK>. The default file creation mask
 
 =back
 

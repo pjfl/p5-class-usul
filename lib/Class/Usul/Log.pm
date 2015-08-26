@@ -6,8 +6,8 @@ use Class::Null;
 use Class::Usul::Constants qw( FALSE LOG_LEVELS NUL SPC TRUE );
 use Class::Usul::Functions qw( is_hashref is_member merge_attributes
                                untaint_identifier );
-use Class::Usul::Types     qw( Bool EncodingType HashRef
-                               LoadableClass LogType Undef );
+use Class::Usul::Types     qw( Bool DataEncoding HashRef
+                               LoadableClass Logger Undef );
 use Encode                 qw( encode );
 use File::Basename         qw( dirname );
 use File::DataClass::Types qw( Path );
@@ -26,10 +26,10 @@ my $_build_log = sub {
 has '_debug_flag'     => is => 'ro',   isa => Bool, default => FALSE,
    init_arg           => 'debug';
 
-has '_encoding'       => is => 'ro',   isa => EncodingType | Undef,
+has '_encoding'       => is => 'ro',   isa => DataEncoding | Undef,
    init_arg           => 'encoding';
 
-has '_log'            => is => 'lazy', isa => LogType, builder => $_build_log,
+has '_log'            => is => 'lazy', isa => Logger, builder => $_build_log,
    init_arg           => 'log';
 
 has '_log_attributes' => is => 'ro',   isa => HashRef, default => sub { {} },

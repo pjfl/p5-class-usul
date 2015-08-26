@@ -6,8 +6,7 @@ use Class::Null;
 use Class::Usul::Constants   qw( FALSE LANG NUL SEP TRUE );
 use Class::Usul::Functions   qw( assert is_arrayref
                                  is_hashref merge_attributes );
-use Class::Usul::Types       qw( ArrayRef Bool ConfigType HashRef
-                                 LogType SimpleStr Str );
+use Class::Usul::Types       qw( ArrayRef Bool HashRef Logger SimpleStr Str );
 use File::DataClass::Types   qw( Directory Path );
 use File::Gettext;
 use File::Gettext::Constants qw( CONTEXT_SEP LOCALE_DIRS );
@@ -24,7 +23,7 @@ has 'locale'          => is => 'lazy', isa => SimpleStr, default => LANG;
 has 'localedir'       => is => 'lazy', isa => Path, coerce => TRUE,
    builder            => sub { LOCALE_DIRS->[ 0 ] };
 
-has 'log'             => is => 'ro',   isa => LogType,
+has 'log'             => is => 'ro',   isa => Logger,
    builder            => sub { Class::Null->new };
 
 has 'tempdir'         => is => 'lazy', isa => Directory, coerce => TRUE,
