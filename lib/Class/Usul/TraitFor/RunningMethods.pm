@@ -42,9 +42,9 @@ my $_output_stacktrace = sub {
    my ($e, $verbose) = @_; ($e and blessed $e) or return; $verbose //= 0;
 
    $verbose > 0 and $e->can( 'trace' )
-      and return emit_to \*STDERR, NUL.$e->trace;
+      and return emit_to \*STDERR, $e->trace.NUL;
 
-   $e->can( 'stacktrace' ) and emit_to \*STDERR, NUL.$e->stacktrace;
+   $e->can( 'stacktrace' ) and emit_to \*STDERR, $e->stacktrace.NUL;
    return;
 };
 

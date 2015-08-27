@@ -10,7 +10,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 # Version
 
-Describes Class::Usul version v0.64.$Rev: 2 $
+Describes Class::Usul version v0.65.$Rev: 1 $
 
 # Synopsis
 
