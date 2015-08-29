@@ -7,7 +7,8 @@ my $perl_ver = 5.010001;
 my $name     = 'Class-Usul'; $name =~ s{ - }{::}gmx;
 my $prereqs  = {
   'build_requires' => {
-    'Module::Build' => '0.4004'
+    'Module::Build' => '0.4004',
+    'version' => '0.88'
   },
   'configure_requires' => {
     'Module::Build' => '0.4004',
@@ -53,8 +54,11 @@ my $prereqs  = {
   },
   'test_requires' => {
     'Capture::Tiny' => '0.22',
+    'File::Spec' => '0',
     'Hash::MoreUtils' => '0.05',
     'Module::Build' => '0.4004',
+    'Module::Metadata' => '0',
+    'Sys::Hostname' => '0',
     'Test::Deep' => '0.108',
     'Test::Requires' => '0.06',
     'version' => '0.88'

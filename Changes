@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Use BuildRequires not TestRequires for Kwalitee
           - Using Test::ReportMetadata
 
 0.65.1    2015-08-27 13:51:59
