@@ -3,9 +3,9 @@ package Class::Usul::TraitFor::RunningMethods;
 use namespace::autoclean;
 
 use Class::Usul::Constants qw( FAILED NUL OK TRUE UNDEFINED_RV );
-use Class::Usul::Functions qw( dash2under elapsed emit_to exception
+use Class::Usul::Functions qw( dash2under elapsed emit_to exception is_hashref
                                is_member logname throw untaint_identifier );
-use Class::Usul::Types     qw( HashRef Int SimpleStr );
+use Class::Usul::Types     qw( ArrayRef HashRef Int SimpleStr );
 use English                qw( -no_match_vars );
 use File::DataClass::Types qw( OctalNum );
 use Scalar::Util           qw( blessed );
@@ -35,7 +35,8 @@ option 'verbose' => is => 'ro',   isa => Int,
    documentation => 'Increase the verbosity of the output',
    default       => 0, repeatable => TRUE, short => 'v';
 
-has 'params'     => is => 'ro',   isa => HashRef, default => sub { {} };
+has 'params'     => is => 'lazy', isa => HashRef[ArrayRef],
+   builder       => sub { {} };
 
 # Private functions
 my $_output_stacktrace = sub {
@@ -52,7 +53,11 @@ my $_output_stacktrace = sub {
 my $handle_result = sub {
    my ($self, $method, $rv) = @_;
 
-   if (defined $rv and $rv == OK) {
+   my $params      = $self->params->{ $method };
+   my $args        = (defined $params ) ? $params->[ 0 ] : undef;
+   my $expected_rv = (is_hashref $args) ? $args->{expected_rv} // OK : OK;
+
+   if (defined $rv and $rv <= $expected_rv) {
       $self->quiet or $self->output
          ( 'Finished in [_1] seconds', { args => [ elapsed ] } );
    }
@@ -60,13 +65,21 @@ my $handle_result = sub {
       $self->error( 'Terminated code [_1]', { args => [ $rv ] } );
    }
    else {
-      not defined $rv and $rv = UNDEFINED_RV
-         and $self->error( 'Method [_1] error uncaught or rv undefined',
-                           { args => [ $method ] } );
-      $self->error( 'Terminated with undefined rv' );
+      if ($rv == UNDEFINED_RV) { $self->error( 'Terminated with undefined rv' )}
+      else {
+         if (defined $rv) {
+            $self->error
+               ( 'Method [_1] unknown rv [_2]', { args => [ $method, $rv ] } );
+         }
+         else {
+            $self->error( 'Method [_1] error uncaught or rv undefined',
+                          { args => [ $method ] } );
+            $rv = UNDEFINED_RV;
+         }
+      }
    }
 
-   return;
+   return $rv;
 };
 
 my $_handle_run_exception = sub {
@@ -112,7 +125,7 @@ sub run {
       $rv = UNDEFINED_RV;
    }
 
-   $self->$handle_result( $method, $rv );
+   $rv = $self->$handle_result( $method, $rv );
    $self->file->delete_tmp_files;
    return $rv;
 }

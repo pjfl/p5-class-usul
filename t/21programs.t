@@ -10,11 +10,6 @@ use Class::Usul::Functions qw( find_source );
 use File::Spec::Functions qw( catfile );
 use Sys::Hostname;
 
-BEGIN {
-   lc hostname eq 'nwyf.bingosnet.co.uk'
-      and plan skip_all => 'Broken smoker 48aff258-06c0-11e5-a85a-e28fcaadd3a7';
-}
-
 use_ok 'Class::Usul::Programs';
 
 my $name    = basename( $0, qw( .t ) );
@@ -49,7 +44,7 @@ unlink $logfile;
 is   $prog->debug, 0, 'Debug false';
 is   $prog->debug_flag, '-n', 'Debug flag - false';
 
-my ($out, $err) = capture { $prog->run };
+my ($out, $err, $exit) = capture { $prog->run };
 
 like $err, qr{ Class::Usul::Programs }mx, 'Runs dump self';
 like $prog->options_usage, qr{ Did \s we \s forget }mx, 'Default options usage';
@@ -81,6 +76,40 @@ $prog = Class::Usul::Programs->new
       quiet    => 1, );
 
 is $prog->debug, 1, 'Debug true - from env';
+
+{  package TestProg;
+
+   use Moo;
+
+   extends 'Class::Usul::Programs';
+
+   sub test : method { 2 }
+}
+
+$prog = TestProg->new
+   (  appclass => 'Class::Usul',
+      config   => { logsdir => 't', tempdir => 't', },
+      method   => 'test',
+      noask    => 1,
+      quiet    => 1, );
+
+($out, $err, $exit) = capture { $prog->run };
+
+is $exit, 2, 'Expected failure code';
+like $err, qr{ Terminated }mx, 'Expected error message';
+
+$prog = TestProg->new
+   (  appclass => 'Class::Usul',
+      config   => { logsdir => 't', tempdir => 't', },
+      method   => 'test',
+      noask    => 1,
+      params   => { test => [ { expected_rv => 2 } ] },
+      quiet    => 1, );
+
+($out, $err, $exit) = capture { $prog->run };
+
+is $exit, 2, 'Expected return code';
+like $err, qr{ \A \z }mx, 'Suppressed error message';
 
 unlink $logfile;
 
