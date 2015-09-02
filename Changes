@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Toolchain and prereq updates
           - Added expected_rv to Programs params
           - Use BuildRequires not TestRequires for Kwalitee
           - Using Test::ReportMetadata
