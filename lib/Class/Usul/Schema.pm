@@ -208,32 +208,6 @@ my $_create_ddl = sub {
    return;
 };
 
-my $_deploy_file = sub {
-   my ($self, $schema, $split, $class, $path) = @_; my $res;
-
-   if ($class) { $self->output( "Populating ${class}" ) }
-   else        { $self->fatal ( 'No class in [_1]', $path->filename ) }
-
-   my $data = $self->file->dataclass_schema->load( $path );
-   my $flds = [ split SPC, $data->{fields} ];
-   my @rows = map { [ map { $_unquote->( trim $_ ) } $split->records( $_ ) ] }
-                 @{ $data->{rows} };
-
-   try {
-      if ($self->dry_run) { $self->dumper( $flds, \@rows ) }
-      else { $res = $schema->populate( $class, [ $flds, @rows ] ) }
-   }
-   catch {
-      if ($_->can( 'class' ) and $_->class eq 'ValidationErrors') {
-         $self->warning( "${_}" ) for (@{ $_->args });
-      }
-
-      throw $_;
-   };
-
-   return $res;
-};
-
 my $_deploy_and_populate = sub {
    my ($self, $schema_class, $dir) = @_; my $res; my $schema;
 
@@ -259,7 +233,7 @@ my $_deploy_and_populate = sub {
    for my $path ($io->all_files) {
       my ($class) = $path->filename =~ $re;
 
-      $res->{ $class } = $self->$_deploy_file( $schema, $split, $class, $path );
+      $res->{ $class } = $self->deploy_file( $schema, $split, $class, $path );
    }
 
    return $res;
@@ -344,6 +318,32 @@ sub deploy_and_populate : method {
 
    return OK;
 }
+
+sub deploy_file {
+   my ($self, $schema, $split, $class, $path) = @_; my $res;
+
+   if ($class) { $self->output( "Populating ${class}" ) }
+   else        { $self->fatal ( 'No class in [_1]', $path->filename ) }
+
+   my $data = $self->file->dataclass_schema->load( $path );
+   my $flds = [ split SPC, $data->{fields} ];
+   my @rows = map { [ map { $_unquote->( trim $_ ) } $split->records( $_ ) ] }
+                 @{ $data->{rows} };
+
+   try {
+      if ($self->dry_run) { $self->dumper( $flds, \@rows ) }
+      else { $res = $schema->populate( $class, [ $flds, @rows ] ) }
+   }
+   catch {
+      if ($_->can( 'class' ) and $_->class eq 'ValidationErrors') {
+         $self->warning( "${_}" ) for (@{ $_->args });
+      }
+
+      throw $_;
+   };
+
+   return $res;
+};
 
 sub drop_database : method {
    my $self     = shift;
@@ -528,6 +528,12 @@ Calls L<create_database> followed by L<deploy_and_populate>
    $self->deploy_and_populate;
 
 Called as part of the application install
+
+=head2 deploy_file
+
+   $result = $self->deploy_file( $schema, $split, $class, $path );
+
+Populates one table from a single file
 
 =head2 driver
 
