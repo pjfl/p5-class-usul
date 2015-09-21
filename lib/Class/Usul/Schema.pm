@@ -279,11 +279,12 @@ sub create_database : method {
 }
 
 sub create_ddl : method {
-   my $self = shift; $self->output( 'Creating DDL for '.$self->dsn );
+   my $self = shift; $self->info( 'Creating DDL for '.$self->dsn );
 
    for my $schema_class (values %{ $self->schema_classes }) {
       ensure_class_loaded  $schema_class;
-      $self->dry_run and $self->output( "Would load ${schema_class}" ) and next;
+      $self->dry_run and $self->output( "Would create ${schema_class}" )
+                     and next;
       $self->$_create_ddl( $schema_class, $self->config->sharedir );
    }
 
@@ -309,7 +310,7 @@ sub create_schema : method { # Create databases and edit credentials
 }
 
 sub deploy_and_populate : method {
-   my $self = shift; $self->output( 'Deploy and populate for '.$self->dsn );
+   my $self = shift; $self->info( 'Deploy and populate for '.$self->dsn );
 
    for my $schema_class (values %{ $self->schema_classes }) {
       ensure_class_loaded $schema_class;

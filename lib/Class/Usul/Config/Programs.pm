@@ -19,7 +19,7 @@ my $_build_os = sub {
    my $self = shift;
    my $file = 'os_'.$Config{osname}.$self->extension;
    my $path = $self->ctrldir->catfile( $file ); $path->exists or return {};
-   my $conf = Class::Usul::File->data_load( paths => [ $path ] ) || {};
+   my $conf = Class::Usul::File->data_load( paths => [ $path ] );
 
    return $conf->{os} // {};
 };

@@ -37,7 +37,7 @@ is $cuf->tempdir, 't', 'Temporary directory is t';
 my $tf   = [ qw( t test.json ) ];
 my $fdcs = $cuf->dataclass_schema->load( $tf );
 
-is $fdcs->{credentials}->{test}->{driver}, 'mysql',
+is $fdcs->{credentials}->{test}->{driver}, 'sqlite',
    'File::Dataclass::Schema can load';
 
 unlink catfile( qw( t ipc_srlock.lck ) );

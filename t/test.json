@@ -1,7 +1,7 @@
 {
    "credentials" : {
       "test" : {
-         "driver" : "mysql",
+         "driver" : "sqlite",
          "host" : "localhost",
          "password" : "test",
          "port" : "3306",

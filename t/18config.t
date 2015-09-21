@@ -3,20 +3,21 @@ use t::boilerplate;
 use Test::More;
 use Scalar::Util qw( blessed );
 
-use_ok 'Class::Usul::Config';
+use_ok 'Class::Usul::Config::Programs';
 
 my $osname = lc $^O;
-my $conf   = Class::Usul::Config->new
-   (  appclass => 'Class::Usul', tempdir  => 't', );
+my $conf   = Class::Usul::Config::Programs->new
+   (  appclass => 'Class::Usul', tempdir => 't', );
 
 $conf->cfgfiles;
 $conf->binsdir;
 $conf->logsdir;
-$conf->phase;
-$conf->root;
-$conf->rundir;
-$conf->sessdir;
-$conf->sharedir;
+is $conf->phase, 2, 'Config phase';
+is $conf->root, 't', 'Config root';
+is $conf->rundir, 't', 'Config rundir';
+is $conf->sessdir, 't', 'Config sessdir';
+is $conf->sharedir, 't', 'Config sharedir';
+is $conf->owner, 'usul', 'Config owner';
 
 $osname ne 'mswin32' and $osname ne 'cygwin'
    and is blessed $conf->shell, 'File::DataClass::IO', 'Shell is io object';

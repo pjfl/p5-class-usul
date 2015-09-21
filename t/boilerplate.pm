@@ -19,9 +19,9 @@ BEGIN {
    $notes    = $builder ? $builder->notes : {};
    $perl_ver = $notes->{min_perl_version} || 5.008;
 
+   $Bin =~ m{ : .+ : }mx and plan skip_all => 'Two colons in $Bin path';
+
    if ($notes->{testing}) {
-      $Bin  =~ m{ : .+ : }mx and plan
-         skip_all => 'Two colons in $Bin path';
       $host eq 'nwyf.bingosnet.co.uk' and plan
          skip_all => 'Broken smoker 48aff258-06c0-11e5-a85a-e28fcaadd3a7';
       $host =~ m{ \A davids-macbook }mx and plan
