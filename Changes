@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - Avoid STDIN reopen warning in Prompt tests
+          - Added str2time_piece to ::Time
           - Switched Travis to a containerised build
           - Made Schema deploy_file public
           - Toolchain and prereq updates

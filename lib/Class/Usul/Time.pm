@@ -3,7 +3,7 @@ package Class::Usul::Time;
 use strict;
 use warnings;
 
-use Class::Usul::Constants qw( EXCEPTION_CLASS );
+use Class::Usul::Constants qw( EXCEPTION_CLASS FALSE TRUE );
 use Class::Usul::Functions qw( ensure_class_loaded throw );
 use Date::Format             ( );
 use Exporter 5.57          qw( import );
@@ -13,8 +13,13 @@ use Time::Zone;
 use Unexpected::Functions  qw( DateTimeCoercion );
 
 our @EXPORT    = qw( str2time time2str );
-our @EXPORT_OK = qw( nap str2date_time str2time time2str );
+our @EXPORT_OK = qw( nap str2date_time str2time str2time_piece time2str );
 
+# Private package variables
+my $_datetime_loaded   = FALSE;
+my $_time_piece_loaded = FALSE;
+
+# Public functions
 sub nap ($) {
    my $period = shift;
 
@@ -25,19 +30,21 @@ sub nap ($) {
 }
 
 sub str2date_time ($;$) {
-   my ($dstr, $zone) = @_; ensure_class_loaded 'DateTime::Format::Epoch';
+   my ($dstr, $zone) = @_; my $time = str2time( $dstr, $zone );
+
+   defined $time or throw DateTimeCoercion, args => [ $dstr ];
+
+   $_datetime_loaded or (ensure_class_loaded 'DateTime::Format::Epoch'
+                         and $_datetime_loaded = TRUE);
 
    my $dt        = DateTime->new( year => 1970, month => 1, day => 1, );
    my $formatter = DateTime::Format::Epoch->new
       ( epoch             => $dt,
         unit              => 'seconds',
         type              => 'int',
-        skip_leap_seconds => 1,
+        skip_leap_seconds => TRUE,
         start_at          => 0,
         local_epoch       => undef, );
-   my $time      = str2time( $dstr, $zone );
-
-   defined $time or throw DateTimeCoercion, args => [ $dstr ];
 
    return $formatter->parse_datetime( $time );
 }
@@ -240,6 +247,17 @@ sub str2time ($;$) {
    return $result + $frac;
 }
 
+sub str2time_piece ($;$) {
+   my ($dstr, $zone) = @_; my $time = str2time( $dstr, $zone );
+
+   defined $time or throw DateTimeCoercion, args => [ $dstr ];
+
+   $_time_piece_loaded
+      or (ensure_class_loaded 'Time::Piece' and $_time_piece_loaded = TRUE);
+
+   return Time::Piece->new( $time );
+}
+
 sub time2str (;$$$) {
    my ($format, $time, $zone) = @_;
 
@@ -254,17 +272,19 @@ __END__
 
 =pod
 
+=encoding utf-8
+
 =head1 Name
 
-Class::Usul::Time - Class methods for date and time manipulation
+Class::Usul::Time - Functions for date and time manipulation
 
 =head1 Synopsis
 
-   use Class::Usul::Time qw(time2str);
+   use Class::Usul::Time qw( time2str );
 
 =head1 Description
 
-This module implements a few simple time related subroutines
+This module implements a few simple time related functions
 
 =head1 Subroutines/Methods
 
@@ -279,7 +299,8 @@ of a second
 
    $date_time = str2date_time( $dstr, [$zone] );
 
-Parse a date time string and return a DateTime object. Timezone optional
+Parse a date time string and return a L<DateTime> object. The time zone is
+optional
 
 =head2 str2time
 
@@ -288,7 +309,14 @@ Parse a date time string and return a DateTime object. Timezone optional
 Parse a date time string and return the number of seconds elapsed
 since the epoch. This subroutine is copyright (c) 1995 Graham
 Barr. All rights reserved. It has been modified to treat 9/11 as the
-ninth day in November. Timezone optional
+ninth day in November. The time zone is optional
+
+=head2 str2time_piece
+
+   $time_piece = str2time_piece( $dstr, [$zone] );
+
+Parse a date time string and return a L<Time::Piece> object. The time
+zone is optional
 
 =head2 time2str
 

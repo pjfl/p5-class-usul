@@ -1,6 +1,7 @@
 use t::boilerplate;
 
 use Test::More;
+use File::Spec::Functions qw( devnull );
 
 use_ok 'Class::Usul::Programs';
 
@@ -10,7 +11,10 @@ my $prog    = Class::Usul::Programs->new( appclass => 'Class::Usul',
                                           noask    => 1,
                                           quiet    => 1, );
 
-$ENV{PERL_MM_USE_DEFAULT} = 1; close \*STDIN;
+$ENV{PERL_MM_USE_DEFAULT} = 1;
+
+# To avoid open for writing error from logger
+open STDIN, '<', devnull() or die 'Cannot open devnull';
 
 ok !$prog->is_interactive, 'Is not interactive';
 is $prog->anykey, 1, 'Any key';
