@@ -27,7 +27,7 @@ is str2time( '2007.07.30', 'BST' ), '1185750000', 'str2time/4';
 
 is str2time( '1970/01/01', 'GMT' ), '0', 'str2time/epoch';
 
-my $tp = str2time_piece( '2007-07-30 01:05:32', 'BST' );
+my $tp = str2time_piece( '2007-07-30 01:05:32', 'GMT' );
 
 isa_ok $tp, 'Time::Piece';
 

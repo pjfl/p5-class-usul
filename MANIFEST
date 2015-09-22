@@ -50,12 +50,9 @@ t/18config.t
 t/19file.t
 t/20options.t
 t/21programs.t
-t/22prompt.log
 t/22prompt.t
-t/23lock.log
 t/23lock.t
 t/27ipc.t
-t/30schema.log
 t/30schema.t
 t/META.json
 t/boilerplate.pm

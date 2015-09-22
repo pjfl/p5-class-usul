@@ -255,7 +255,7 @@ sub str2time_piece ($;$) {
    $_time_piece_loaded
       or (ensure_class_loaded 'Time::Piece' and $_time_piece_loaded = TRUE);
 
-   return Time::Piece->new( $time );
+   return $zone ? Time::Piece->gmtime( $time ) : Time::Piece->localtime( $time);
 }
 
 sub time2str (;$$$) {

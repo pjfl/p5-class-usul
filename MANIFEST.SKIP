@@ -42,6 +42,7 @@
 
 # Avoid temp and backup files.
 ~$
+\.log$
 \.tmp$
 \.old$
 \.bak$

@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Fixing Time::Piece test
           - Avoid STDIN reopen warning in Prompt tests
           - Added str2time_piece to ::Time
           - Switched Travis to a containerised build
