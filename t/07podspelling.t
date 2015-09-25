@@ -59,6 +59,7 @@ classfile
 classname
 cli
 coderef
+combinator
 config
 cpan
 daemonised

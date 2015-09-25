@@ -39,16 +39,18 @@ our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert assert_directory
                        class2appdir classdir classfile create_token curry cwdp
                        dash2under data_dumper digest distname elapsed emit
                        emit_err emit_to ensure_class_loaded env_prefix
-                       escape_TT exception find_apphome find_source first_char
-                       fold fqdn fullname get_cfgfiles get_user hex2str
-                       home2appldir io is_arrayref is_coderef is_hashref
-                       is_member is_win32 list_attr_of loginid logname
-                       merge_attributes my_prefix nonblocking_write_pipe_pair
-                       pad prefix2class product socket_pair split_on__
-                       split_on_dash squeeze strip_leader sub_name sum symlink
-                       thread_id throw throw_on_error trim unescape_TT
-                       untaint_cmdline untaint_identifier untaint_path
-                       untaint_string urandom uuid whiten zip );
+                       escape_TT exception factorial fibonacci find_apphome
+                       find_source first_char fold fqdn fullname get_cfgfiles
+                       get_user hex2str home2appldir io is_arrayref is_coderef
+                       is_hashref is_member is_win32 list_attr_of loginid
+                       logname merge_attributes my_prefix
+                       nonblocking_write_pipe_pair pad prefix2class product
+                       socket_pair split_on__ split_on_dash squeeze
+                       strip_leader sub_name sum symlink thread_id throw
+                       throw_on_error trim unescape_TT untaint_cmdline
+                       untaint_identifier untaint_path untaint_string urandom
+                       uuid whiten Y zip );
+
 our %EXPORT_REFS =   ( assert => sub { ASSERT }, );
 our %EXPORT_TAGS =   ( all    => [ @EXPORT_OK ], );
 
@@ -330,10 +332,6 @@ sub bson64id_time ($) {
    return unpack 'N', substr base64_decode_ns( $_[ 0 ] ), 2, 4;
 }
 
-sub build (&;$) {
-   my $code = shift; my $f = shift // sub {}; return sub { $code->( $f->() ) };
-}
-
 sub canonicalise ($;$) {
    my ($base, $relpath) = @_;
 
@@ -346,10 +344,6 @@ sub canonicalise ($;$) {
    -d $path and return $path;
 
    return canonpath( untaint_path( catfile( $base, @relpath ) ) );
-}
-
-sub chain (;@) {
-   return (fold( sub { my ($x, $y) = @_; $x->$y })->( shift ))->( @_ );
 }
 
 sub class2appdir ($) {
@@ -366,10 +360,6 @@ sub classfile ($) {
 
 sub create_token (;$) {
    return digest( $_[ 0 ] // urandom() )->hexdigest;
-}
-
-sub curry (&$;@) {
-   my ($code, @args) = @_; return sub { $code->( @args, @_ ) };
 }
 
 sub cwdp () {
@@ -531,18 +521,6 @@ sub first_char ($) {
    return substr $_[ 0 ], 0, 1;
 }
 
-sub fold (&) {
-   my $f = shift;
-
-   return sub (;$) {
-      my $x = shift;
-
-      return sub (;@) {
-         my $y = $x; $y = $f->( $y, shift ) while (@_); return $y;
-      }
-   }
-}
-
 sub fqdn (;$) {
    my $x = shift // hostname; return (gethostbyname( $x ))[ 0 ];
 }
@@ -701,10 +679,6 @@ sub prefix2class (;$) {
    return join '::', map { ucfirst } split m{ - }mx, my_prefix( $_[ 0 ] );
 }
 
-sub product (;@) {
-   return ((fold { $_[ 0 ] * $_[ 1 ] })->( 1 ))->( @_ );
-}
-
 sub socket_pair () {
    my $rdr = gensym; my $wtr = gensym;
 
@@ -736,10 +710,6 @@ sub sub_name (;$) {
    my $frame = 1 + ($_[ 0 ] // 0);
 
    return (split m{ :: }mx, ((caller $frame)[ 3 ]) // 'main')[ -1 ];
-}
-
-sub sum (;@) {
-   return ((fold { $_[ 0 ] + $_[ 1 ] })->( 0 ))->( @_ );
 }
 
 sub symlink (;$$$) {
@@ -839,6 +809,69 @@ sub whiten ($) {
 
 sub zip (@) {
    my $p = @_ / 2; return @_[ map { $_, $_ + $p } 0 .. $p - 1 ];
+}
+
+# Function composition
+sub build (&;$) {
+   my $code = shift; my $f = shift // sub {}; return sub { $code->( $f->() ) };
+}
+
+sub chain (;@) {
+   return (fold( sub { my ($x, $y) = @_; $x->$y } )->( shift ))->( @_ );
+}
+
+# sub compose {
+#    my ($f, $g) = @_; return sub { $f->( $g->( @_ ) ) };
+# }
+
+sub curry (&$;@) {
+   my ($code, @args) = @_; return sub { $code->( @args, @_ ) };
+}
+
+sub fold (&) {
+   my $f = shift;
+
+   return sub (;$) {
+      my $x = shift;
+
+      return sub (;@) {
+         my $y = $x; $y = $f->( $y, shift ) while (@_); return $y;
+      }
+   }
+}
+
+sub Y (&) {
+   my $f = shift; return sub { $f->( Y( $f ) )->( @_ ) };
+}
+
+sub factorial ($) {
+   return Y( sub (&) {
+      my $fac  = shift;
+
+      return sub ($) {
+         my $n = shift;
+
+         return $n < 2 ? 1 : $n * $fac->( $n - 1 ) } } )->( @_ );
+}
+
+sub fibonacci ($) {
+   return Y( sub {
+      my $fib  = shift;
+
+      return sub {
+         my $n = shift;
+
+         return $n == 0 ? 0
+              : $n == 1 ? 1
+                        : $fib->( $n - 1 ) + $fib->( $n - 2 ) } } )->( @_ );
+}
+
+sub product (;@) {
+   return ((fold { $_[ 0 ] * $_[ 1 ] })->( 1 ))->( @_ );
+}
+
+sub sum (;@) {
+   return ((fold { $_[ 0 ] + $_[ 1 ] })->( 0 ))->( @_ );
 }
 
 1;
@@ -1090,6 +1123,18 @@ sequences too, so unescaping isn't absolutely necessary
 
 Expose the C<catch> method in the exception
 class L<Class::Usul::Exception>. Returns a new error object
+
+=head2 C<factorial>
+
+   $result = factorial $n;
+
+Calculates the factorial for the supplied integer
+
+=head2 C<fibonacci>
+
+   $result = fibonacci $n;
+
+Calculates the Fibonacci number for the supplied integer
 
 =head2 C<find_apphome>
 
@@ -1420,6 +1465,12 @@ Lifted from L<Acme::Bleach> this function encodes the passed scalar as spaces,
 tabs, and newlines. The L<encrypt> and L<decrypt> functions take a seed
 attribute in their options hash reference. A whitened line of Perl code
 would be a suitable value
+
+=head2 C<Y>
+
+   $code_ref = Y( $code_ref );
+
+The Y-combinator function
 
 =head2 C<zip>
 

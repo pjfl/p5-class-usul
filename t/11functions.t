@@ -41,13 +41,6 @@ $bool   = $before <= $id && $id <= $after ? 1 : 0;
 
 ok $bool, 'bson64id_time';
 
-sub build_test { my $v = shift; $v //= 0; return $v + 1 } my $f = sub { 1 };
-
-is build( \&build_test )->(), 1, 'build';
-is build( \&build_test, $f )->(), 2, 'build - non default function';
-
-is chain( sub { 1 }, sub { $_[ 0 ] + 1 }, sub { $_[ 0 ] + 2 } ), 4, 'chain';
-
 is class2appdir( 'Test::Application' ), 'test-application', 'class2appdir';
 
 is classdir( 'Test::Application' ), catdir( qw( Test Application ) ),
@@ -63,8 +56,6 @@ ok $token eq q(ee26b0dd4af7e749aa1a8ee3c10ae9923f618980772e473f8819a5d4940e0db27
       eq q(9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08)
    || $token eq q(a94a8fe5ccb19ba61c4c0873d391e987982fbbd3)
    || $token eq q(098f6bcd4621d373cade4e832627b4f6), 'create_token';
-
-is curry( sub { $_[ 0 ].$_[ 1 ] }, 'a' )->( 'b' ), 'ab', 'curry';
 
 is distname( 'Test::Application' ), 'Test-Application', 'distname';
 
@@ -142,8 +133,6 @@ is pad( 'x', 7, q( ), 'right' ), 'x      ', 'pad - right';
 
 is prefix2class( q(test-application) ), qw(Test::Application), 'prefix2class';
 
-is product( 1, 2, 3, 4 ), 24, 'product';
-
 my $pair = socket_pair;
 
 ok defined $pair->[ 0 ] && defined $pair->[ 1 ], 'socket_pair';
@@ -157,8 +146,6 @@ is squeeze( q(a  b  c) ), q(a b c), 'squeeze';
 is strip_leader( q(test: dummy) ), q(dummy), 'strip_leader';
 
 is sub_name(), q(main), 'sub_name';
-
-is sum( 1, 2, 3, 4 ), 10, 'sum';
 
 SKIP: {
    $Config{d_symlink} or skip 'No symlink support', 1;
@@ -222,6 +209,24 @@ my $enc    = encrypt { seed => $secret }, 'This is plain text';
 is decrypt( { seed => $secret }, $enc ),  'This is plain text', 'Whiten';
 
 is { zip( qw( a b c ), qw( 1 2 3 ) ) }->{b}, 2, 'zip';
+
+# Function compostion
+sub build_test { my $v = shift; $v //= 0; return $v + 1 } my $f = sub { 1 };
+
+is build( \&build_test )->(), 1, 'build';
+is build( \&build_test, $f )->(), 2, 'build - non default function';
+
+is chain( sub { 1 }, sub { $_[ 0 ] + 1 }, sub { $_[ 0 ] + 2 } ), 4, 'chain';
+
+is curry( sub { $_[ 0 ].$_[ 1 ] }, 'a' )->( 'b' ), 'ab', 'curry';
+
+is factorial( 5 ), 120, 'factorial';
+
+is fibonacci( 9 ), 34, 'fibonacci';
+
+is product( 1, 2, 3, 4 ), 24, 'product';
+
+is sum( 1, 2, 3, 4 ), 10, 'sum';
 
 done_testing;
 
