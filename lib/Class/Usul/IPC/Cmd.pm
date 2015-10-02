@@ -116,11 +116,11 @@ my $_close_child_io = sub { # In the parent, close the child end of the pipes
 };
 
 my $_drain = sub { # Suck up the output from the child process
-   my ($out_fh, $out_hand, $err_fh, $err_hand) = @_; my (%hands, @ready);
+   my (%hands, @ready); my $selector = IO::Select->new(); my $i = 0;
 
-   my $selector = IO::Select->new(); $selector->add( $err_fh, $out_fh );
-
-   $hands{ fileno $err_fh } = $err_hand; $hands{ fileno $out_fh } = $out_hand;
+   while (defined (my $fh = $_[ $i ])) {
+      $selector->add( $fh ); $hands{ fileno $fh } = $_[ $i + 1 ]; $i += 2;
+   }
 
    while (@ready = $selector->can_read) {
       for my $fh (@ready) {
