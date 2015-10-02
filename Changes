@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+0.67.1    2015-10-02 20:56:53
           - Fixed schema test on win32
           - Finer control of L10N constructor attributes
 
