@@ -211,12 +211,16 @@ is decrypt( { seed => $secret }, $enc ),  'This is plain text', 'Whiten';
 is { zip( qw( a b c ), qw( 1 2 3 ) ) }->{b}, 2, 'zip';
 
 # Function compostion
-sub build_test { my $v = shift; $v //= 0; return $v + 1 } my $f = sub { 1 };
-
-is build( \&build_test )->(), 1, 'build';
-is build( \&build_test, $f )->(), 2, 'build - non default function';
-
 is chain( sub { 1 }, sub { $_[ 0 ] + 1 }, sub { $_[ 0 ] + 2 } ), 4, 'chain';
+
+sub compose_test { my $v = shift; $v //= 0; return $v + 1 } my $f = sub { 1 };
+
+is compose( \&compose_test )->(), 1, 'compose';
+is compose( \&compose_test, $f )->(), 2, 'compose - non default function';
+
+$f = sub { 1 + $_[ 0 ] };
+
+is compose( \&compose_test, $f )->( 1 ), 3, 'compose - with args';
 
 is curry( sub { $_[ 0 ].$_[ 1 ] }, 'a' )->( 'b' ), 'ab', 'curry';
 

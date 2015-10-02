@@ -35,21 +35,20 @@ use User::pwent;
 
 our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert assert_directory
                        base64_decode_ns base64_encode_ns bsonid bsonid_time
-                       bson64id bson64id_time build canonicalise chain
-                       class2appdir classdir classfile create_token curry cwdp
-                       dash2under data_dumper digest distname elapsed emit
-                       emit_err emit_to ensure_class_loaded env_prefix
-                       escape_TT exception factorial fibonacci find_apphome
-                       find_source first_char fold fqdn fullname get_cfgfiles
-                       get_user hex2str home2appldir io is_arrayref is_coderef
-                       is_hashref is_member is_win32 list_attr_of loginid
-                       logname merge_attributes my_prefix
-                       nonblocking_write_pipe_pair pad prefix2class product
-                       socket_pair split_on__ split_on_dash squeeze
-                       strip_leader sub_name sum symlink thread_id throw
-                       throw_on_error trim unescape_TT untaint_cmdline
-                       untaint_identifier untaint_path untaint_string urandom
-                       uuid whiten Y zip );
+                       bson64id bson64id_time canonicalise class2appdir
+                       classdir classfile create_token cwdp dash2under
+                       data_dumper digest distname elapsed emit emit_err
+                       emit_to ensure_class_loaded env_prefix escape_TT
+                       exception find_apphome find_source first_char fqdn
+                       fullname get_cfgfiles get_user hex2str home2appldir io
+                       is_arrayref is_coderef is_hashref is_member is_win32
+                       list_attr_of loginid logname merge_attributes my_prefix
+                       nonblocking_write_pipe_pair pad prefix2class socket_pair
+                       split_on__ split_on_dash squeeze strip_leader sub_name
+                       symlink thread_id throw throw_on_error trim unescape_TT
+                       untaint_cmdline untaint_identifier untaint_path
+                       untaint_string urandom uuid whiten zip chain compose
+                       curry fold Y factorial fibonacci product sum );
 
 our %EXPORT_REFS =   ( assert => sub { ASSERT }, );
 our %EXPORT_TAGS =   ( all    => [ @EXPORT_OK ], );
@@ -59,6 +58,7 @@ my $bson_id_count : shared = 0;
 my $bson2_id_count  = 0;
 my $bson2_prev_time = 0;
 my $digest_cache;
+my $host_id = substr md5( hostname ), 0, 3;
 
 # Private functions
 my $_base64_char_set = sub {
@@ -157,10 +157,9 @@ my $_bsonid = sub {
    my $version = shift;
    my $now     = time;
    my $time    = $_bsonid_time->( $now, $version );
-   my $host    = substr md5( hostname ), 0, 3;
    my $pid     = pack 'n', $PID % 0xFFFF;
 
-   return $time.$host.$pid.$_bsonid_inc->( $now, $version );
+   return $time.$host_id.$pid.$_bsonid_inc->( $now, $version );
 };
 
 my $_find_cfg_in_inc = sub {
@@ -812,20 +811,16 @@ sub zip (@) {
 }
 
 # Function composition
-sub build (&;$) {
-   my $code = shift; my $f = shift // sub {}; return sub { $code->( $f->() ) };
-}
-
 sub chain (;@) {
    return (fold( sub { my ($x, $y) = @_; $x->$y } )->( shift ))->( @_ );
 }
 
-# sub compose {
-#    my ($f, $g) = @_; return sub { $f->( $g->( @_ ) ) };
-# }
+sub compose (&;$) { # Was called build
+   my ($f, $g) = @_; $g //= sub {}; return sub { $f->( $g->( @_ ) ) };
+}
 
 sub curry (&$;@) {
-   my ($code, @args) = @_; return sub { $code->( @args, @_ ) };
+   my ($f, @args) = @_; return sub { $f->( @args, @_ ) };
 }
 
 sub fold (&) {
@@ -974,14 +969,6 @@ Base64 encoding is used to reduce the id length
 
 Returns the time the C<BSON64> id was generated as Unix time
 
-=head2 C<build>
-
-   $code_ref = build { }, $code_ref;
-
-Returns a code ref which when called returns the result of calling the block
-passing in the result of calling the optional code ref. Delays the calling
-of the input code ref until the output code ref is called
-
 =head2 C<canonicalise>
 
    $untainted_canonpath = canonicalise $base, $relpath;
@@ -989,13 +976,6 @@ of the input code ref until the output code ref is called
 Appends C<$relpath> to C<$base> using L<File::Spec::Functions>. The C<$base>
 and C<$relpath> arguments can be an array reference or a scalar. The return
 path is untainted and canonicalised
-
-=head2 C<chain>
-
-   $result = chain $sub1, $sub2, $sub3
-
-Call each sub in turn passing the returned value as the first argument to
-the next function call
 
 =head2 C<class2appdir>
 
@@ -1026,16 +1006,6 @@ C<App/Munchies.pm>
 Create a random string token using L</digest>. If C<$seed> is defined then add
 that to the digest, otherwise add some random data provided by a call to
 L</urandom>. Returns a hexadecimal string
-
-=head2 C<curry>
-
-   $curried_code_ref = curry $code_ref, @args;
-   $result = $curried_code_ref->( @more_args );
-
-Returns a subroutine reference which when called, calls and returns the
-initial code reference passing in the original argument list and the
-arguments from the curried call. Must be called with a code reference and
-at least one argument
 
 =head2 C<cwdp>
 
@@ -1124,18 +1094,6 @@ sequences too, so unescaping isn't absolutely necessary
 Expose the C<catch> method in the exception
 class L<Class::Usul::Exception>. Returns a new error object
 
-=head2 C<factorial>
-
-   $result = factorial $n;
-
-Calculates the factorial for the supplied integer
-
-=head2 C<fibonacci>
-
-   $result = fibonacci $n;
-
-Calculates the Fibonacci number for the supplied integer
-
 =head2 C<find_apphome>
 
    $directory_path = find_apphome $appclass, $homedir, $extns
@@ -1165,12 +1123,6 @@ Find absolute path to the source code for the given module
    $single_char = first_char $some_string;
 
 Returns the first character of C<$string>
-
-=head2 C<fold>
-
-   *sum = fold { $a + $b } 0;
-
-Classic reduce function with optional base value
 
 =head2 C<fqdn>
 
@@ -1320,12 +1272,6 @@ and defaults to I<right>
 Calls L</my_prefix> with the supplied argument, splits the result on dash,
 C<ucfirst>s the list and then C<join>s that with I<::>
 
-=head2 C<product>
-
-   $product = product 1, 2, 3, 4;
-
-Returns the product of the list of numbers
-
 =head2 C<socket_pair>
 
    ($reader, $writer) = @{ socket_pair };
@@ -1364,12 +1310,6 @@ Strips the leading "program_name: whitespace" from the passed argument
    $sub_name = sub_name $level;
 
 Returns the name of the method that calls it
-
-=head2 C<sum>
-
-   $total = sum 1, 2, 3, 4;
-
-Adds the list of values
 
 =head2 C<symlink>
 
@@ -1466,17 +1406,72 @@ tabs, and newlines. The L<encrypt> and L<decrypt> functions take a seed
 attribute in their options hash reference. A whitened line of Perl code
 would be a suitable value
 
+=head2 C<zip>
+
+   %hash = zip @list_of_keys, @list_of_values;
+
+Zips two list of equal size together to form a hash
+
+=head2 C<chain>
+
+   $result = chain $sub1, $sub2, $sub3
+
+Call each sub in turn passing the returned value as the first argument to
+the next function call
+
+=head2 C<compose>
+
+   $code_ref = compose { }, $code_ref;
+
+Returns a code reference which when called returns the result of calling the
+block passing in the result of calling the optional code reference. Delays the
+calling of the input code reference until the output code reference is called
+
+=head2 C<curry>
+
+   $curried_code_ref = curry $code_ref, @args;
+   $result = $curried_code_ref->( @more_args );
+
+Returns a subroutine reference which when called, calls and returns the
+initial code reference passing in the original argument list and the
+arguments from the curried call. Must be called with a code reference and
+at least one argument
+
+=head2 C<fold>
+
+   *sum = fold { $a + $b } 0;
+
+Classic reduce function with optional base value
+
 =head2 C<Y>
 
    $code_ref = Y( $code_ref );
 
 The Y-combinator function
 
-=head2 C<zip>
+=head2 C<factorial>
 
-   %hash = zip @list_of_keys, @list_of_values;
+   $result = factorial $n;
 
-Zips two list of equal size together to form a hash
+Calculates the factorial for the supplied integer
+
+=head2 C<fibonacci>
+
+   $result = fibonacci $n;
+
+Calculates the Fibonacci number for the supplied integer
+
+=head2 C<product>
+
+   $product = product 1, 2, 3, 4;
+
+Returns the product of the list of numbers
+
+=head2 C<sum>
+
+   $total = sum 1, 2, 3, 4;
+
+Adds the list of values
 
 =head1 Diagnostics
 

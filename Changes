@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - Fewer test dependencies in boilerplate
+          - Smarter changelog parsing in git hook
           - Creating functional composition section
           - Fixing Time::Piece test
           - Avoid STDIN reopen warning in Prompt tests
