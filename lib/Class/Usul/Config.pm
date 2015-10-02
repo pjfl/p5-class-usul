@@ -23,6 +23,11 @@ use File::Which              qw( which );
 use Scalar::Util             qw( blessed );
 use Moo;
 
+# Attribute constructors
+my $_build_l10n_attributes = sub {
+   return { %{ $_[ 0 ]->_l10n_attributes }, domains => $_[ 0 ]->l10n_domains, };
+};
+
 # Public attributes
 has 'appclass'  => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;
 
@@ -88,13 +93,18 @@ has 'tempdir'   => is => 'lazy', isa => Directory, coerce => TRUE;
 
 has 'vardir'    => is => 'lazy', isa => Path, coerce => TRUE;
 
-has 'l10n_attributes' => is => 'lazy', isa => HashRef,
-   builder            => sub { {
-      domains         => [ DEFAULT_L10N_DOMAIN, $_[ 0 ]->name ] } };
+has 'l10n_attributes'  => is => 'lazy', isa => HashRef,
+   builder             => $_build_l10n_attributes, init_arg => undef;
 
-has 'lock_attributes' => is => 'ro',   isa => HashRef, builder => sub { {} };
+has 'l10n_domains'     => is => 'lazy', isa => ArrayRef[NonEmptySimpleStr],
+   builder             => sub { [ DEFAULT_L10N_DOMAIN, $_[ 0 ]->name ] };
 
-has 'log_attributes'  => is => 'ro',   isa => HashRef, builder => sub { {} };
+has '_l10n_attributes' => is => 'lazy', isa => HashRef,
+   builder             => sub { {} }, init_arg => 'l10n_attributes';
+
+has 'lock_attributes'  => is => 'ro',   isa => HashRef, builder => sub { {} };
+
+has 'log_attributes'   => is => 'ro',   isa => HashRef, builder => sub { {} };
 
 # Private functions
 my $_is_inflated = sub {
@@ -394,10 +404,14 @@ Directory containing the config file. Required
 =item C<l10n_attributes>
 
 Hash reference of attributes used to construct a L<Class::Usul::L10N>
-object. By default contains one key, C<domains>, an array reference
-which defaults to the constant C<DEFAULT_L10N_DOMAIN> and the
-applications configuration name. The filename(s) used to translate
-messages into different languages
+object. By default contains one key, C<domains>. The filename(s) used to
+translate messages into different languages
+
+=item C<l10n_domains>
+
+An array reference which defaults to the constant C<DEFAULT_L10N_DOMAIN> and
+the applications configuration name. Merged into L<l10n_attributes> as the
+C<domains> attribute
 
 =item C<locale>
 

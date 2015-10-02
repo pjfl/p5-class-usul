@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+          - Fixed schema test on win32
+          - Finer control of L10N constructor attributes
+
 0.66.1    2015-10-02 15:06:15
           - Fewer test dependencies in boilerplate
           - Smarter changelog parsing in git hook
