@@ -115,7 +115,7 @@ my $_is_inflated = sub {
 };
 
 my $_unpack = sub {
-   my ($self, $attr) = @_; $attr ||= {};
+   my ($self, $attr) = @_; $attr //= {};
 
    blessed $self and return ($self, $self->{appclass}, $self->{home});
 
@@ -297,7 +297,7 @@ sub inflate_path {
 }
 
 sub inflate_paths {
-   my ($self, $attr) = @_; $attr or return;
+   my ($self, $attr) = @_; defined $attr or return;
 
    for my $name (keys %{ $attr }) {
       defined $attr->{ $name }
@@ -309,7 +309,7 @@ sub inflate_paths {
 }
 
 sub inflate_symbol {
-   my ($self, $attr, $symbol) = @_; $attr ||= {}; $symbol or return;
+   my ($self, $attr, $symbol) = @_; $attr //= {}; defined $symbol or return;
 
    my $attr_name = lc $symbol; my $method = "_build_${attr_name}";
 

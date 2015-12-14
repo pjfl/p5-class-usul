@@ -2,7 +2,7 @@ package t::boilerplate;
 
 use strict;
 use warnings;
-use File::Spec::Functions qw( catdir updir );
+use File::Spec::Functions qw( catdir catfile updir );
 use FindBin               qw( $Bin );
 use lib               catdir( $Bin, updir, 'lib' ), catdir( $Bin, 'lib' );
 
@@ -26,15 +26,19 @@ BEGIN {
    $Bin =~ m{ : .+ : }mx and plan skip_all => 'Two colons in $Bin path';
 
    if ($notes->{testing}) {
-      $host eq 'nwyf.bingosnet.co.uk' and plan skip_all =>
-         'Broken smoker 48aff258-06c0-11e5-a85a-e28fcaadd3a7';
-      $host =~ m{ \A davids-macbook }mx and plan skip_all =>
-         'Broken smoker 158a80fe-0a22-11e5-9d49-e60ed23c8333';
+      my $dumped = catfile( 't', 'exceptions.dd' );
+      my $except = {}; -f $dumped and $except = do $dumped;
+
+      for my $k (keys %{ $except }) {
+         $host eq $k and plan skip_all => 'Broken smoker '.$except->{ $k };
+      }
    }
 }
 
 use Test::Requires "${perl_ver}";
 use Test::Requires { version => 0.88 };
+
+use version; our $VERSION = qv( '0.1' );
 
 sub import {
    strict->import;

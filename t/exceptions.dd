@@ -1,0 +1,6 @@
+do { my $x = {
+       'davids-macbook-pro-2.local' => '158a80fe-0a22-11e5-9d49-e60ed23c8333',
+       'nwyf.bingosnet.co.uk' => '48aff258-06c0-11e5-a85a-e28fcaadd3a7'
+     };
+  $x;
+ }
