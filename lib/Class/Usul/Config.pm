@@ -146,14 +146,16 @@ around 'BUILDARGS' => sub {
 sub _build_appldir {
    my ($self, $appclass, $home) = $_unpack->( @_ ); my $dir;
 
-   if ($dir = home2appldir $home) {
-      $dir = rel2abs( untaint_path $dir );
-      -d catdir( $dir, 'lib' ) and return $dir;
-   }
+   $dir = home2appldir $home
+      and $dir = rel2abs( untaint_path $dir )
+      and -d catdir( $dir, 'lib' ) and return $dir;
 
-   $dir = catdir ( NUL, 'var', class2appdir $appclass );
-   $dir = rel2abs( untaint_path $dir    ); -d $dir and return $dir;
-   $dir = rel2abs( untaint_path $home   ); -d $dir and return $dir;
+   $dir = catdir( NUL, 'var', class2appdir $appclass )
+      and $dir = rel2abs( untaint_path $dir )
+      and -d $dir and return $dir;
+
+   $dir = rel2abs( untaint_path $home ) and -d $dir and return $dir;
+
    return rel2abs( untaint_path rootdir );
 }
 

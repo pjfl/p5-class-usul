@@ -12,8 +12,10 @@ use Class::Usul::Constants     qw( ASSERT DEFAULT_CONFHOME DEFAULT_ENVDIR
                                    UNTAINT_IDENTIFIER UNTAINT_PATH UUID_PATH );
 use Cwd                        qw( );
 use Data::Printer      alias => q(_data_dumper), colored => 1, indent => 3,
-    filters => { 'File::DataClass::IO' => sub { $_[ 0 ]->pathname },
-                 'JSON::XS::Boolean'   => sub { q().$_[ 0 ]       }, };
+    filters => { 'File::DataClass::IO' => sub { $_[ 0 ]->pathname     },
+                 'JSON::XS::Boolean'   => sub { $_[ 0 ].q()           },
+                 'Type::Tiny'          => sub { $_[ 0 ]->display_name },
+                 'Type::Tiny::Union'   => sub { $_[ 0 ]->display_name }, };
 use Digest                     qw( );
 use Digest::MD5                qw( md5 );
 use English                    qw( -no_match_vars );

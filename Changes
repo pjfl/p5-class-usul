@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Made data_dumper smarter
           - Refactored smoker exceptions to dump file
 
 0.67.1    2015-10-02 20:56:53
