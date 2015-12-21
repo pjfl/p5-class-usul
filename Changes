@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Added function interface to Log
           - Made data_dumper smarter
           - Refactored smoker exceptions to dump file
 
