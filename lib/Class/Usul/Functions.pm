@@ -492,8 +492,11 @@ sub find_apphome ($;$$) {
    $path = assert_directory catdir( $path, $appdir ) and return $path;
    # 2b.   Users home directory - dot file containing shell env variable
    $path = $_get_file_var->( $my_home, $app_pref, $classdir ) and return $path;
+   $path = $_get_file_var->( $my_home, $appdir,   $classdir ) and return $path;
    # 2c.   Users home directory - dot directory is apphome
    $path = catdir( $my_home, ".${app_pref}" );
+   $path = assert_directory $path and return $path;
+   $path = catdir( $my_home, ".${appdir}" );
    $path = assert_directory $path and return $path;
    # 3.    Well known path containing shell env file
    $path = $_get_known_file_var->( $appdir, $classdir ) and return $path;

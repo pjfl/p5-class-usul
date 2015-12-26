@@ -3,7 +3,7 @@ package Class::Usul::Log;
 use namespace::autoclean;
 
 use Class::Usul::Constants qw( FALSE LOG_LEVELS NUL SPC TRUE );
-use Class::Usul::Functions qw( arg_list is_hashref is_member merge_attributes
+use Class::Usul::Functions qw( is_hashref is_member merge_attributes
                                untaint_identifier );
 use Class::Usul::Types     qw( Bool DataEncoding HashRef
                                LoadableClass Logger SimpleStr Undef );
