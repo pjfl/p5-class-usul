@@ -43,8 +43,7 @@ has '_logfile'        => is => 'ro',   isa => Path | Undef, coerce => TRUE,
    init_arg           => 'logfile';
 
 # Private class attributes
-my @arg_names = qw( level message options );
-my $loggers   = {};
+my $loggers = {};
 
 # Construction
 around 'BUILDARGS' => sub {
@@ -134,6 +133,8 @@ my $add_methods = sub {
 
 $add_methods->( __PACKAGE__, LOG_LEVELS );
 
+my @arg_names = qw( level message options );
+
 my $inline_args = sub {
    my $n = shift; return (map { $arg_names[ $_ ] => $_[ $_ ] } 0 .. $n - 1);
 };
@@ -155,7 +156,7 @@ sub log {
              : ($n == 3              ) ? { $inline_args->( 3, @args ) }
              :                           { @args };
 
-   my $level = $args->{level}; is_member $level, LOG_LEVELS
+   my $level = $args->{level}; $level and is_member $level, LOG_LEVELS
       and return $self->$level( $args->{message}, $args->{options} );
 
    return FALSE;
@@ -291,7 +292,7 @@ Peter Flanigan, C<< <pjfl@cpan.org> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2015 Peter Flanigan. All rights reserved
+Copyright (c) 2016 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>
