@@ -19,7 +19,6 @@ requires "Log::Handler" => "0.82";
 requires "Module::Runtime" => "0.014";
 requires "Moo" => "2.000001";
 requires "Pod::Eventual" => "0.094001";
-requires "Regexp::Common" => "2013031301";
 requires "Sub::Install" => "0.928";
 requires "Term::ReadKey" => "2.32";
 requires "Text::Autoformat" => "1.72";

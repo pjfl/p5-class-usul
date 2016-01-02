@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+0.68.1    2016-01-02 02:12:32
           - Dropped dependency on Regexp::Common
             That module has had installation and indexing problems for
             some time 249f54a8-b08e-11e5-9304-6ec2af845ad4 and RT#110771

@@ -40,7 +40,6 @@ my $prereqs  = {
     'Module::Runtime' => '0.014',
     'Moo' => '2.000001',
     'Pod::Eventual' => '0.094001',
-    'Regexp::Common' => '2013031301',
     'Sub::Install' => '0.928',
     'Term::ReadKey' => '2.32',
     'Text::Autoformat' => '1.72',
