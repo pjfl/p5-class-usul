@@ -21,7 +21,7 @@ our @EXPORT = qw( ARRAY AS_PARA AS_PASSWORD ASSERT BRK CODE COMMA CONFIG_EXTN
                   DEFAULT_L10N_DOMAIN DIGEST_ALGORITHMS ENCODINGS
                   EXCEPTION_CLASS FAILED FALSE HASH LANG LBRACE
                   LOCALIZE LOG_LEVELS NO NUL OK PERL_EXTNS PHASE
-                  PREFIX QUIT SEP SPC TRUE UMASK UNDEFINED_RV
+                  PREFIX QUIT QUOTED_RE SEP SPC TRUE UMASK UNDEFINED_RV
                   UNTAINT_CMDLINE UNTAINT_IDENTIFIER UNTAINT_PATH
                   UUID_PATH WIDTH YES );
 
@@ -61,6 +61,7 @@ sub EXCEPTION_CLASS     () { __PACKAGE__->Exception_Class }
 sub LOG_LEVELS          () { @{ __PACKAGE__->Log_Levels } }
 sub PERL_EXTNS          () { ( qw( .pl .pm .t ) ) }
 sub PREFIX              () { [ q(), 'opt' ] }
+sub QUOTED_RE           () { '(?:(?:\")(?:[^\\\"]*(?:\\.[^\\\"]*)*)(?:\")|(?:\')(?:[^\\\']*(?:\\.[^\\\']*)*)(?:\')|(?:\`)(?:[^\\\`]*(?:\\.[^\\\`]*)*)(?:\`))' }
 sub UNDEFINED_RV        () { -1 }
 sub UNTAINT_CMDLINE     () { qr{ \A ([^\$&;<>\`|]+)    \z }mx }
 sub UNTAINT_IDENTIFIER  () { qr{ \A ([a-zA-Z0-9_]+)    \z }mx }
@@ -281,6 +282,11 @@ Defaults to F</opt>
 =head2 QUIT
 
 The character q
+
+=head2 QUOTED_RE
+
+The regular expression to match a quoted string. Lifted from L<Regexp::Common>
+which now has installation and indexing issues
 
 =head2 SEP
 

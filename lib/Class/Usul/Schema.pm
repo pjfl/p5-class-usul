@@ -2,14 +2,13 @@ package Class::Usul::Schema;
 
 use namespace::autoclean;
 
-use Class::Usul::Constants   qw( AS_PARA AS_PASSWORD COMMA
-                                 FAILED FALSE NUL OK SPC TRUE );
+use Class::Usul::Constants   qw( AS_PARA AS_PASSWORD COMMA FAILED
+                                 FALSE NUL OK QUOTED_RE SPC TRUE );
 use Class::Usul::Crypt::Util qw( encrypt_for_config );
 use Class::Usul::Functions   qw( distname ensure_class_loaded io throw trim );
 use Class::Usul::Types       qw( ArrayRef Bool HashRef Maybe NonEmptySimpleStr
                                  PositiveInt SimpleStr Str );
 use Data::Record;
-use Regexp::Common;
 use Try::Tiny;
 use Unexpected::Functions    qw( inflate_placeholders );
 use Moo;
@@ -228,7 +227,7 @@ my $_deploy_and_populate = sub {
    my $extn  = $self->config->extension;
    my $re    = qr{ \A $dist [-] \d+ [-] (.*) \Q$extn\E \z }mx;
    my $io    = io( $dir )->filter( sub { $_->filename =~ $re } );
-   my $split = Data::Record->new( { split => COMMA, unless => $RE{quoted}, } );
+   my $split = Data::Record->new( { split => COMMA, unless => QUOTED_RE, } );
 
    for my $path ($io->all_files) {
       my ($class) = $path->filename =~ $re;

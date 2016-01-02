@@ -2,13 +2,12 @@ package Class::Usul::TraitFor::UntaintedGetopts;
 
 use namespace::autoclean;
 
-use Class::Usul::Constants qw( FAILED NUL TRUE );
+use Class::Usul::Constants qw( FAILED NUL QUOTED_RE TRUE );
 use Class::Usul::Functions qw( emit_err untaint_cmdline );
 use Class::Usul::Getopt    qw( describe_options );
 use Data::Record;
 use Encode                 qw( decode );
 use JSON::MaybeXS          qw( decode_json );
-use Regexp::Common;
 use Scalar::Util           qw( blessed );
 use Moo::Role;
 
@@ -106,7 +105,7 @@ my $_build_options = sub {
       push @options, [ $_option_specification->( $name, $option ), $doc, $cfg ];
       defined $option->{autosplit} or next;
       $splitters->{ $name } = Data::Record->new( {
-         split => $option->{autosplit}, unless => $RE{quoted} } );
+         split => $option->{autosplit}, unless => QUOTED_RE } );
       $option->{short}
          and $splitters->{ $option->{short} } = $splitters->{ $name };
    }
@@ -258,8 +257,6 @@ None
 =item L<JSON::MaybeXS>
 
 =item L<Moo::Role>
-
-=item L<Regexp::Common>
 
 =back
 
