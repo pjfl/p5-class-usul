@@ -179,9 +179,7 @@ sub _build_ctrldir {
 
    $dir = $_[ 0 ]->inflate_path( $_[ 1 ], 'appldir', 'etc' );
 
-   -d $dir and return $dir;
-
-   return [ NUL, qw( usr local etc ) ];
+   return -d $dir ? $dir : [ NUL, qw( usr local etc ) ];
 }
 
 sub _build_datadir {
@@ -290,7 +288,7 @@ sub _build_tempdir {
 sub _build_vardir {
    my $dir = $_[ 0 ]->inflate_path( $_[ 1 ], 'appldir', 'var' );
 
-   return -d $dir ? $dir : $_[ 0 ]->inflate_path( $_[ 1 ], 'appldir' );
+   return -e $dir ? $dir : $_[ 0 ]->inflate_path( $_[ 1 ], 'appldir' );
 }
 
 # Public methods

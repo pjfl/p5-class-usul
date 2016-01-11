@@ -51,10 +51,10 @@ around 'BUILDARGS' => sub {
 
    my $builder = delete $attr->{builder} or return $attr;
    my $config  = $builder->can( 'config' ) ? $builder->config : {};
-   my $cfgattr = [ qw( appclass encoding log_attributes log_class logfile ) ];
+   my $keys    = [ qw( appclass encoding log_attributes log_class logfile ) ];
 
    merge_attributes $attr, $builder, {}, [ 'debug' ];
-   merge_attributes $attr, $config,  {}, $cfgattr;
+   merge_attributes $attr, $config,  {}, $keys;
 
    return $attr;
 };
@@ -73,12 +73,23 @@ sub import {
    my $params = { (is_hashref $_[ 0 ]) ? %{+ shift } : () };
    my @wanted = @_;
    my $target = caller;
-   my $subr   = $params->{as} // 'log';
 
-   $wanted[ 0 ] and
-      install_sub { into => $target, as => $subr, code => sub (;@) {
-         return $loggers->{ $wanted[ 0 ] }->log( @_ );
-      } };
+   for my $wanted (grep { defined $_ } @wanted) {
+      if ($wanted eq 'get_logger') {
+         my $subr = $params->{as} // 'get_logger';
+
+         install_sub { into => $target, as => $subr, code => sub ($) {
+            return $loggers->{ $_[ 0 ] };
+         } };
+      }
+      else {
+         my $subr = $params->{as} // 'log';
+
+         install_sub { into => $target, as => $subr, code => sub (;@) {
+            return $loggers->{ $wanted }->log( @_ );
+         } };
+      }
+   }
 
    return;
 }
@@ -172,14 +183,13 @@ __END__
 
 =head1 Name
 
-Class::Usul::Log - Create methods for each logging level that encode their output
+Class::Usul::Log - A simple flexible logging class
 
 =head1 Synopsis
 
    use Class::Usul::Log;
-   use File::DataClass::IO;
 
-   my $file = io [ 't', 'test.log' ];
+   my $file = [ 't', 'test.log' ];
    my $log  = Class::Usul::Log->new( encoding => 'UTF-8', logfile => $file );
    my $text = 'Your error message goes here';
 
@@ -193,15 +203,23 @@ Class::Usul::Log - Create methods for each logging level that encode their outpu
 
 =head1 Description
 
-Creates methods for each logging level that encode their output. The
-logging levels are defined by the
-L<log levels|Class::Usul::Constants/LOG_LEVELS> constant
+A simple flexible logging class that supports both OO and functional interfaces
+
+Creates methods for each logging level that encode their output. The logging
+levels are defined by the L<log levels|Class::Usul::Constants/LOG_LEVELS>
+constant
 
 =head1 Configuration and Environment
 
-Defines the following attributes
+Defines the following attributes;
 
 =over 3
+
+=item C<appclass>
+
+Not an actual attribute. This value, if passed to the constructor, will be used
+as a key to class attribute that caches instances of this class for use by
+the functional interface
 
 =item C<debug>
 
@@ -215,15 +233,17 @@ Optional output encoding. If present output to the logfile is encoded
 =item C<log>
 
 Optional log object. Will instantiate an instance of L<Log::Handler> if this
-is not provided
+is not provided and the L</logfile> attribute is provided
 
 =item C<log_attributes>
 
-Attributes used to create the log object
+Attributes used to create the log object. Defaults to an empty hash reference
 
 =item C<log_class>
 
-The classname of the log object. This is loaded on demand
+The classname of the log object. This is loaded on demand and defaults to
+L<Log::Handler> if the L</logfile> attribute is provided. If the L</logfile>
+attribute is not provided L<Class::Null> is used instead
 
 =item C<logfile>
 
@@ -235,22 +255,54 @@ Path to the logfile
 
 =head2 C<BUILDARGS>
 
-Monkey with the constructors signature
+   $usul_object_ref = Class::Usul->new;
+   $log_object_ref  = Class::Usul::Log->new( builder => $usul_object_ref );
+
+Passing an instance of L<Class::Usul> to the constructor allows it leech
+attribute values from the C<Usul> configuration object
 
 =head2 C<BUILD>
 
-Store the new object reference in a class attribute for later importation
+Store the new object reference in a class attribute for later importation.
+The class attribute is a hash reference keyed by the C<appclass> attribute
+passed to the constructor. The first logger instance created is also stored
+keyed by C<default>
+
+=head2 C<import>
+
+   use Class::Usul::Log { as => ... }, 'get_logger';
+
+Imports the C<get_logger> function which is called as
+
+   my $log_object_ref = get_logger $instance_name;
+
+where the C<$instance_name> is either the C<appclass> attribute value passed to
+the OO constructor or the string C<default>. The function returns an instance
+of this class. The optional parameters allow the function to imported as a
+different name
+
+   use Class::Usul::Log { as => ... }, 'default';
+
+Imports the L</log> method from the C<default> log instance as a
+function. Specify the C<appclass> value instead of C<default> to import from
+that instance instead.  The optional parameters allow the function to imported
+as a different name
 
 =head2 C<filehandle>
 
 Return the loggers file handle. This was added for L<IO::Async>, so that we
 can tell it not to close the log file handle when it forks a child process
+and only works if the C<log_class> is L<Log::Handler>
 
 =head2 C<log>
 
-   $self->log( { level => $level, message => $message } );
+   $self->log( $message );
+   $self->log( $level, $message );
+   $self->log( $level, $message, { ... } );
+   $self->log( level => $level, message => $message, options => { ... } );
+   $self->log( { level => $level, message => $message, options => { ... } } );
 
-Logs the message at the given level
+Logs the message at the given level. Accepts multiple signatures
 
 =head1 Diagnostics
 
