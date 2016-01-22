@@ -3,7 +3,7 @@ package Class::Usul::TraitFor::DebugFlag;
 use namespace::autoclean;
 
 use Class::Usul::Constants qw( FALSE TRUE );
-use Class::Usul::Functions qw( env_prefix );
+use Class::Usul::Functions qw( ns_environment );
 use Class::Usul::Types     qw( Bool );
 use Moo::Role;
 use Class::Usul::Options;
@@ -12,9 +12,7 @@ requires qw( config is_interactive yorn );
 
 # Attribute constructors
 my $_build_debug = sub {
-   my $self = shift; my $k = (env_prefix $self->config->appclass).'_DEBUG';
-
-   return !$ENV{ $k } ? FALSE : TRUE;
+   return !!ns_environment( $_[ 0 ]->config->appclass, 'debug' ) ? TRUE : FALSE;
 };
 
 # Public attributes

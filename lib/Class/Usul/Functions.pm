@@ -15,6 +15,7 @@ use Data::Printer      alias => q(_data_dumper), colored => 1, indent => 3,
     filters => { 'File::DataClass::IO' => sub { $_[ 0 ]->pathname     },
                  'JSON::XS::Boolean'   => sub { $_[ 0 ].q()           },
                  'Type::Tiny'          => sub { $_[ 0 ]->display_name },
+                 'Type::Tiny::Enum'    => sub { $_[ 0 ]->display_name },
                  'Type::Tiny::Union'   => sub { $_[ 0 ]->display_name }, };
 use Digest                     qw( );
 use Digest::MD5                qw( md5 );
@@ -45,12 +46,13 @@ our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert assert_directory
                        fullname get_cfgfiles get_user hex2str home2appldir io
                        is_arrayref is_coderef is_hashref is_member is_win32
                        list_attr_of loginid logname merge_attributes my_prefix
-                       nonblocking_write_pipe_pair pad prefix2class socket_pair
-                       split_on__ split_on_dash squeeze strip_leader sub_name
-                       symlink thread_id throw throw_on_error trim unescape_TT
-                       untaint_cmdline untaint_identifier untaint_path
-                       untaint_string urandom uuid whiten zip chain compose
-                       curry fold Y factorial fibonacci product sum );
+                       nonblocking_write_pipe_pair ns_environment pad
+                       prefix2class socket_pair split_on__ split_on_dash
+                       squeeze strip_leader sub_name symlink thread_id throw
+                       throw_on_error trim unescape_TT untaint_cmdline
+                       untaint_identifier untaint_path untaint_string urandom
+                       uuid whiten zip chain compose curry fold Y factorial
+                       fibonacci product sum );
 
 our %EXPORT_REFS =   ( assert => sub { ASSERT }, );
 our %EXPORT_TAGS =   ( all    => [ @EXPORT_OK ], );
@@ -665,6 +667,12 @@ sub nonblocking_write_pipe_pair () {
    return [ $r, $w ];
 }
 
+sub ns_environment ($$;$) {
+   my ($class, $k, $v) = @_; $k = (env_prefix $class).'_'.(uc $k);
+
+   return defined $v ? $ENV{ $k } = $v : $ENV{ $k };
+}
+
 sub pad ($$;$$) {
    my ($v, $wanted, $str, $direction) = @_; my $len = $wanted - length $v;
 
@@ -821,7 +829,7 @@ sub chain (;@) {
 }
 
 sub compose (&;$) { # Was called build
-   my ($f, $g) = @_; $g //= sub {}; return sub { $f->( $g->( @_ ) ) };
+   my ($f, $g) = @_; $g //= sub { @_ }; return sub { $f->( $g->( @_ ) ) };
 }
 
 sub curry (&$;@) {
@@ -1253,6 +1261,13 @@ may be an object in which case its accessor methods are called
 
 Returns a pair of file handles, read then write. The write file handle is
 non blocking, binmode is set on both
+
+=head2 C<ns_environment>
+
+   $value = ns_environment $class, $key, $value;
+
+An accessor / mutator for the environment variables prefixed by the supplied
+class name. Providing a value is optional always returns the current value
 
 =head2 C<my_prefix>
 

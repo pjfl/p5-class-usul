@@ -2,12 +2,12 @@ package Class::Usul::Lock;
 
 use namespace::autoclean;
 
-use Moo;
 use Class::Usul::Constants qw( COMMA OK );
 use Class::Usul::Functions qw( emit );
-use Class::Usul::Options;
 use Class::Usul::Time      qw( time2str );
 use Class::Usul::Types     qw( Int Str );
+use Moo;
+use Class::Usul::Options;
 
 extends q(Class::Usul::Programs);
 
@@ -54,7 +54,7 @@ __END__
 
 =pod
 
-=encoding utf8
+=encoding utf-8
 
 =head1 Name
 

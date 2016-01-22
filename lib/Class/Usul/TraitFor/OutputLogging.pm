@@ -27,11 +27,11 @@ has '_quiet_flag' => is => 'rw', isa => Bool,
 
 # Private methods
 my $_loc = sub {
-   my ($self, $text, $opts, $quote) = @_; $opts //= {}; $quote //= FALSE;
+   my ($self, $text, $opts, $quote) = @_; $opts //= {};
 
    return $self->localize( $text // '[no message]', {
       locale               => $self->locale,
-      no_quote_bind_values => $quote,
+      no_quote_bind_values => $quote // FALSE,
       params               => $opts->{args} // [] } );
 };
 
