@@ -1262,13 +1262,6 @@ may be an object in which case its accessor methods are called
 Returns a pair of file handles, read then write. The write file handle is
 non blocking, binmode is set on both
 
-=head2 C<ns_environment>
-
-   $value = ns_environment $class, $key, $value;
-
-An accessor / mutator for the environment variables prefixed by the supplied
-class name. Providing a value is optional always returns the current value
-
 =head2 C<my_prefix>
 
    $prefix = my_prefix $PROGRAM_NAME;
@@ -1276,6 +1269,13 @@ class name. Providing a value is optional always returns the current value
 Takes the basename of the supplied argument and returns the first _
 (underscore) separated field. Supplies basename with
 L<extensions|Class::Usul::Constants/PERL_EXTNS>
+
+=head2 C<ns_environment>
+
+   $value = ns_environment $class, $key, $value;
+
+An accessor / mutator for the environment variables prefixed by the supplied
+class name. Providing a value is optional, always returns the current value
 
 =head2 C<pad>
 
