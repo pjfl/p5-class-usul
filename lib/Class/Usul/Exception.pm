@@ -17,7 +17,7 @@ $class->ignore_class( 'Class::Usul::IPC', 'Sub::Quote' );
 has_exception $class;
 
 has_exception 'DateTimeCoercion' => parents => [ $class ],
-   error   => 'String [_1] will not coerce to a DateTime object';
+   error   => 'String [_1] will not coerce to a Unix time value';
 
 has_exception 'Tainted' => parents => [ $class ],
    error   => 'String [_1] contains possible taint';
@@ -167,7 +167,7 @@ Return the stack trace. Defaults to skipping zero lines of output
 
 =head2 C<throw>
 
-   $class->throw error => 'Path [_1] not found', args => [ 'pathname' ];
+   $class->throw 'Path [_1] not found', [ 'pathname' ];
 
 Create (or re-throw) an exception. If the passed parameter is a
 blessed reference it is re-thrown. If a single scalar is passed it is

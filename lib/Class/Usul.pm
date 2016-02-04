@@ -2,28 +2,17 @@ package Class::Usul;
 
 use 5.010001;
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.68.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.68.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants  qw( FALSE TRUE );
 use Class::Usul::Functions  qw( data_dumper ns_environment );
-use Class::Usul::Types      qw( Bool ConfigProvider HashRef Localiser
-                                LoadableClass Locker Logger );
+use Class::Usul::Types      qw( Bool ConfigProvider HashRef
+                                Localiser LoadableClass Locker Logger );
 use Moo;
 
 # Attribute constructors
 my $_build_debug = sub {
    return !!ns_environment( $_[ 0 ]->config->appclass, 'debug' ) ? TRUE : FALSE;
-};
-
-# TODO: New IPC::SRLock will accept a builder arg
-my $_build_lock = sub {
-   my $self = shift; my $attr = { %{ $self->config->lock_attributes } };
-
-   $attr->{debug  } = $self->debug;
-   $attr->{log    } = $self->log;
-   $attr->{tempdir} = $self->config->tempdir;
-
-   return $self->lock_class->new( $attr );
 };
 
 # Public attributes
@@ -46,7 +35,8 @@ has 'l10n'         => is => 'lazy', isa => Localiser,
 has 'l10n_class'   => is => 'lazy', isa => LoadableClass, coerce => TRUE,
    default         => 'Class::Usul::L10N';
 
-has 'lock'         => is => 'lazy', isa => Locker, builder => $_build_lock;
+has 'lock'         => is => 'lazy', isa => Locker,
+   builder         => sub { $_[ 0 ]->lock_class->new( builder => $_[ 0 ] ) };
 
 has 'lock_class'   => is => 'lazy', isa => LoadableClass, coerce => TRUE,
    default         => 'IPC::SRLock';
@@ -84,7 +74,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.68.$Rev: 4 $
+Describes Class::Usul version v0.68.$Rev: 5 $
 
 =head1 Synopsis
 

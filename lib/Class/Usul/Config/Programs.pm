@@ -140,6 +140,8 @@ None
 
 =item L<Class::Usul::Config>
 
+=item L<Class::Usul::File>
+
 =item L<Moo>
 
 =back

@@ -625,6 +625,8 @@ sub list_attr_of ($;@) {
 
    ensure_class_loaded( 'Pod::Eventual::Simple' );
 
+   is_member 'new', @except or push @except, 'new';
+
    return map  { my $attr = $_->[0]; [ @{ $_ }, $obj->$attr ] }
           map  { [ $_->[1], $_->[0], $_get_pod_content_for_attr->( @{ $_ } ) ] }
           grep { $_->[0] ne 'Moo::Object' and not is_member $_->[1], @except }
@@ -1347,7 +1349,7 @@ Returns the id of this thread. Returns zero if threads are not loaded
 
 =head2 C<throw>
 
-   throw error => 'error_key', args => [ 'error_arg' ];
+   throw 'error_message', [ 'error_arg' ];
 
 Expose L<Class::Usul::Exception/throw>. L<Class::Usul::Constants> has a
 class attribute I<Exception_Class> which can be set change the class

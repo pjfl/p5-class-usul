@@ -128,7 +128,7 @@ my $_signal_cmd = sub {
 around 'BUILDARGS' => sub {
    my ($orig, $self, @args) = @_; my $attr = $orig->( $self, @args );
 
-   my $builder = delete $attr->{builder} or return $attr;
+   my $builder = $attr->{builder} or return $attr;
 
    merge_attributes $attr, $builder, {}, [ 'config', 'log' ];
 
@@ -237,7 +237,7 @@ sub signal_process {
 
    my ($file, $io); my $args = $args[ 0 ];
 
-   my $sig = $args->{sig} || 'TERM'; my $pids = $args->{pids} || [];
+   my $sig = $args->{sig} // 'TERM'; my $pids = $args->{pids} // [];
 
    $args->{pid} and push @{ $pids }, $args->{pid};
 

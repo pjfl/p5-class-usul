@@ -3,7 +3,8 @@ use t::boilerplate;
 use Test::More;
 use Capture::Tiny qw( capture );
 use Config;
-use Class::Usul::Constants ();
+use Class::Usul::Constants qw( AS_PARA AS_PASSWORD CONFIG_EXTN
+                               ENCODINGS LOG_LEVELS );
 
 BEGIN { Class::Usul::Constants->Assert( sub { 1 } ) }
 
@@ -11,6 +12,18 @@ use Class::Usul::Crypt     qw( decrypt encrypt );
 use Class::Usul::Functions qw( :all );
 use English                qw( -no_match_vars );
 use File::Spec::Functions  qw( catdir catfile updir );
+
+is AS_PARA()->{fill}, 1, 'As paragraph';
+
+my $v = (AS_PASSWORD)[ 1 ]; is $v, 1, 'As password';
+
+$v = (ENCODINGS)[ 0 ]; is $v, 'ascii', 'Encodings';
+
+Class::Usul::Constants->Config_Extn( '.yml' );
+is CONFIG_EXTN(), '.yml', 'Config extension mutator';
+
+Class::Usul::Constants->Log_Levels( [ 'debug' ] );
+$v = (LOG_LEVELS)[ 0 ]; is $v, 'debug', 'Log levels mutator';
 
 is abs_path( catfile( 't', updir, 't' ) ), File::Spec->rel2abs( 't' ),
    'abs_path';
@@ -56,6 +69,8 @@ ok $token eq q(ee26b0dd4af7e749aa1a8ee3c10ae9923f618980772e473f8819a5d4940e0db27
       eq q(9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08)
    || $token eq q(a94a8fe5ccb19ba61c4c0873d391e987982fbbd3)
    || $token eq q(098f6bcd4621d373cade4e832627b4f6), 'create_token';
+
+ok length cwdp > 0, 'Current working directory - physical';
 
 is distname( 'Test::Application' ), 'Test-Application', 'distname';
 

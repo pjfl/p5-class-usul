@@ -49,7 +49,7 @@ my $loggers = {};
 around 'BUILDARGS' => sub {
    my ($orig, $class, @args) = @_; my $attr = $orig->( $class, @args );
 
-   my $builder = delete $attr->{builder} or return $attr;
+   my $builder = $attr->{builder} or return $attr;
    my $config  = $builder->can( 'config' ) ? $builder->config : {};
    my $keys    = [ qw( appclass encoding log_attributes log_class logfile ) ];
 

@@ -115,12 +115,12 @@ my $_gettext = sub {
 around 'BUILDARGS' => sub {
    my ($orig, $class, @args) = @_; my $attr = $orig->( $class, @args );
 
-   my $builder = delete $attr->{builder} or return $attr;
+   my $builder = $attr->{builder} or return $attr;
    my $config  = $builder->can( 'config' ) ? $builder->config : {};
-   my $cfgattr = [ qw( l10n_attributes locale localedir tempdir ) ];
+   my $keys    = [ qw( l10n_attributes locale localedir tempdir ) ];
 
    merge_attributes $attr, $builder, {}, [ 'log' ];
-   merge_attributes $attr, $config,  {}, $cfgattr;
+   merge_attributes $attr, $config,  {}, $keys;
 
    return $attr;
 };

@@ -781,7 +781,7 @@ Class::Usul::IPC::Cmd - Execute system commands
    sub run_cmd {
       my ($self, $cmd, @args) = @_; my $attr = arg_list @args;
 
-      $attr->{cmd    } = $cmd or throw Unspecified, args => [ 'command' ];
+      $attr->{cmd    } = $cmd or throw Unspecified, [ 'command' ];
       $attr->{log    } = $self->log;
       $attr->{rundir } = $self->config->rundir;
       $attr->{tempdir} = $self->config->tempdir;

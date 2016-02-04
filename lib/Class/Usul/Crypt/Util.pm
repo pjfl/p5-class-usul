@@ -31,8 +31,8 @@ my $_get_crypt_args = sub { # Sets cipher, salt, and seed keys in args hash
       [ qw( ctrldir prefix read_secure salt seed seed_file ) ];
 
    my $args = { cipher => $cipher,
-                salt   => $params->{salt} || $params->{prefix} || NUL };
-   my $file = $params->{seed_file} || $params->{prefix} || 'seed';
+                salt   => $params->{salt} // $params->{prefix} // NUL };
+   my $file = $params->{seed_file} // $params->{prefix} // 'seed';
 
    if ($params->{seed}) { $args->{seed} = $params->{seed} }
    elsif (defined $_args_cache->{ $file }) {

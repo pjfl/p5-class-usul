@@ -32,7 +32,7 @@ sub nap ($) {
 sub str2date_time ($;$) {
    my ($dstr, $zone) = @_; my $time = str2time( $dstr, $zone );
 
-   defined $time or throw DateTimeCoercion, args => [ $dstr ];
+   defined $time or throw DateTimeCoercion, [ $dstr ];
 
    $_datetime_loaded or (ensure_class_loaded 'DateTime::Format::Epoch'
                          and $_datetime_loaded = TRUE);
@@ -250,7 +250,7 @@ sub str2time ($;$) {
 sub str2time_piece ($;$) {
    my ($dstr, $zone) = @_; my $time = str2time( $dstr, $zone );
 
-   defined $time or throw DateTimeCoercion, args => [ $dstr ];
+   defined $time or throw DateTimeCoercion, [ $dstr ];
 
    $_time_piece_loaded
       or (ensure_class_loaded 'Time::Piece' and $_time_piece_loaded = TRUE);

@@ -253,6 +253,8 @@ None
 
 =item L<Class::Usul::Crypt::Util>
 
+=item L<Class::Usul::File>
+
 =item L<Unexpected>
 
 =back

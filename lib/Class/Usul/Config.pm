@@ -350,7 +350,7 @@ Defines the configuration object. Attributes have sensible defaults that
 can be overridden by values in configuration files which are loaded on
 request
 
-Pathnames passed in the C<cfgfiles> attribute are loaded and their contents
+Pathnames passed in the L</cfgfiles> attribute are loaded and their contents
 merged with the values passed to the configuration class constructor
 
 =head1 Configuration and Environment
@@ -370,24 +370,29 @@ Directory. Defaults to the application's install directory
 
 =item C<binsdir>
 
-Directory. Defaults to the application's F<bin> directory
+Directory. Defaults to the application's F<bin> directory. Prefers
+L</appldir>F</bin> but defaults to L<Config>s C<installsitebin> attribute
 
 =item C<cfgfiles>
 
 An array reference of non empty simple strings. The list of configuration
-files to load when instantiating an instance of the configuration class
+files to load when instantiating an instance of the configuration class.
+Defaults to an empty list
 
 =item C<ctlfile>
 
 File in the F<ctrldir> directory that contains this programs control data
+The default filename is comprised of L</name> and L</extension>
 
 =item C<ctrldir>
 
-Directory containing the per program configuration files
+Directory containing the per program configuration files. Prefers F<var/etc>,
+then L</appldir>F</etc> defaulting to F</usr/local/etc>
 
 =item C<datadir>
 
-Directory containing data files used by the application
+Directory containing data files used by the application. Prefers F<var/data>
+but defaults to L</tempdir>
 
 =item C<encoding>
 
@@ -399,7 +404,8 @@ String defaults to the constant C<CONFIG_EXTN>
 
 =item C<home>
 
-Directory containing the config file. Required
+Directory containing the config file. Defaults to the constant
+C<DEFAULT_CONFHOME>
 
 =item C<l10n_attributes>
 
@@ -421,7 +427,9 @@ C<LANG>
 =item C<localedir>
 
 Directory containing the GNU Gettext portable object files used to translate
-messages into different languages
+messages into different languages. Prefers F<var/locale> but defaults to
+either the first existing directory in the list provided by the C<LOCALE_DIRS>
+constant or failing that L</tempdir>
 
 =item C<locales>
 
@@ -438,15 +446,19 @@ Hash reference of attributes used to construct a L<Class::Usul::Log> object
 
 =item C<logfile>
 
-File in the C<logsdir> to which this program will log
+File in the C<logsdir> to which this program will log. Defaults to
+L</name>.log
 
 =item C<logsdir>
 
-Directory containing the application log files
+Directory containing the application log files. Prefers F<var/logs> but
+defaults to L</tempdir>
 
 =item C<name>
 
-String. Name of the program
+String. Derived from the L</pathname>. It is either; the last component of the
+program name when split on underscores or dashes, or the program name itself
+if it contains no underscores or dashes
 
 =item C<no_thrash>
 
@@ -464,29 +476,34 @@ Integer. Phase number indicates the type of install, e.g. 1 live, 2 test,
 
 =item C<prefix>
 
-String. Program prefix
+String. Program prefix. Defaults to the last component of the L</appclass>
+lower cased
 
 =item C<root>
 
-Directory. Path to the web applications document root
+Directory. Path to the web applications document root. Prefers F<var/root>
+but defaults to L</tempdir>
 
 =item C<rundir>
 
-Directory. Contains a running programs PID file
+Directory. Contains a running programs PID file. Prefers F<var/run> but defaults
+to L</tempdir>
 
 =item C<salt>
 
 String. This applications salt for passwords as set by the administrators . It
-is used to perturb the encryption methods. Defaults to the C<prefix>
+is used to perturb the encryption methods. Defaults to the L</prefix>
 attribute value
 
 =item C<sessdir>
 
-Directory. The session directory
+Directory. The session directory. Prefers F<var/session> but defaults to
+L</tempdir>
 
 =item C<sharedir>
 
-Directory containing assets used by the application
+Directory containing assets used by the application. Prefers F<var/share>
+but defaults to L</tempdir>
 
 =item C<shell>
 
@@ -498,17 +515,18 @@ type constraint on the attribute will throw
 
 =item C<suid>
 
-File. Name of the setuid root program in the F<bin> directory. Defaults to
-C<prefix>-admin
+File. Name of the setuid root program in the L</binsdir> directory. Defaults to
+L</prefix>-admin
 
 =item C<tempdir>
 
 Directory. It is the location of any temporary files created by the
-application. Defaults to the L<File::Spec> C<tempdir>
+application. Prefers F<var/tmp> but defaults to the L<File::Spec> C<tempdir>
 
 =item C<vardir>
 
-Directory. Contains all of the non program code directories
+Directory. Contains all of the non program code directories. Prefers F<var>
+but defaults to L</appldir>
 
 =back
 

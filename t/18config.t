@@ -1,6 +1,7 @@
 use t::boilerplate;
 
 use Test::More;
+use Class::Usul::Functions qw( emit is_member list_attr_of );
 use Scalar::Util qw( blessed );
 
 use_ok 'Class::Usul::Config::Programs';
@@ -9,6 +10,7 @@ my $osname = lc $^O;
 my $conf   = Class::Usul::Config::Programs->new
    (  appclass => 'Class::Usul', tempdir => 't', );
 
+is $conf->appclass, 'Class::Usul', 'Config appclass';
 $conf->cfgfiles;
 $conf->binsdir;
 $conf->logsdir;
@@ -25,6 +27,10 @@ $osname ne 'mswin32' and $osname ne 'cygwin'
 like $conf->suid, qr{ \Qusul-admin\E \z }mx, 'Default suid' ;
 
 is $conf->datadir->name, 't', 'Default datadir';
+
+my @attr = map { $_->[ 0 ] } list_attr_of( $conf );
+
+ok is_member( 'appclass', @attr ), 'Lists attributes';
 
 $conf->logfile->exists and $conf->logfile->unlink;
 

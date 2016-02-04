@@ -24,7 +24,7 @@ has 'log'    => is => 'ro', isa => Logger, required => TRUE;
 around 'BUILDARGS' => sub {
    my ($orig, $self, @args) = @_; my $attr = $orig->( $self, @args );
 
-   my $builder = delete $attr->{builder} or return $attr;
+   my $builder = $attr->{builder} or return $attr;
 
    merge_attributes $attr, $builder, {}, [ 'config', 'lock', 'log' ];
 
@@ -51,7 +51,7 @@ sub data_load {
       and $attr->{storage_attributes}->{force_array} = $args->{arrays};
 
   (is_arrayref $args->{paths} and defined $args->{paths}->[ 0 ])
-      or throw Unspecified, args => [ 'paths' ];
+      or throw Unspecified, [ 'paths' ];
 
    return $self->dataclass_schema( $attr )->load( @{ $args->{paths} } );
 }
@@ -59,9 +59,7 @@ sub data_load {
 sub dataclass_schema {
    my ($self, @args) = @_; my $attr = arg_list @args;
 
-   if (blessed $self) {
-      merge_attributes $attr, $self, {}, [ 'lock', 'log', 'tempdir' ];
-   }
+   if (blessed $self) { $attr->{builder} = $self }
    else { $attr->{cache_class} = 'none' }
 
    $attr->{storage_class} //= 'Any';

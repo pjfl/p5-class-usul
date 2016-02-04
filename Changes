@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Improved test coverage and documentation
           - Added ns_environment function
           - Made data_dumper smarter
           - Improved Log class documentation. Added get_logger
