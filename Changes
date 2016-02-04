@@ -1,5 +1,8 @@
 Revision history for Class::Usul
 
+0.70.1    2016-02-04 17:29:12
+          - Dropped Log::Handler dependency to 0.84
+
 0.69.1    2016-02-04 17:22:16
           - Improved test coverage and documentation
           - Added ns_environment function
