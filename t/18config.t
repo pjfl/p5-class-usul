@@ -28,10 +28,14 @@ like $conf->suid, qr{ \Qusul-admin\E \z }mx, 'Default suid' ;
 
 is $conf->datadir->name, 't', 'Default datadir';
 
-my @attr = map { $_->[ 0 ] } list_attr_of( $conf );
+SKIP: {
+   ($osname ne 'mswin32' and $osname ne 'cygwin')
+      or skip 'No shell on mswin32', 1;
 
-$osname ne 'mswin32' and $osname ne 'cygwin'
-   and ok is_member( 'appclass', @attr ), 'Lists attributes';
+   my @attr = map { $_->[ 0 ] } list_attr_of( $conf );
+
+   ok is_member( 'appclass', @attr ), 'Lists attributes';
+}
 
 $conf->logfile->exists and $conf->logfile->unlink;
 

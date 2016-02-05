@@ -642,14 +642,22 @@ sub logname (;$) { # Deprecated use loginid
    return untaint_cmdline( $ENV{USER} || $ENV{LOGNAME} || loginid( $_[ 0 ] ) );
 }
 
-sub merge_attributes ($$$;$) {
-   my ($dest, $src, $defaults, $attrs) = @_; my $class = blessed $src;
+sub merge_attributes ($@) {
+   my ($dest, @args) = @_;
 
-   for (grep { not exists $dest->{ $_ } or not defined $dest->{ $_ } }
-        @{ $attrs // [] }) {
-      my $v = $class ? ($src->can( $_ ) ? $src->$_() : undef) : $src->{ $_ };
+   my $attr = is_arrayref( $args[ -1 ] ) ? pop @args : [];
 
-      defined $v or $v = $defaults->{ $_ }; defined $v and $dest->{ $_ } = $v;
+   for my $k (grep { not exists $dest->{ $_ } or not defined $dest->{ $_ } }
+                  @{ $attr }) {
+      my $i = 0; my $v;
+
+      while (not defined $v and defined( my $src = $args[ $i++ ] )) {
+         my $class = blessed $src;
+
+         $v = $class ? ($src->can( $k ) ? $src->$k() : undef) : $src->{ $k };
+      }
+
+      defined $v and $dest->{ $k } = $v;
    }
 
    return $dest;
