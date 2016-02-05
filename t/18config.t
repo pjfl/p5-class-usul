@@ -30,7 +30,8 @@ is $conf->datadir->name, 't', 'Default datadir';
 
 my @attr = map { $_->[ 0 ] } list_attr_of( $conf );
 
-ok is_member( 'appclass', @attr ), 'Lists attributes';
+$osname ne 'mswin32' and $osname ne 'cygwin'
+   and ok is_member( 'appclass', @attr ), 'Lists attributes';
 
 $conf->logfile->exists and $conf->logfile->unlink;
 

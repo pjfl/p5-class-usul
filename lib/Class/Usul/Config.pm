@@ -265,7 +265,7 @@ sub _build_shell {
    my $file = $ENV{SHELL};         $file and -e $file and return $file;
       $file = catfile( NUL, 'bin', 'ksh'  ); -e $file and return $file;
       $file = catfile( NUL, 'bin', 'bash' ); -e $file and return $file;
-      $file = which  ( 'sh'               ); -e $file and return $file;
+      $file = which  ( 'sh' );     $file and -e $file and return $file;
    return     catfile( NUL, 'bin', 'sh'   );
 }
 
