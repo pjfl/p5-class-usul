@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+0.71.1    2016-02-05 13:16:12
           - Skipped evaluating Config shell on mswin32
 
 0.70.1    2016-02-04 17:29:12
