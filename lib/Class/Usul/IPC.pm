@@ -130,7 +130,7 @@ around 'BUILDARGS' => sub {
 
    my $builder = $attr->{builder} or return $attr;
 
-   merge_attributes $attr, $builder, {}, [ 'config', 'log' ];
+   merge_attributes $attr, $builder, [ 'config', 'log' ];
 
    return $attr;
 };

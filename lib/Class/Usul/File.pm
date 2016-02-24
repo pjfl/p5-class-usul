@@ -26,7 +26,7 @@ around 'BUILDARGS' => sub {
 
    my $builder = $attr->{builder} or return $attr;
 
-   merge_attributes $attr, $builder, {}, [ 'config', 'lock', 'log' ];
+   merge_attributes $attr, $builder, [ 'config', 'lock', 'log' ];
 
    return $attr;
 };

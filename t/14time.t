@@ -38,6 +38,10 @@ is time2str( '%Y-%m-%d', 0, 'UTC' ), '1970-01-01', 'time2str/1';
 is time2str( '%Y-%m-%d %H:%M:%S', 1185753932, 'BST' ),
    '2007-07-30 01:05:32', 'time2str/2';
 
+$dt = str2date_time( '1963-08-22 00:00', 'GMT' );
+
+is $dt->dmy( '/' ), '22/08/1963', 'ISO and local formats';
+
 done_testing;
 
 # Local Variables:

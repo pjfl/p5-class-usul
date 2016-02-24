@@ -53,8 +53,8 @@ around 'BUILDARGS' => sub {
    my $config  = $builder->can( 'config' ) ? $builder->config : {};
    my $keys    = [ qw( appclass encoding log_attributes log_class logfile ) ];
 
-   merge_attributes $attr, $builder, {}, [ 'debug' ];
-   merge_attributes $attr, $config,  {}, $keys;
+   merge_attributes $attr, $builder, [ 'debug' ];
+   merge_attributes $attr, $config,  $keys;
 
    return $attr;
 };

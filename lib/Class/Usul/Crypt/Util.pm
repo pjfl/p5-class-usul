@@ -27,7 +27,7 @@ my $_get_crypt_args = sub { # Sets cipher, salt, and seed keys in args hash
    my ($config, $cipher) = @_; my $params = {};
 
    # Works if config is an object or a hash
-   merge_attributes $params, $config, {},
+   merge_attributes $params, $config,
       [ qw( ctrldir prefix read_secure salt seed seed_file ) ];
 
    my $args = { cipher => $cipher,

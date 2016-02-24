@@ -96,7 +96,7 @@ my $_load_config_data = sub {
 # Private methods
 my $_merge_attributes = sub {
    return merge_attributes { class => blessed $_[ 0 ] || $_[ 0 ] },
-                  $_[ 1 ], ($_[ 2 ] || {}), $_connect_attr->();
+                  $_[ 1 ], ($_[ 2 ] // {}), $_connect_attr->();
 };
 
 # Public methods

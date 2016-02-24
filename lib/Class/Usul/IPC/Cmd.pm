@@ -7,7 +7,7 @@ use Class::Usul::Constants    qw( EXCEPTION_CLASS FALSE NUL
                                   OK SPC TRUE UNDEFINED_RV );
 use Class::Usul::Functions    qw( arg_list emit_to io is_arrayref
                                   is_coderef is_hashref is_member is_win32
-                                  merge_attributes nonblocking_write_pipe_pair
+                                  nonblocking_write_pipe_pair
                                   strip_leader throw );
 use Class::Usul::Time         qw( nap );
 use Class::Usul::Types        qw( ArrayRef Bool LoadableClass Logger

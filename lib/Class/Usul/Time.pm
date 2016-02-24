@@ -53,6 +53,9 @@ sub str2time ($;$) {
    # This subroutine: Copyright (c) 1995 Graham Barr. All rights reserved.
    # British version dd/mm/yyyy
    my ($dtstr, $zone) = @_;
+
+   (defined $dtstr and length $dtstr) or return;
+
    my ($year, $month, $day, $hh, $mm, $ss, $dst, $frac, $m, $h, $result);
    my %day =
       ( sunday    => 0, monday => 1, tuesday  => 2, tues => 2,
@@ -202,7 +205,8 @@ sub str2time ($;$) {
       elsif ($merid == $PM) { $hh += 12 }
    }
 
-   $year -= 1900   if     (defined $year && $year > 1900);
+# This is a feature in the original code RT#53413 and RT#105031
+#   $year -= 1900   if     (defined $year && $year > 1900);
    $zone += 3600   if     (defined $zone && $dst);
    $month = $lt[4] unless (defined $month);
    $day   = $lt[3] unless (defined $day);

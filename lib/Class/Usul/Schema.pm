@@ -27,7 +27,7 @@ my $_build_qdb = sub {
 };
 
 my $_extract_from_dsn = sub {
-   my ($self, $field) = @_;
+   my ($self, $field) = @_; $self->options->{bootstrap} and return;
 
    return (map  { s{ \A $field [=] }{}mx; $_ }
            grep { m{ \A $field [=] }mx }
@@ -309,7 +309,10 @@ sub create_schema : method { # Create databases and edit credentials
 }
 
 sub deploy_and_populate : method {
-   my $self = shift; $self->info( 'Deploy and populate for '.$self->dsn );
+   my $self = shift; my $default = $self->yes;
+
+   $self->info( 'Deploy and populate for '.$self->dsn );
+   $self->yorn( '+Continue', $default, TRUE, 0 ) or return OK;
 
    for my $schema_class (values %{ $self->schema_classes }) {
       ensure_class_loaded $schema_class;
@@ -392,7 +395,7 @@ sub edit_credentials : method {
       my $value  = $defaults->{ $field } ne '_field' ? $defaults->{ $field }
                                                      :    $creds->{ $field };
 
-      $value = $self->get_line( $prompt, $value, TRUE, 50, FALSE, $is_pw );
+      $value = $self->get_line( $prompt, $value, TRUE, 0, FALSE, $is_pw );
       $field ne 'name' and $self->$setter( $value // NUL );
       $is_pw and $value = encrypt_for_config $self_cfg, $value, $stored_pw;
       $creds->{ $field } = $value // NUL;

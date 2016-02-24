@@ -119,8 +119,8 @@ around 'BUILDARGS' => sub {
    my $config  = $builder->can( 'config' ) ? $builder->config : {};
    my $keys    = [ qw( l10n_attributes locale localedir tempdir ) ];
 
-   merge_attributes $attr, $builder, {}, [ 'log' ];
-   merge_attributes $attr, $config,  {}, $keys;
+   merge_attributes $attr, $builder, [ 'log' ];
+   merge_attributes $attr, $config,  $keys;
 
    return $attr;
 };
