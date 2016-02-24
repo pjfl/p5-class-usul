@@ -4,13 +4,13 @@ use Test::More;
 
 use_ok 'Class::Usul::Schema';
 
-my $prog = Class::Usul::Schema->new( {
+my $prog = Class::Usul::Schema->new_with_options(
    config         => { ctrldir => 't', tempdir => 't' },
    database       => 'test',
    dry_run        => 1,
    noask          => 1,
    quiet          => 1,
-} );
+);
 
 is $prog->db_attr->{no_comments}, 1, 'Database attributes';
 is $prog->driver, 'sqlite', 'Driver';

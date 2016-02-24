@@ -27,7 +27,9 @@ my $_build_qdb = sub {
 };
 
 my $_extract_from_dsn = sub {
-   my ($self, $field) = @_; $self->options->{bootstrap} and return;
+   my ($self, $field) = @_;
+
+   $self->options and $self->options->{bootstrap} and return;
 
    return (map  { s{ \A $field [=] }{}mx; $_ }
            grep { m{ \A $field [=] }mx }

@@ -24,7 +24,7 @@ option 'method'  => is => 'rwp',  isa => SimpleStr, format => 's',
 option 'options' => is => 'ro',   isa => HashRef,   format => 's%',
    documentation =>
       'Zero, one or more key=value pairs available to the method call',
-   default       => sub { {} }, short => 'o';
+   builder       => sub { {} }, short => 'o';
 
 option 'umask'   => is => 'rw',   isa => OctalNum,  format => 's',
    documentation => 'Set the umask to this octal number',
