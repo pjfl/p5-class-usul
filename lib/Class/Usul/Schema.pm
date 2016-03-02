@@ -318,6 +318,7 @@ sub deploy_and_populate : method {
 
    for my $schema_class (values %{ $self->schema_classes }) {
       ensure_class_loaded $schema_class;
+      $schema_class->can( 'config' ) and $schema_class->config( $self->config );
       $self->$_deploy_and_populate( $schema_class, $self->config->sharedir );
    }
 

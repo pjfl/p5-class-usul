@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Fixed missing config in deploy and populate
           - Fixed bug in str2time. Present in Date::Parse
             RT#53413 and RT#105031
 
