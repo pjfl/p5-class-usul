@@ -43,6 +43,7 @@ my $_new_proc_process_table = sub {
 my $_new_process_table = sub {
    my ($class, $rows, $count) = @_;
 
+   # TODO: Rewrite this to match macros.tt. Delete Response::Table
    return $class->new
       ( count    => $count,
         fields   => [ qw( uid pid ppid start time size state tty cmd ) ],
