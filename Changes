@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - Stringify DateTime in dumper function
+
 0.73.1    2016-03-02 02:14:56
           - Fixed missing config in deploy and populate
           - Fixed bug in str2time. Present in Date::Parse

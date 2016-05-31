@@ -12,7 +12,8 @@ use Class::Usul::Constants     qw( ASSERT DEFAULT_CONFHOME DEFAULT_ENVDIR
                                    UNTAINT_IDENTIFIER UNTAINT_PATH UUID_PATH );
 use Cwd                        qw( );
 use Data::Printer      alias => q(_data_dumper), colored => 1, indent => 3,
-    filters => { 'File::DataClass::IO' => sub { $_[ 0 ]->pathname     },
+    filters => { 'DateTime'            => sub { $_[ 0 ].q()           },
+                 'File::DataClass::IO' => sub { $_[ 0 ]->pathname     },
                  'JSON::XS::Boolean'   => sub { $_[ 0 ].q()           },
                  'Type::Tiny'          => sub { $_[ 0 ]->display_name },
                  'Type::Tiny::Enum'    => sub { $_[ 0 ]->display_name },
