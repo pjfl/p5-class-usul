@@ -61,7 +61,7 @@ sub EXCEPTION_CLASS     () { __PACKAGE__->Exception_Class }
 sub LOG_LEVELS          () { @{ __PACKAGE__->Log_Levels } }
 sub PERL_EXTNS          () { ( qw( .pl .pm .t ) ) }
 sub PREFIX              () { [ q(), 'opt' ] }
-sub QUOTED_RE           () { '(?:(?:\")(?:[^\\\"]*(?:\\.[^\\\"]*)*)(?:\")|(?:\')(?:[^\\\']*(?:\\.[^\\\']*)*)(?:\')|(?:\`)(?:[^\\\`]*(?:\\.[^\\\`]*)*)(?:\`))' }
+sub QUOTED_RE           () { qr{ (?:(?:\")(?:[^\\\"]*(?:\\.[^\\\"]*)*)(?:\")|(?:\')(?:[^\\\']*(?:\\.[^\\\']*)*)(?:\')|(?:\`)(?:[^\\\`]*(?:\\.[^\\\`]*)*)(?:\`)) }mx }
 sub UNDEFINED_RV        () { -1 }
 sub UNTAINT_CMDLINE     () { qr{ \A ([^\$&;<>\`|]+)    \z }mx }
 sub UNTAINT_IDENTIFIER  () { qr{ \A ([a-zA-Z0-9_]+)    \z }mx }
