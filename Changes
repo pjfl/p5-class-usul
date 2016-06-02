@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+0.74.1    2016-06-02 15:31:46
           - Changed QUOTED_RE to be a regex
           - Stringify DateTime in dumper function
 
