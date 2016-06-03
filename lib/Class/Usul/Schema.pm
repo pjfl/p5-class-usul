@@ -234,7 +234,7 @@ my $_deploy_and_populate = sub {
    for my $path ($io->all_files) {
       my ($class) = $path->filename =~ $re;
 
-      $res->{ $class } = $self->deploy_file( $schema, $split, $class, $path );
+      $res->{ $class } = $self->populate_class( $schema, $split, $class, $path);
    }
 
    return $res;
@@ -325,30 +325,8 @@ sub deploy_and_populate : method {
    return OK;
 }
 
-sub deploy_file {
-   my ($self, $schema, $split, $class, $path) = @_; my $res;
-
-   if ($class) { $self->output( "Populating ${class}" ) }
-   else        { $self->fatal ( 'No class in [_1]', $path->filename ) }
-
-   my $data = $self->file->dataclass_schema->load( $path );
-   my $flds = [ split SPC, $data->{fields} ];
-   my @rows = map { [ map { $_unquote->( trim $_ ) } $split->records( $_ ) ] }
-                 @{ $data->{rows} };
-
-   try {
-      if ($self->dry_run) { $self->dumper( $flds, \@rows ) }
-      else { $res = $schema->populate( $class, [ $flds, @rows ] ) }
-   }
-   catch {
-      if ($_->can( 'class' ) and $_->class eq 'ValidationErrors') {
-         $self->warning( "${_}" ) for (@{ $_->args });
-      }
-
-      throw $_;
-   };
-
-   return $res;
+sub deploy_file { # Deprecated
+   my $self = shift; return $self->populate_class( @_ );
 };
 
 sub drop_database : method {
@@ -408,6 +386,32 @@ sub edit_credentials : method {
    $self->dry_run and $self->dumper( $cfg_data ) and return OK;
    $self->dump_config_data( $self_cfg, $creds->{name}, $cfg_data );
    return OK;
+}
+
+sub populate_class {
+   my ($self, $schema, $split, $class, $path) = @_; my $res;
+
+   if ($class) { $self->output( "Populating ${class}" ) }
+   else        { $self->fatal ( 'No class in [_1]', $path->filename ) }
+
+   my $data = $self->file->dataclass_schema->load( $path );
+   my $flds = [ split SPC, $data->{fields} ];
+   my @rows = map { [ map { $_unquote->( trim $_ ) } $split->records( $_ ) ] }
+                 @{ $data->{rows} };
+
+   try {
+      if ($self->dry_run) { $self->dumper( $flds, \@rows ) }
+      else { $res = $schema->populate( $class, [ $flds, @rows ] ) }
+   }
+   catch {
+      if ($_->can( 'class' ) and $_->class eq 'ValidationErrors') {
+         $self->warning( "${_}" ) for (@{ $_->args });
+      }
+
+      throw $_;
+   };
+
+   return $res;
 }
 
 1;
@@ -537,9 +541,7 @@ Called as part of the application install
 
 =head2 deploy_file
 
-   $result = $self->deploy_file( $schema, $split, $class, $path );
-
-Populates one table from a single file
+Deprecated in favour of L</populate_class>
 
 =head2 driver
 
@@ -578,6 +580,12 @@ L</dsn>
    $self->password;
 
 The unencrypted password used to connect to the database
+
+=head2 populate_class
+
+   $result = $self->populate_class( $schema, $split, $class, $path );
+
+Populates one table from a single file
 
 =head2 user
 
