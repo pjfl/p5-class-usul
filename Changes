@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Adds create_token64
           - Deprecated Schema::deploy_file v populate_class
 
 0.74.1    2016-06-02 15:31:46

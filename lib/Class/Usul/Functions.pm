@@ -37,15 +37,15 @@ use Unexpected::Functions      qw( is_class_loaded PathAlreadyExists
                                    PathNotFound Tainted Unspecified );
 use User::pwent;
 
-our @EXPORT_OK   = qw( abs_path app_prefix arg_list assert assert_directory
+our @EXPORT_OK =   qw( abs_path app_prefix arg_list assert assert_directory
                        base64_decode_ns base64_encode_ns bsonid bsonid_time
                        bson64id bson64id_time canonicalise class2appdir
-                       classdir classfile create_token cwdp dash2under
-                       data_dumper digest distname elapsed emit emit_err
-                       emit_to ensure_class_loaded env_prefix escape_TT
-                       exception find_apphome find_source first_char fqdn
-                       fullname get_cfgfiles get_user hex2str home2appldir io
-                       is_arrayref is_coderef is_hashref is_member is_win32
+                       classdir classfile create_token create_token64 cwdp
+                       dash2under data_dumper digest distname elapsed emit
+                       emit_err emit_to ensure_class_loaded env_prefix
+                       escape_TT exception find_apphome find_source first_char
+                       fqdn fullname get_cfgfiles get_user hex2str home2appldir
+                       io is_arrayref is_coderef is_hashref is_member is_win32
                        list_attr_of loginid logname merge_attributes my_prefix
                        nonblocking_write_pipe_pair ns_environment pad
                        prefix2class socket_pair split_on__ split_on_dash
@@ -364,6 +364,10 @@ sub classfile ($) {
 
 sub create_token (;$) {
    return digest( $_[ 0 ] // urandom() )->hexdigest;
+}
+
+sub create_token64 (;$) {
+   return digest( $_[ 0 ] // urandom() )->base64;
 }
 
 sub cwdp () {
@@ -1030,6 +1034,12 @@ C<App/Munchies.pm>
 Create a random string token using L</digest>. If C<$seed> is defined then add
 that to the digest, otherwise add some random data provided by a call to
 L</urandom>. Returns a hexadecimal string
+
+=head2 C<create_token64>
+
+   $random_base64 = create_token64 $optional_seed;
+
+Like L</create_token> but the output is C<base64> encoded
 
 =head2 C<cwdp>
 
