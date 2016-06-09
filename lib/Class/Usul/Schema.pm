@@ -163,12 +163,8 @@ my $_unquote = sub {
 };
 
 # Private methods
-my $_db_attr = sub {
-   my $self = shift; my $attr = $self->connect_info->[ 3 ];
-
-   $attr->{ $_ } = $self->db_attr->{ $_ } for (keys %{ $self->db_attr });
-
-   return $attr;
+my $_connect_attr = sub {
+   return { %{ $_[ 0 ]->connect_info->[ 3 ] }, %{ $_[ 0 ]->db_attr } };
 };
 
 my $_get_db_admin_creds = sub {
@@ -194,7 +190,7 @@ my $_create_ddl = sub {
 
    my $version = $self->schema_version;
    my $schema  = $schema_class->connect
-      ( $self->dsn, $self->user, $self->password, $self->$_db_attr );
+      ( $self->dsn, $self->user, $self->password, $self->$_connect_attr );
 
    if ($self->unlink) {
       for my $rdb (@{ $self->rdbms }) {
@@ -205,7 +201,7 @@ my $_create_ddl = sub {
    }
 
    $schema->create_ddl_dir
-      ( $self->rdbms, $version, $dir, $self->preversion, $self->$_db_attr );
+      ( $self->rdbms, $version, $dir, $self->preversion, $self->$_connect_attr);
    return;
 };
 
@@ -220,9 +216,9 @@ my $_deploy_and_populate = sub {
    else {
       $self->info( "Deploying schema ${schema_class} and populating" );
       $schema = $schema_class->connect
-         ( $self->dsn, $self->user, $self->password, $self->$_db_attr );
+         ( $self->dsn, $self->user, $self->password, $self->$_connect_attr );
       $schema->storage->ensure_connected;
-      $schema->deploy( $self->$_db_attr, $dir );
+      $schema->deploy( $self->$_connect_attr, $dir );
    }
 
    my $dist  = distname $schema_class;

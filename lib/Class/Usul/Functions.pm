@@ -367,7 +367,7 @@ sub create_token (;$) {
 }
 
 sub create_token64 (;$) {
-   return digest( $_[ 0 ] // urandom() )->base64;
+   return digest( $_[ 0 ] // urandom() )->b64digest;
 }
 
 sub cwdp () {
