@@ -33,7 +33,7 @@ has '_encoding'       => is => 'ro',   isa => DataEncoding | Undef,
 has '_log'            => is => 'lazy', isa => Logger,
    builder            => $_build__log, init_arg => 'log';
 
-has '_log_attributes' => is => 'ro',   isa => HashRef,
+has '_log_attributes' => is => 'lazy', isa => HashRef,
    builder            => sub { {} },   init_arg => 'log_attributes';
 
 has '_log_class'      => is => 'lazy', isa => LoadableClass, coerce => TRUE,
@@ -100,11 +100,12 @@ around '_log_attributes' => sub {
    $self->_log_class ne 'Log::Handler' and return $attr;
 
    my $fattr   = $attr->{file} //= {};
-   my $logfile = $fattr->{filename} // $self->_logfile;
+   my $logfile = $self->_logfile // $fattr->{filename};
 
    ($logfile and -d dirname( "${logfile}" )) or return $attr;
 
-   $fattr->{alias   } = 'file-out';
+   exists $loggers->{default} or $fattr->{alias} = 'file-out';
+
    $fattr->{filename} = "${logfile}";
    $fattr->{maxlevel} = $self->_debug_flag ? 'debug'
                       : untaint_identifier $fattr->{maxlevel} // 'info';

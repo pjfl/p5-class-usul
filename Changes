@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Corrected log filename precedence
           - Refactored db attr code in Schema
           - Adds create_token64
           - Deprecated Schema::deploy_file v populate_class
