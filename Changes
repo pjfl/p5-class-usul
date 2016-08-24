@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Bumps dependency version
           - Fixes keep_fhs bug in Log and Cmd
 
 0.75.1    2016-08-06 16:05:17
