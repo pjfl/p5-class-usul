@@ -58,7 +58,7 @@ has 'log'              => is => 'lazy', isa => Logger,
 
 has 'keep_fhs'         => is => 'lazy', isa => ArrayRef,
    builder             => sub {
-      my $fh = $_[ 0 ]->log->can( 'filehandle' ); $fh ? [ $fh->() ] : [] };
+      $_[ 0 ]->log->can( 'filehandle' ) ? [ $_[ 0 ]->log->filehandle ] : [] };
 
 has 'max_pidfile_wait' => is => 'ro',   isa => PositiveInt, default => 15;
 

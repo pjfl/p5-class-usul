@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - Fixes keep_fhs bug in Log and Cmd
+
 0.75.1    2016-08-06 16:05:17
           - Corrected log filename precedence
           - Refactored db attr code in Schema

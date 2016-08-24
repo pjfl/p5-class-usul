@@ -104,8 +104,7 @@ around '_log_attributes' => sub {
 
    ($logfile and -d dirname( "${logfile}" )) or return $attr;
 
-   exists $loggers->{default} or $fattr->{alias} = 'file-out';
-
+   $fattr->{alias} = 'file-out';
    $fattr->{filename} = "${logfile}";
    $fattr->{maxlevel} = $self->_debug_flag ? 'debug'
                       : untaint_identifier $fattr->{maxlevel} // 'info';
