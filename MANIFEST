@@ -55,6 +55,7 @@ t/23lock.t
 t/27ipc.t
 t/30schema.t
 t/META.json
+t/badtoolchain.dd
 t/boilerplate.pm
 t/exceptions.dd
 t/locale/de/LC_MESSAGES/default.po
