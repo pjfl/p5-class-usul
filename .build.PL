@@ -12,14 +12,14 @@ BEGIN {
                  || $ENV{PERL5_CPANPLUS_IS_VERSION} };
 
    my $create_build_script = sub {
-      my $msg = shift;
+      my $msg = shift; open my $fh, '>', 'Build' or die 'Cannot open Build';
 
-      open my $fh, '>', 'Build' or die "Cannot open Build";
       print {$fh} "#! $^X\n\n";
-      print {$fh} "\$ARGV[ 0 ] or mkdir( 'blib' );\n";
-      print {$fh} "\$ARGV[ 0 ] eq 'test' and print \"${msg}\\n\";\n";
-      print {$fh} "\$ARGV[ 0 ] eq 'test' and print \"Result: PASS\\n\";\n";
-      print {$fh} "exit 0\n";
+      print {$fh} "my \$argv = lc( \$ARGV[ 0 ] || q() );\n";
+      print {$fh} "\$argv or mkdir( 'blib' );\n";
+      print {$fh} "\$argv eq 'test' and print \"${msg}\\n\";\n";
+      print {$fh} "\$argv eq 'test' and print \"Result: PASS\\n\";\n";
+      print {$fh} "exit 0;\n";
       close $fh; chmod oct( 755 ), 'Build';
       exit 0;
    };
