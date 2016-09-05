@@ -33,7 +33,7 @@ BEGIN {
 
       for my $key (keys %{ $except }) {
          $host =~ m{ $key \z }mx
-            and $create_build_script->( 'Bad toolchain '.$except->{ $host } );
+            and $create_build_script->( 'Bad toolchain '.$except->{ $key } );
       }
    };
 
