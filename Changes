@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Exposes ddl_paths in ::Schema
           - Added broken smoker
 
 0.77.1    2016-09-01 13:42:52

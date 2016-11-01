@@ -193,9 +193,7 @@ my $_create_ddl = sub {
       ( $self->dsn, $self->user, $self->password, $self->$_connect_attr );
 
    if ($self->unlink) {
-      for my $rdb (@{ $self->rdbms }) {
-         my $path = io( $schema->ddl_filename( $rdb, $version, $dir ) );
-
+      for my $path ($self->ddl_paths( $schema, $version, $dir )) {
          $path->is_file and $path->unlink;
       }
    }
@@ -304,6 +302,16 @@ sub create_schema : method { # Create databases and edit credentials
    # Call DBIx::Class::deploy to create schema and populate it with static data
    $self->deploy_and_populate;
    return OK;
+}
+
+sub ddl_paths {
+   my ($self, $schema, $version, $dir) = @_; my @paths = ();
+
+   for my $rdb (@{ $self->rdbms }) {
+      push @paths, io( $schema->ddl_filename( $rdb, $version, $dir ) );
+   }
+
+   return @paths;
 }
 
 sub deploy_and_populate : method {
@@ -534,6 +542,12 @@ Calls L<create_database> followed by L<deploy_and_populate>
    $self->deploy_and_populate;
 
 Called as part of the application install
+
+=head2 ddl_paths
+
+   @paths = $self->ddl_paths( $schema, $version, $dir );
+
+Returns a list of io objects for each of the DDL files
 
 =head2 deploy_file
 
