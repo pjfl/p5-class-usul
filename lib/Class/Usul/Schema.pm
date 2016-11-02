@@ -94,7 +94,7 @@ option 'schema_version' => is => 'ro',   isa => NonEmptySimpleStr,
    documentation        => 'Current schema version',
    default              => '0.1', format => 's';
 
-option 'unlink'         => is => 'ro',   isa => Bool, default => FALSE,
+option 'unlink'         => is => 'rwp',  isa => Bool, default => FALSE,
    documentation        => 'If true remove DDL file before creating new ones';
 
 option 'yes'            => is => 'ro',   isa => Bool, default => FALSE,

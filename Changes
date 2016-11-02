@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Makes unlink in ::Schema privately settable
           - Exposes ddl_paths in ::Schema
           - Added broken smoker
 
