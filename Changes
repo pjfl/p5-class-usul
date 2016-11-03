@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - Adds repopulate_class to ::Schema
+            Hides list_popoulation_classes
           - Exposes list_population_classes in ::Schema
 
 0.78.1    2016-11-03 20:19:28

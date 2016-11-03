@@ -2,15 +2,15 @@ package Class::Usul::Schema;
 
 use namespace::autoclean;
 
-use Class::Usul::Constants   qw( AS_PARA AS_PASSWORD COMMA FAILED
-                                 FALSE NUL OK QUOTED_RE SPC TRUE );
+use Class::Usul::Constants   qw( AS_PARA AS_PASSWORD EXCEPTION_CLASS COMMA
+                                 FAILED FALSE NUL OK QUOTED_RE SPC TRUE );
 use Class::Usul::Crypt::Util qw( encrypt_for_config );
 use Class::Usul::Functions   qw( distname ensure_class_loaded io throw trim );
 use Class::Usul::Types       qw( ArrayRef Bool HashRef Maybe NonEmptySimpleStr
                                  PositiveInt SimpleStr Str );
 use Data::Record;
 use Try::Tiny;
-use Unexpected::Functions    qw( inflate_placeholders );
+use Unexpected::Functions    qw( inflate_placeholders Unspecified );
 use Moo;
 use Class::Usul::Options;
 
@@ -203,6 +203,39 @@ my $_create_ddl = sub {
    return;
 };
 
+my $_execute_ddl = sub {
+   my ($self, $admin_creds, $ddl, $opts) = @_; $admin_creds ||= {};
+
+   my $drvr = lc $self->driver;
+   my $host = $self->host || 'localhost';
+   my $user = $admin_creds->{user} // $self->db_admin_ids->{ $drvr };
+   my $pass = $admin_creds->{password};
+   my $cmds = $self->ddl_commands->{ $drvr }
+      or $self->fatal( 'Driver [_1] unknown', { args => [ $drvr ] } );
+   my $cmd  = $cmds->{ '-execute_ddl'  };
+
+   $cmd = $_inflate->( $cmd, $host, $user, $pass, $ddl, $self->_qualified_db );
+   $cmds->{ '-no_pipe' } or $cmd = "echo \"${ddl}\" | ${cmd}";
+   $self->dry_run and $self->output( $cmd ) and return;
+
+   return $self->run_cmd( $cmd, { out => 'stdout', %{ $opts // {} } } );
+};
+
+my $_list_population_classes = sub {
+   my ($self, $schema_class, $dir) = @_; my $res = [];
+
+   my $dist = distname $schema_class;
+   my $extn = $self->config->extension;
+   my $re   = qr{ \A $dist [-] \d+ [-] (.*) \Q$extn\E \z }mx;
+   my $io   = io( $dir )->filter( sub { $_->filename =~ $re } );
+
+   for my $path ($io->all_files) {
+      my ($class) = $path->filename =~ $re; push @{ $res }, [ $class, $path ];
+   }
+
+   return $res;
+};
+
 my $_deploy_and_populate = sub {
    my ($self, $schema_class, $dir) = @_; my $res; my $schema;
 
@@ -221,30 +254,12 @@ my $_deploy_and_populate = sub {
 
    my $split = Data::Record->new( { split => COMMA, unless => QUOTED_RE, } );
 
-   for my $tuple (@{ $self->list_population_classes( $schema_class, $dir ) }) {
+   for my $tuple (@{ $self->$_list_population_classes( $schema_class, $dir ) }){
       $res->{ $tuple->[ 0 ] }
          = $self->populate_class( $schema, $split, @{ $tuple } );
    }
 
    return $res;
-};
-
-my $_execute_ddl = sub {
-   my ($self, $admin_creds, $ddl, $opts) = @_; $admin_creds ||= {};
-
-   my $drvr = lc $self->driver;
-   my $host = $self->host || 'localhost';
-   my $user = $admin_creds->{user} // $self->db_admin_ids->{ $drvr };
-   my $pass = $admin_creds->{password};
-   my $cmds = $self->ddl_commands->{ $drvr }
-      or $self->fatal( 'Driver [_1] unknown', { args => [ $drvr ] } );
-   my $cmd  = $cmds->{ '-execute_ddl'  };
-
-   $cmd = $_inflate->( $cmd, $host, $user, $pass, $ddl, $self->_qualified_db );
-   $cmds->{ '-no_pipe' } or $cmd = "echo \"${ddl}\" | ${cmd}";
-   $self->dry_run and $self->output( $cmd ) and return;
-
-   return $self->run_cmd( $cmd, { out => 'stdout', %{ $opts // {} } } );
 };
 
 # Public methods
@@ -387,21 +402,6 @@ sub edit_credentials : method {
    return OK;
 }
 
-sub list_population_classes {
-   my ($self, $schema_class, $dir) = @_; my $res = [];
-
-   my $dist = distname $schema_class;
-   my $extn = $self->config->extension;
-   my $re   = qr{ \A $dist [-] \d+ [-] (.*) \Q$extn\E \z }mx;
-   my $io   = io( $dir )->filter( sub { $_->filename =~ $re } );
-
-   for my $path ($io->all_files) {
-      my ($class) = $path->filename =~ $re; push @{ $res }, [ $class, $path ];
-   }
-
-   return $res;
-}
-
 sub populate_class {
    my ($self, $schema, $split, $class, $path) = @_; my $res;
 
@@ -426,6 +426,36 @@ sub populate_class {
    };
 
    return $res;
+}
+
+sub repopulate_class : method {
+   my $self = shift;
+   my $class = $self->next_argv or throw Unspecified, [ 'class name' ];
+   my $schema = $self->schema;
+   my $schema_class = blessed $schema;
+   my $dir = $self->config->sharedir;
+   my $tuples = $self->$_list_population_classes( $schema_class, $dir );
+   my $split = Data::Record->new( { split => COMMA, unless => QUOTED_RE, } );
+
+   for my $tuple (grep { $_->[ 0 ] =~ m{ \A $class \z }imx } @{ $tuples }) {
+      my $data = $self->file->dataclass_schema->load( $tuple->[ 1 ] );
+      my $flds = [ split SPC, $data->{fields} ];
+      my @rows = map { [ map { $_unquote->( trim $_ ) }
+                         $split->records( $_ ) ] } @{ $data->{rows} };
+      my $rs   = $schema->resultset( $tuple->[ 0 ] );
+
+      for my $row (@rows) {
+         my $name = $row->[ 0 ]; my $type = $row->[ 1 ];
+
+         try {
+            $rs->create( { name => $name, type_class => $type } );
+            $self->info( "Create a ${type} type called ${name}" );
+         }
+         catch {};
+      }
+   }
+
+   return OK;
 }
 
 1;
@@ -606,6 +636,12 @@ The unencrypted password used to connect to the database
    $result = $self->populate_class( $schema, $split, $class, $path );
 
 Populates one table from a single file
+
+=head2 repopulate_class - Reloads the given class from the initial load data
+
+   $self->repopulate_class;
+
+Specifiy the class to reload on the command line
 
 =head2 user
 
