@@ -219,16 +219,11 @@ my $_deploy_and_populate = sub {
       $schema->deploy( $self->$_connect_attr, $dir );
    }
 
-   my $dist  = distname $schema_class;
-   my $extn  = $self->config->extension;
-   my $re    = qr{ \A $dist [-] \d+ [-] (.*) \Q$extn\E \z }mx;
-   my $io    = io( $dir )->filter( sub { $_->filename =~ $re } );
    my $split = Data::Record->new( { split => COMMA, unless => QUOTED_RE, } );
 
-   for my $path ($io->all_files) {
-      my ($class) = $path->filename =~ $re;
-
-      $res->{ $class } = $self->populate_class( $schema, $split, $class, $path);
+   for my $tuple (@{ $self->list_population_classes( $schema_class, $dir ) }) {
+      $res->{ $tuple->[ 0 ] }
+         = $self->populate_class( $schema, $split, @{ $tuple } );
    }
 
    return $res;
@@ -390,6 +385,21 @@ sub edit_credentials : method {
    $self->dry_run and $self->dumper( $cfg_data ) and return OK;
    $self->dump_config_data( $self_cfg, $creds->{name}, $cfg_data );
    return OK;
+}
+
+sub list_population_classes {
+   my ($self, $schema_class, $dir) = @_; my $res = [];
+
+   my $dist = distname $schema_class;
+   my $extn = $self->config->extension;
+   my $re   = qr{ \A $dist [-] \d+ [-] (.*) \Q$extn\E \z }mx;
+   my $io   = io( $dir )->filter( sub { $_->filename =~ $re } );
+
+   for my $path ($io->all_files) {
+      my ($class) = $path->filename =~ $re; push @{ $res }, [ $class, $path ];
+   }
+
+   return $res;
 }
 
 sub populate_class {

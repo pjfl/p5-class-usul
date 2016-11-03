@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - Exposes list_population_classes in ::Schema
+
 0.78.1    2016-11-03 20:19:28
           - Makes unlink in ::Schema privately settable
           - Exposes ddl_paths in ::Schema
