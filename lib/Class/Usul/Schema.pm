@@ -55,7 +55,7 @@ my $_rebuild_qdb = sub {
 };
 
 # Public attributes
-option 'database'       => is => 'ro',   isa => NonEmptySimpleStr,
+option 'database'       => is => 'lazy', isa => NonEmptySimpleStr,
    documentation        => 'The database to connect to',
    format               => 's', required => TRUE, trigger => $_rebuild_qdb;
 
@@ -81,7 +81,7 @@ option 'preversion'     => is => 'rwp',  isa => Str, default => NUL,
    documentation        => 'Previous schema version',
    format               => 's';
 
-option 'rdbms'          => is => 'ro',   isa => ArrayRef, autosplit => COMMA,
+option 'rdbms'          => is => 'lazy', isa => ArrayRef, autosplit => COMMA,
    documentation        => 'List of supported RDBMSs',
    default              => sub { [ qw( MySQL SQLite PostgreSQL ) ] },
    format               => 's@';
@@ -430,9 +430,9 @@ sub populate_class {
 
 sub repopulate_class : method {
    my $self = shift;
+   my $dir = $self->config->sharedir;
    my $class = $self->next_argv or throw Unspecified, [ 'class name' ];
    my $schema_class = $self->schema_classes->{ $self->database };
-   my $dir = $self->config->sharedir;
    my $tuples = $self->$_list_population_classes( $schema_class, $dir );
    my $split = Data::Record->new( { split => COMMA, unless => QUOTED_RE, } );
 
