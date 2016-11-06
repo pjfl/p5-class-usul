@@ -77,7 +77,7 @@ option 'dry_run'        => is => 'ro',   isa => Bool, default => FALSE,
    documentation        => 'Prints out commands, do not execute them',
    short                => 'd';
 
-option 'preversion'     => is => 'ro',   isa => Str, default => NUL,
+option 'preversion'     => is => 'rwp',  isa => Str, default => NUL,
    documentation        => 'Previous schema version',
    format               => 's';
 
@@ -431,11 +431,15 @@ sub populate_class {
 sub repopulate_class : method {
    my $self = shift;
    my $class = $self->next_argv or throw Unspecified, [ 'class name' ];
-   my $schema = $self->schema;
-   my $schema_class = blessed $schema;
+   my $schema_class = $self->schema_classes->{ $self->database };
    my $dir = $self->config->sharedir;
    my $tuples = $self->$_list_population_classes( $schema_class, $dir );
    my $split = Data::Record->new( { split => COMMA, unless => QUOTED_RE, } );
+
+   ensure_class_loaded $schema_class;
+
+   my $schema = $schema_class->connect
+      ( $self->dsn, $self->user, $self->password, $self->$_connect_attr );
 
    for my $tuple (grep { $_->[ 0 ] =~ m{ \A $class \z }imx } @{ $tuples }) {
       my $data = $self->file->dataclass_schema->load( $tuple->[ 1 ] );
