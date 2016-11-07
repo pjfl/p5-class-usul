@@ -204,7 +204,11 @@ sub dump_self : method {
 }
 
 sub exit_usage {
-   $_[ 0 ]->quiet( TRUE ); exit $_[ 0 ]->$_output_usage( $_[ 1 ] );
+   my ($self, $level) = @_; $self->quiet( TRUE );
+
+   my $rv = $self->$_output_usage( $level ); emit "\n"; $self->list_methods;
+
+   exit $rv;
 }
 
 sub exit_version {

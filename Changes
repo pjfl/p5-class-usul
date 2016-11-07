@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Better help option output
           - Adds repopulate_class to ::Schema
             Hides list_popoulation_classes
           - Exposes list_population_classes in ::Schema
