@@ -206,7 +206,9 @@ sub dump_self : method {
 sub exit_usage {
    my ($self, $level) = @_; $self->quiet( TRUE );
 
-   my $rv = $self->$_output_usage( $level ); emit "\n"; $self->list_methods;
+   my $rv = $self->$_output_usage( $level );
+
+   emit "\nMethods:\n"; $self->list_methods;
 
    exit $rv;
 }
