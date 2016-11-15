@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Toolchain update CVE-2016-1238
           - Better help option output
           - Adds repopulate_class to ::Schema
             Hides list_popoulation_classes
