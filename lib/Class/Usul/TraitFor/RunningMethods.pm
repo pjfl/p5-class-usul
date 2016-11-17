@@ -62,7 +62,8 @@ my $handle_result = sub {
          ( 'Finished in [_1] seconds', { args => [ elapsed ] } );
    }
    elsif (defined $rv and $rv > OK) {
-      $self->error( 'Terminated code [_1]', { args => [ $rv ] } );
+      $self->error( 'Terminated code [_1]', {
+         args => [ $rv ], no_quote_bind_values => TRUE } );
    }
    else {
       if ($rv == UNDEFINED_RV) { $self->error( 'Terminated with undefined rv' )}

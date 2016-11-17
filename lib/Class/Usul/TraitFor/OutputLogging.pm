@@ -31,7 +31,7 @@ my $_loc = sub {
 
    return $self->localize( $text // '[no message]', {
       locale               => $self->locale,
-      no_quote_bind_values => $quote // FALSE,
+      no_quote_bind_values => $quote // $opts->{no_quote_bind_values} // FALSE,
       params               => $opts->{args} // [] } );
 };
 

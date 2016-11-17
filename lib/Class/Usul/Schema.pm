@@ -645,7 +645,7 @@ Populates one table from a single file
 
    $self->repopulate_class;
 
-Specifiy the class to reload on the command line
+Specify the class to reload on the command line
 
 =head2 user
 

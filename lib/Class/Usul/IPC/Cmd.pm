@@ -160,11 +160,12 @@ my $_four_nonblocking_pipe_pairs = sub {
 };
 
 my $_has_shell_meta = sub {
-   return (     is_arrayref $_[ 0 ]) ? is_member '|',  $_[ 0 ]
-        : (     is_arrayref $_[ 0 ]) ? is_member '&&', $_[ 0 ]
-        : ($_[ 0 ] =~ m{ [|]    }mx) ? TRUE
-        : ($_[ 0 ] =~ m{ [&][&] }mx) ? TRUE
-                                     : FALSE;
+   return (is_arrayref $_[ 0 ] && is_member '|',  $_[ 0 ]) ? TRUE
+        : (is_arrayref $_[ 0 ] && is_member '&&', $_[ 0 ]) ? TRUE
+        : (                           is_arrayref $_[ 0 ]) ? FALSE
+        : (                      $_[ 0 ] =~ m{ [|]    }mx) ? TRUE
+        : (                      $_[ 0 ] =~ m{ [&][&] }mx) ? TRUE
+                                                           : FALSE;
 };
 
 my $_make_socket_pipe = sub {
