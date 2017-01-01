@@ -548,7 +548,7 @@ sub get_cfgfiles ($;$$) {
    my ($appclass, $dirs, $extns) = @_;
 
    $appclass // throw( Unspecified, [ 'application class' ], level => 2 );
-   is_arrayref( $dirs ) or $dirs = [ $dirs // curdir ];
+   is_arrayref( $dirs ) or $dirs = [ $dirs || curdir ];
 
    my $app_pref = app_prefix   $appclass;
    my $appdir   = class2appdir $appclass;
