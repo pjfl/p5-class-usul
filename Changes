@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+0.79.1    2017-01-01 15:27:08
           - RunningMethods terminated no longer quotes bind value
           - Fixes has_shell_meta in Cmd
           - Toolchain update CVE-2016-1238
