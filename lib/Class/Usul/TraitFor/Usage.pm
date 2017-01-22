@@ -208,7 +208,7 @@ sub exit_usage {
 
    my $rv = $self->$_output_usage( $level );
 
-   emit "\nMethods:\n"; $self->list_methods;
+   if ($level == 0) { emit "\nMethods:\n"; $self->list_methods }
 
    exit $rv;
 }
