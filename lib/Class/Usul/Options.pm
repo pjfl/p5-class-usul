@@ -55,7 +55,8 @@ sub default_options_config () {
           protect_argv       => TRUE,
           show_defaults      => FALSE,
           skip_options       => [],
-          usage_conf         => {};
+          usage_conf         => {},
+          usage_opt          => 'Usage: %c %o [method]';
 }
 
 sub import {
@@ -310,6 +311,12 @@ string
 The total line width available for displaying usage text, defaults to 78
 
 =back
+
+=item C<usage_opt>
+
+The usage option string passed as the first argument to the
+L<describe options|Getopt::Long::Descriptive/describe_options> function.
+Defaulted in L</default_options_config> to C<Usage: %c %o [method]>
 
 =back
 

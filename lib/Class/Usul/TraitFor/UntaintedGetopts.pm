@@ -131,6 +131,8 @@ my $_parse_options = sub {
 
    my %gld_conf; my @gld_attr = ('getopt_conf', 'show_defaults');
 
+   my $usage_opt = $config{usage_opt} ? $config{usage_opt} : 'Usage: %c %o';
+
    @gld_conf{ @gld_attr } = @config{ @gld_attr };
    $config{usage_conf   } and $_set_usage_conf->( $config{usage_conf} );
    $config{protect_argv } and local @ARGV = @ARGV;
@@ -138,7 +140,7 @@ my $_parse_options = sub {
    $config{no_untaint   } or  @ARGV = map { untaint_cmdline $_ } @ARGV;
    $Untainted_Argv = [ @ARGV ];
    keys  %{ $splitters  } and @ARGV = $_split_args->( $splitters );
-   ($opt, $Usage)  = describe_options( 'Usage: %c %o', @options, \%gld_conf );
+   ($opt, $Usage)  = describe_options( $usage_opt, @options, \%gld_conf );
    $Extra_Argv     = [ @ARGV ];
 
    my ($params, @missing)
