@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Fewer assumptions about exception class
           - New default for usage_opt
           - Only show method list for help_usage
 

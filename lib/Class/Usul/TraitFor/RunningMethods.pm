@@ -92,10 +92,12 @@ my $_handle_run_exception = sub {
       return UNDEFINED_RV;
    }
 
-   $e->out and $self->output( $e->out );
+   $e->can( 'out' ) and $e->out and $self->output( $e->out );
    $self->error( $e->error, { args => $e->args } );
    $self->debug and $_output_stacktrace->( $error, $self->verbose );
-   return $e->rv || (defined $e->rv ? FAILED : UNDEFINED_RV);
+
+   return $e->can( 'rv' )
+        ? ($e->rv || (defined $e->rv ? FAILED : UNDEFINED_RV)) : UNDEFINED_RV;
 };
 
 # Public methods
