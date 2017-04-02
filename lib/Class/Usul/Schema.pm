@@ -107,20 +107,25 @@ has 'connect_info'      => is => 'lazy', isa => ArrayRef, builder => sub {
 
 has 'ddl_commands'      => is => 'lazy', isa => HashRef,  builder => sub { {
    'mysql'              => {
-      'create_user'     => "create user '[_2]'\@'[_1]' identified by '[_3]';",
+      'create_user'     => "create user if not exists '[_2]'\@'[_1]' "
+                         . "identified by '[_3]';",
       'create_db'       => 'create database if not exists [_3] default '
                          . 'character set utf8 collate utf8_unicode_ci;',
       'drop_db'         => 'drop database if exists [_3];',
-      'drop_user'       => "drop user '[_2]'\@'[_1]';",
+      'drop_user'       => "drop user if exists '[_2]'\@'[_1]';",
       'grant_all'       => "grant all privileges on [_3].* to '[_2]'\@'[_1]' "
                          . 'with grant option;',
       '-execute_ddl'    => 'mysql -A -h [_1] -u [_2] -p[_3] mysql', },
    'pg'                 => {
       'create_user'     => "create role [_2] login password '[_3]';",
       'create_db'       => "create database [_3] owner [_2] encoding 'UTF8';",
-      'drop_db'         => 'drop database [_3];',
-      'drop_user'       => 'drop user [_2];',
-      '-execute_ddl'    => 'PGPASSWORD=[_3] psql -q -w -h [_1] -U [_2]', },
+      'drop_db'         => 'drop database if exists [_3];',
+      'drop_user'       => 'drop user if exists [_2];',
+      'exists_db'       => "select 1 from pg_database where datname = '[_3]';",
+      'exists_user'     => "select 1 from pg_user where usename = '[_2]';",
+      '-execute_ddl'    => 'PGPASSWORD=[_3] '
+                         . 'psql -h [_1] -q -t -U [_2] -w -c "[_4]"',
+      '-no_pipe'        => TRUE, },
    'sqlite'             => {
       '-execute_ddl'    => "sqlite3 [_5] '[_4]'",
       '-no_pipe'        => TRUE,
@@ -212,11 +217,12 @@ my $_execute_ddl = sub {
    my $pass = $admin_creds->{password};
    my $cmds = $self->ddl_commands->{ $drvr }
       or $self->fatal( 'Driver [_1] unknown', { args => [ $drvr ] } );
-   my $cmd  = $cmds->{ '-execute_ddl'  };
+   my $cmd  = $cmds->{ '-execute_ddl' };
 
    $cmd = $_inflate->( $cmd, $host, $user, $pass, $ddl, $self->_qualified_db );
    $cmds->{ '-no_pipe' } or $cmd = "echo \"${ddl}\" | ${cmd}";
    $self->dry_run and $self->output( $cmd ) and return;
+   $self->verbose and $self->output( $cmd );
 
    return $self->run_cmd( $cmd, { out => 'stdout', %{ $opts // {} } } );
 };
@@ -262,24 +268,62 @@ my $_deploy_and_populate = sub {
    return $res;
 };
 
+my $_test_for_existance = sub {
+   my ($self, $creds, $test, @args) = @_;
+
+   $test or return FALSE; $test = $_inflate->( $test, @args );
+
+   my $r = $self->$_execute_ddl( $creds, $test, { out => 'buffer' } );
+
+   $self->debug and $self->dumper( $r );
+
+   return $r->out =~ m{ 1 }mx ? TRUE : FALSE;
+};
+
+my $_create_db_if_not_exists = sub {
+   my ($self, $creds, $cmds, @args) = @_;
+
+   my $ddl    = $cmds->{create_db} or return;
+   my $test   = $cmds->{exists_db};
+   my $exists = $self->$_test_for_existance( $creds, $test, @args );
+
+   $exists or $self->$_execute_ddl( $creds, $_inflate->( $ddl, @args ) );
+
+   return;
+};
+
+my $_create_user_if_not_exists = sub {
+   my ($self, $creds, $cmds, @args) = @_;
+
+   my $ddl    = $cmds->{create_user} or return;
+   my $test   = $cmds->{exists_user};
+   my $exists = $self->$_test_for_existance( $creds, $test, @args );
+
+   $exists or $self->$_execute_ddl( $creds, $_inflate->( $ddl, @args ) );
+
+   return;
+};
+
 # Public methods
 sub create_database : method {
    my $self     = shift;
    my $host     = $self->host;
    my $user     = $self->user;
    my $driver   = $self->driver;
+   my $password = $self->password;
    my $database = $self->database;
    my $cmds     = $self->ddl_commands->{ lc $driver };
    my $creds    = $self->$_get_db_admin_creds( 'create database' );
 
-   $self->info( "Creating ${driver} database ${database}" ); my $ddl;
+   $self->info( "Creating ${driver} database ${database}" );
 
-   $ddl = $cmds->{ 'create_user' } and $self->$_execute_ddl
-      ( $creds, $_inflate->( $ddl, $host, $user, $self->password ) );
-   $ddl = $cmds->{ 'create_db'   } and $self->$_execute_ddl
+   $self->$_create_user_if_not_exists( $creds, $cmds, $host, $user, $password );
+
+   $self->$_create_db_if_not_exists( $creds, $cmds, $host, $user, $database );
+
+   my $ddl; $ddl = $cmds->{grant_all} and $self->$_execute_ddl
       ( $creds, $_inflate->( $ddl, $host, $user, $database ) );
-   $ddl = $cmds->{ 'grant_all'   } and $self->$_execute_ddl
-      ( $creds, $_inflate->( $ddl, $host, $user, $database ) );
+
    return OK;
 }
 
