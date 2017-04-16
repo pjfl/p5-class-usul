@@ -77,6 +77,10 @@ my $_rebuild_qdb = sub {
 };
 
 # Public attributes
+option 'all'            => is => 'ro',  isa => Bool, default => FALSE,
+   documentation        => 'Perform operation for all possible schema',
+   short                => 'a';
+
 option 'database'       => is => 'rwp', isa => NonEmptySimpleStr,
    documentation        => 'The database to connect to',
    format               => 's', lazy => TRUE, required => TRUE,
@@ -140,7 +144,7 @@ has 'ddl_commands'      => is => 'lazy', isa => HashRef, builder => sub { {
       'create_db'       => 'create database [_3] default '
                          . 'character set utf8 collate utf8_unicode_ci;',
       'drop_db'         => 'drop database if exists [_3];',
-      'drop_user'       => "drop user if exists '[_2]'\@'[_1]';",
+      'drop_user'       => "drop user '[_2]'\@'[_1]';",
       'exists_db'       => 'select 1 from information_schema.SCHEMATA '
                          . "where SCHEMA_NAME = '[_3]';",
       'exists_user'     => 'select 1 from mysql.user '
@@ -272,27 +276,32 @@ my $_test_for_existance = sub {
 
    $self->debug and $self->dumper( $r );
 
-   return $r->out =~ m{ 1 }mx ? TRUE : FALSE;
+   return $r && $r->out =~ m{ 1 }mx ? TRUE : FALSE;
 };
 
 # Public methods
 sub create_database : method {
-   my $self     = shift;
-   my $host     = $self->host;
-   my $user     = $self->user;
-   my $driver   = $self->driver;
-   my $database = $self->database;
-   my $cmds     = $self->ddl_commands->{ lc $driver };
-   my $ddl      = $cmds->{create_db} or return FAILED;
-   my $copts    = $self->connect_options;
-   my @args     = ($host, $user, $database);
+   my $self   = shift;
+   my $driver = $self->driver;
+   my $cmds   = $self->ddl_commands->{ lc $driver };
+   my @dbs    = $self->all ? keys %{ $self->schema_classes } : $self->database;
+   my $copts  = $self->connect_options;
 
-   not $self->$_test_for_existance( $copts, $cmds->{exists_db}, @args )
-      and $self->info( "Creating ${driver} database ${database}" )
-      and $self->execute_ddl( $_inflate->( $ddl, @args ), $copts );
+   for my $db (@dbs) {
+      my $ddl  = $cmds->{create_db} or return FAILED;
+      my @args = ($self->host, $self->user, $db);
 
-   $ddl = $cmds->{grant_all}
-      and $self->execute_ddl( $_inflate->( $ddl, @args ), $copts );
+      my $r; not $self->$_test_for_existance( $copts, $cmds->{exists_db}, @args)
+         and $self->info( "Creating ${driver} database ${db}" )
+         and $r = $self->execute_ddl( $_inflate->( $ddl, @args ), $copts );
+
+      $self->debug and $r and $self->dumper( $r ); $r = FALSE;
+
+      $ddl = $cmds->{grant_all}
+         and $r = $self->execute_ddl( $_inflate->( $ddl, @args ), $copts );
+
+      $self->debug and $r and $self->dumper( $r );
+   }
 
    return OK;
 }
@@ -319,6 +328,7 @@ sub create_schema : method { # Create databases and edit credentials
 
    $self->output( $text, AS_PARA );
    $self->yorn( '+Create database schema', $default, TRUE, 0 ) or return OK;
+   $self->connect_options;
    $self->edit_credentials;
    $self->drop_database;
    $self->drop_user;
@@ -329,20 +339,19 @@ sub create_schema : method { # Create databases and edit credentials
 }
 
 sub create_user : method {
-   my $self     = shift;
-   my $host     = $self->host;
-   my $user     = $self->user;
-   my $driver   = $self->driver;
-   my $password = $self->password;
-   my $cmds     = $self->ddl_commands->{ lc $driver };
-   my $ddl      = $cmds->{create_user} or return FAILED;
-   my $copts    = $self->connect_options;
-   my @args     = ($host, $user, $password);
+   my $self   = shift;
+   my $user   = $self->user;
+   my $driver = $self->driver;
+   my $cmds   = $self->ddl_commands->{ lc $driver };
+   my $ddl    = $cmds->{create_user} or return FAILED;
+   my @args   = ($self->host, $user, $self->password);
+   my $copts  = $self->connect_options;
 
-   not $self->$_test_for_existance( $copts, $cmds->{exists_user}, @args )
+   my $r; not $self->$_test_for_existance( $copts, $cmds->{exists_user}, @args )
       and $self->info( "Creating ${driver} user ${user}" )
-      and $self->execute_ddl( $_inflate->( $ddl, @args ), $copts  );
+      and $r = $self->execute_ddl( $_inflate->( $ddl, @args ), $copts  );
 
+   $self->debug and $r and $self->dumper( $r );
    return OK;
 }
 
@@ -357,12 +366,14 @@ sub ddl_paths {
 }
 
 sub deploy_and_populate : method {
-   my $self = shift; my $default = $self->yes;
+   my $self = shift;
 
-   $self->info( 'Deploy and populate for '.$self->dsn );
-   $self->yorn( '+Continue', $default, TRUE, 0 ) or return OK;
+   my @classes = $self->all ? values %{ $self->schema_classes }
+                            : $self->schema_classes->{ $self->database };
 
-   for my $schema_class (values %{ $self->schema_classes }) {
+   for my $schema_class (@classes) {
+      $self->info( "Deploy and populate ${schema_class}" );
+      $self->yorn( '+Continue', $self->yes, TRUE, 0 ) or next;
       ensure_class_loaded $schema_class;
       $schema_class->can( 'config' ) and $schema_class->config( $self->config );
       $self->$_deploy_and_populate( $schema_class, $self->config->sharedir );
@@ -376,34 +387,46 @@ sub deploy_file { # Deprecated
 };
 
 sub drop_database : method {
-   my $self     = shift;
-   my $database = $self->database;
-   my $cmds     = $self->ddl_commands->{ lc $self->driver };
-   my $ddl      = $cmds->{ 'drop_db' } or return FAILED;
-   my @args     = ($self->host, $self->user, $database);
-   my $copts    = $self->connect_options;
-   my $default  = $self->yes;
+   my $self   = shift;
+   my $driver = $self->driver;
+   my $cmds   = $self->ddl_commands->{ lc $driver };
+   my @dbs    = $self->all ? keys %{ $self->schema_classes } : $self->database;
+   my $copts  = $self->connect_options;
 
-   $self->yorn( '+Really drop the database', $default, TRUE, 0 ) or return OK;
-   $self->info( "Droping database ${database}" );
-   $self->execute_ddl( $_inflate->( $ddl, @args ), $copts );
+   $self->yorn( '+Really drop the database', $self->yes, TRUE, 0 ) or return OK;
+
+   for my $db (@dbs) {
+      my $ddl  = $cmds->{ 'drop_db' } or return FAILED;
+      my @args = ($self->host, $self->user, $db);
+
+      $self->info( "Droping ${driver} database ${db}" );
+
+      my $r = $self->execute_ddl( $_inflate->( $ddl, @args ), $copts );
+
+      $self->debug and $self->dumper( $r );
+   }
+
    return OK;
 }
 
 sub drop_user : method {
-   my $self    = shift;
-   my $user    = $self->user;
-   my $cmds    = $self->ddl_commands->{ lc $self->driver };
-   my $ddl     = $cmds->{ 'drop_user' } or return FAILED;
-   my @args    = ($self->host, $user, $self->database);
-   my $copts   = $self->connect_options;
-   my $default = $self->yes;
+   my $self     = shift;
+   my $user     = $self->user;
+   my $driver   = $self->driver;
+   my $cmds     = $self->ddl_commands->{ lc $driver };
+   my $ddl      = $cmds->{ 'drop_user' } or return FAILED;
+   my @args     = ($self->host, $user, $self->database);
+   my $cmd_opts = { expected_rv => 1, out => 'buffer' };
+   my $copts    = $self->connect_options;
 
-   $self->yorn( '+Really drop the user', $default, TRUE, 0 ) or return OK;
-   $self->info( "Droping user ${user}" );
-   $self->execute_ddl( $_inflate->( $ddl, @args ), $copts, {
-      expected_rv => 1 } );
+   $self->yorn( '+Really drop the user', $self->yes, TRUE, 0 ) or return OK;
+   $self->$_test_for_existance( $copts, $cmds->{exists_user}, @args )
+      or return OK;
+   $self->info( "Droping ${driver} user ${user}" );
 
+   my $r = $self->execute_ddl( $_inflate->( $ddl, @args ), $copts, $cmd_opts );
+
+   $self->debug and $self->dumper( $r );
    return OK;
 }
 

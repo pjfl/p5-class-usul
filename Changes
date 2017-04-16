@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Adds all option to schema creation
           - Splits out more of the create_schema functions
 
 0.80.1    2017-04-03 20:45:27
