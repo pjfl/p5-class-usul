@@ -1,5 +1,7 @@
 Revision history for Class::Usul
 
+          - Splits out more of the create_schema functions
+
 0.80.1    2017-04-03 20:45:27
           - Adds conditional creation of Pg schema
           - Fewer assumptions about exception class

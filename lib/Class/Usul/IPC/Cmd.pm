@@ -37,7 +37,7 @@ has 'async'            => is => 'ro',   isa => Bool, default => FALSE;
 
 has 'close_all_files'  => is => 'ro',   isa => Bool, default => FALSE;
 
-has 'cmd'              => is => 'ro',   isa => ArrayRef | NonEmptySimpleStr,
+has 'cmd'              => is => 'ro',   isa => ArrayRef | Str,
    required            => TRUE;
 
 has 'detach'           => is => 'ro',   isa => Bool, default => FALSE;
