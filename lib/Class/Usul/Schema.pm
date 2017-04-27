@@ -151,7 +151,7 @@ has 'ddl_commands'      => is => 'lazy', isa => HashRef, builder => sub { {
                          . "where User = '[_2]' and Host = '[_1]';",
       'grant_all'       => "grant all privileges on [_3].* to '[_2]'\@'[_1]' "
                          . 'with grant option;',
-      '-execute_ddl'    => 'mysql -A -h [_1] -u [_2] -p[_3] [_5]', },
+      '-execute_ddl'    => 'mysql -A -h [_1] -u [_2] -p"[_3]" [_5]', },
    'pg'                 => {
       'create_user'     => "create role [_2] login password '[_3]';",
       'create_db'       => "create database [_3] owner [_2] encoding 'UTF8';",
