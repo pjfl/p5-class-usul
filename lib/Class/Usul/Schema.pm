@@ -597,6 +597,10 @@ Defines the following attributes
 
 =over 3
 
+=item C<all>
+
+Optional boolean. Perform operation for all possible schema
+
 =item C<database>
 
 String which is required. The name of the database to connect to
