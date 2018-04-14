@@ -10,7 +10,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 # Version
 
-Describes Class::Usul version v0.83.$Rev: 1 $
+Describes Class::Usul version v0.83.$Rev: 2 $
 
 # Synopsis
 
@@ -135,7 +135,7 @@ Larry Wall - For the Perl programming language
 
 # License and Copyright
 
-Copyright (c) 2017 Peter Flanigan. All rights reserved
+Copyright (c) 2018 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See [perlartistic](https://metacpan.org/pod/perlartistic)
