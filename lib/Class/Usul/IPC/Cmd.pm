@@ -363,6 +363,10 @@ my $_redirect_child_io = sub {
       or $_redirect_stderr->( (  blessed $err) ? "${err}"
                             : ($err eq 'null') ? devnull
                                                : $pipes->[ 2 ]->[ 1 ] );
+
+   # Avoid 'stdin reopened for output' warning with newer Perls
+   open NULL, devnull; <NULL> if 0;
+
    return;
 };
 
