@@ -41,7 +41,7 @@ my $_compose = sub {
 };
 
 my $_new_crypt_cbc = sub {
-   Crypt::CBC->new( -cipher => $_[ 0 ], -key => $_[ 1 ] );
+   Crypt::CBC->new( -cipher => $_[ 0 ], -key => $_[ 1 ], -pbkdf=>'pbkdf2' );
 };
 
 my $_token = sub {
