@@ -116,7 +116,7 @@ sub import {
       $options_data->{ $name }
          = { $validate_and_filter_options->( %attributes ) };
 
-      $apply_modifiers->(); # TODO: I think this can go
+#      $apply_modifiers->(); # TODO: I think this can go
       return;
    };
    my $info; $info = $Role::Tiny::INFO{ $target }

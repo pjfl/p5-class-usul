@@ -69,50 +69,65 @@ my $_get_pod_header_for_method = sub {
    my $ev  = [ grep { $_->{content} =~ m{ (?: ^|[< ]) $method (?: [ >]|$ ) }msx}
                grep { $_->{type} eq 'command' }
                    @{ Pod::Eventual::Simple->read_file( $src ) } ]->[ 0 ];
-   my $pod = $ev ? $ev->{content} : undef; $pod and chomp $pod;
+   my $pod = $ev ? $ev->{content} : undef;
 
+   chomp $pod if $pod;
    return $pod;
 };
 
 # Private methods
 my $_apply_stdio_encoding = sub {
-   my $self = shift; my $enc = untaint_cmdline $self->encoding;
+   my $self = shift;
+   my $enc  = untaint_cmdline $self->encoding;
 
    for (*STDIN, *STDOUT, *STDERR) {
-      $_->opened or next; binmode $_, ":encoding(${enc})";
+      $_->opened or next;
+      binmode $_, ":encoding(${enc})";
    }
 
-   autoflush STDOUT TRUE; autoflush STDERR TRUE;
+   autoflush STDOUT TRUE;
+   autoflush STDERR TRUE;
    return;
 };
 
 my $_get_classes_and_roles = sub {
-   my $self = shift; my %uniq = (); ensure_class_loaded 'mro';
+   my ($self, $target) = @_;
 
-   my @classes = @{ mro::get_linear_isa( blessed $self ) };
+   $target //= $self;
+
+   ensure_class_loaded 'mro';
+
+   my @classes = @{ mro::get_linear_isa(blessed $target) };
+   my %uniq = ();
 
    while (my $class = shift @classes) {
-      $class = (split m{ __WITH__ }mx, $class)[ 0 ];
-      $class =~ m{ ::_BASE \z }mx and next;
+      $class = (split m{ __WITH__ }mx, $class)[0];
+      next if $class =~ m{ ::_BASE \z }mx;
       $class =~ s{ \A Role::Tiny::_COMPOSABLE:: }{}mx;
-      $uniq{ $class } and next; $uniq{ $class }++;
+      next if $uniq{$class};
+      $uniq{$class}++;
 
-      exists $Role::Tiny::APPLIED_TO{ $class }
-         and push @classes, keys %{ $Role::Tiny::APPLIED_TO{ $class } };
+      push @classes, keys %{$Role::Tiny::APPLIED_TO{$class}}
+         if exists $Role::Tiny::APPLIED_TO{$class};
    }
 
    return [ sort keys %uniq ];
 };
 
 my $_man_page_from = sub {
-   my ($self, $src) = @_; ensure_class_loaded 'Pod::Man';
+   my ($self, $src, $errors) = @_;
 
-   my $conf     = $self->config;
-   my $parser   = Pod::Man->new( center  => $conf->doc_title || NUL,
-                                 name    => $conf->script,
-                                 release => 'Version '.$self->app_version,
-                                 section => '3m' );
-   my $cmd      = $conf->man_page_cmd || [];
+   ensure_class_loaded 'Pod::Man';
+
+   my $conf = $self->config;
+   my $parser = Pod::Man->new(
+      center  => $conf->doc_title || NUL,
+      errors  => $errors // 'pod',
+      name    => $conf->script,
+      release => 'Version '.$self->app_version,
+      section => '3m'
+   );
+   my $cmd = $conf->man_page_cmd || [];
    my $tempfile = $self->file->tempfile;
 
    $parser->parse_from_file( $src->pathname.NUL, $tempfile->pathname );
@@ -121,17 +136,20 @@ my $_man_page_from = sub {
 };
 
 my $_usage_for = sub {
-   my ($self, $method) = @_; ensure_class_loaded 'Pod::Select';
+   my ($self, $method) = @_;
 
    for my $class (@{ $self->$_get_classes_and_roles }) {
-      is_member( $method, Class::Inspector->methods( $class, 'public' ) )
-         or next;
+      is_member($method, Class::Inspector->methods($class, 'public')) or next;
 
-      my $selector = Pod::Select->new(); my $tfile = $self->file->tempfile;
+      ensure_class_loaded 'Pod::Simple::Select';
 
-      $selector->select( "/(?:[A-Z][\<])?${method}.*" );
-      $selector->parse_from_file( find_source $class, $tfile->pathname );
-      $tfile->stat->{size} > 0 and return $self->$_man_page_from( $tfile );
+      my $parser = Pod::Simple::Select->new;
+      my $tfile  = $self->file->tempfile;
+
+      $parser->select(['head2|item' => [$method]]);
+      $parser->output_file($tfile->pathname);
+      $parser->parse_file(find_source $class);
+      return $self->$_man_page_from($tfile, 'none') if $tfile->stat->{size} > 0;
    }
 
    emit_to \*STDERR, "Method ${method} no documentation found\n";
@@ -139,19 +157,22 @@ my $_usage_for = sub {
 };
 
 my $_output_usage = sub {
-   my ($self, $verbose) = @_; my $method = $self->next_argv;
+   my ($self, $verbose) = @_;
 
-   defined $method and $method = untaint_identifier dash2under $method;
+   my $method = $self->next_argv;
 
-   $self->can_call( $method ) and return $self->$_usage_for( $method );
+   $method = untaint_identifier dash2under $method if defined $method;
 
-   $verbose > 1 and return $self->$_man_page_from( $self->config );
+   return $self->$_usage_for( $method ) if $self->can_call( $method );
 
-   ensure_class_loaded 'Pod::Usage'; $verbose > 0 and Pod::Usage::pod2usage
-      ( { -exitval => OK,
-          -input   => $self->config->pathname.NUL,
-          -message => SPC,
-          -verbose => $verbose } ); # Never returns
+   return $self->$_man_page_from( $self->config ) if $verbose > 1;
+
+   ensure_class_loaded 'Pod::Usage';
+   Pod::Usage::pod2usage({
+      -exitval => OK,
+      -input   => $self->config->pathname.NUL,
+      -message => SPC,
+      -verbose => $verbose }) if $verbose > 0; # Never returns
 
    emit_to \*STDERR, $self->options_usage;
    return FAILED;
@@ -159,38 +180,53 @@ my $_output_usage = sub {
 
 # Construction
 before 'BUILD' => sub {
-   my $self = shift; $self->$_apply_stdio_encoding;
+   my $self = shift;
 
-   $self->help_usage   and $self->exit_usage( 0 );
-   $self->help_options and $self->exit_usage( 1 );
-   $self->help_manual  and $self->exit_usage( 2 );
-   $self->show_version and $self->exit_version;
+   $self->$_apply_stdio_encoding;
+   $self->exit_usage(0) if $self->help_usage;
+   $self->exit_usage(1) if $self->help_options;
+   $self->exit_usage(2) if $self->help_manual;
+   $self->exit_version  if $self->show_version;
    return;
 };
 
 # Public methods
 sub app_version {
-   my $self = shift; my $class = $self->config->appclass;
-
-   my $ver  = try { ensure_class_loaded $class; $class->VERSION } catch { '?' };
+   my $self  = shift;
+   my $class = $self->config->appclass;
+   my $ver = try { ensure_class_loaded $class; $class->VERSION } catch { '?' };
 
    return $ver;
 }
 
 sub can_call {
-   my ($self, $wanted) = @_; $wanted or return FALSE;
+   my ($self, $wanted) = @_;
 
-   exists $_can_call_cache->{ $wanted } or $_can_call_cache->{ $wanted }
-      = (is_member $wanted, $_list_methods_of->( $self )) ? TRUE : FALSE;
+   $wanted or return FALSE;
+   exists $_can_call_cache->{$wanted} or $_can_call_cache->{$wanted}
+      = (is_member $wanted, $_list_methods_of->($self)) ? TRUE : FALSE;
 
-   return $_can_call_cache->{ $wanted };
+   return $_can_call_cache->{$wanted};
 }
 
 sub dump_config_attr : method {
-   my $self = shift; my @except =
-      qw( BUILDARGS BUILD inflate_path inflate_paths inflate_symbol new secret);
+   my $self   = shift;
+   my @except = qw( BUILDARGS BUILD DOES has_config_file has_config_home
+                    has_local_config_file inflate_path inflate_paths
+                    inflate_symbol new secret);
+   my $methods = [];
+   my %seen = ();
 
-   $self->dumper( [ list_attr_of $self->config, @except ] );
+   for my $class (reverse @{$self->$_get_classes_and_roles($self->config)}) {
+      next if $class eq 'Moo::Object';
+      push @{$methods},
+         map  { my $k = (split m{ :: }mx, $_)[-1]; $seen{$k} = TRUE; $_ }
+         grep { my $k = (split m{ :: }mx, $_)[-1]; !$seen{$k} }
+         grep { $_ !~ m{ \A Moo::Object }mx }
+         @{Class::Inspector->methods($class, 'full', 'public')};
+   }
+
+   $self->dumper([ list_attr_of $self->config, $methods, @except ]);
 
    return OK;
 }
@@ -198,15 +234,17 @@ sub dump_config_attr : method {
 sub dump_self : method {
    my $self = shift;
 
-   $self->dumper( $self ); $self->dumper( $self->config );
-
+   $self->dumper($self);
+   $self->dumper($self->config);
    return OK;
 }
 
 sub exit_usage {
-   my ($self, $level) = @_; $self->quiet( TRUE );
+   my ($self, $level) = @_;
 
-   my $rv = $self->$_output_usage( $level );
+   $self->quiet(TRUE);
+
+   my $rv = $self->$_output_usage($level);
 
    if ($level == 0) { emit "\nMethods:\n"; $self->list_methods }
 
@@ -214,37 +252,50 @@ sub exit_usage {
 }
 
 sub exit_version {
-   $_[ 0 ]->output( 'Version '.$_[ 0 ]->app_version ); exit OK;
+   my $self = shift;
+
+   $self->output('Version '.$self->app_version);
+   exit OK;
 }
 
 sub help : method {
-   my $self = shift; $self->$_output_usage( 1 ); return OK;
+   my $self = shift;
+
+   $self->$_output_usage(1);
+   return OK;
 }
 
 sub list_methods : method {
-   my $self = shift; ensure_class_loaded 'Pod::Eventual::Simple';
+   my $self = shift;
 
-   my $abstract = {}; my $max = 0; my $classes = $self->$_get_classes_and_roles;
+   ensure_class_loaded 'Pod::Eventual::Simple';
 
-   for my $method (@{ $_list_methods_of->( $self ) }) {
-      my $mlen = length $method; $mlen > $max and $max = $mlen;
+   my $abstract = {};
+   my $max = 0;
+   my $classes = $self->$_get_classes_and_roles;
 
-      for my $class (@{ $classes }) {
-         is_member( $method, Class::Inspector->methods( $class, 'public' ) )
+   for my $method (@{$_list_methods_of->($self)}) {
+      my $mlen = length $method;
+
+      $max = $mlen if $mlen > $max;
+
+      for my $class (@{$classes}) {
+         is_member($method, Class::Inspector->methods($class, 'public'))
             or next;
 
-         my $pod = $_get_pod_header_for_method->( $class, $method ) or next;
+         my $pod = $_get_pod_header_for_method->($class, $method) or next;
 
-         (not exists $abstract->{ $method }
-           or length $pod > length $abstract->{ $method })
-            and $abstract->{ $method } = $pod;
+         (not exists $abstract->{$method}
+           or length $pod > length $abstract->{$method})
+            and $abstract->{$method} = $pod;
       }
    }
 
-   for my $key (sort keys %{ $abstract }) {
-      my ($method, @rest) = split SPC, $abstract->{ $key };
+   for my $key (sort keys %{$abstract}) {
+      my ($method, @rest) = split SPC, $abstract->{$key};
 
-      $key =~ s{ [_] }{-}gmx; emit( (pad $key, $max).SPC.(join SPC, @rest) );
+      $key =~ s{ [_] }{-}gmx;
+      emit((pad $key, $max).SPC.(join SPC, @rest));
    }
 
    return OK;

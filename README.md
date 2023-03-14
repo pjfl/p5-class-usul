@@ -10,7 +10,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 # Version
 
-Describes Class::Usul version v0.84.$Rev: 1 $
+Describes Class::Usul version v0.84.$Rev: 2 $
 
 # Synopsis
 
@@ -31,15 +31,15 @@ Describes Class::Usul version v0.84.$Rev: 1 $
 
 These modules provide a set of base classes for Perl modules and
 applications. It provides configuration file loading
-[Class::Usul::Config](https://metacpan.org/pod/Class::Usul::Config), locking to single thread processes
-[IPC::SRLock](https://metacpan.org/pod/IPC::SRLock), logging [Class::Usul::Log](https://metacpan.org/pod/Class::Usul::Log) and localisation
-[Class::Usul::L10N](https://metacpan.org/pod/Class::Usul::L10N)
+[Class::Usul::Config](https://metacpan.org/pod/Class%3A%3AUsul%3A%3AConfig), locking to single thread processes
+[IPC::SRLock](https://metacpan.org/pod/IPC%3A%3ASRLock), logging [Class::Usul::Log](https://metacpan.org/pod/Class%3A%3AUsul%3A%3ALog) and localisation
+[Class::Usul::L10N](https://metacpan.org/pod/Class%3A%3AUsul%3A%3AL10N)
 
-The class [Class::Usul::Programs](https://metacpan.org/pod/Class::Usul::Programs) is a base class for command line interfaces
+The class [Class::Usul::Programs](https://metacpan.org/pod/Class%3A%3AUsul%3A%3APrograms) is a base class for command line interfaces
 
-Interprocess communication is handled by [Class::Usul::IPC](https://metacpan.org/pod/Class::Usul::IPC)
+Interprocess communication is handled by [Class::Usul::IPC](https://metacpan.org/pod/Class%3A%3AUsul%3A%3AIPC)
 
-[Class::Usul::File](https://metacpan.org/pod/Class::Usul::File) makes the functionality of [File::DataClass](https://metacpan.org/pod/File::DataClass) available
+[Class::Usul::File](https://metacpan.org/pod/Class%3A%3AUsul%3A%3AFile) makes the functionality of [File::DataClass](https://metacpan.org/pod/File%3A%3ADataClass) available
 
 # Configuration and Environment
 
@@ -52,7 +52,7 @@ Defines the following attributes;
 
 - `config_class`
 
-    Defaults to [Class::Usul::Config](https://metacpan.org/pod/Class::Usul::Config) and is of type `LoadableClass`. An
+    Defaults to [Class::Usul::Config](https://metacpan.org/pod/Class%3A%3AUsul%3A%3AConfig) and is of type `LoadableClass`. An
     instance of this class is loaded and instantiated using the hash reference
     in the `config` attribute. It provides accessor methods with symbol
     inflation and smart defaults. Add configuration attributes by
@@ -67,29 +67,29 @@ Defines the following attributes;
 - `l10n`
 
     A lazily evaluated instance of the `l10n_class`. This object reference is a
-    [Localiser](https://metacpan.org/pod/Class::Usul::Types#Localiser) which handles the `localize` method
+    [Localiser](https://metacpan.org/pod/Class%3A%3AUsul%3A%3ATypes#Localiser) which handles the `localize` method
 
 - `l10n_class`
 
-    A lazy loadable class which defaults to [Class::Usul::L10N](https://metacpan.org/pod/Class::Usul::L10N)
+    A lazy loadable class which defaults to [Class::Usul::L10N](https://metacpan.org/pod/Class%3A%3AUsul%3A%3AL10N)
 
 - `lock`
 
     A lazily evaluated instance of the `lock_class`. This object reference is a
-    [Locker](https://metacpan.org/pod/Class::Usul::Types#Locker)
+    [Locker](https://metacpan.org/pod/Class%3A%3AUsul%3A%3ATypes#Locker)
 
 - `lock_class`
 
-    A lazy loadable class which defaults to [IPC::SRLock](https://metacpan.org/pod/IPC::SRLock)
+    A lazy loadable class which defaults to [IPC::SRLock](https://metacpan.org/pod/IPC%3A%3ASRLock)
 
 - `log`
 
     A lazily evaluated instance of the `log_class`. This object reference is a
-    [Logger](https://metacpan.org/pod/Class::Usul::Types#Logger)
+    [Logger](https://metacpan.org/pod/Class%3A%3AUsul%3A%3ATypes#Logger)
 
 - `log_class`
 
-    A lazy loadable class which defaults to [Class::Usul::Log](https://metacpan.org/pod/Class::Usul::Log)
+    A lazy loadable class which defaults to [Class::Usul::Log](https://metacpan.org/pod/Class%3A%3AUsul%3A%3ALog)
 
 # Subroutines/Methods
 
@@ -97,7 +97,7 @@ Defines the following attributes;
 
     $self->dumper( $some_var );
 
-Use [Data::Printer](https://metacpan.org/pod/Data::Printer) to dump arguments for development purposes
+Use [Data::Printer](https://metacpan.org/pod/Data%3A%3APrinter) to dump arguments for development purposes
 
 # Diagnostics
 
@@ -106,13 +106,13 @@ debug level
 
 # Dependencies
 
-- [Class::Usul::Config](https://metacpan.org/pod/Class::Usul::Config)
-- [Class::Usul::Constants](https://metacpan.org/pod/Class::Usul::Constants)
-- [Class::Usul::Functions](https://metacpan.org/pod/Class::Usul::Functions)
-- [Class::Usul::L10N](https://metacpan.org/pod/Class::Usul::L10N)
-- [Class::Usul::Log](https://metacpan.org/pod/Class::Usul::Log)
-- [Class::Usul::Types](https://metacpan.org/pod/Class::Usul::Types)
-- [IPC::SRLock](https://metacpan.org/pod/IPC::SRLock)
+- [Class::Usul::Config](https://metacpan.org/pod/Class%3A%3AUsul%3A%3AConfig)
+- [Class::Usul::Constants](https://metacpan.org/pod/Class%3A%3AUsul%3A%3AConstants)
+- [Class::Usul::Functions](https://metacpan.org/pod/Class%3A%3AUsul%3A%3AFunctions)
+- [Class::Usul::L10N](https://metacpan.org/pod/Class%3A%3AUsul%3A%3AL10N)
+- [Class::Usul::Log](https://metacpan.org/pod/Class%3A%3AUsul%3A%3ALog)
+- [Class::Usul::Types](https://metacpan.org/pod/Class%3A%3AUsul%3A%3ATypes)
+- [IPC::SRLock](https://metacpan.org/pod/IPC%3A%3ASRLock)
 - [Moo](https://metacpan.org/pod/Moo)
 
 # Incompatibilities

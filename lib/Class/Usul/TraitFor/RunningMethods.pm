@@ -1,7 +1,5 @@
 package Class::Usul::TraitFor::RunningMethods;
 
-use namespace::autoclean;
-
 use Class::Usul::Constants qw( FAILED NUL OK TRUE UNDEFINED_RV );
 use Class::Usul::Functions qw( dash2under elapsed emit_to exception is_hashref
                                is_member logname throw untaint_identifier );
@@ -24,11 +22,11 @@ option 'method'  => is => 'rwp',  isa => SimpleStr, format => 's',
 option 'options' => is => 'ro',   isa => HashRef,   format => 's%',
    documentation =>
       'Zero, one or more key=value pairs available to the method call',
-   builder       => sub { {} }, short => 'o';
+   default       => sub { {} }, short => 'o';
 
 option 'umask'   => is => 'rw',   isa => OctalNum,  format => 's',
    documentation => 'Set the umask to this octal number',
-   builder       => sub { $_[ 0 ]->config->umask }, coerce => TRUE,
+   default       => sub { shift->config->umask }, coerce => TRUE,
    lazy          => TRUE;
 
 option 'verbose' => is => 'ro',   isa => Int,
@@ -36,16 +34,18 @@ option 'verbose' => is => 'ro',   isa => Int,
    default       => 0, repeatable => TRUE, short => 'v';
 
 has 'params'     => is => 'lazy', isa => HashRef[ArrayRef],
-   builder       => sub { {} };
+   default       => sub { {} };
 
 # Private functions
 my $_output_stacktrace = sub {
-   my ($e, $verbose) = @_; ($e and blessed $e) or return; $verbose //= 0;
+   my ($e, $verbose) = @_;
 
-   $verbose > 0 and $e->can( 'trace' )
-      and return emit_to \*STDERR, $e->trace.NUL;
+   $verbose //= 0;
 
-   $e->can( 'stacktrace' ) and emit_to \*STDERR, $e->stacktrace.NUL;
+   return unless $e and blessed $e;
+   return emit_to \*STDERR, $e->trace.NUL if $verbose > 0 and $e->can('trace');
+
+   emit_to \*STDERR, $e->stacktrace.NUL if $e->can('stacktrace');
    return;
 };
 
@@ -53,28 +53,28 @@ my $_output_stacktrace = sub {
 my $handle_result = sub {
    my ($self, $method, $rv) = @_;
 
-   my $params      = $self->params->{ $method };
-   my $args        = (defined $params ) ? $params->[ 0 ] : undef;
+   my $params      = $self->params->{$method};
+   my $args        = (defined $params ) ? $params->[0] : undef;
    my $expected_rv = (is_hashref $args) ? $args->{expected_rv} // OK : OK;
 
    if (defined $rv and $rv <= $expected_rv) {
-      $self->quiet or $self->output
-         ( 'Finished in [_1] seconds', { args => [ elapsed ] } );
+      $self->output('Finished in [_1] seconds', { args => [elapsed] })
+         unless $self->quiet;
    }
    elsif (defined $rv and $rv > OK) {
-      $self->error( 'Terminated code [_1]', {
-         args => [ $rv ], no_quote_bind_values => TRUE } );
+      $self->error('Terminated code [_1]', {
+         args => [$rv], no_quote_bind_values => TRUE });
    }
    else {
-      if ($rv == UNDEFINED_RV) { $self->error( 'Terminated with undefined rv' )}
+      if ($rv == UNDEFINED_RV) { $self->error('Terminated with undefined rv') }
       else {
          if (defined $rv) {
             $self->error
-               ( 'Method [_1] unknown rv [_2]', { args => [ $method, $rv ] } );
+               ('Method [_1] unknown rv [_2]', { args => [$method, $rv] });
          }
          else {
-            $self->error( 'Method [_1] error uncaught or rv undefined',
-                          { args => [ $method ] } );
+            $self->error('Method [_1] error uncaught or rv undefined',
+                         { args => [$method] });
             $rv = UNDEFINED_RV;
          }
       }
@@ -84,19 +84,21 @@ my $handle_result = sub {
 };
 
 my $_handle_run_exception = sub {
-   my ($self, $method, $error) = @_; my $e;
+   my ($self, $method, $error) = @_;
+
+   my $e;
 
    unless ($e = exception $error) {
       $self->error
-         ( 'Method [_1] exception without error', { args => [ $method ] } );
+         ('Method [_1] exception without error', { args => [$method] });
       return UNDEFINED_RV;
    }
 
-   $e->can( 'out' ) and $e->out and $self->output( $e->out );
-   $self->error( $e->error, { args => $e->args } );
-   $self->debug and $_output_stacktrace->( $error, $self->verbose );
+   $self->output($e->out) if $e->can('out') and $e->out;
+   $self->error($e->error, { args => $e->args });
+   $_output_stacktrace->($error, $self->verbose) if $self->debug;
 
-   return $e->can( 'rv' )
+   return $e->can('rv')
         ? ($e->rv || (defined $e->rv ? FAILED : UNDEFINED_RV)) : UNDEFINED_RV;
 };
 
@@ -105,22 +107,25 @@ sub run {
    my $self   = shift;
    my $method = $self->select_method;
    my $text   = 'Started by [_1] Version [_2] Pid [_3]';
-   my $args   = { args => [ logname, $self->app_version, abs $PID ] };
+   my $args   = { args => [logname, $self->app_version, abs $PID] };
 
-  (is_member $method, 'help', 'run_chain') and $self->quiet( TRUE );
+   $self->quiet(TRUE) if is_member $method, 'help', 'run_chain';
+   $self->output($text, $args) unless $self->quiet;
 
-   $self->quiet or $self->output( $text, $args ); umask $self->umask; my $rv;
+   umask $self->umask;
 
-   if ($method eq 'run_chain' or $self->can_call( $method )) {
-      my $params = exists $self->params->{ $method }
-                 ? $self->params->{ $method } : [];
+   my $rv;
+
+   if ($method eq 'run_chain' or $self->can_call($method)) {
+      my $params = exists $self->params->{$method}
+         ? $self->params->{$method} : [];
 
       try {
-         defined ($rv = $self->$method( @{ $params } ))
+         defined ($rv = $self->$method(@{$params}))
             or throw 'Method [_1] return value undefined',
-                     args  => [ $method ], rv => UNDEFINED_RV;
+                     args  => [$method], rv => UNDEFINED_RV;
       }
-      catch { $rv = $self->$_handle_run_exception( $method, $_ ) };
+      catch { $rv = $self->$_handle_run_exception($method, $_) };
    }
    else {
       $self->error( 'Class [_1] method [_2] not found',
@@ -128,32 +133,36 @@ sub run {
       $rv = UNDEFINED_RV;
    }
 
-   $rv = $self->$handle_result( $method, $rv );
+   $rv = $self->$handle_result($method, $rv);
    $self->file->delete_tmp_files;
    return $rv;
 }
 
 sub run_chain {
-   my $self = shift; my $args = { args => [ $self->method ] };
+   my $self = shift;
+   my $args = { args => [$self->method] };
 
-   $self->method ? $self->error( 'Method [_1] unknown', $args )
-                 : $self->error( 'Method not specified' );
-   $self->exit_usage( 0 );
+   $self->method ? $self->error('Method [_1] unknown', $args)
+                 : $self->error('Method not specified');
+   $self->exit_usage(0);
    return; # Not reached
 }
 
 sub select_method {
-   my $self = shift; my $method = untaint_identifier dash2under $self->method;
+   my $self   = shift;
+   my $method = untaint_identifier dash2under $self->method;
 
-   unless ($self->can_call( $method )) {
-      $method = untaint_identifier dash2under $self->extra_argv( 0 );
-      $method and $self->_set_method( $method );
-     ($method and $self->can_call( $method ) and $self->next_argv)
-        or $method = undef;
+   unless ($self->can_call($method)) {
+      $method = untaint_identifier dash2under $self->extra_argv(0);
+      $self->_set_method($method) if $method;
+      $method = undef unless $method
+         && $self->can_call($method) && $self->next_argv;
    }
 
    return $method ? $method : 'run_chain';
 }
+
+use namespace::autoclean;
 
 1;
 

@@ -12,12 +12,12 @@ use Class::Usul::Constants     qw( ASSERT DEFAULT_CONFHOME DEFAULT_ENVDIR
                                    UNTAINT_IDENTIFIER UNTAINT_PATH UUID_PATH );
 use Cwd                        qw( );
 use Data::Printer      alias => q(_data_dumper), colored => 1, indent => 3,
-    filters => { 'DateTime'            => sub { $_[ 0 ].q()           },
+    filters => [{ 'DateTime'            => sub { $_[ 0 ].q()           },
                  'File::DataClass::IO' => sub { $_[ 0 ]->pathname     },
                  'JSON::XS::Boolean'   => sub { $_[ 0 ].q()           },
                  'Type::Tiny'          => sub { $_[ 0 ]->display_name },
                  'Type::Tiny::Enum'    => sub { $_[ 0 ]->display_name },
-                 'Type::Tiny::Union'   => sub { $_[ 0 ]->display_name }, };
+                 'Type::Tiny::Union'   => sub { $_[ 0 ]->display_name }, }];
 use Digest                     qw( );
 use Digest::MD5                qw( md5 );
 use English                    qw( -no_match_vars );
@@ -626,17 +626,17 @@ sub is_win32 () {
 }
 
 sub list_attr_of ($;@) {
-   my ($obj, @except) = @_; my $class = blessed $obj;
+   my ($obj, $methods, @except) = @_;
 
    ensure_class_loaded( 'Pod::Eventual::Simple' );
 
-   is_member 'new', @except or push @except, 'new';
+   push @except, 'new' unless is_member 'new', @except;
 
    return map  { my $attr = $_->[0]; [ @{ $_ }, $obj->$attr ] }
-          map  { [ $_->[1], $_->[0], $_get_pod_content_for_attr->( @{ $_ } ) ] }
+          map  { [ $_->[1], $_->[0], $_get_pod_content_for_attr->(@{$_}) ] }
           grep { $_->[0] ne 'Moo::Object' and not is_member $_->[1], @except }
-          map  { m{ \A (.+) \:\: ([^:]+) \z }mx; [ $1, $2 ] }
-              @{ Class::Inspector->methods( $class, 'full', 'public' ) };
+          map  { m{ \A (.+) \:\: ([^:]+) \z }mx; [$1, $2] }
+              @{ $methods };
 }
 
 sub loginid (;$) {
