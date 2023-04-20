@@ -1,7 +1,5 @@
 package Class::Usul::TraitFor::OutputLogging;
 
-use namespace::autoclean;
-
 use Class::Usul::Constants qw( BRK FAILED FALSE NUL TRUE WIDTH );
 use Class::Usul::Functions qw( abs_path emit emit_err throw );
 use Class::Usul::Types     qw( Bool SimpleStr );
@@ -32,14 +30,18 @@ my $_loc = sub {
    return $self->localize( $text // '[no message]', {
       locale               => $self->locale,
       no_quote_bind_values => $quote // $opts->{no_quote_bind_values} // FALSE,
-      params               => $opts->{args} // [] } );
+      params               => $opts->{args} // [] }
+   );
 };
 
 # Public methods
 sub add_leader {
-   my ($self, $text, $opts) = @_; $text or return NUL; $opts //= {};
+   my ($self, $text, $opts) = @_; $opts //= {};
 
-   my $leader = $opts->{no_lead} ? NUL : (ucfirst $self->config->name).BRK;
+   return NUL unless $text;
+
+   my $leader = $opts->{no_lead}
+      ? NUL : ($opts->{name} || ucfirst $self->config->name).BRK;
 
    if ($opts->{fill}) {
       my $width = $opts->{width} // WIDTH;
@@ -52,79 +54,86 @@ sub add_leader {
 }
 
 sub error {
-   my ($self, $text, $opts) = @_; $text = $self->$_loc( $text, $opts );
+   my ($self, $text, $opts) = @_; $opts //= {};
 
-   $self->log->error( $_ ) for (split m{ \n }mx, "${text}");
+   $text = $self->$_loc("${text}", $opts);
 
-   emit_err $self->add_leader( $text, $opts );
+   $self->log->error($self->add_leader($_, $opts)) for (split m{ \n }mx, $text);
+
+   emit_err $self->add_leader($text, $opts);
 
    return TRUE;
 }
 
 sub fatal {
-   my ($self, $text, $opts) = @_; my (undef, $file, $line) = caller 0;
+   my ($self, $text, $opts) = @_;
 
-   my $posn = ' at '.abs_path( $file )." line ${line}";
+   my (undef, $file, $line) = caller 0;
+   my $posn = ' at ' . abs_path($file) . " line ${line}";
 
-   $text = $self->$_loc( $text, $opts ).$posn;
+   $text = $self->$_loc($text, $opts).$posn;
 
-   $self->log->alert( $_ ) for (split m{ \n }mx, $text);
+   $self->log->alert($self->add_leader($_, $opts)) for (split m{ \n }mx, $text);
 
-   emit_err $self->add_leader( $text, $opts );
+   emit_err $self->add_leader($text, $opts);
 
    exit FAILED;
 }
 
 sub info {
-   my ($self, $text, $opts) = @_;
+   my ($self, $text, $opts) = @_; $opts //= {};
 
-   $opts //= {}; $text = $self->$_loc( $text, $opts, TRUE );
+   $text = $self->$_loc($text, $opts, TRUE);
 
-   $self->log->info( $_ ) for (split m{ [\n] }mx, $text);
+   $self->log->info($self->add_leader($_, $opts)) for (split m{ [\n] }mx,$text);
 
-   $self->quiet or $opts->{quiet} or emit $self->add_leader( $text, $opts );
+   $self->quiet or $opts->{quiet} or emit $self->add_leader($text, $opts);
 
    return TRUE;
 }
 
 sub loc {
-   my $self = shift; return $self->l10n->localizer( $self->locale, @_ );
+   my $self = shift; return $self->l10n->localizer($self->locale, @_);
 }
 
 sub output {
-   my ($self, $text, $opts) = @_;
+   my ($self, $text, $opts) = @_; $opts //= {};
 
-   $opts //= {}; $text = $self->$_loc( $text, $opts, TRUE );
+   $text = $self->$_loc($text, $opts, TRUE);
 
    my $code = sub {
-      $opts->{to} && $opts->{to} eq 'err' ? emit_err( @_ ) : emit( @_ );
+      $opts->{to} && $opts->{to} eq 'err' ? emit_err(@_) : emit(@_);
    };
 
    $code->() if $opts->{cl};
-   $code->( $self->add_leader( $text, $opts ) );
+   $code->($self->add_leader($text, $opts));
    $code->() if $opts->{nl};
    return TRUE;
 }
 
 sub quiet {
-   my ($self, $v) = @_; defined $v or return $self->_quiet_flag; $v = !!$v;
+   my ($self, $v) = @_;
 
-   $v != TRUE and throw 'Cannot turn quiet mode off';
+   return $self->_quiet_flag unless defined $v;
 
-   return $self->_set__quiet_flag( $v );
+   $v = !!$v; throw 'Cannot turn quiet mode off' if $v != TRUE;
+
+   return $self->_set__quiet_flag($v);
 }
 
 sub warning {
-   my ($self, $text, $opts) = @_;
+   my ($self, $text, $opts) = @_; $opts //= {};
 
-   $opts //= {}; $text = $self->$_loc( $text, $opts );
+   $text = $self->$_loc($text, $opts);
 
-   $self->log->warn( $_ ) for (split m{ \n }mx, $text);
+   $self->log->warn($self->add_leader($_, $opts)) for (split m{ \n }mx, $text);
 
-   $self->quiet or $opts->{quiet} or emit $self->add_leader( $text, $opts );
+   $self->quiet or $opts->{quiet} or emit $self->add_leader($text, $opts);
 
    return TRUE;
 }
+
+use namespace::autoclean;
 
 1;
 

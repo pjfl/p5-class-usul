@@ -9,26 +9,19 @@ use File::DataClass::Constants ( );
 use File::Spec::Functions    qw( tmpdir );
 use IPC::SRLock::Constants     ( );
 
-my $Assert          = sub {};
-my $Config_Extn     = '.json';
-my $Exception_Class = 'Class::Usul::Exception';
-my $Log_Levels      = [ qw( alert debug error fatal info warn ) ];
-
-__PACKAGE__->Exception_Class( $Exception_Class ); # Trigger redispatch
-
 our @EXPORT = qw( ARRAY AS_PARA AS_PASSWORD ASSERT BRK CODE COMMA CONFIG_EXTN
                   DEFAULT_CONFHOME DEFAULT_ENVDIR DEFAULT_ENCODING
-                  DEFAULT_L10N_DOMAIN DIGEST_ALGORITHMS ENCODINGS
-                  EXCEPTION_CLASS FAILED FALSE HASH LANG LBRACE
-                  LOCALIZE LOG_LEVELS NO NUL OK PERL_EXTNS PHASE
-                  PREFIX QUIT QUOTED_RE SEP SPC TRUE UMASK UNDEFINED_RV
-                  UNTAINT_CMDLINE UNTAINT_IDENTIFIER UNTAINT_PATH
-                  UUID_PATH WIDTH YES );
+                  DEFAULT_L10N_DOMAIN DOT DIGEST_ALGORITHMS DUMP_EXCEPT
+                  ENCODINGS EXCEPTION_CLASS FAILED FALSE HASH LANG LBRACE
+                  LOCALIZE LOG_LEVELS NO NUL OK PERL_EXTNS PHASE PREFIX QUIT
+                  QUOTED_RE SEP SPC TRUE UMASK UNDEFINED_RV UNTAINT_CMDLINE
+                  UNTAINT_IDENTIFIER UNTAINT_PATH UUID_PATH WIDTH YES );
 
 sub ARRAY    () { 'ARRAY' }
 sub BRK      () { ': '    }
 sub CODE     () { 'CODE'  }
 sub COMMA    () { ','     }
+sub DOT      () { q(.)    }
 sub FAILED   () { 1       }
 sub FALSE    () { 0       }
 sub HASH     () { 'HASH'  }
@@ -56,6 +49,7 @@ sub DEFAULT_ENCODING    () { 'UTF-8' }
 sub DEFAULT_ENVDIR      () { [ q(), qw( etc default ) ] }
 sub DEFAULT_L10N_DOMAIN () { 'default' }
 sub DIGEST_ALGORITHMS   () { ( qw( SHA-512 SHA-256 SHA-1 MD5 ) ) }
+sub DUMP_EXCEPT         () { @{ __PACKAGE__->Dump_Except } }
 sub ENCODINGS           () { ( qw( ascii iso-8859-1 UTF-8 guess ) ) }
 sub EXCEPTION_CLASS     () { __PACKAGE__->Exception_Class }
 sub LOG_LEVELS          () { @{ __PACKAGE__->Log_Levels } }
@@ -68,41 +62,74 @@ sub UNTAINT_IDENTIFIER  () { qr{ \A ([a-zA-Z0-9_]+)    \z }mx }
 sub UNTAINT_PATH        () { qr{ \A ([^\$%&\*;<>\`|]+) \z }mx }
 sub UUID_PATH           () { [ q(), qw( proc sys kernel random uuid ) ] }
 
-sub Assert {
-   my ($self, $subr) = @_; defined $subr or return $Assert;
+my $Assert = sub {};
 
-   ref $subr eq 'CODE' or EXCEPTION_CLASS->throw
-      ( "Assert subroutine ${subr} is not a code reference" );
+sub Assert {
+   my ($self, $subr) = @_;
+
+   return $Assert unless defined $subr;
+
+   EXCEPTION_CLASS->throw("Assert subroutine ${subr} is not a code reference")
+      unless ref $subr eq 'CODE';
 
    return $Assert = $subr;
 }
 
-sub Config_Extn {
-   my ($self, $extn) = @_; defined $extn or return $Config_Extn;
+my $Config_Extn = '.json';
 
-   (length $extn < 255 and $extn !~ m{ \n }mx) or EXCEPTION_CLASS->throw
-      ( "Config extension ${extn} is not a simple string" );
+sub Config_Extn {
+   my ($self, $extn) = @_;
+
+   return $Config_Extn unless defined $extn;
+
+   EXCEPTION_CLASS->throw(
+      "Config extension ${extn} is not a simple string"
+   ) unless length $extn < 255 and $extn !~ m{ \n }mx;
 
    return $Config_Extn = $extn;
 }
 
+my $Dump_Except = [
+   qw( BUILDARGS BUILD DOES inflate_path inflate_paths inflate_symbol new )
+];
+
+sub Dump_Except {
+   my ($class, $methods) = @_;
+
+   return $Dump_Except unless defined $methods;
+
+   return $Dump_Except = $methods;
+}
+
+my $Exception_Class = 'Class::Usul::Exception';
+
 sub Exception_Class {
-   my ($self, $class) = @_; defined $class or return $Exception_Class;
+   my ($self, $class) = @_;
 
-   $class->can( 'throw' ) or $Exception_Class->throw
-      ( "Exception class ${class} is not loaded or has no throw method" );
+   return $Exception_Class unless defined $class;
 
-   File::DataClass::Constants->Exception_Class( $class );
-   IPC::SRLock::Constants->Exception_Class( $class );
+   $Exception_Class->throw(
+      "Exception class ${class} is not loaded or has no throw method"
+   ) unless $class->can('throw');
+
+   File::DataClass::Constants->Exception_Class($class);
+   IPC::SRLock::Constants->Exception_Class($class);
 
    return $Exception_Class = $class;
 }
 
-sub Log_Levels {
-   my ($self, $levels) = @_; defined $levels or return $Log_Levels;
+__PACKAGE__->Exception_Class( $Exception_Class ); # Trigger redispatch
 
-   ref $levels eq 'ARRAY' and defined $levels->[ 0 ] or EXCEPTION_CLASS->throw
-      ( "Log levels must be an array reference with one defined value" );
+my $Log_Levels = [ qw( alert debug error fatal info warn ) ];
+
+sub Log_Levels {
+   my ($self, $levels) = @_;
+
+   return $Log_Levels unless defined $levels;
+
+   EXCEPTION_CLASS->throw(
+      "Log levels must be an array reference with one defined value"
+   ) unless ref $levels eq 'ARRAY' and defined $levels->[0];
 
    return $Log_Levels = $levels;
 }

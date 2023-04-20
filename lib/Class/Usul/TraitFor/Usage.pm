@@ -4,7 +4,7 @@ use attributes ();
 use namespace::autoclean;
 
 use Class::Inspector;
-use Class::Usul::Constants qw( FAILED FALSE NUL OK SPC TRUE );
+use Class::Usul::Constants qw( DUMP_EXCEPT FAILED FALSE NUL OK SPC TRUE );
 use Class::Usul::File;
 use Class::Usul::Functions qw( dash2under emit emit_to ensure_class_loaded
                                find_source is_member list_attr_of pad throw
@@ -210,12 +210,9 @@ sub can_call {
 }
 
 sub dump_config_attr : method {
-   my $self   = shift;
-   my @except = qw( BUILDARGS BUILD DOES has_config_file has_config_home
-                    has_local_config_file inflate_path inflate_paths
-                    inflate_symbol new secret);
+   my $self    = shift;
    my $methods = [];
-   my %seen = ();
+   my %seen    = ();
 
    for my $class (reverse @{$self->$_get_classes_and_roles($self->config)}) {
       next if $class eq 'Moo::Object';
@@ -226,7 +223,7 @@ sub dump_config_attr : method {
          @{Class::Inspector->methods($class, 'full', 'public')};
    }
 
-   $self->dumper([ list_attr_of $self->config, $methods, @except ]);
+   $self->dumper([ list_attr_of $self->config, $methods, DUMP_EXCEPT ]);
 
    return OK;
 }
