@@ -13,7 +13,7 @@ use Time::Zone;
 use Unexpected::Functions  qw( DateTimeCoercion );
 
 our @EXPORT    = qw( str2time time2str );
-our @EXPORT_OK = qw( nap str2date_time str2time str2time_piece time2str );
+our @EXPORT_OK = qw( nap now_dt str2date_time str2time str2time_piece time2str);
 
 # Private package variables
 my $_datetime_loaded   = FALSE;
@@ -27,6 +27,10 @@ sub nap ($) {
            ? $period : 1;
 
    return usleep( 1_000_000 * $period );
+}
+
+sub now_dt () {
+   return str2date_time(time2str());
 }
 
 sub str2date_time ($;$) {
