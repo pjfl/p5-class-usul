@@ -37,7 +37,8 @@ is   ref $e, 'Class::Usul::Exception', 'Our exception class';
 unlink $logfile; my $io = io( $logfile ); $io->touch;
 
 ok   -f $logfile, 'Create logfile'; $prog->info( 'Information' );
-like $io->chomp->getline, qr{ \[INFO\] \s Information }mx, 'Read logfile';
+like $io->chomp->getline, qr{ \[INFO\] \s 21programs: \s Information }mx,
+   'Read logfile';
 
 unlink $logfile;
 

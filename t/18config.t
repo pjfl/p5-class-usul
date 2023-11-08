@@ -32,7 +32,7 @@ SKIP: {
    ($osname ne 'mswin32' and $osname ne 'cygwin')
       or skip 'No shell on mswin32', 1;
 
-   my @attr = map { $_->[ 0 ] } list_attr_of( $conf );
+   my @attr = map { $_->[ 0 ] } list_attr_of( $conf, ['Class::Usul::Config::Programs::appclass'] );
 
    ok is_member( 'appclass', @attr ), 'Lists attributes';
 }

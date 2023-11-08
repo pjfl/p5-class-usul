@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Fixes tests
           - Added now_dt to Time
           - Can set Dump_Except on Constants
           - Fixed errors in POD extraction in the Usage trait

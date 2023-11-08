@@ -56,7 +56,7 @@ sub add_leader {
 sub error {
    my ($self, $text, $opts) = @_; $opts //= {};
 
-   $text = $self->$_loc("${text}", $opts);
+   $text = $self->$_loc($text, $opts);
 
    $self->log->error($self->add_leader($_, $opts)) for (split m{ \n }mx, $text);
 
