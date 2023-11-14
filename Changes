@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Splits out Class::Usul::Cmd as separate distribution
           - Fixes tests
           - Added now_dt to Time
           - Can set Dump_Except on Constants

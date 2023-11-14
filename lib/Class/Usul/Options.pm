@@ -1,132 +1,10 @@
 package Class::Usul::Options;
 
-use strict;
-use warnings;
+use Moo;
 
-use Class::Usul::Constants qw( FALSE TRUE );
-use Class::Usul::Functions qw( throw );
-use Sub::Install           qw( install_sub );
+extends 'Class::Usul::Cmd::Options';
 
-my @option_attributes
-   = qw( autosplit config doc format json negateable order repeatable short );
-
-my @banished_keywords
-   = qw( extra_argv new_with_options next_argv option _options_data
-         _options_config options_usage unshift_argv untainted_argv );
-
-# Private functions
-my $filter_attributes = sub {
-   my %attributes = @_; my %filter_key = map { $_ => 1 } @option_attributes;
-
-   return map { ( $_ => $attributes{ $_ } ) }
-         grep { not exists $filter_key{ $_ } } keys %attributes;
-};
-
-my $validate_and_filter_options = sub {
-   my (%options) = @_;
-
-   defined $options{doc  } or $options{doc  } = $options{documentation};
-   defined $options{order} or $options{order} = 0;
-
-   if ($options{json}) {
-      delete $options{repeatable}; delete $options{autosplit};
-      delete $options{negateable}; $options{format} = 's';
-   }
-
-   my %cmdline_options = map { ( $_ => $options{ $_ } ) }
-      grep { exists $options{ $_ } } @option_attributes, 'required';
-
-   $cmdline_options{autosplit } and $cmdline_options{repeatable} = TRUE;
-   $cmdline_options{repeatable}
-      and defined $cmdline_options{format}
-      and (substr $cmdline_options{format}, -1) ne '@'
-      and $cmdline_options{format} .= '@';
-
-   $cmdline_options{negateable} and defined $cmdline_options{format} and
-      throw 'Negateable parameters are not usable with a non boolean values';
-
-   return %cmdline_options;
-};
-
-# Public functions
-sub default_options_config () {
-   return getopt_conf        => [],
-          prefer_commandline => TRUE,
-          protect_argv       => TRUE,
-          show_defaults      => FALSE,
-          skip_options       => [],
-          usage_conf         => {},
-          usage_opt          => 'Usage: %c %o [method]';
-}
-
-sub import {
-   my ($class, @args) = @_; my $target = caller;
-
-   my $options_config = { default_options_config, @args };
-
-   for my $want (grep { not $target->can( $_ ) } qw( around has with )) {
-      throw 'Method [_1] not found in class [_2]', [ $want, $target ];
-   }
-
-   my $around = $target->can( 'around' );
-   my $has    = $target->can( 'has'    );
-   my $with   = $target->can( 'with'   );
-
-   my @target_isa; { no strict 'refs'; @target_isa = @{ "${target}::ISA" } };
-
-   if (@target_isa) {
-      # Don't add this to a role. The ISA of a role is always empty!
-      install_sub { as => '_options_config', into => $target, code => sub {
-         return shift->maybe::next::method( @_ );
-      }, };
-
-      install_sub { as => '_options_data', into => $target, code => sub {
-         return shift->maybe::next::method( @_ );
-      }, };
-
-      $around->( '_options_config' => sub {
-         my ($orig, $self, @args) = @_;
-
-         return $orig->( $self, @args ), %{ $options_config };
-      } );
-   }
-
-   my $options_data    = {};
-   my $apply_modifiers = sub {
-      $target->can( 'new_with_options' ) and return;
-
-      $with->( 'Class::Usul::TraitFor::UntaintedGetopts' );
-
-      $around->( '_options_data' => sub {
-         my ($orig, $self, @args) = @_;
-
-         return $orig->( $self, @args ), %{ $options_data };
-      } );
-   };
-   my $option = sub {
-      my ($name, %attributes) = @_;
-
-      for my $ban (grep { $_ eq $name } @banished_keywords) {
-         throw 'Method [_1] used by class [_2] as an attribute',
-               [ $ban, $target ];
-      }
-
-      $has->( $name => $filter_attributes->( %attributes ) );
-
-      $options_data->{ $name }
-         = { $validate_and_filter_options->( %attributes ) };
-
-#      $apply_modifiers->(); # TODO: I think this can go
-      return;
-   };
-   my $info; $info = $Role::Tiny::INFO{ $target }
-      and $info->{not_methods}{ $option } = $option;
-
-   install_sub { as => 'option', into => $target, code => $option, };
-
-   $apply_modifiers->();
-   return;
-}
+use namespace::autoclean;
 
 1;
 
@@ -246,12 +124,14 @@ Defines no attributes
 
 =head1 Subroutines/Methods
 
-=head2 C<default_options_config>
+=over 3
+
+=item C<default_options_config>
 
 Returns a list of keys and values. These are the defaults for the configuration
 options listed in L</import>
 
-=head2 C<import>
+=item C<import>
 
 Injects the C<option> function into the caller
 
@@ -259,7 +139,7 @@ Accepts the following configuration options;
 
 =over 3
 
-=item C<getopf_conf>
+=item C<getopt_conf>
 
 An array reference of options passed to L<Getopt::Long::Configure>, defaults to
 an empty list
@@ -320,6 +200,8 @@ Defaulted in L</default_options_config> to C<Usage: %c %o [method]>
 
 =back
 
+=back
+
 =head1 Diagnostics
 
 None
@@ -328,7 +210,7 @@ None
 
 =over 3
 
-=item L<Sub::Install>
+=item L<Class::Usul::Cmd::Options>
 
 =back
 
@@ -352,7 +234,7 @@ Peter Flanigan, C<< <pjfl@cpan.org> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2018 Peter Flanigan. All rights reserved
+Copyright (c) 2023 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

@@ -10,7 +10,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 # Version
 
-Describes Class::Usul version v0.84.$Rev: 2 $
+Describes Class::Usul version v0.84.$Rev: 6 $
 
 # Synopsis
 
@@ -86,6 +86,10 @@ Defines the following attributes;
 
     A lazily evaluated instance of the `log_class`. This object reference is a
     [Logger](https://metacpan.org/pod/Class%3A%3AUsul%3A%3ATypes#Logger)
+
+- `has_log`
+
+    Predicate
 
 - `log_class`
 

@@ -32,18 +32,18 @@ is $prog->can_call( 'add_leader' ), 0, 'Can call false';
 eval { io( 'Dummy' )->all }; my $e = $EVAL_ERROR || q();
 
 like $e, qr{ 'Dummy' \s+ cannot \s+ open }mx, 'Non existant file';
-is   ref $e, 'Class::Usul::Exception', 'Our exception class';
+is   ref $e, 'Class::Usul::Cmd::Exception', 'Our exception class';
 
 unlink $logfile; my $io = io( $logfile ); $io->touch;
 
 ok   -f $logfile, 'Create logfile'; $prog->info( 'Information' );
-like $io->chomp->getline, qr{ \[INFO\] \s 21programs: \s Information }mx,
+like $io->chomp->getline, qr/ \[INFO\] \s ${name}: \s Information /mx,
    'Read logfile';
 
 unlink $logfile;
 
 is   $prog->debug, 0, 'Debug false';
-is   $prog->debug_flag, '-n', 'Debug flag - false';
+is   $prog->debug_flag, q(), 'Debug flag - false';
 
 my ($out, $err, $exit) = capture { $prog->run };
 

@@ -1,36 +1,41 @@
 package Class::Usul::Programs;
 
-use namespace::autoclean;
-
 use Class::Usul::Constants qw( TRUE );
 use Class::Usul::Functions qw( find_apphome get_cfgfiles );
 use File::DataClass::Types qw( Directory );
 use Scalar::Util           qw( blessed );
 use Moo;
-use Class::Usul::Options;
+use Class::Usul::Cmd::Options;
 
-extends q(Class::Usul);
-with    q(Class::Usul::TraitFor::OutputLogging);
-with    q(Class::Usul::TraitFor::Prompting);
-with    q(Class::Usul::TraitFor::DebugFlag);
-with    q(Class::Usul::TraitFor::Usage);
-with    q(Class::Usul::TraitFor::RunningMethods);
+extends 'Class::Usul';
+with    'Class::Usul::Cmd::Trait::IPC';
+with    'Class::Usul::Cmd::Trait::OutputLogging';
+with    'Class::Usul::Cmd::Trait::Prompting';
+with    'Class::Usul::Cmd::Trait::DebugFlag';
+with    'Class::Usul::Cmd::Trait::Usage';
+with    'Class::Usul::Cmd::Trait::RunningMethods';
+with    'Class::Usul::TraitFor::IPC';
 
 # Override attribute default in base class
 has '+config_class' => default => 'Class::Usul::Config::Programs';
 
 # Public attributes
-option 'home'    => is => 'lazy', isa => Directory, format => 's',
+option 'home' =>
+   is            => 'lazy',
+   isa           => Directory,
+   coerce        => TRUE,
+   default       => sub { $_[0]->config->home },
    documentation => 'Directory containing the configuration file',
-   builder       => sub { $_[ 0 ]->config->home }, coerce => TRUE;
+   format        => 's';
 
 # Construction
 around 'BUILDARGS' => sub {
    my ($orig, $self, @args) = @_;
 
-   my $attr = $orig->( $self, @args ); my $conf = $attr->{config} //= {};
-
-   my $appclass = delete $attr->{appclass}; my $home = delete $attr->{home};
+   my $attr = $orig->($self, @args);
+   my $conf = $attr->{config} //= {};
+   my $appclass = delete $attr->{appclass};
+   my $home = delete $attr->{home};
 
    $conf->{appclass} //= $appclass || blessed $self || $self;
    $conf->{home    } //= find_apphome $conf->{appclass}, $home;
@@ -40,6 +45,8 @@ around 'BUILDARGS' => sub {
 };
 
 sub BUILD {} # Modified by applied roles
+
+use namespace::autoclean;
 
 1;
 
@@ -90,6 +97,12 @@ Defines these attributes;
 
 Overrides the default in the base class, setting it to
 C<Class::Usul::Config::Programs>
+
+=item C<ipc>
+
+An instance of L<Class::Usul::IPC>
+
+=cut
 
 =back
 

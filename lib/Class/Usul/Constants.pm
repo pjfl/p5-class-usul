@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use parent 'Exporter::Tiny';
 
-use Class::Usul::Exception;
+use Class::Usul::Cmd::Exception;
 use File::DataClass::Constants ( );
 use File::Spec::Functions    qw( tmpdir );
 use IPC::SRLock::Constants     ( );
@@ -101,7 +101,7 @@ sub Dump_Except {
    return $Dump_Except = $methods;
 }
 
-my $Exception_Class = 'Class::Usul::Exception';
+my $Exception_Class = 'Class::Usul::Cmd::Exception';
 
 sub Exception_Class {
    my ($self, $class) = @_;
@@ -165,6 +165,8 @@ Defines the following class attributes;
 =item C<Config_Extn>
 
 =item C<Config_Key>
+
+=item C<Dump_Except>
 
 =item C<Exception_Class>
 
@@ -241,6 +243,14 @@ String C<default>. The name of the default message catalogue
 =head2 DIGEST_ALGORITHMS
 
 List of algorithms to try as args to L<Digest>
+
+=head2 DOT
+
+A literal period character
+
+=head2 DUMP_EXCEPT
+
+Do not dumpt these methods when introspecting an object class
 
 =head2 ENCODINGS
 

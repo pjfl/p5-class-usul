@@ -1,6 +1,7 @@
 use t::boilerplate;
 
 use Test::More;
+use Class::Usul::Functions qw( is_member );
 use English qw( -no_match_vars );
 
 use_ok 'Class::Usul::Exception';
@@ -13,7 +14,7 @@ my $e = $EVAL_ERROR;
 
 cmp_ok $e->time, '>', 1, 'Has time attribute';
 
-is $e->ignore->[ 1 ], 'Class::Usul::IPC', 'Ignores class';
+ok is_member('Class::Usul::IPC', $e->ignore), 'Ignores class';
 
 is $e->rv, 1, 'Returns value';
 

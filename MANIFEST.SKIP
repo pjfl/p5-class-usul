@@ -68,3 +68,5 @@ Thumbs.db
 
 # Avoid archives of this distribution
 \bClass-Usul-v?[\d\.\_]+
+
+\blib/Class/Usul/Cmd.pm$

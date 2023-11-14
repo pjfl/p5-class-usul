@@ -1,38 +1,14 @@
 package Class::Usul::Exception;
 
-use namespace::autoclean;
-
-use Unexpected::Functions qw( has_exception );
-use Unexpected::Types     qw( Int Str );
 use Moo;
 
-extends q(Unexpected);
-with    q(Unexpected::TraitFor::ErrorLeader);
-with    q(Unexpected::TraitFor::ExceptionClasses);
+extends q(Class::Usul::Cmd::Exception);
 
 my $class = __PACKAGE__;
 
-$class->ignore_class( 'Class::Usul::IPC', 'Sub::Quote' );
+$class->ignore_class('Class::Usul::IPC');
 
-has_exception $class;
-
-has_exception 'DateTimeCoercion' => parents => [ $class ],
-   error   => 'String [_1] will not coerce to a Unix time value';
-
-has_exception 'Tainted' => parents => [ $class ],
-   error   => 'String [_1] contains possible taint';
-
-has_exception 'TimeOut' => parents => [ $class ],
-   error   => 'Command [_1] timed out after [_2] seconds';
-
-has '+class' => default => $class;
-
-has 'out'    => is => 'ro', isa => Str, default => q();
-
-has 'rv'     => is => 'ro', isa => Int, default => 1;
-
-has 'time'   => is => 'ro', isa => Int, default => CORE::time(),
-   init_arg  => undef;
+use namespace::autoclean;
 
 1;
 

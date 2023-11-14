@@ -12,7 +12,7 @@ use Data::Record;
 use Try::Tiny;
 use Unexpected::Functions    qw( inflate_placeholders Unspecified );
 use Moo;
-use Class::Usul::Options;
+use Class::Usul::Cmd::Options;
 
 extends q(Class::Usul::Programs);
 with    q(Class::Usul::TraitFor::ConnectInfo);

@@ -303,6 +303,12 @@ This module implements a few simple time related functions
 Sleep for a given number of seconds. The sleep time can be a fraction
 of a second
 
+=head2 now_dt
+
+   $date_time = now_dt;
+
+Returns a L<DateTime> object instantiated with the current time
+
 =head2 str2date_time
 
    $date_time = str2date_time( $dstr, [$zone] );

@@ -7,7 +7,7 @@ use Class::Usul::Functions qw( emit );
 use Class::Usul::Time      qw( time2str );
 use Class::Usul::Types     qw( Int Str );
 use Moo;
-use Class::Usul::Options;
+use Class::Usul::Cmd::Options;
 
 extends q(Class::Usul::Programs);
 

@@ -85,8 +85,8 @@ is $stdout, 'test', 'emit';
 is $stderr, 'test', 'emit_err';
 
 eval {
-   ensure_class_loaded( 'Class::Usul::Response::IPC' );
-   Class::Usul::Response::IPC->new;
+   ensure_class_loaded( 'Class::Usul::Config' );
+   Class::Usul::Config->new(appclass => 'Test');
 };
 
 ok !exception, 'ensure_class_loaded';

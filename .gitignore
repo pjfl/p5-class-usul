@@ -23,3 +23,5 @@ t/*.log
 *.tar.gz
 Class-Usul-*
 lib/Class/Usul/Build.pm
+lib/Class/Usul/Cmd
+lib/Class/Usul/Cmd.pm

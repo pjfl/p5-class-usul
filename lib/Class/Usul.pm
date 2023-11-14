@@ -2,7 +2,7 @@ package Class::Usul;
 
 use 5.010001;
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.84.%d', q$Rev: 5 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.84.%d', q$Rev: 6 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants  qw( FALSE TRUE );
 use Class::Usul::Functions  qw( data_dumper ns_environment );
@@ -42,7 +42,8 @@ has 'lock_class'   => is => 'lazy', isa => LoadableClass, coerce => TRUE,
    default         => 'IPC::SRLock';
 
 has 'log'          => is => 'lazy', isa => Logger,
-   builder         => sub { $_[ 0 ]->log_class->new( builder => $_[ 0 ] ) };
+   builder         => sub { $_[ 0 ]->log_class->new( builder => $_[ 0 ] ) },
+   predicate       => 'has_log';
 
 has 'log_class'    => is => 'lazy', isa => LoadableClass, coerce => TRUE,
    default         => 'Class::Usul::Log';
@@ -74,7 +75,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.84.$Rev: 5 $
+Describes Class::Usul version v0.84.$Rev: 6 $
 
 =head1 Synopsis
 
@@ -152,6 +153,10 @@ A lazy loadable class which defaults to L<IPC::SRLock>
 
 A lazily evaluated instance of the C<log_class>. This object reference is a
 L<Logger|Class::Usul::Types/Logger>
+
+=item C<has_log>
+
+Predicate
 
 =item C<log_class>
 
