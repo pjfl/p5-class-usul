@@ -8,7 +8,7 @@ use Moo;
 use Class::Usul::Cmd::Options;
 
 extends 'Class::Usul';
-with    'Class::Usul::Cmd::Trait::IPC';
+with    'Class::Usul::Cmd::Trait::RunExternal';
 with    'Class::Usul::Cmd::Trait::OutputLogging';
 with    'Class::Usul::Cmd::Trait::Prompting';
 with    'Class::Usul::Cmd::Trait::DebugFlag';

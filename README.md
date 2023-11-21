@@ -10,7 +10,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 # Version
 
-Describes Class::Usul version v0.84.$Rev: 6 $
+Describes Class::Usul version v0.84.$Rev: 7 $
 
 # Synopsis
 
@@ -41,9 +41,14 @@ Interprocess communication is handled by [Class::Usul::IPC](https://metacpan.org
 
 [Class::Usul::File](https://metacpan.org/pod/Class%3A%3AUsul%3A%3AFile) makes the functionality of [File::DataClass](https://metacpan.org/pod/File%3A%3ADataClass) available
 
+[Class::Usul::Cmd](https://metacpan.org/pod/Class%3A%3AUsul%3A%3ACmd) is distributed separately and can be used without this
+distribution. It was refactored into it's own distribution so that dependencies
+of [Class::Usul](https://metacpan.org/pod/Class%3A%3AUsul) can be avoided if the command line framework is all that
+is required
+
 # Configuration and Environment
 
-Defines the following attributes;
+Defines the following public attributes;
 
 - `config`
 
@@ -87,21 +92,19 @@ Defines the following attributes;
     A lazily evaluated instance of the `log_class`. This object reference is a
     [Logger](https://metacpan.org/pod/Class%3A%3AUsul%3A%3ATypes#Logger)
 
-- `has_log`
-
-    Predicate
-
 - `log_class`
 
     A lazy loadable class which defaults to [Class::Usul::Log](https://metacpan.org/pod/Class%3A%3AUsul%3A%3ALog)
 
 # Subroutines/Methods
 
-## `dumper`
+Defines the following public methods;
 
-    $self->dumper( $some_var );
+- `dumper`
 
-Use [Data::Printer](https://metacpan.org/pod/Data%3A%3APrinter) to dump arguments for development purposes
+        $self->dumper( $some_var );
+
+    Use [Data::Printer](https://metacpan.org/pod/Data%3A%3APrinter) to dump arguments for development purposes
 
 # Diagnostics
 

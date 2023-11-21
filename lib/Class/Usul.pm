@@ -2,60 +2,13 @@ package Class::Usul;
 
 use 5.010001;
 use namespace::autoclean;
-use version; our $VERSION = qv( sprintf '0.84.%d', q$Rev: 6 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.84.%d', q$Rev: 7 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants  qw( FALSE TRUE );
 use Class::Usul::Functions  qw( data_dumper ns_environment );
 use Class::Usul::Types      qw( Bool ConfigProvider HashRef
                                 Localiser LoadableClass Locker Logger );
 use Moo;
-
-# Attribute constructors
-my $_build_debug = sub {
-   return !!ns_environment( $_[ 0 ]->config->appclass, 'debug' ) ? TRUE : FALSE;
-};
-
-# Public attributes
-has 'config'       => is => 'lazy', isa => ConfigProvider,
-   builder         => sub { $_[ 0 ]->config_class->new( $_[ 0 ]->_config_attr)},
-   init_arg        => undef;
-
-has '_config_attr' => is => 'ro',   isa => HashRef, builder => sub { {} },
-   init_arg        => 'config';
-
-has 'config_class' => is => 'ro',   isa => LoadableClass, coerce => TRUE,
-   default         => 'Class::Usul::Config';
-
-has 'debug'        => is => 'lazy', isa => Bool, builder => $_build_debug;
-
-has 'l10n'         => is => 'lazy', isa => Localiser,
-   builder         => sub { $_[ 0 ]->l10n_class->new( builder => $_[ 0 ] ) },
-   handles         => [ 'loc', 'localize' ];
-
-has 'l10n_class'   => is => 'lazy', isa => LoadableClass, coerce => TRUE,
-   default         => 'Class::Usul::L10N';
-
-has 'lock'         => is => 'lazy', isa => Locker,
-   builder         => sub { $_[ 0 ]->lock_class->new( builder => $_[ 0 ] ) };
-
-has 'lock_class'   => is => 'lazy', isa => LoadableClass, coerce => TRUE,
-   default         => 'IPC::SRLock';
-
-has 'log'          => is => 'lazy', isa => Logger,
-   builder         => sub { $_[ 0 ]->log_class->new( builder => $_[ 0 ] ) },
-   predicate       => 'has_log';
-
-has 'log_class'    => is => 'lazy', isa => LoadableClass, coerce => TRUE,
-   default         => 'Class::Usul::Log';
-
-# Public methods
-sub dumper { # Damm handy for development
-   my $self = shift; return data_dumper( @_ );
-}
-
-1;
-
-__END__
 
 =pod
 
@@ -75,7 +28,7 @@ Class::Usul - A base class providing config, locking, logging, and l10n
 
 =head1 Version
 
-Describes Class::Usul version v0.84.$Rev: 6 $
+Describes Class::Usul version v0.84.$Rev: 7 $
 
 =head1 Synopsis
 
@@ -106,9 +59,14 @@ Interprocess communication is handled by L<Class::Usul::IPC>
 
 L<Class::Usul::File> makes the functionality of L<File::DataClass> available
 
+L<Class::Usul::Cmd> is distributed separately and can be used without this
+distribution. It was refactored into it's own distribution so that dependencies
+of L<Class::Usul> can be avoided if the command line framework is all that
+is required
+
 =head1 Configuration and Environment
 
-Defines the following attributes;
+Defines the following public attributes;
 
 =over 3
 
@@ -116,6 +74,20 @@ Defines the following attributes;
 
 The C<config> attribute should be a hash reference that may define key / value
 pairs that provide filesystem paths for the temporary directory etc.
+
+=cut
+
+has 'config' =>
+   is       => 'lazy',
+   isa      => ConfigProvider,
+   default  => sub { $_[ 0 ]->config_class->new($_[0]->_config_attr)},
+   init_arg => undef;
+
+has '_config_attr' =>
+   is       => 'ro',
+   isa      => HashRef,
+   default  => sub { {} },
+   init_arg => 'config';
 
 =item C<config_class>
 
@@ -125,52 +97,127 @@ in the C<config> attribute. It provides accessor methods with symbol
 inflation and smart defaults. Add configuration attributes by
 subclassing this class
 
+=cut
+
+has 'config_class' =>
+   is      => 'ro',
+   isa     => LoadableClass,
+   coerce  => TRUE,
+   default => 'Class::Usul::Config';
+
 =item C<debug>
 
 A boolean which defaults to false. Usually an instance of this class is passed
 into the constructors of other classes which set their own debug state to this
 value
 
+=cut
+
+has 'debug' =>
+   is      => 'lazy',
+   isa     => Bool,
+   default => sub {
+      return !!ns_environment($_[0]->config->appclass, 'debug') ? TRUE : FALSE;
+   };
+
 =item C<l10n>
 
 A lazily evaluated instance of the C<l10n_class>. This object reference is a
 L<Localiser|Class::Usul::Types/Localiser> which handles the C<localize> method
 
+=cut
+
+has 'l10n' =>
+   is      => 'lazy',
+   isa     => Localiser,
+   default => sub { $_[0]->l10n_class->new(builder => $_[0]) },
+   handles => ['loc', 'localize'];
+
 =item C<l10n_class>
 
 A lazy loadable class which defaults to L<Class::Usul::L10N>
+
+=cut
+
+has 'l10n_class' =>
+   is      => 'lazy',
+   isa     => LoadableClass,
+   coerce  => TRUE,
+   default => 'Class::Usul::L10N';
 
 =item C<lock>
 
 A lazily evaluated instance of the C<lock_class>. This object reference is a
 L<Locker|Class::Usul::Types/Locker>
 
+=cut
+
+has 'lock' =>
+   is      => 'lazy',
+   isa     => Locker,
+   default => sub { $_[0]->lock_class->new(builder => $_[0]) };
+
 =item C<lock_class>
 
 A lazy loadable class which defaults to L<IPC::SRLock>
+
+=cut
+
+has 'lock_class' =>
+   is      => 'lazy',
+   isa     => LoadableClass,
+   coerce  => TRUE,
+   default => 'IPC::SRLock';
 
 =item C<log>
 
 A lazily evaluated instance of the C<log_class>. This object reference is a
 L<Logger|Class::Usul::Types/Logger>
 
-=item C<has_log>
+=cut
 
-Predicate
+has 'log' =>
+   is      => 'lazy',
+   isa     => Logger,
+   default => sub { $_[0]->log_class->new(builder => $_[0]) };
 
 =item C<log_class>
 
 A lazy loadable class which defaults to L<Class::Usul::Log>
 
+=cut
+
+has 'log_class' =>
+   is      => 'lazy',
+   isa     => LoadableClass,
+   coerce  => TRUE,
+   default => 'Class::Usul::Log';
+
 =back
 
 =head1 Subroutines/Methods
 
-=head2 C<dumper>
+Defines the following public methods;
+
+=over 3
+
+=item C<dumper>
 
    $self->dumper( $some_var );
 
 Use L<Data::Printer> to dump arguments for development purposes
+
+=cut
+
+sub dumper { # Damm handy for development
+   my $self = shift; return data_dumper( @_ );
+}
+
+1;
+
+__END__
+
+=back
 
 =head1 Diagnostics
 
