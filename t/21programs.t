@@ -25,7 +25,7 @@ cmp_deeply $prog, methods( encoding => 'UTF-8' ), 'Constructs default object';
 is $prog->config->script, "${name}.t", 'Config->script';
 is $prog->config->name, $name, 'Config->name';
 is $prog->add_leader(), '', 'Default leader';
-is $prog->add_leader( 'Dummy' ), '21programs: Dummy', 'Text plus leader';
+is $prog->add_leader( 'Dummy' ), 'Programs.dump_self: Dummy', 'Text plus leader';
 is $prog->can_call( 'dump_self' ), 1, 'Can call true';
 is $prog->can_call( 'add_leader' ), 0, 'Can call false';
 
@@ -37,7 +37,7 @@ is   ref $e, 'Class::Usul::Cmd::Exception', 'Our exception class';
 unlink $logfile; my $io = io( $logfile ); $io->touch;
 
 ok   -f $logfile, 'Create logfile'; $prog->info( 'Information' );
-like $io->chomp->getline, qr/ \[INFO\] \s ${name}: \s Information /mx,
+like $io->chomp->getline, qr/ \[INFO\] \s Programs.dump_self: \s Information /mx,
    'Read logfile';
 
 unlink $logfile;
