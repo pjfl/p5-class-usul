@@ -1,5 +1,6 @@
 Revision history for Class::Usul
 
+          - Removes dependency on File::Gettext
           - POD updates
           - Splits out Class::Usul::Cmd as separate distribution
           - Fixes tests

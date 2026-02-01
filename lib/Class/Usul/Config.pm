@@ -16,7 +16,6 @@ use Config;
 use English                  qw( -no_match_vars );
 use File::Basename           qw( basename dirname );
 use File::DataClass::Types   qw( Directory File Path );
-use File::Gettext::Constants qw( LOCALE_DIRS );
 use File::Spec::Functions    qw( canonpath catdir catfile
                                  rel2abs rootdir tmpdir );
 use File::Which              qw( which );
@@ -193,7 +192,9 @@ sub _build_localedir {
 
    -d $dir and return $dir;
 
-   for (map { catdir( @{ $_ } ) } @{ LOCALE_DIRS() } ) { -d $_ and return $_ }
+   for (map { catdir( @{ $_ } ) } @{ [ [ q(), qw(usr share locale) ],
+            [ q(), qw(usr local share locale) ],
+            [ q(), qw(usr lib locale) ] ] } ) { -d $_ and return $_ }
 
    return $_[ 0 ]->inflate_path( $_[ 1 ], 'tempdir' );
 }

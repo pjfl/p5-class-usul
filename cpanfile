@@ -11,7 +11,6 @@ requires "Data::Record" => "0.02";
 requires "DateTime::Format::Epoch" => "0.16";
 requires "Exporter::Tiny" => "1.006000";
 requires "File::DataClass" => "v0.73.0";
-requires "File::Gettext" => "v0.33.0";
 requires "File::HomeDir" => "1.006";
 requires "File::Which" => "1.27";
 requires "IPC::SRLock" => "v0.31.0";

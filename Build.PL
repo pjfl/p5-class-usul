@@ -29,7 +29,6 @@ my $prereqs  = {
     'DateTime::Format::Epoch' => '0.16',
     'Exporter::Tiny' => '1.006000',
     'File::DataClass' => 'v0.73.0',
-    'File::Gettext' => 'v0.33.0',
     'File::HomeDir' => '1.006',
     'File::Which' => '1.27',
     'IPC::SRLock' => 'v0.31.0',

@@ -8,8 +8,6 @@ use Class::Usul::Functions   qw( assert is_arrayref
                                  is_hashref merge_attributes );
 use Class::Usul::Types       qw( ArrayRef Bool HashRef Logger SimpleStr Str );
 use File::DataClass::Types   qw( Directory Path );
-use File::Gettext;
-use File::Gettext::Constants qw( CONTEXT_SEP LOCALE_DIRS );
 use File::Spec::Functions    qw( tmpdir );
 use Try::Tiny;
 use Unexpected::Functions    qw( inflate_placeholders );
@@ -21,7 +19,9 @@ has 'l10n_attributes' => is => 'lazy', isa => HashRef, builder => sub { {} };
 has 'locale'          => is => 'lazy', isa => SimpleStr, default => LANG;
 
 has 'localedir'       => is => 'lazy', isa => Path, coerce => TRUE,
-   builder            => sub { LOCALE_DIRS->[ 0 ] };
+   builder            => sub { [ [ q(), qw(usr share locale) ],
+            [ q(), qw(usr local share locale) ],
+            [ q(), qw(usr lib locale) ] ]->[ 0 ] };
 
 has 'log'             => is => 'ro',   isa => Logger,
    builder            => sub { Class::Null->new };
@@ -80,8 +80,7 @@ my $_load_domains = sub {
                        (?: \@[-_A-Za-z0-9=;]+ )? \z }msx and $charset = $1;
    $charset and $attrs->{charset} = $charset;
 
-   my $domain = try   { File::Gettext->new( $attrs )->load( $lang, @names ) }
-                catch { $self->log->error( $_ ); return };
+   my $domain;
 
    return $domain ? $domain_cache->{ $key } = $domain : undef;
 };
@@ -104,7 +103,7 @@ my $_gettext = sub {
    }
 
    my $id   = defined $args->{context}
-            ? $args->{context}.CONTEXT_SEP.$key : $key;
+            ? $args->{context}."\004".$key : $key;
    my $msgs = $domain->{ $self->source_name } // {};
    my $msg  = $msgs->{ $id } // {};
 
@@ -328,8 +327,6 @@ Asserts that the I<locale> attribute is set
 =item L<File::DataClass::Types>
 
 =item L<File::Gettext>
-
-=item L<File::Gettext::Constants>
 
 =item L<Moo>
 
